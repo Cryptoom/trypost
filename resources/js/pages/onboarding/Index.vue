@@ -16,7 +16,9 @@ import NetworkConnectGrid, {
     type AvailablePlatform,
     type ConnectedAccount,
 } from '@/components/accounts/NetworkConnectGrid.vue';
+import PageHeader from '@/components/PageHeader.vue';
 import { Button } from '@/components/ui/button';
+import AppLayout from '@/layouts/AppLayout.vue';
 import { copyToClipboard } from '@/lib/utils';
 import { complete, dismiss } from '@/routes/app/onboarding';
 
@@ -74,46 +76,26 @@ const continueToTryPost = (): void => {
 <template>
     <Head :title="$t('onboarding.title')" />
 
-    <div class="min-h-svh bg-background">
-        <div
-            class="mx-auto flex w-full max-w-6xl flex-col gap-8 px-6 py-8 md:py-12"
-        >
-            <header class="flex items-center justify-between gap-4">
-                <img
-                    src="/images/trypost/logo-light.png"
-                    alt="TryPost"
-                    class="h-8 w-auto dark:hidden"
+    <AppLayout>
+        <div class="mx-auto flex w-full max-w-4xl flex-col gap-8 px-6 py-8">
+            <div
+                class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between"
+            >
+                <PageHeader
+                    :title="$t('onboarding.title')"
+                    :description="$t('onboarding.description')"
                 />
-                <img
-                    src="/images/trypost/logo-dark.png"
-                    alt="TryPost"
-                    class="hidden h-8 w-auto dark:block"
-                />
-
                 <Button
                     type="button"
                     variant="ghost"
+                    class="shrink-0 self-start"
                     :disabled="dismissForm.processing"
                     dusk="onboarding-skip"
                     @click="skip"
                 >
                     {{ $t('onboarding.skip') }}
                 </Button>
-            </header>
-
-            <section class="mx-auto flex max-w-2xl flex-col gap-3 text-center">
-                <div
-                    class="mx-auto inline-flex size-12 items-center justify-center rounded-2xl border-2 border-foreground bg-violet-200 shadow-sm"
-                >
-                    <IconSparkles class="size-6" stroke-width="2.25" />
-                </div>
-                <h1 class="text-3xl font-bold tracking-tight md:text-4xl">
-                    {{ $t('onboarding.title') }}
-                </h1>
-                <p class="text-base text-muted-foreground md:text-lg">
-                    {{ $t('onboarding.description') }}
-                </p>
-            </section>
+            </div>
 
             <div class="grid gap-6">
                 <section
@@ -329,27 +311,19 @@ const continueToTryPost = (): void => {
             </div>
 
             <section
+                v-if="status.all_complete"
                 class="flex flex-col items-center gap-4 rounded-2xl border-2 border-foreground bg-violet-100 p-6 text-center shadow-2xs"
             >
                 <div>
                     <h2 class="text-xl font-bold">
-                        {{
-                            status.all_complete
-                                ? $t('onboarding.ready.title')
-                                : $t('onboarding.residual.title')
-                        }}
+                        {{ $t('onboarding.ready.title') }}
                     </h2>
                     <p class="mt-1 text-sm text-foreground/70">
-                        {{
-                            status.all_complete
-                                ? $t('onboarding.ready.description')
-                                : $t('onboarding.residual.description')
-                        }}
+                        {{ $t('onboarding.ready.description') }}
                     </p>
                 </div>
 
                 <Button
-                    v-if="status.all_complete"
                     type="button"
                     size="lg"
                     class="rounded-full"
@@ -362,5 +336,5 @@ const continueToTryPost = (): void => {
                 </Button>
             </section>
         </div>
-    </div>
+    </AppLayout>
 </template>
