@@ -96,7 +96,7 @@ test('a connected linkedin page account is still returned so it surfaces under t
     );
 });
 
-test('an unsubscribed account can disconnect during onboarding (no active subscription required)', function () {
+test('an unsubscribed account can disconnect during welcome (no active subscription required)', function () {
     config(['trypost.self_hosted' => false]);
 
     $account = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id]);
