@@ -1,0 +1,145 @@
+<?php
+
+declare(strict_types=1);
+
+use App\Actions\Onboarding\ResolveOnboardingStatus;
+use App\Models\AccessToken;
+use App\Models\Post;
+use App\Models\SocialAccount;
+use App\Models\User;
+use App\Models\Workspace;
+use Illuminate\Support\Carbon;
+
+beforeEach(function () {
+    config(['trypost.self_hosted' => false]);
+
+    $this->user = User::factory()->create();
+    $this->workspace = Workspace::factory()->create([
+        'account_id' => $this->user->account_id,
+        'user_id' => $this->user->id,
+    ]);
+    $this->user->update(['current_workspace_id' => $this->workspace->id]);
+    $this->user->refresh();
+
+    subscribeAccount($this->user->account);
+});
+
+test('resolves the empty onboarding state', function () {
+    $status = app(ResolveOnboardingStatus::class)->handle($this->user);
+
+    expect($status)->toBe([
+        'mcp_connected' => false,
+        'social_connected' => false,
+        'first_post_created' => false,
+        'all_complete' => false,
+        'show_residual' => true,
+        'completed_at' => null,
+        'dismissed_at' => null,
+    ]);
+});
+
+test('resolves an OAuth token as MCP connected', function () {
+    $result = $this->user->createToken('OAuth Session');
+    AccessToken::find($result->token->id)
+        ->forceFill(['workspace_id' => null])
+        ->saveQuietly();
+
+    $status = app(ResolveOnboardingStatus::class)->handle($this->user);
+
+    expect($status)->toMatchArray([
+        'mcp_connected' => true,
+        'social_connected' => false,
+        'first_post_created' => false,
+        'all_complete' => false,
+    ]);
+});
+
+test('does not resolve a workspace-bound personal access token as MCP connected', function () {
+    $result = $this->user->createToken('Personal Access Token');
+    AccessToken::find($result->token->id)
+        ->forceFill(['workspace_id' => $this->workspace->id])
+        ->saveQuietly();
+
+    $status = app(ResolveOnboardingStatus::class)->handle($this->user);
+
+    expect($status['mcp_connected'])->toBeFalse();
+});
+
+test('resolves a social account in the current workspace as connected', function () {
+    SocialAccount::factory()->create(['workspace_id' => $this->workspace->id]);
+
+    $status = app(ResolveOnboardingStatus::class)->handle($this->user);
+
+    expect($status)->toMatchArray([
+        'mcp_connected' => false,
+        'social_connected' => true,
+        'first_post_created' => false,
+        'all_complete' => false,
+    ]);
+});
+
+test('resolves any post in the current workspace as the first post', function () {
+    Post::factory()->failed()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+    ]);
+
+    $status = app(ResolveOnboardingStatus::class)->handle($this->user);
+
+    expect($status)->toMatchArray([
+        'mcp_connected' => false,
+        'social_connected' => false,
+        'first_post_created' => true,
+        'all_complete' => false,
+    ]);
+});
+
+test('marks onboarding completed once all three steps are complete', function () {
+    Carbon::setTestNow('2026-07-24 12:00:00');
+
+    $result = $this->user->createToken('OAuth Session');
+    AccessToken::find($result->token->id)
+        ->forceFill(['workspace_id' => null])
+        ->saveQuietly();
+    SocialAccount::factory()->create(['workspace_id' => $this->workspace->id]);
+    Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+    ]);
+
+    $status = app(ResolveOnboardingStatus::class)->handle($this->user);
+
+    expect($status)->toBe([
+        'mcp_connected' => true,
+        'social_connected' => true,
+        'first_post_created' => true,
+        'all_complete' => true,
+        'show_residual' => false,
+        'completed_at' => now()->toIso8601String(),
+        'dismissed_at' => null,
+    ])->and($this->user->account->fresh()->onboarding_completed_at?->equalTo(now()))->toBeTrue();
+
+    Carbon::setTestNow(now()->addHour());
+    app(ResolveOnboardingStatus::class)->handle($this->user->fresh());
+
+    expect($this->user->account->fresh()->onboarding_completed_at?->toIso8601String())
+        ->toBe('2026-07-24T12:00:00+00:00');
+});
+
+test('dismissed onboarding does not show the residual checklist', function () {
+    Carbon::setTestNow('2026-07-24 12:00:00');
+    $this->user->account->update(['onboarding_dismissed_at' => now()]);
+
+    $status = app(ResolveOnboardingStatus::class)->handle($this->user->fresh());
+
+    expect($status['show_residual'])->toBeFalse()
+        ->and($status['dismissed_at'])->toBe(now()->toIso8601String());
+});
+
+test('self-hosted onboarding does not show the residual checklist', function () {
+    config(['trypost.self_hosted' => true]);
+
+    $status = app(ResolveOnboardingStatus::class)->handle($this->user);
+
+    expect($status['show_residual'])->toBeFalse();
+});
