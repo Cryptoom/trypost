@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Actions\Billing\StartSubscriptionCheckout;
 use App\Enums\Plan\Slug;
+use App\Enums\PostHog\WelcomeEvent;
 use App\Enums\User\Goal;
 use App\Enums\User\Persona;
 use App\Enums\User\ReferralSource;
@@ -64,7 +65,10 @@ test('persona store saves the selection mirrors it to PostHog and advances to go
         ->assertRedirect(route('app.welcome.goals'));
 
     expect($this->user->fresh()->persona)->toBe(Persona::Agency);
-    Bus::assertDispatched(SendEvent::class);
+    Bus::assertDispatched(SendEvent::class, fn (SendEvent $event): bool => $event->method === 'capture'
+        && data_get($event->payload, 'distinctId') === $this->user->id
+        && data_get($event->payload, 'event') === WelcomeEvent::PersonaSaved->value
+        && data_get($event->payload, 'properties.persona') === Persona::Agency->value);
 });
 
 test('goals redirects to persona until a persona is selected', function () {
@@ -110,7 +114,9 @@ test('goals store saves choices mirrors them to PostHog and advances to referral
         ->assertRedirect(route('app.welcome.referral-source'));
 
     expect($this->user->fresh()->goals)->toBe($goals);
-    Bus::assertDispatched(SendEvent::class);
+    Bus::assertDispatched(SendEvent::class, fn (SendEvent $event): bool => $event->method === 'capture'
+        && data_get($event->payload, 'event') === WelcomeEvent::GoalsSaved->value
+        && data_get($event->payload, 'properties.goals') === $goals);
 });
 
 test('referral source redirects through incomplete prior steps', function (array $attributes, string $routeName) {
@@ -170,7 +176,9 @@ test('referral source store saves the source mirrors it to PostHog and advances 
         ->assertRedirect(route('app.welcome.subscribe'));
 
     expect($this->user->fresh()->referral_source)->toBe(ReferralSource::ProductHunt);
-    Bus::assertDispatched(SendEvent::class);
+    Bus::assertDispatched(SendEvent::class, fn (SendEvent $event): bool => $event->method === 'capture'
+        && data_get($event->payload, 'event') === WelcomeEvent::ReferralSaved->value
+        && data_get($event->payload, 'properties.referral_source') === ReferralSource::ProductHunt->value);
 });
 
 test('subscribe redirects through incomplete welcome steps', function (array $attributes, string $routeName) {
@@ -209,6 +217,9 @@ test('subscribe renders plan props without social account props', function () {
 });
 
 test('checkout starts without a connected social account and uses subscribe as its cancel url', function () {
+    config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test']);
+    Bus::fake();
+
     Plan::where('slug', Slug::Workspace)->firstOrFail()->update([
         'stripe_monthly_price_id' => 'price_monthly_test',
     ]);
@@ -224,6 +235,10 @@ test('checkout starts without a connected social account and uses subscribe as i
     $this->actingAs($this->user)
         ->post(route('app.welcome.checkout'))
         ->assertRedirect('https://checkout.stripe.test/session');
+
+    Bus::assertDispatched(SendEvent::class, fn (SendEvent $event): bool => $event->method === 'capture'
+        && data_get($event->payload, 'distinctId') === $this->user->id
+        && data_get($event->payload, 'event') === WelcomeEvent::CheckoutStarted->value);
 });
 
 test('welcome steps redirect to activation for subscribed accounts with residual onboarding', function (string $routeName, string $method, array $payload = []) {

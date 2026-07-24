@@ -7,6 +7,7 @@ namespace App\Http\Controllers\App;
 use App\Actions\Billing\StartSubscriptionCheckout;
 use App\Actions\Onboarding\ResolveOnboardingStatus;
 use App\Enums\Plan\Slug;
+use App\Enums\PostHog\WelcomeEvent;
 use App\Enums\User\Goal;
 use App\Enums\User\Persona;
 use App\Enums\User\ReferralSource;
@@ -54,6 +55,12 @@ class WelcomeController extends Controller
         $postHog->identify($user->id, [
             'persona' => $persona,
         ]);
+        $postHog->capture(
+            $user->id,
+            WelcomeEvent::PersonaSaved->value,
+            ['persona' => $persona],
+            $user->account,
+        );
 
         return redirect()->route('app.welcome.goals');
     }
@@ -95,6 +102,12 @@ class WelcomeController extends Controller
         $postHog->identify($user->id, [
             'goals' => $goals,
         ]);
+        $postHog->capture(
+            $user->id,
+            WelcomeEvent::GoalsSaved->value,
+            ['goals' => $goals],
+            $user->account,
+        );
 
         return redirect()->route('app.welcome.referral-source');
     }
@@ -144,6 +157,12 @@ class WelcomeController extends Controller
         $postHog->identify($user->id, [
             'referral_source' => $referralSource,
         ]);
+        $postHog->capture(
+            $user->id,
+            WelcomeEvent::ReferralSaved->value,
+            ['referral_source' => $referralSource],
+            $user->account,
+        );
 
         return redirect()->route('app.welcome.subscribe');
     }
@@ -178,19 +197,31 @@ class WelcomeController extends Controller
         ]);
     }
 
-    public function checkout(Request $request, StartSubscriptionCheckout $checkout): SymfonyResponse|RedirectResponse
-    {
+    public function checkout(
+        Request $request,
+        StartSubscriptionCheckout $checkout,
+        PostHogService $postHog,
+    ): SymfonyResponse|RedirectResponse {
         if ($redirect = $this->redirectIfUnavailable($request)) {
             return $redirect;
         }
 
         $plan = Plan::where('slug', Slug::Workspace)->firstOrFail();
+        $user = $request->user();
 
-        return $checkout->redirect(
-            $request->user()->account,
+        $response = $checkout->redirect(
+            $user->account,
             (string) $plan->stripe_monthly_price_id,
             route('app.welcome.subscribe'),
         );
+
+        $postHog->capture(
+            $user->id,
+            WelcomeEvent::CheckoutStarted->value,
+            account: $user->account,
+        );
+
+        return $response;
     }
 
     private function redirectIfUnavailable(Request $request): ?RedirectResponse

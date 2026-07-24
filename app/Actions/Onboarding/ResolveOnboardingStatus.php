@@ -4,13 +4,20 @@ declare(strict_types=1);
 
 namespace App\Actions\Onboarding;
 
+use App\Enums\PostHog\OnboardingEvent;
 use App\Models\AccessToken;
 use App\Models\Account;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Services\PostHogService;
+use Illuminate\Support\Facades\Cache;
 
 class ResolveOnboardingStatus
 {
+    public function __construct(
+        private readonly PostHogService $postHog,
+    ) {}
+
     /**
      * @return array{
      *     mcp_connected: bool,
@@ -39,6 +46,10 @@ class ResolveOnboardingStatus
         $firstPostCreated = $workspace?->posts()->exists() ?? false;
         $allComplete = $mcpConnected && $socialConnected && $firstPostCreated;
 
+        $this->captureCompletedStep($user, $account, 'mcp_connected', $mcpConnected);
+        $this->captureCompletedStep($user, $account, 'social_connected', $socialConnected);
+        $this->captureCompletedStep($user, $account, 'first_post_created', $firstPostCreated);
+
         if ($allComplete && $account !== null && $account->onboarding_completed_at === null) {
             $account->update(['onboarding_completed_at' => now()]);
         }
@@ -57,5 +68,23 @@ class ResolveOnboardingStatus
             'completed_at' => $account?->onboarding_completed_at?->toIso8601String(),
             'dismissed_at' => $account?->onboarding_dismissed_at?->toIso8601String(),
         ];
+    }
+
+    private function captureCompletedStep(User $user, ?Account $account, string $step, bool $completed): void
+    {
+        if (! $completed || $account === null || ! PostHogService::isEnabled()) {
+            return;
+        }
+
+        if (! Cache::add("onboarding_step:{$account->id}:{$step}", true, now()->addDays(30))) {
+            return;
+        }
+
+        $this->postHog->capture(
+            $user->id,
+            OnboardingEvent::StepCompleted->value,
+            ['step' => $step],
+            $account,
+        );
     }
 }

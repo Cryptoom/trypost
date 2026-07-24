@@ -3,12 +3,16 @@
 declare(strict_types=1);
 
 use App\Actions\Onboarding\ResolveOnboardingStatus;
+use App\Enums\PostHog\OnboardingEvent;
+use App\Jobs\PostHog\SendEvent;
 use App\Models\AccessToken;
 use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\Cache;
 
 beforeEach(function () {
     config(['trypost.self_hosted' => false]);
@@ -87,6 +91,29 @@ test('resolves a social account in the current workspace as connected', function
         'first_post_created' => false,
         'all_complete' => false,
     ]);
+});
+
+test('captures each completed step once for thirty days', function () {
+    config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test']);
+    Carbon::setTestNow('2026-07-24 12:00:00');
+    Bus::fake();
+
+    $cacheKey = "onboarding_step:{$this->user->account_id}:social_connected";
+    Cache::forget($cacheKey);
+    SocialAccount::factory()->create(['workspace_id' => $this->workspace->id]);
+
+    app(ResolveOnboardingStatus::class)->handle($this->user);
+    app(ResolveOnboardingStatus::class)->handle($this->user);
+
+    Bus::assertDispatchedTimes(SendEvent::class, 1);
+    Bus::assertDispatched(SendEvent::class, fn (SendEvent $event): bool => $event->method === 'capture'
+        && data_get($event->payload, 'event') === OnboardingEvent::StepCompleted->value
+        && data_get($event->payload, 'properties.step') === 'social_connected');
+
+    Carbon::setTestNow(now()->addDays(31));
+    app(ResolveOnboardingStatus::class)->handle($this->user);
+
+    Bus::assertDispatchedTimes(SendEvent::class, 2);
 });
 
 test('does not resolve a social account in another workspace as connected', function () {
