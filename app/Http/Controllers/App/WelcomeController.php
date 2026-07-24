@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\App;
 
 use App\Actions\Billing\StartSubscriptionCheckout;
+use App\Actions\Onboarding\ResolveOnboardingStatus;
 use App\Enums\Plan\Slug;
 use App\Enums\User\Goal;
 use App\Enums\User\Persona;
@@ -23,6 +24,10 @@ use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 
 class WelcomeController extends Controller
 {
+    public function __construct(
+        private readonly ResolveOnboardingStatus $resolveOnboardingStatus,
+    ) {}
+
     public function persona(Request $request): Response|RedirectResponse
     {
         if ($redirect = $this->redirectIfUnavailable($request)) {
@@ -194,8 +199,12 @@ class WelcomeController extends Controller
             return redirect()->route('app.calendar');
         }
 
-        if ($request->user()->account?->subscribed(Account::SUBSCRIPTION_NAME)) {
-            return redirect()->route('app.calendar');
+        $user = $request->user();
+
+        if ($user->account?->subscribed(Account::SUBSCRIPTION_NAME)) {
+            $status = $this->resolveOnboardingStatus->handle($user);
+
+            return redirect()->route($status['show_residual'] ? 'app.onboarding' : 'app.calendar');
         }
 
         return null;

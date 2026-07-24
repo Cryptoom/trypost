@@ -226,7 +226,7 @@ test('checkout starts without a connected social account and uses subscribe as i
         ->assertRedirect('https://checkout.stripe.test/session');
 });
 
-test('welcome steps redirect to calendar for subscribed accounts', function (string $routeName, string $method, array $payload = []) {
+test('welcome steps redirect to activation for subscribed accounts with residual onboarding', function (string $routeName, string $method, array $payload = []) {
     subscribeWelcomeAccount($this->user->account);
 
     $this->actingAs($this->user->fresh());
@@ -235,7 +235,7 @@ test('welcome steps redirect to calendar for subscribed accounts', function (str
         ? $this->get(route($routeName))
         : $this->post(route($routeName), $payload);
 
-    $response->assertRedirect(route('app.calendar'));
+    $response->assertRedirect(route('app.onboarding'));
 })->with([
     'persona' => ['app.welcome.persona', 'get'],
     'persona store' => ['app.welcome.persona.store', 'post', ['persona' => Persona::Agency->value]],
@@ -245,6 +245,18 @@ test('welcome steps redirect to calendar for subscribed accounts', function (str
     'referral source store' => ['app.welcome.referral-source.store', 'post', ['referral_source' => ReferralSource::Google->value]],
     'subscribe' => ['app.welcome.subscribe', 'get'],
     'checkout' => ['app.welcome.checkout', 'post'],
+]);
+
+test('welcome redirects subscribed accounts without residual onboarding to calendar', function (array $attributes) {
+    subscribeWelcomeAccount($this->user->account);
+    $this->user->account->update($attributes);
+
+    $this->actingAs($this->user->fresh())
+        ->get(route('app.welcome.persona'))
+        ->assertRedirect(route('app.calendar'));
+})->with([
+    'dismissed' => [['onboarding_dismissed_at' => now()]],
+    'completed' => [['onboarding_completed_at' => now()]],
 ]);
 
 test('welcome steps redirect to calendar in self hosted mode', function (string $routeName, string $method, array $payload = []) {
