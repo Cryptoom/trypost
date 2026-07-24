@@ -65,6 +65,17 @@ test('does not resolve a workspace-bound personal access token as MCP connected'
     expect($status['mcp_connected'])->toBeFalse();
 });
 
+test('does not resolve a revoked token as MCP connected', function () {
+    $result = $this->user->createToken('OAuth Session');
+    AccessToken::find($result->token->id)
+        ->forceFill(['workspace_id' => null, 'revoked' => true])
+        ->saveQuietly();
+
+    $status = app(ResolveOnboardingStatus::class)->handle($this->user);
+
+    expect($status['mcp_connected'])->toBeFalse();
+});
+
 test('resolves a social account in the current workspace as connected', function () {
     SocialAccount::factory()->create(['workspace_id' => $this->workspace->id]);
 
@@ -76,6 +87,18 @@ test('resolves a social account in the current workspace as connected', function
         'first_post_created' => false,
         'all_complete' => false,
     ]);
+});
+
+test('does not resolve a social account in another workspace as connected', function () {
+    $otherWorkspace = Workspace::factory()->create([
+        'account_id' => $this->user->account_id,
+        'user_id' => $this->user->id,
+    ]);
+    SocialAccount::factory()->create(['workspace_id' => $otherWorkspace->id]);
+
+    $status = app(ResolveOnboardingStatus::class)->handle($this->user);
+
+    expect($status['social_connected'])->toBeFalse();
 });
 
 test('resolves any post in the current workspace as the first post', function () {
@@ -92,6 +115,21 @@ test('resolves any post in the current workspace as the first post', function ()
         'first_post_created' => true,
         'all_complete' => false,
     ]);
+});
+
+test('does not resolve a post in another workspace as the first post', function () {
+    $otherWorkspace = Workspace::factory()->create([
+        'account_id' => $this->user->account_id,
+        'user_id' => $this->user->id,
+    ]);
+    Post::factory()->create([
+        'workspace_id' => $otherWorkspace->id,
+        'user_id' => $this->user->id,
+    ]);
+
+    $status = app(ResolveOnboardingStatus::class)->handle($this->user);
+
+    expect($status['first_post_created'])->toBeFalse();
 });
 
 test('marks onboarding completed once all three steps are complete', function () {
@@ -138,6 +176,14 @@ test('dismissed onboarding does not show the residual checklist', function () {
 
 test('self-hosted onboarding does not show the residual checklist', function () {
     config(['trypost.self_hosted' => true]);
+
+    $status = app(ResolveOnboardingStatus::class)->handle($this->user);
+
+    expect($status['show_residual'])->toBeFalse();
+});
+
+test('unsubscribed account does not show the residual checklist', function () {
+    $this->user->account->subscriptions()->delete();
 
     $status = app(ResolveOnboardingStatus::class)->handle($this->user);
 

@@ -39,7 +39,7 @@ class ResolveOnboardingStatus
         $firstPostCreated = $workspace?->posts()->exists() ?? false;
         $allComplete = $mcpConnected && $socialConnected && $firstPostCreated;
 
-        if ($allComplete && $account?->onboarding_completed_at === null) {
+        if ($allComplete && $account !== null && $account->onboarding_completed_at === null) {
             $account->update(['onboarding_completed_at' => now()]);
         }
 
