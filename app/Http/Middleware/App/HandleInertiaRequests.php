@@ -48,9 +48,28 @@ class HandleInertiaRequests extends Middleware
             ],
             'usage' => $account && ! $isSelfHosted ? $account->usage() : null,
             'features' => $account && ! $isSelfHosted ? $account->featureLimits() : null,
-            'onboardingResidual' => fn (): bool => $user && $account
-                ? (bool) data_get(app(ResolveOnboardingStatus::class)->handle($user), 'show_residual', false)
-                : false,
+            'onboardingResidual' => function () use ($user, $account): array|false {
+                if (! $user || ! $account) {
+                    return false;
+                }
+
+                $status = app(ResolveOnboardingStatus::class)->handle($user);
+
+                if (! data_get($status, 'show_residual', false)) {
+                    return false;
+                }
+
+                $completed = collect([
+                    data_get($status, 'social_connected'),
+                    data_get($status, 'mcp_connected'),
+                    data_get($status, 'first_post_created'),
+                ])->filter()->count();
+
+                return [
+                    'completed' => $completed,
+                    'total' => 3,
+                ];
+            },
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
             'flash' => $request->session()->get('flash', []),
             'applicationUrl' => config('app.url'),

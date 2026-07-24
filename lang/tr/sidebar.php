@@ -30,6 +30,8 @@ return [
     'analytics' => 'Analitik',
     'automations' => 'Otomasyonlar',
     'settings' => 'Ayarlar',
+    'onboarding' => 'Getting started',
+    'onboarding_hint' => 'Kurulumu bitir',
 
     'posts' => [
         'calendar' => 'Takvim',

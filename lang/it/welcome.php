@@ -3,9 +3,11 @@
 declare(strict_types=1);
 
 return [
-    'title' => 'Benvenuto su TryPost',
-    'description' => 'Dicci cosa descrive meglio te o la tua attività così possiamo personalizzare la tua esperienza.',
+    'title' => 'Cosa ti descrive meglio?',
+    'description' => 'Scegli l\'opzione più vicina e personalizzeremo la tua esperienza.',
     'continue' => 'Continua',
+    'progress' => 'Welcome progress',
+    'go_to_step' => 'Go to step :step',
     'personas' => [
         'creator' => 'Creatore di contenuti',
         'freelancer' => 'Freelance',
@@ -17,7 +19,7 @@ return [
         'online_store' => 'Negozio online',
         'other' => 'Altro',
     ],
-    'goals_title' => 'Qual è il tuo obiettivo con TryPost?',
+    'goals_title' => 'Qual è il tuo obiettivo?',
     'goals_description' => 'Scegli tutto ciò che fa per te e configureremo TryPost per te.',
     'goals' => [
         'save_time' => 'Risparmiare tempo pubblicando ovunque in una volta',
@@ -27,9 +29,6 @@ return [
         'grow_audience' => 'Far crescere il mio pubblico e il coinvolgimento',
         'drive_sales' => 'Ottenere più traffico e vendite',
         'manage_clients' => 'Gestire più brand o clienti',
-        'team_collaboration' => 'Lavorare con il mio team',
-        'automate_api' => 'Automatizzare la pubblicazione con API, MCP o codice',
-        'track_performance' => 'Vedere come vanno i miei post',
         'just_exploring' => 'Sto solo dando un\'occhiata',
         'other' => 'Qualcos\'altro',
     ],

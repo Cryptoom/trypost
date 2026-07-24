@@ -50,8 +50,18 @@ test('onboarding renders activation status and connection props', function () {
             ->where('status.show_residual', true)
             ->where('mcpUrl', url('/mcp/trypost'))
             ->where('mcpClients', [
-                ['id' => 'claude', 'label' => 'Claude'],
-                ['id' => 'chatgpt', 'label' => 'ChatGPT'],
+                [
+                    'id' => 'claude',
+                    'label' => 'Claude',
+                    'logo' => '/images/ai/claude.svg',
+                    'settings_url' => 'https://claude.ai/customize/connectors',
+                ],
+                [
+                    'id' => 'chatgpt',
+                    'label' => 'ChatGPT',
+                    'logo' => '/images/ai/chatgpt-white.svg',
+                    'settings_url' => 'https://chatgpt.com/plugins#settings/Connectors?create-connector=true&redirectAfter=%2Fplugins',
+                ],
             ])
             ->where('samplePrompt', __('onboarding.first_post.sample_prompt'))
             ->has('platforms', collect(Platform::cases())->filter->isConnectable()->count())

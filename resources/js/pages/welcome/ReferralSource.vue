@@ -1,16 +1,14 @@
 <script setup lang="ts">
 import { Head, useForm } from '@inertiajs/vue3';
 import {
-    IconArrowRight,
     IconArticle,
-    IconBrandGoogle,
     IconBrandInstagram,
     IconBrandLinkedin,
     IconBrandProducthunt,
     IconBrandReddit,
-    IconBrandTiktok,
-    IconBrandX,
-    IconBrandYoutube,
+    IconBrandTiktokFilled,
+    IconBrandXFilled,
+    IconBrandYoutubeFilled,
     IconCheck,
     IconDots,
     IconSparkles,
@@ -36,27 +34,82 @@ const form = useForm<{ referral_source: string }>({
 
 const { trackBeginCheckout } = useTracking();
 
-const sourceMeta: Record<string, { icon: FunctionalComponent; color: string }> =
-    {
-        google: { icon: IconBrandGoogle, color: 'text-blue-600' },
-        x: { icon: IconBrandX, color: 'text-foreground' },
-        linkedin: { icon: IconBrandLinkedin, color: 'text-sky-700' },
-        youtube: { icon: IconBrandYoutube, color: 'text-red-600' },
-        tiktok: { icon: IconBrandTiktok, color: 'text-foreground' },
-        instagram: { icon: IconBrandInstagram, color: 'text-fuchsia-600' },
-        reddit: { icon: IconBrandReddit, color: 'text-orange-600' },
-        product_hunt: { icon: IconBrandProducthunt, color: 'text-orange-500' },
-        ai_assistant: { icon: IconSparkles, color: 'text-violet-700' },
-        friend: { icon: IconUsers, color: 'text-emerald-600' },
-        blog: { icon: IconArticle, color: 'text-amber-600' },
-        other: { icon: IconDots, color: 'text-foreground' },
+type SourceMeta = {
+    icon?: FunctionalComponent;
+    logo?: string;
+    iconClass: string;
+    badge: string;
+};
+
+const sourceMeta: Record<string, SourceMeta> = {
+    google: {
+        logo: '/images/social/google.svg',
+        iconClass: '',
+        badge: 'bg-white',
+    },
+    x: {
+        icon: IconBrandXFilled,
+        iconClass: 'text-white',
+        badge: 'bg-black',
+    },
+    linkedin: {
+        icon: IconBrandLinkedin,
+        iconClass: 'text-white',
+        badge: 'bg-[#0A66C2]',
+    },
+    youtube: {
+        icon: IconBrandYoutubeFilled,
+        iconClass: 'text-white',
+        badge: 'bg-[#FF0000]',
+    },
+    tiktok: {
+        icon: IconBrandTiktokFilled,
+        iconClass: 'text-white',
+        badge: 'bg-black',
+    },
+    instagram: {
+        icon: IconBrandInstagram,
+        iconClass: 'text-white',
+        badge: 'bg-gradient-to-br from-[#f9ce34] via-[#ee2a7b] to-[#6228d7]',
+    },
+    reddit: {
+        icon: IconBrandReddit,
+        iconClass: 'text-white',
+        badge: 'bg-[#FF4500]',
+    },
+    product_hunt: {
+        icon: IconBrandProducthunt,
+        iconClass: 'text-[#FF6154]',
+        badge: 'bg-white',
+    },
+    ai_assistant: {
+        icon: IconSparkles,
+        iconClass: 'text-violet-700',
+        badge: 'bg-violet-100',
+    },
+    friend: {
+        icon: IconUsers,
+        iconClass: 'text-emerald-700',
+        badge: 'bg-emerald-100',
+    },
+    blog: {
+        icon: IconArticle,
+        iconClass: 'text-amber-800',
+        badge: 'bg-amber-100',
+    },
+    other: {
+        icon: IconDots,
+        iconClass: 'text-foreground',
+        badge: 'bg-muted',
+    },
+};
+
+const metaFor = (value: string): SourceMeta =>
+    sourceMeta[value] ?? {
+        icon: IconDots,
+        iconClass: 'text-foreground',
+        badge: 'bg-muted',
     };
-
-const sourceIcon = (value: string): FunctionalComponent =>
-    sourceMeta[value]?.icon ?? IconDots;
-
-const sourceColor = (value: string): string =>
-    sourceMeta[value]?.color ?? 'text-foreground';
 
 const sourceLabel = (value: string): string =>
     trans(`welcome.referral_source.${value}`);
@@ -87,34 +140,44 @@ const submit = (): void => {
         :step="3"
         wide
     >
-        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div class="flex flex-wrap justify-center gap-2.5">
             <button
                 v-for="source in sources"
                 :key="source"
                 type="button"
                 :class="[
-                    'relative flex cursor-pointer flex-col items-start gap-3 rounded-2xl border-2 border-foreground p-5 text-left shadow-2xs transition-shadow hover:shadow-md',
+                    'inline-flex cursor-pointer items-center gap-3 rounded-full border-2 border-foreground py-2.5 pr-5 pl-2.5 text-left shadow-2xs transition-shadow hover:shadow-md',
                     isSelected(source) ? 'bg-violet-100' : 'bg-card',
                 ]"
                 @click="select(source)"
             >
                 <span
-                    class="inline-flex size-10 items-center justify-center rounded-2xl border-2 border-foreground bg-card shadow-2xs"
+                    :class="[
+                        'inline-flex size-11 shrink-0 items-center justify-center rounded-full border-2 border-foreground shadow-2xs',
+                        metaFor(source).badge,
+                    ]"
                 >
+                    <img
+                        v-if="metaFor(source).logo"
+                        :src="metaFor(source).logo"
+                        :alt="sourceLabel(source)"
+                        class="size-6"
+                    />
                     <component
-                        :is="sourceIcon(source)"
-                        :class="[sourceColor(source), 'size-5']"
-                        stroke-width="2.25"
+                        :is="metaFor(source).icon"
+                        v-else
+                        :class="[metaFor(source).iconClass, 'size-6']"
+                        stroke-width="2"
                     />
                 </span>
                 <span
-                    class="text-base font-bold tracking-tight text-foreground"
+                    class="text-sm font-bold tracking-tight text-foreground sm:text-base"
                 >
                     {{ sourceLabel(source) }}
                 </span>
                 <span
                     v-if="isSelected(source)"
-                    class="absolute top-4 right-4 inline-flex size-5 items-center justify-center rounded-full border-2 border-foreground bg-foreground"
+                    class="inline-flex size-5 shrink-0 items-center justify-center rounded-full border-2 border-foreground bg-foreground"
                 >
                     <IconCheck
                         class="size-3 text-background"
@@ -133,7 +196,6 @@ const submit = (): void => {
                 @click="submit"
             >
                 {{ $t('welcome.continue') }}
-                <IconArrowRight class="size-4" />
             </Button>
         </div>
     </WelcomeLayout>

@@ -205,16 +205,16 @@ onBeforeUnmount(() => {
     <Teleport to="body">
         <Transition
             enter-active-class="transition duration-200 ease-out"
-            enter-from-class="-translate-x-2 opacity-0"
-            enter-to-class="translate-x-0 opacity-100"
+            enter-from-class="-translate-y-2 opacity-0 sm:-translate-x-2 sm:translate-y-0"
+            enter-to-class="translate-x-0 translate-y-0 opacity-100"
             leave-active-class="transition duration-150 ease-in"
-            leave-from-class="translate-x-0 opacity-100"
-            leave-to-class="-translate-x-2 opacity-0"
+            leave-from-class="translate-x-0 translate-y-0 opacity-100"
+            leave-to-class="-translate-y-2 opacity-0 sm:-translate-x-2 sm:translate-y-0"
         >
             <div
                 v-if="show"
                 ref="panel"
-                class="fixed inset-x-2 bottom-2 z-50 flex h-[32rem] max-h-[calc(100svh-1rem)] flex-col overflow-hidden rounded-xl border-2 border-foreground bg-card shadow-md sm:inset-x-auto sm:left-[17rem] sm:w-[22rem]"
+                class="fixed inset-x-2 top-2 z-50 flex h-[32rem] max-h-[calc(100svh-1rem)] flex-col overflow-hidden rounded-xl border-2 border-foreground bg-card shadow-md sm:inset-x-auto sm:top-4 sm:left-[17rem] sm:w-[22rem]"
             >
                 <!-- Header -->
                 <div class="flex items-center justify-between gap-2 border-b-2 border-foreground/10 px-4 py-3">

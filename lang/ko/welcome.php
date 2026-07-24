@@ -3,9 +3,11 @@
 declare(strict_types=1);
 
 return [
-    'title' => 'TryPost에 오신 것을 환영합니다',
-    'description' => '회원님이나 비즈니스를 가장 잘 설명하는 항목을 알려주시면 맞춤형 경험을 제공해 드립니다.',
+    'title' => '무엇을 가장 잘 설명하나요?',
+    'description' => '가장 가까운 항목을 선택하면 맞춤 경험을 제공해 드립니다.',
     'continue' => '계속',
+    'progress' => 'Welcome progress',
+    'go_to_step' => 'Go to step :step',
     'personas' => [
         'creator' => '콘텐츠 크리에이터',
         'freelancer' => '프리랜서',
@@ -17,7 +19,7 @@ return [
         'online_store' => '온라인 스토어',
         'other' => '기타',
     ],
-    'goals_title' => 'TryPost로 이루려는 목표는 무엇인가요?',
+    'goals_title' => '목표가 무엇인가요?',
     'goals_description' => '해당되는 항목을 모두 선택하면 TryPost를 맞춤 설정해 드립니다.',
     'goals' => [
         'save_time' => '한 번에 여러 곳에 게시하여 시간 절약',
@@ -27,9 +29,6 @@ return [
         'grow_audience' => '팔로워와 참여 늘리기',
         'drive_sales' => '더 많은 트래픽과 판매 유도',
         'manage_clients' => '여러 브랜드 또는 클라이언트 관리',
-        'team_collaboration' => '팀과 협업',
-        'automate_api' => 'API, MCP 또는 코드로 게시 자동화',
-        'track_performance' => '게시물 성과 확인',
         'just_exploring' => '지금은 둘러보는 중',
         'other' => '다른 것',
     ],

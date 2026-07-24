@@ -30,6 +30,8 @@ return [
     'analytics' => '分析',
     'automations' => '自动化',
     'settings' => '设置',
+    'onboarding' => 'Getting started',
+    'onboarding_hint' => '完成设置',
 
     'posts' => [
         'calendar' => '日历',

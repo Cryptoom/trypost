@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { Head, useForm } from '@inertiajs/vue3';
 import {
-    IconArrowRight,
     IconBriefcase,
     IconBuildingSkyscraper,
     IconBuildingStore,
@@ -29,24 +28,61 @@ const form = useForm({ persona: props.selected ?? '' });
 
 const personaMeta: Record<
     string,
-    { icon: FunctionalComponent; color: string }
+    { icon: FunctionalComponent; iconClass: string; badge: string }
 > = {
-    creator: { icon: IconUser, color: 'text-rose-600' },
-    freelancer: { icon: IconBriefcase, color: 'text-amber-600' },
-    developer: { icon: IconCode, color: 'text-cyan-600' },
-    startup: { icon: IconRocket, color: 'text-violet-700' },
-    agency: { icon: IconBuildingSkyscraper, color: 'text-blue-700' },
-    small_business: { icon: IconBuildingStore, color: 'text-emerald-600' },
-    marketer: { icon: IconSpeakerphone, color: 'text-fuchsia-600' },
-    online_store: { icon: IconShoppingBag, color: 'text-teal-600' },
-    other: { icon: IconDots, color: 'text-sky-600' },
+    creator: {
+        icon: IconUser,
+        iconClass: 'text-rose-700',
+        badge: 'bg-rose-100',
+    },
+    freelancer: {
+        icon: IconBriefcase,
+        iconClass: 'text-amber-700',
+        badge: 'bg-amber-100',
+    },
+    developer: {
+        icon: IconCode,
+        iconClass: 'text-cyan-700',
+        badge: 'bg-cyan-100',
+    },
+    startup: {
+        icon: IconRocket,
+        iconClass: 'text-violet-700',
+        badge: 'bg-violet-100',
+    },
+    agency: {
+        icon: IconBuildingSkyscraper,
+        iconClass: 'text-blue-700',
+        badge: 'bg-blue-100',
+    },
+    small_business: {
+        icon: IconBuildingStore,
+        iconClass: 'text-emerald-700',
+        badge: 'bg-emerald-100',
+    },
+    marketer: {
+        icon: IconSpeakerphone,
+        iconClass: 'text-fuchsia-700',
+        badge: 'bg-fuchsia-100',
+    },
+    online_store: {
+        icon: IconShoppingBag,
+        iconClass: 'text-teal-700',
+        badge: 'bg-teal-100',
+    },
+    other: {
+        icon: IconDots,
+        iconClass: 'text-foreground',
+        badge: 'bg-muted',
+    },
 };
 
-const personaIcon = (value: string): FunctionalComponent =>
-    personaMeta[value]?.icon ?? IconDots;
-
-const personaColor = (value: string): string =>
-    personaMeta[value]?.color ?? 'text-foreground';
+const metaFor = (value: string) =>
+    personaMeta[value] ?? {
+        icon: IconDots,
+        iconClass: 'text-foreground',
+        badge: 'bg-muted',
+    };
 
 const personaLabel = (value: string): string =>
     trans(`welcome.personas.${value}`);
@@ -73,34 +109,37 @@ const submit = (): void => {
         :step="1"
         wide
     >
-        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div class="flex flex-wrap justify-center gap-2.5">
             <button
                 v-for="persona in personas"
                 :key="persona"
                 type="button"
                 :class="[
-                    'relative flex cursor-pointer flex-col items-start gap-3 rounded-2xl border-2 border-foreground p-5 text-left shadow-2xs transition-shadow hover:shadow-md',
+                    'inline-flex cursor-pointer items-center gap-3 rounded-full border-2 border-foreground py-2.5 pr-5 pl-2.5 text-left shadow-2xs transition-shadow hover:shadow-md',
                     form.persona === persona ? 'bg-violet-100' : 'bg-card',
                 ]"
                 @click="select(persona)"
             >
                 <span
-                    class="inline-flex size-10 items-center justify-center rounded-2xl border-2 border-foreground bg-card shadow-2xs"
+                    :class="[
+                        'inline-flex size-11 shrink-0 items-center justify-center rounded-full border-2 border-foreground shadow-2xs',
+                        metaFor(persona).badge,
+                    ]"
                 >
                     <component
-                        :is="personaIcon(persona)"
-                        :class="[personaColor(persona), 'size-5']"
-                        stroke-width="2.25"
+                        :is="metaFor(persona).icon"
+                        :class="[metaFor(persona).iconClass, 'size-6']"
+                        stroke-width="2"
                     />
                 </span>
                 <span
-                    class="text-base font-bold tracking-tight text-foreground"
+                    class="text-sm font-bold tracking-tight text-foreground sm:text-base"
                 >
                     {{ personaLabel(persona) }}
                 </span>
                 <span
                     v-if="form.persona === persona"
-                    class="absolute top-4 right-4 inline-flex size-5 items-center justify-center rounded-full border-2 border-foreground bg-foreground"
+                    class="inline-flex size-5 shrink-0 items-center justify-center rounded-full border-2 border-foreground bg-foreground"
                 >
                     <IconCheck
                         class="size-3 text-background"
@@ -119,7 +158,6 @@ const submit = (): void => {
                 @click="submit"
             >
                 {{ $t('welcome.continue') }}
-                <IconArrowRight class="size-4" />
             </Button>
         </div>
     </WelcomeLayout>

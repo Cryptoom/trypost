@@ -52,8 +52,18 @@ class OnboardingController extends Controller
             'status' => $status,
             'mcpUrl' => url('/mcp/trypost'),
             'mcpClients' => [
-                ['id' => 'claude', 'label' => 'Claude'],
-                ['id' => 'chatgpt', 'label' => 'ChatGPT'],
+                [
+                    'id' => 'claude',
+                    'label' => 'Claude',
+                    'logo' => '/images/ai/claude.svg',
+                    'settings_url' => 'https://claude.ai/customize/connectors',
+                ],
+                [
+                    'id' => 'chatgpt',
+                    'label' => 'ChatGPT',
+                    'logo' => '/images/ai/chatgpt-white.svg',
+                    'settings_url' => 'https://chatgpt.com/plugins#settings/Connectors?create-connector=true&redirectAfter=%2Fplugins',
+                ],
             ],
             'samplePrompt' => __('onboarding.first_post.sample_prompt'),
             'platforms' => $platforms,

@@ -3,9 +3,11 @@
 declare(strict_types=1);
 
 return [
-    'title' => '欢迎使用 TryPost',
-    'description' => '告诉我们最能描述你或你业务的选项，以便我们为你定制体验。',
+    'title' => '哪项最能描述你？',
+    'description' => '选择最接近的一项，我们会为你定制体验。',
     'continue' => '继续',
+    'progress' => 'Welcome progress',
+    'go_to_step' => 'Go to step :step',
     'personas' => [
         'creator' => '内容创作者',
         'freelancer' => '自由职业者',
@@ -17,7 +19,7 @@ return [
         'online_store' => '网店',
         'other' => '其他',
     ],
-    'goals_title' => '你使用 TryPost 的目标是什么？',
+    'goals_title' => '你的目标是什么？',
     'goals_description' => '选择所有符合的选项，我们会为你配置好 TryPost。',
     'goals' => [
         'save_time' => '一次发布到所有平台，节省时间',
@@ -27,9 +29,6 @@ return [
         'grow_audience' => '增长我的受众和互动',
         'drive_sales' => '获得更多流量和销量',
         'manage_clients' => '管理多个品牌或客户',
-        'team_collaboration' => '与我的团队协作',
-        'automate_api' => '通过 API、MCP 或代码自动发帖',
-        'track_performance' => '查看我的帖子表现',
         'just_exploring' => '目前只是随便看看',
         'other' => '其他需求',
     ],

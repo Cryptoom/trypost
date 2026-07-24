@@ -1,9 +1,15 @@
 <script setup lang="ts">
 import { Link } from '@inertiajs/vue3';
+import { computed } from 'vue';
 
 import { home } from '@/routes/app';
+import {
+    goals as goalsRoute,
+    persona as personaRoute,
+    referralSource as referralSourceRoute,
+} from '@/routes/app/welcome';
 
-withDefaults(
+const props = withDefaults(
     defineProps<{
         title?: string;
         description?: string;
@@ -18,6 +24,14 @@ withDefaults(
         wide: false,
     },
 );
+
+const stepRoutes = computed(() => [
+    personaRoute(),
+    goalsRoute(),
+    referralSourceRoute(),
+]);
+
+const canNavigateTo = (stepNumber: number): boolean => stepNumber < props.step;
 </script>
 
 <template>
@@ -43,16 +57,41 @@ withDefaults(
                         />
                     </Link>
 
-                    <div class="flex items-center gap-2">
-                        <div
+                    <nav
+                        class="flex items-center gap-2"
+                        :aria-label="$t('welcome.progress')"
+                    >
+                        <template
                             v-for="stepNumber in totalSteps"
                             :key="stepNumber"
-                            class="h-2 w-8 rounded-full transition-colors"
-                            :class="
-                                stepNumber <= step ? 'bg-primary' : 'bg-muted'
-                            "
-                        />
-                    </div>
+                        >
+                            <Link
+                                v-if="canNavigateTo(stepNumber)"
+                                :href="stepRoutes[stepNumber - 1]"
+                                :class="[
+                                    'h-2 w-8 rounded-full bg-primary transition-opacity hover:opacity-70',
+                                ]"
+                                :aria-label="
+                                    $t('welcome.go_to_step', {
+                                        step: stepNumber,
+                                    })
+                                "
+                                :dusk="`welcome-step-${stepNumber}`"
+                            />
+                            <div
+                                v-else
+                                :class="[
+                                    'h-2 w-8 rounded-full transition-colors',
+                                    stepNumber <= step
+                                        ? 'bg-primary'
+                                        : 'bg-muted',
+                                ]"
+                                :aria-current="
+                                    stepNumber === step ? 'step' : undefined
+                                "
+                            />
+                        </template>
+                    </nav>
 
                     <div class="space-y-2 text-center">
                         <h1 class="text-2xl font-bold">{{ title }}</h1>

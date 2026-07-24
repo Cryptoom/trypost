@@ -62,11 +62,16 @@ export interface NavItem {
     badge?: string;
 }
 
+export interface OnboardingResidual {
+    completed: number;
+    total: number;
+}
+
 export interface SharedData {
     name: string;
     auth: Auth;
     flash: FlashData;
-    onboardingResidual: boolean;
+    onboardingResidual: OnboardingResidual | false;
     sidebarOpen: boolean;
     selfHosted: boolean;
     [key: string]: unknown;

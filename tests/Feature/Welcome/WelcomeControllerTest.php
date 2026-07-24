@@ -119,6 +119,23 @@ test('goals store saves choices mirrors them to PostHog and advances to referral
         && data_get($event->payload, 'properties.goals') === $goals);
 });
 
+test('completed welcome steps remain reachable when going back', function () {
+    $this->user->update([
+        'persona' => Persona::Agency->value,
+        'goals' => [Goal::SaveTime->value],
+    ]);
+
+    $this->actingAs($this->user->fresh())
+        ->get(route('app.welcome.persona'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page->component('welcome/Persona', false));
+
+    $this->actingAs($this->user->fresh())
+        ->get(route('app.welcome.goals'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page->component('welcome/Goals', false));
+});
+
 test('referral source redirects through incomplete prior steps', function (array $attributes, string $routeName) {
     $this->user->update($attributes);
 

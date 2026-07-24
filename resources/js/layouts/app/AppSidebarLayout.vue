@@ -1,10 +1,9 @@
 <script setup lang="ts">
 import { useHttp, usePage } from '@inertiajs/vue3';
-import { computed, onBeforeUnmount, onMounted } from 'vue';
+import { onBeforeUnmount, onMounted } from 'vue';
 
 import AppHeader from '@/components/AppHeader.vue';
 import AppSidebar from '@/components/AppSidebar.vue';
-import OnboardingResidualBanner from '@/components/onboarding/OnboardingResidualBanner.vue';
 import Toast from '@/components/Toast.vue';
 import {
     SidebarInset,
@@ -15,9 +14,6 @@ import { heartbeat as heartbeatRoute } from '@/routes/app/presence';
 
 const page = usePage();
 const isOpen = page.props.sidebarOpen;
-const shouldShowOnboardingResidual = computed(
-    () => page.props.onboardingResidual && !page.url.includes('/onboarding'),
-);
 
 type Props = {
     fullWidth?: boolean;
@@ -81,9 +77,6 @@ onBeforeUnmount(() => {
                             : '',
                     ]"
                 >
-                    <OnboardingResidualBanner
-                        v-if="shouldShowOnboardingResidual"
-                    />
                     <slot />
                 </div>
             </div>

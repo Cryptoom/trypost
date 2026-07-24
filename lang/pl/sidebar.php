@@ -30,6 +30,8 @@ return [
     'analytics' => 'Analityka',
     'automations' => 'Automatyzacje',
     'settings' => 'Ustawienia',
+    'onboarding' => 'Getting started',
+    'onboarding_hint' => 'Dokończ konfigurację',
 
     'posts' => [
         'calendar' => 'Kalendarz',

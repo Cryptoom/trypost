@@ -30,6 +30,8 @@ return [
     'analytics' => 'Statistieken',
     'automations' => 'Automatiseringen',
     'settings' => 'Instellingen',
+    'onboarding' => 'Getting started',
+    'onboarding_hint' => 'Setup afronden',
 
     'posts' => [
         'calendar' => 'Kalender',

@@ -3,9 +3,11 @@
 declare(strict_types=1);
 
 return [
-    'title' => 'TryPost\'a hoş geldiniz',
-    'description' => 'Deneyiminizi kişiselleştirebilmemiz için sizi veya işinizi en iyi tanımlayan seçeneği belirtin.',
+    'title' => 'Sizi en iyi ne tanımlar?',
+    'description' => 'En yakın seçeneği seçin, deneyiminizi kişiselleştirelim.',
     'continue' => 'Devam et',
+    'progress' => 'Welcome progress',
+    'go_to_step' => 'Go to step :step',
     'personas' => [
         'creator' => 'İçerik üreticisi',
         'freelancer' => 'Serbest çalışan',
@@ -17,7 +19,7 @@ return [
         'online_store' => 'Çevrimiçi mağaza',
         'other' => 'Diğer',
     ],
-    'goals_title' => 'TryPost ile hedefiniz nedir?',
+    'goals_title' => 'Hedefiniz nedir?',
     'goals_description' => 'Size uyan her şeyi seçin, biz de TryPost\'u sizin için ayarlayalım.',
     'goals' => [
         'save_time' => 'Her yere aynı anda paylaşarak zaman kazanmak',
@@ -27,9 +29,6 @@ return [
         'grow_audience' => 'Kitlemi ve etkileşimimi büyütmek',
         'drive_sales' => 'Daha fazla trafik ve satış elde etmek',
         'manage_clients' => 'Birden fazla marka veya müşteri yönetmek',
-        'team_collaboration' => 'Ekibimle çalışmak',
-        'automate_api' => 'API, MCP veya kodla paylaşımı otomatikleştirmek',
-        'track_performance' => 'Gönderilerimin performansını görmek',
         'just_exploring' => 'Şimdilik sadece keşfetmek',
         'other' => 'Başka bir şey',
     ],

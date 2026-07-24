@@ -30,6 +30,8 @@ return [
     'analytics' => 'Στατιστικά',
     'automations' => 'Αυτοματισμοί',
     'settings' => 'Ρυθμίσεις',
+    'onboarding' => 'Getting started',
+    'onboarding_hint' => 'Ολοκλήρωση ρύθμισης',
 
     'posts' => [
         'calendar' => 'Ημερολόγιο',

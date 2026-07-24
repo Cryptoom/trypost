@@ -30,6 +30,8 @@ return [
     'analytics' => 'التحليلات',
     'automations' => 'الأتمتة',
     'settings' => 'الإعدادات',
+    'onboarding' => 'Getting started',
+    'onboarding_hint' => 'أكمل الإعداد',
 
     'posts' => [
         'calendar' => 'التقويم',

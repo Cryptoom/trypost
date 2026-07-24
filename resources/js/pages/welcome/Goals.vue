@@ -1,19 +1,15 @@
 <script setup lang="ts">
 import { Head, useForm } from '@inertiajs/vue3';
 import {
-    IconArrowRight,
     IconCalendar,
-    IconChartBar,
     IconCheck,
     IconClock,
     IconCoin,
     IconCompass,
     IconDots,
     IconPalette,
-    IconRobot,
     IconSparkles,
     IconTrendingUp,
-    IconUsers,
     IconUsersGroup,
 } from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
@@ -32,26 +28,63 @@ const EXCLUSIVE_GOAL = 'just_exploring';
 
 const form = useForm<{ goals: string[] }>({ goals: props.selected ?? [] });
 
-const goalMeta: Record<string, { icon: FunctionalComponent; color: string }> = {
-    save_time: { icon: IconClock, color: 'text-amber-600' },
-    ai_content: { icon: IconSparkles, color: 'text-violet-700' },
-    plan_calendar: { icon: IconCalendar, color: 'text-blue-700' },
-    stay_on_brand: { icon: IconPalette, color: 'text-orange-600' },
-    grow_audience: { icon: IconTrendingUp, color: 'text-rose-600' },
-    drive_sales: { icon: IconCoin, color: 'text-emerald-600' },
-    manage_clients: { icon: IconUsersGroup, color: 'text-cyan-600' },
-    team_collaboration: { icon: IconUsers, color: 'text-fuchsia-600' },
-    automate_api: { icon: IconRobot, color: 'text-teal-600' },
-    track_performance: { icon: IconChartBar, color: 'text-indigo-600' },
-    just_exploring: { icon: IconCompass, color: 'text-sky-600' },
-    other: { icon: IconDots, color: 'text-foreground' },
+const goalMeta: Record<
+    string,
+    { icon: FunctionalComponent; iconClass: string; badge: string }
+> = {
+    save_time: {
+        icon: IconClock,
+        iconClass: 'text-amber-700',
+        badge: 'bg-amber-100',
+    },
+    ai_content: {
+        icon: IconSparkles,
+        iconClass: 'text-violet-700',
+        badge: 'bg-violet-100',
+    },
+    plan_calendar: {
+        icon: IconCalendar,
+        iconClass: 'text-blue-700',
+        badge: 'bg-blue-100',
+    },
+    stay_on_brand: {
+        icon: IconPalette,
+        iconClass: 'text-orange-700',
+        badge: 'bg-orange-100',
+    },
+    grow_audience: {
+        icon: IconTrendingUp,
+        iconClass: 'text-rose-700',
+        badge: 'bg-rose-100',
+    },
+    drive_sales: {
+        icon: IconCoin,
+        iconClass: 'text-emerald-700',
+        badge: 'bg-emerald-100',
+    },
+    manage_clients: {
+        icon: IconUsersGroup,
+        iconClass: 'text-cyan-700',
+        badge: 'bg-cyan-100',
+    },
+    just_exploring: {
+        icon: IconCompass,
+        iconClass: 'text-sky-700',
+        badge: 'bg-sky-100',
+    },
+    other: {
+        icon: IconDots,
+        iconClass: 'text-foreground',
+        badge: 'bg-muted',
+    },
 };
 
-const goalIcon = (value: string): FunctionalComponent =>
-    goalMeta[value]?.icon ?? IconDots;
-
-const goalColor = (value: string): string =>
-    goalMeta[value]?.color ?? 'text-foreground';
+const metaFor = (value: string) =>
+    goalMeta[value] ?? {
+        icon: IconDots,
+        iconClass: 'text-foreground',
+        badge: 'bg-muted',
+    };
 
 const goalLabel = (value: string): string => trans(`welcome.goals.${value}`);
 
@@ -91,34 +124,37 @@ const submit = (): void => {
         :step="2"
         wide
     >
-        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div class="flex flex-wrap justify-center gap-2.5">
             <button
                 v-for="goal in goals"
                 :key="goal"
                 type="button"
                 :class="[
-                    'relative flex cursor-pointer flex-col items-start gap-3 rounded-2xl border-2 border-foreground p-5 text-left shadow-2xs transition-shadow hover:shadow-md',
+                    'inline-flex cursor-pointer items-center gap-3 rounded-full border-2 border-foreground py-2.5 pr-5 pl-2.5 text-left shadow-2xs transition-shadow hover:shadow-md',
                     isSelected(goal) ? 'bg-violet-100' : 'bg-card',
                 ]"
                 @click="toggle(goal)"
             >
                 <span
-                    class="inline-flex size-10 items-center justify-center rounded-2xl border-2 border-foreground bg-card shadow-2xs"
+                    :class="[
+                        'inline-flex size-11 shrink-0 items-center justify-center rounded-full border-2 border-foreground shadow-2xs',
+                        metaFor(goal).badge,
+                    ]"
                 >
                     <component
-                        :is="goalIcon(goal)"
-                        :class="[goalColor(goal), 'size-5']"
-                        stroke-width="2.25"
+                        :is="metaFor(goal).icon"
+                        :class="[metaFor(goal).iconClass, 'size-6']"
+                        stroke-width="2"
                     />
                 </span>
                 <span
-                    class="text-base font-bold tracking-tight text-foreground"
+                    class="text-sm font-bold tracking-tight text-foreground sm:text-base"
                 >
                     {{ goalLabel(goal) }}
                 </span>
                 <span
                     v-if="isSelected(goal)"
-                    class="absolute top-4 right-4 inline-flex size-5 items-center justify-center rounded-full border-2 border-foreground bg-foreground"
+                    class="inline-flex size-5 shrink-0 items-center justify-center rounded-full border-2 border-foreground bg-foreground"
                 >
                     <IconCheck
                         class="size-3 text-background"
@@ -137,7 +173,6 @@ const submit = (): void => {
                 @click="submit"
             >
                 {{ $t('welcome.continue') }}
-                <IconArrowRight class="size-4" />
             </Button>
         </div>
     </WelcomeLayout>

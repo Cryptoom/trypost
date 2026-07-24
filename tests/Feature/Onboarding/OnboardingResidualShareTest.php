@@ -19,11 +19,14 @@ beforeEach(function () {
     subscribeAccount($this->user->account);
 });
 
-test('shares the onboarding residual state for subscribed accounts', function () {
+test('shares the onboarding residual progress for subscribed accounts', function () {
     $this->actingAs($this->user)
         ->get(route('app.calendar'))
         ->assertOk()
-        ->assertInertia(fn ($page) => $page->where('onboardingResidual', true));
+        ->assertInertia(fn ($page) => $page
+            ->where('onboardingResidual.completed', 0)
+            ->where('onboardingResidual.total', 3)
+        );
 });
 
 test('does not share the onboarding residual state after dismissal', function () {
