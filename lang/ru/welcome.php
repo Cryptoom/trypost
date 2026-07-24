@@ -1,0 +1,56 @@
+<?php
+
+declare(strict_types=1);
+
+return [
+    'title' => 'Добро пожаловать в TryPost',
+    'description' => 'Расскажите, что лучше всего описывает вас или ваш бизнес, чтобы мы могли настроить работу под вас.',
+    'continue' => 'Продолжить',
+    'personas' => [
+        'creator' => 'Автор контента',
+        'freelancer' => 'Фрилансер',
+        'developer' => 'Разработчик',
+        'startup' => 'Стартап',
+        'agency' => 'Агентство',
+        'small_business' => 'Малый бизнес',
+        'marketer' => 'Маркетолог',
+        'online_store' => 'Интернет-магазин',
+        'other' => 'Другое',
+    ],
+    'goals_title' => 'Какова ваша цель с TryPost?',
+    'goals_description' => 'Выберите всё, что подходит, и мы настроим TryPost для вас.',
+    'goals' => [
+        'save_time' => 'Экономить время, публикуя всюду сразу',
+        'ai_content' => 'Создавать посты быстрее с помощью ИИ',
+        'plan_calendar' => 'Планировать посты в календаре',
+        'stay_on_brand' => 'Держать каждый пост в стиле бренда',
+        'grow_audience' => 'Наращивать аудиторию и вовлечённость',
+        'drive_sales' => 'Получать больше трафика и продаж',
+        'manage_clients' => 'Управлять несколькими брендами или клиентами',
+        'team_collaboration' => 'Работать с командой',
+        'automate_api' => 'Автоматизировать публикацию с помощью API, MCP или кода',
+        'track_performance' => 'Отслеживать эффективность постов',
+        'just_exploring' => 'Пока просто знакомлюсь',
+        'other' => 'Что-то ещё',
+    ],
+    'referral_source_title' => 'Как вы нас нашли?',
+    'referral_source_description' => 'Это помогает нам понять, как люди узнают о TryPost.',
+    'referral_source' => [
+        'google' => 'Google или поиск',
+        'x' => 'X (Twitter)',
+        'linkedin' => 'LinkedIn',
+        'youtube' => 'YouTube',
+        'tiktok' => 'TikTok',
+        'instagram' => 'Instagram или Threads',
+        'reddit' => 'Reddit',
+        'product_hunt' => 'Product Hunt',
+        'ai_assistant' => 'ИИ-ассистент (ChatGPT, Claude…)',
+        'friend' => 'Друг или коллега',
+        'blog' => 'Блог, рассылка или статья',
+        'other' => 'Что-то другое',
+    ],
+    'subscribe' => [
+        'title' => 'Подключите первую сеть',
+        'description' => 'Привяжите хотя бы один социальный аккаунт, чтобы начать планировать. Вы можете добавить другие в любой момент.',
+    ],
+];

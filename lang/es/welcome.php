@@ -1,0 +1,56 @@
+<?php
+
+declare(strict_types=1);
+
+return [
+    'title' => 'Bienvenido a TryPost',
+    'description' => 'Cuéntanos qué te describe mejor a ti o a tu negocio para personalizar tu experiencia.',
+    'continue' => 'Continuar',
+    'personas' => [
+        'creator' => 'Creador de contenido',
+        'freelancer' => 'Freelancer',
+        'developer' => 'Desarrollador',
+        'startup' => 'Startup',
+        'agency' => 'Agencia',
+        'small_business' => 'Pequeña empresa',
+        'marketer' => 'Profesional de marketing',
+        'online_store' => 'Tienda online',
+        'other' => 'Otro',
+    ],
+    'goals_title' => '¿Cuál es tu objetivo con TryPost?',
+    'goals_description' => 'Marca todo lo que encaje y adaptamos TryPost a ti.',
+    'goals' => [
+        'save_time' => 'Ahorrar tiempo publicando en todas mis redes a la vez',
+        'ai_content' => 'Crear publicaciones más rápido con IA',
+        'plan_calendar' => 'Planificar mis publicaciones en un calendario',
+        'stay_on_brand' => 'Mantener la coherencia de mi marca',
+        'grow_audience' => 'Hacer crecer mi audiencia y engagement',
+        'drive_sales' => 'Conseguir más tráfico y ventas',
+        'manage_clients' => 'Gestionar varias marcas o clientes',
+        'team_collaboration' => 'Trabajar con mi equipo',
+        'automate_api' => 'Automatizar publicaciones con la API, MCP o código',
+        'track_performance' => 'Ver cómo rinden mis publicaciones',
+        'just_exploring' => 'Solo estoy explorando por ahora',
+        'other' => 'Otra cosa',
+    ],
+    'referral_source_title' => '¿Cómo nos encontraste?',
+    'referral_source_description' => 'Esto nos ayuda a entender cómo la gente descubre TryPost.',
+    'referral_source' => [
+        'google' => 'Google o búsqueda',
+        'x' => 'X (Twitter)',
+        'linkedin' => 'LinkedIn',
+        'youtube' => 'YouTube',
+        'tiktok' => 'TikTok',
+        'instagram' => 'Instagram o Threads',
+        'reddit' => 'Reddit',
+        'product_hunt' => 'Product Hunt',
+        'ai_assistant' => 'Asistente de IA (ChatGPT, Claude…)',
+        'friend' => 'Amigo o colega',
+        'blog' => 'Blog, newsletter o artículo',
+        'other' => 'Otra cosa',
+    ],
+    'subscribe' => [
+        'title' => 'Conecta tu primera red',
+        'description' => 'Vincula al menos una cuenta social para empezar a programar. Puedes añadir más cuando quieras.',
+    ],
+];

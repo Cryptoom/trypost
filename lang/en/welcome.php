@@ -1,0 +1,56 @@
+<?php
+
+declare(strict_types=1);
+
+return [
+    'title' => 'Welcome to TryPost',
+    'description' => 'Tell us what best describes you or your business so we can tailor your experience.',
+    'continue' => 'Continue',
+    'personas' => [
+        'creator' => 'Content creator',
+        'freelancer' => 'Freelancer',
+        'developer' => 'Developer',
+        'startup' => 'Startup',
+        'agency' => 'Agency',
+        'small_business' => 'Small business',
+        'marketer' => 'Marketer',
+        'online_store' => 'Online store',
+        'other' => 'Other',
+    ],
+    'goals_title' => 'What\'s your goal with TryPost?',
+    'goals_description' => 'Pick everything that fits and we\'ll set TryPost up for you.',
+    'goals' => [
+        'save_time' => 'Save time by posting everywhere at once',
+        'ai_content' => 'Create posts faster with AI',
+        'plan_calendar' => 'Plan my posts on a calendar',
+        'stay_on_brand' => 'Keep every post on brand',
+        'grow_audience' => 'Grow my audience and engagement',
+        'drive_sales' => 'Get more traffic and sales',
+        'manage_clients' => 'Manage several brands or clients',
+        'team_collaboration' => 'Work with my team',
+        'automate_api' => 'Automate posting with the API, MCP or code',
+        'track_performance' => 'See how my posts perform',
+        'just_exploring' => 'Just exploring for now',
+        'other' => 'Something else',
+    ],
+    'referral_source_title' => 'How did you find us?',
+    'referral_source_description' => 'This helps us understand how people discover TryPost.',
+    'referral_source' => [
+        'google' => 'Google or search',
+        'x' => 'X (Twitter)',
+        'linkedin' => 'LinkedIn',
+        'youtube' => 'YouTube',
+        'tiktok' => 'TikTok',
+        'instagram' => 'Instagram or Threads',
+        'reddit' => 'Reddit',
+        'product_hunt' => 'Product Hunt',
+        'ai_assistant' => 'AI assistant (ChatGPT, Claude…)',
+        'friend' => 'Friend or colleague',
+        'blog' => 'Blog, newsletter or article',
+        'other' => 'Something else',
+    ],
+    'subscribe' => [
+        'title' => 'Connect your first network',
+        'description' => 'Link at least one social account to start scheduling. You can add more anytime.',
+    ],
+];

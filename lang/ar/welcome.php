@@ -1,0 +1,56 @@
+<?php
+
+declare(strict_types=1);
+
+return [
+    'title' => 'مرحبًا بك في TryPost',
+    'description' => 'أخبرنا بما يصفك أنت أو نشاطك التجاري على أفضل وجه حتى نتمكن من تخصيص تجربتك.',
+    'continue' => 'متابعة',
+    'personas' => [
+        'creator' => 'صانع محتوى',
+        'freelancer' => 'مستقل',
+        'developer' => 'مطوّر',
+        'startup' => 'شركة ناشئة',
+        'agency' => 'وكالة',
+        'small_business' => 'نشاط تجاري صغير',
+        'marketer' => 'مسوّق',
+        'online_store' => 'متجر إلكتروني',
+        'other' => 'أخرى',
+    ],
+    'goals_title' => 'ما هدفك من استخدام TryPost؟',
+    'goals_description' => 'اختر كل ما يناسبك وسنقوم بإعداد TryPost من أجلك.',
+    'goals' => [
+        'save_time' => 'توفير الوقت بالنشر في كل مكان دفعة واحدة',
+        'ai_content' => 'إنشاء منشورات أسرع بالذكاء الاصطناعي',
+        'plan_calendar' => 'التخطيط لمنشوراتي على التقويم',
+        'stay_on_brand' => 'الحفاظ على اتساق كل منشور مع العلامة التجارية',
+        'grow_audience' => 'تنمية جمهوري وزيادة التفاعل',
+        'drive_sales' => 'الحصول على المزيد من الزيارات والمبيعات',
+        'manage_clients' => 'إدارة عدة علامات تجارية أو عملاء',
+        'team_collaboration' => 'العمل مع فريقي',
+        'automate_api' => 'أتمتة النشر عبر الواجهة البرمجية أو MCP أو الكود',
+        'track_performance' => 'معرفة أداء منشوراتي',
+        'just_exploring' => 'مجرد استكشاف في الوقت الحالي',
+        'other' => 'شيء آخر',
+    ],
+    'referral_source_title' => 'كيف وجدتنا؟',
+    'referral_source_description' => 'يساعدنا هذا على فهم كيفية اكتشاف الأشخاص لـ TryPost.',
+    'referral_source' => [
+        'google' => 'Google أو البحث',
+        'x' => 'X (Twitter)',
+        'linkedin' => 'LinkedIn',
+        'youtube' => 'YouTube',
+        'tiktok' => 'TikTok',
+        'instagram' => 'Instagram أو Threads',
+        'reddit' => 'Reddit',
+        'product_hunt' => 'Product Hunt',
+        'ai_assistant' => 'مساعد ذكاء اصطناعي (ChatGPT، Claude…)',
+        'friend' => 'صديق أو زميل',
+        'blog' => 'مدونة أو نشرة إخبارية أو مقال',
+        'other' => 'شيء آخر',
+    ],
+    'subscribe' => [
+        'title' => 'اربط شبكتك الأولى',
+        'description' => 'اربط حسابًا اجتماعيًا واحدًا على الأقل لبدء الجدولة. يمكنك إضافة المزيد في أي وقت.',
+    ],
+];

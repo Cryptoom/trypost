@@ -1,0 +1,56 @@
+<?php
+
+declare(strict_types=1);
+
+return [
+    'title' => 'Bienvenue sur TryPost',
+    'description' => 'Dites-nous ce qui vous décrit le mieux, vous ou votre entreprise, afin que nous puissions personnaliser votre expérience.',
+    'continue' => 'Continuer',
+    'personas' => [
+        'creator' => 'Créateur de contenu',
+        'freelancer' => 'Freelance',
+        'developer' => 'Développeur',
+        'startup' => 'Startup',
+        'agency' => 'Agence',
+        'small_business' => 'Petite entreprise',
+        'marketer' => 'Marketeur',
+        'online_store' => 'Boutique en ligne',
+        'other' => 'Autre',
+    ],
+    'goals_title' => 'Quel est votre objectif avec TryPost ?',
+    'goals_description' => 'Choisissez tout ce qui vous correspond et nous configurerons TryPost pour vous.',
+    'goals' => [
+        'save_time' => 'Gagner du temps en publiant partout à la fois',
+        'ai_content' => 'Créer des publications plus vite avec l\'IA',
+        'plan_calendar' => 'Planifier mes publications sur un calendrier',
+        'stay_on_brand' => 'Garder chaque publication fidèle à ma marque',
+        'grow_audience' => 'Développer mon audience et mon engagement',
+        'drive_sales' => 'Obtenir plus de trafic et de ventes',
+        'manage_clients' => 'Gérer plusieurs marques ou clients',
+        'team_collaboration' => 'Travailler avec mon équipe',
+        'automate_api' => 'Automatiser la publication avec l\'API, le MCP ou du code',
+        'track_performance' => 'Voir les performances de mes publications',
+        'just_exploring' => 'Je découvre pour l\'instant',
+        'other' => 'Autre chose',
+    ],
+    'referral_source_title' => 'Comment nous avez-vous connus ?',
+    'referral_source_description' => 'Cela nous aide à comprendre comment les gens découvrent TryPost.',
+    'referral_source' => [
+        'google' => 'Google ou recherche',
+        'x' => 'X (Twitter)',
+        'linkedin' => 'LinkedIn',
+        'youtube' => 'YouTube',
+        'tiktok' => 'TikTok',
+        'instagram' => 'Instagram ou Threads',
+        'reddit' => 'Reddit',
+        'product_hunt' => 'Product Hunt',
+        'ai_assistant' => 'Assistant IA (ChatGPT, Claude…)',
+        'friend' => 'Ami ou collègue',
+        'blog' => 'Blog, newsletter ou article',
+        'other' => 'Autre chose',
+    ],
+    'subscribe' => [
+        'title' => 'Connectez votre premier réseau',
+        'description' => 'Associez au moins un compte social pour commencer à programmer. Vous pourrez en ajouter d\'autres à tout moment.',
+    ],
+];
