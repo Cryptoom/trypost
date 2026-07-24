@@ -4,7 +4,7 @@ import { IconLoader2 } from '@tabler/icons-vue';
 import { onMounted, onUnmounted, ref, watch } from 'vue';
 
 import { useTracking } from '@/composables/useTracking';
-import { accounts } from '@/routes/app';
+import { onboarding } from '@/routes/app';
 import type { Auth } from '@/types';
 
 const props = defineProps<{
@@ -34,7 +34,7 @@ const { trackPurchase } = useTracking();
 const finishing = ref(false);
 let redirectTimer: ReturnType<typeof setTimeout> | null = null;
 
-const goToAccounts = () => router.visit(accounts.url());
+const goToOnboarding = () => router.visit(onboarding.url());
 
 // Fires `checkout.completed` exactly once for a real checkout. A trial-with-card
 // subscription is already `subscribed()` (status `trialing`) by the time the
@@ -61,7 +61,7 @@ const completePurchase = () => {
 
     // Always hold for the same window before navigating, so PostHog and the ad
     // pixels (Google/Meta via dataLayer → GTM) reliably flush.
-    redirectTimer = setTimeout(goToAccounts, REDIRECT_DELAY_MS);
+    redirectTimer = setTimeout(goToOnboarding, REDIRECT_DELAY_MS);
 };
 
 watch(
