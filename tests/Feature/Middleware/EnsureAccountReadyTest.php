@@ -11,13 +11,13 @@ beforeEach(function () {
     config()->set('trypost.self_hosted', false);
 });
 
-test('redirects to onboarding when account has no active subscription', function () {
+test('redirects to welcome when account has no active subscription', function () {
     $account = Account::factory()->create();
     $user = User::factory()->create(['account_id' => $account->id]);
 
     $this->actingAs($user)
         ->get(route('app.calendar'))
-        ->assertRedirect(route('app.onboarding'));
+        ->assertRedirect(route('app.welcome.persona'));
 });
 
 test('redirects to workspace create when subscribed but no workspace', function () {

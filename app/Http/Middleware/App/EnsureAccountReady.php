@@ -31,7 +31,7 @@ class EnsureAccountReady
             );
 
             if (! $hasAccess) {
-                return redirect()->route('app.onboarding');
+                return redirect()->route('app.welcome.persona');
             }
         }
 
