@@ -37,5 +37,7 @@ return [
     'residual' => [
         'title' => 'Finish whenever you are ready',
         'description' => 'TryPost checks your progress automatically. Complete all three items to continue.',
+        'cta' => 'Finish setup',
+        'dismiss' => 'Dismiss onboarding reminder',
     ],
 ];

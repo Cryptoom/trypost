@@ -1,15 +1,23 @@
 <script setup lang="ts">
 import { useHttp, usePage } from '@inertiajs/vue3';
-import { onBeforeUnmount, onMounted } from 'vue';
+import { computed, onBeforeUnmount, onMounted } from 'vue';
 
 import AppHeader from '@/components/AppHeader.vue';
 import AppSidebar from '@/components/AppSidebar.vue';
+import OnboardingResidualBanner from '@/components/onboarding/OnboardingResidualBanner.vue';
 import Toast from '@/components/Toast.vue';
-import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
+import {
+    SidebarInset,
+    SidebarProvider,
+    SidebarTrigger,
+} from '@/components/ui/sidebar';
 import { heartbeat as heartbeatRoute } from '@/routes/app/presence';
 
 const page = usePage();
 const isOpen = page.props.sidebarOpen;
+const shouldShowOnboardingResidual = computed(
+    () => page.props.onboardingResidual && !page.url.includes('/onboarding'),
+);
 
 type Props = {
     fullWidth?: boolean;
@@ -52,7 +60,7 @@ onBeforeUnmount(() => {
             </AppHeader>
             <SidebarTrigger
                 v-else
-                class="absolute left-4 top-3 z-30 size-10 rounded-md border-2 border-foreground bg-card text-foreground shadow-2xs md:hidden"
+                class="absolute top-3 left-4 z-30 size-10 rounded-md border-2 border-foreground bg-card text-foreground shadow-2xs md:hidden"
             />
             <div
                 :class="
@@ -66,11 +74,16 @@ onBeforeUnmount(() => {
                         fullWidth
                             ? 'flex min-h-0 flex-1 flex-col'
                             : 'mx-auto w-full max-w-7xl',
-                        !fullWidth && !$slots['header'] && !$slots['header-actions']
+                        !fullWidth &&
+                        !$slots['header'] &&
+                        !$slots['header-actions']
                             ? 'pt-14 md:pt-0'
                             : '',
                     ]"
                 >
+                    <OnboardingResidualBanner
+                        v-if="shouldShowOnboardingResidual"
+                    />
                     <slot />
                 </div>
             </div>

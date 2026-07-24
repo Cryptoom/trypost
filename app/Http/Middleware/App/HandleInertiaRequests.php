@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Middleware\App;
 
+use App\Actions\Onboarding\ResolveOnboardingStatus;
 use App\Http\Resources\App\HandleInertiaRequests\AuthAccountResource;
 use App\Http\Resources\App\HandleInertiaRequests\AuthPlanResource;
 use App\Http\Resources\App\HandleInertiaRequests\AuthUserResource;
@@ -47,6 +48,9 @@ class HandleInertiaRequests extends Middleware
             ],
             'usage' => $account && ! $isSelfHosted ? $account->usage() : null,
             'features' => $account && ! $isSelfHosted ? $account->featureLimits() : null,
+            'onboardingResidual' => fn (): bool => $user && $account
+                ? (bool) data_get(app(ResolveOnboardingStatus::class)->handle($user), 'show_residual', false)
+                : false,
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
             'flash' => $request->session()->get('flash', []),
             'applicationUrl' => config('app.url'),

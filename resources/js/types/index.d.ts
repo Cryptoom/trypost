@@ -66,6 +66,7 @@ export interface SharedData {
     name: string;
     auth: Auth;
     flash: FlashData;
+    onboardingResidual: boolean;
     sidebarOpen: boolean;
     selfHosted: boolean;
     [key: string]: unknown;
@@ -102,4 +103,3 @@ export interface ContentLanguageOption {
     label: string;
     englishName?: string;
 }
-
