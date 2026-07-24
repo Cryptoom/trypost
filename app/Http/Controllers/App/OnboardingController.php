@@ -40,11 +40,13 @@ class OnboardingController extends Controller
                 'network' => $platform->network(),
             ])->values();
 
-        $this->postHog->capture(
-            $user->id,
-            OnboardingEvent::Viewed->value,
-            account: $user->account,
-        );
+        if (! $request->hasHeader('X-Inertia-Partial-Component')) {
+            $this->postHog->capture(
+                $user->id,
+                OnboardingEvent::Viewed->value,
+                account: $user->account,
+            );
+        }
 
         return Inertia::render('onboarding/Index', [
             'status' => $status,

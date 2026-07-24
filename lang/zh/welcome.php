@@ -50,7 +50,7 @@ return [
         'other' => '其他',
     ],
     'subscribe' => [
-        'title' => '连接你的第一个平台',
-        'description' => '至少关联一个社交账号即可开始排期。你可以随时添加更多。',
+        'title' => '开始订阅 TryPost',
+        'description' => '选择 TryPost 套餐，解锁发布、排期和协作功能。',
     ],
 ];

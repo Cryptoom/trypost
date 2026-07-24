@@ -50,7 +50,7 @@ return [
         'other' => 'Etwas anderes',
     ],
     'subscribe' => [
-        'title' => 'Verbinde dein erstes Netzwerk',
-        'description' => 'Verknüpfe mindestens ein Social-Media-Konto, um mit der Planung zu beginnen. Du kannst jederzeit weitere hinzufügen.',
+        'title' => 'Starte dein TryPost-Abonnement',
+        'description' => 'Wähle deinen TryPost-Tarif, um Veröffentlichen, Planen und Zusammenarbeit freizuschalten.',
     ],
 ];

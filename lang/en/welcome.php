@@ -50,7 +50,7 @@ return [
         'other' => 'Something else',
     ],
     'subscribe' => [
-        'title' => 'Connect your first network',
-        'description' => 'Link at least one social account to start scheduling. You can add more anytime.',
+        'title' => 'Start your TryPost subscription',
+        'description' => 'Choose your TryPost plan to unlock publishing, scheduling, and collaboration.',
     ],
 ];

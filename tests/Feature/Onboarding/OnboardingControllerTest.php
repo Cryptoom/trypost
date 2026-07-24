@@ -64,6 +64,26 @@ test('onboarding renders activation status and connection props', function () {
         && data_get($event->payload, 'event') === OnboardingEvent::Viewed->value);
 });
 
+test('onboarding does not capture viewed during a partial reload', function () {
+    $response = $this->actingAs($this->user)
+        ->get(route('app.onboarding'))
+        ->assertOk();
+
+    Bus::fake();
+
+    $response->assertInertia(fn ($page) => $page
+        ->reloadOnly(['status', 'accounts'], fn ($reload) => $reload
+            ->has('status')
+            ->has('accounts')
+        )
+    );
+
+    Bus::assertNotDispatched(
+        SendEvent::class,
+        fn (SendEvent $event): bool => data_get($event->payload, 'event') === OnboardingEvent::Viewed->value,
+    );
+});
+
 test('onboarding can be dismissed', function () {
     Carbon::setTestNow('2026-07-24 12:00:00');
 

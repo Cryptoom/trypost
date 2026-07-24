@@ -50,7 +50,7 @@ return [
         'other' => 'Qualcos\'altro',
     ],
     'subscribe' => [
-        'title' => 'Collega la tua prima rete',
-        'description' => 'Collega almeno un account social per iniziare a programmare. Puoi aggiungerne altri in qualsiasi momento.',
+        'title' => 'Avvia il tuo abbonamento TryPost',
+        'description' => 'Scegli il tuo piano TryPost per sbloccare pubblicazione, programmazione e collaborazione.',
     ],
 ];

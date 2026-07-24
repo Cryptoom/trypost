@@ -50,7 +50,7 @@ return [
         'other' => '기타',
     ],
     'subscribe' => [
-        'title' => '첫 네트워크 연결',
-        'description' => '예약을 시작하려면 소셜 계정을 하나 이상 연결하세요. 언제든지 추가할 수 있습니다.',
+        'title' => 'TryPost 구독 시작하기',
+        'description' => 'TryPost 플랜을 선택하고 게시, 예약, 협업 기능을 이용하세요.',
     ],
 ];

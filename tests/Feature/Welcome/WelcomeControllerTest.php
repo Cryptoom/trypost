@@ -216,6 +216,17 @@ test('subscribe renders plan props without social account props', function () {
         );
 });
 
+test('subscribe copy describes starting a subscription instead of connecting a network', function () {
+    $copy = strtolower(__('welcome.subscribe.title').' '.__('welcome.subscribe.description', locale: 'en'));
+
+    expect($copy)
+        ->toContain('subscription')
+        ->not->toContain('connect')
+        ->not->toContain('network')
+        ->not->toContain('social account')
+        ->not->toContain('link');
+});
+
 test('checkout starts without a connected social account and uses subscribe as its cancel url', function () {
     config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test']);
     Bus::fake();

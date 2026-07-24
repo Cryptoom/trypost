@@ -34,6 +34,18 @@ class ResolveOnboardingStatus
         /** @var Account|null $account */
         $account = data_get($user, 'account');
 
+        if ($account?->onboarding_completed_at !== null) {
+            return [
+                'mcp_connected' => true,
+                'social_connected' => true,
+                'first_post_created' => true,
+                'all_complete' => true,
+                'show_residual' => false,
+                'completed_at' => $account->onboarding_completed_at->toIso8601String(),
+                'dismissed_at' => $account->onboarding_dismissed_at?->toIso8601String(),
+            ];
+        }
+
         /** @var Workspace|null $workspace */
         $workspace = data_get($user, 'currentWorkspace');
 
@@ -46,9 +58,11 @@ class ResolveOnboardingStatus
         $firstPostCreated = $workspace?->posts()->exists() ?? false;
         $allComplete = $mcpConnected && $socialConnected && $firstPostCreated;
 
-        $this->captureCompletedStep($user, $account, 'mcp_connected', $mcpConnected);
-        $this->captureCompletedStep($user, $account, 'social_connected', $socialConnected);
-        $this->captureCompletedStep($user, $account, 'first_post_created', $firstPostCreated);
+        if ($account?->onboarding_dismissed_at === null) {
+            $this->captureCompletedStep($user, $account, 'mcp_connected', $mcpConnected);
+            $this->captureCompletedStep($user, $account, 'social_connected', $socialConnected);
+            $this->captureCompletedStep($user, $account, 'first_post_created', $firstPostCreated);
+        }
 
         if ($allComplete && $account !== null && $account->onboarding_completed_at === null) {
             $account->update(['onboarding_completed_at' => now()]);

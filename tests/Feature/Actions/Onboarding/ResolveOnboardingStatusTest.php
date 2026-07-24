@@ -201,6 +201,26 @@ test('dismissed onboarding does not show the residual checklist', function () {
         ->and($status['dismissed_at'])->toBe(now()->toIso8601String());
 });
 
+test('completed onboarding returns immediately without resolving steps or capturing analytics', function () {
+    config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test']);
+    Carbon::setTestNow('2026-07-24 12:00:00');
+    Bus::fake();
+    $this->user->account->update(['onboarding_completed_at' => now()]);
+
+    $status = app(ResolveOnboardingStatus::class)->handle($this->user->fresh());
+
+    expect($status)->toBe([
+        'mcp_connected' => true,
+        'social_connected' => true,
+        'first_post_created' => true,
+        'all_complete' => true,
+        'show_residual' => false,
+        'completed_at' => now()->toIso8601String(),
+        'dismissed_at' => null,
+    ]);
+    Bus::assertNothingDispatched();
+});
+
 test('self-hosted onboarding does not show the residual checklist', function () {
     config(['trypost.self_hosted' => true]);
 

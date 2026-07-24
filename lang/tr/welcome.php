@@ -50,7 +50,7 @@ return [
         'other' => 'Başka bir şey',
     ],
     'subscribe' => [
-        'title' => 'İlk ağınızı bağlayın',
-        'description' => 'Zamanlamaya başlamak için en az bir sosyal hesap bağlayın. İstediğiniz zaman daha fazlasını ekleyebilirsiniz.',
+        'title' => 'TryPost aboneliğinizi başlatın',
+        'description' => 'Yayınlama, planlama ve iş birliği özelliklerini açmak için TryPost planınızı seçin.',
     ],
 ];

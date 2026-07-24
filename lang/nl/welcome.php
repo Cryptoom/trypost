@@ -50,7 +50,7 @@ return [
         'other' => 'Iets anders',
     ],
     'subscribe' => [
-        'title' => 'Koppel je eerste netwerk',
-        'description' => 'Koppel ten minste één social account om te beginnen met plannen. Je kunt er altijd meer toevoegen.',
+        'title' => 'Start je TryPost-abonnement',
+        'description' => 'Kies je TryPost-abonnement om publiceren, plannen en samenwerken te ontgrendelen.',
     ],
 ];
