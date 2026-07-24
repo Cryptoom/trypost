@@ -14,7 +14,7 @@ withDefaults(
     {
         title: undefined,
         description: undefined,
-        totalSteps: 4,
+        totalSteps: 3,
         wide: false,
     },
 );

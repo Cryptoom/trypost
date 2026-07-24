@@ -135,6 +135,7 @@ test('referral source renders after prior steps are complete', function () {
         'persona' => Persona::Agency->value,
         'goals' => [Goal::SaveTime->value],
     ]);
+    $plan = Plan::where('slug', Slug::Workspace)->firstOrFail();
 
     $this->actingAs($this->user->fresh())
         ->get(route('app.welcome.referral-source'))
@@ -142,6 +143,8 @@ test('referral source renders after prior steps are complete', function () {
         ->assertInertia(fn ($page) => $page
             ->component('welcome/ReferralSource', false)
             ->has('sources', count(ReferralSource::cases()))
+            ->where('plan.name', $plan->name)
+            ->where('plan.interval', 'monthly')
         );
 });
 
@@ -161,75 +164,13 @@ test('referral source requires a valid selection', function (array $payload) {
     'invalid' => [['referral_source' => 'not-a-source']],
 ]);
 
-test('referral source store saves the source mirrors it to PostHog and advances to subscribe', function () {
+test('referral source store saves the source and starts Stripe checkout without a social account', function () {
     config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test']);
     Bus::fake();
     $this->user->update([
         'persona' => Persona::Agency->value,
         'goals' => [Goal::SaveTime->value],
     ]);
-
-    $this->actingAs($this->user->fresh())
-        ->post(route('app.welcome.referral-source.store'), [
-            'referral_source' => ReferralSource::ProductHunt->value,
-        ])
-        ->assertRedirect(route('app.welcome.subscribe'));
-
-    expect($this->user->fresh()->referral_source)->toBe(ReferralSource::ProductHunt);
-    Bus::assertDispatched(SendEvent::class, fn (SendEvent $event): bool => $event->method === 'capture'
-        && data_get($event->payload, 'event') === WelcomeEvent::ReferralSaved->value
-        && data_get($event->payload, 'properties.referral_source') === ReferralSource::ProductHunt->value);
-});
-
-test('subscribe redirects through incomplete welcome steps', function (array $attributes, string $routeName) {
-    $this->user->update($attributes);
-
-    $this->actingAs($this->user->fresh())
-        ->get(route('app.welcome.subscribe'))
-        ->assertRedirect(route($routeName));
-})->with([
-    'missing persona' => [[], 'app.welcome.persona'],
-    'missing goals' => [['persona' => Persona::Agency->value], 'app.welcome.goals'],
-    'missing referral source' => [[
-        'persona' => Persona::Agency->value,
-        'goals' => [Goal::SaveTime->value],
-    ], 'app.welcome.referral-source'],
-]);
-
-test('subscribe renders plan props without social account props', function () {
-    $this->user->update([
-        'persona' => Persona::Agency->value,
-        'goals' => [Goal::SaveTime->value],
-        'referral_source' => ReferralSource::Google->value,
-    ]);
-    $plan = Plan::where('slug', Slug::Workspace)->firstOrFail();
-
-    $this->actingAs($this->user->fresh())
-        ->get(route('app.welcome.subscribe'))
-        ->assertOk()
-        ->assertInertia(fn ($page) => $page
-            ->component('welcome/Subscribe', false)
-            ->where('plan.name', $plan->name)
-            ->where('plan.interval', 'monthly')
-            ->missing('platforms')
-            ->missing('accounts')
-        );
-});
-
-test('subscribe copy describes starting a subscription instead of connecting a network', function () {
-    $copy = strtolower(__('welcome.subscribe.title').' '.__('welcome.subscribe.description', locale: 'en'));
-
-    expect($copy)
-        ->toContain('subscription')
-        ->not->toContain('connect')
-        ->not->toContain('network')
-        ->not->toContain('social account')
-        ->not->toContain('link');
-});
-
-test('checkout starts without a connected social account and uses subscribe as its cancel url', function () {
-    config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test']);
-    Bus::fake();
 
     Plan::where('slug', Slug::Workspace)->firstOrFail()->update([
         'stripe_monthly_price_id' => 'price_monthly_test',
@@ -240,15 +181,20 @@ test('checkout starts without a connected social account and uses subscribe as i
         ->once()
         ->withArgs(fn (Account $account, string $priceId, string $cancelUrl): bool => $account->is($this->user->account)
             && $priceId === 'price_monthly_test'
-            && $cancelUrl === route('app.welcome.subscribe'))
+            && $cancelUrl === route('app.welcome.referral-source'))
         ->andReturn(redirect('https://checkout.stripe.test/session'));
 
-    $this->actingAs($this->user)
-        ->post(route('app.welcome.checkout'))
+    $this->actingAs($this->user->fresh())
+        ->post(route('app.welcome.referral-source.store'), [
+            'referral_source' => ReferralSource::ProductHunt->value,
+        ])
         ->assertRedirect('https://checkout.stripe.test/session');
 
+    expect($this->user->fresh()->referral_source)->toBe(ReferralSource::ProductHunt);
     Bus::assertDispatched(SendEvent::class, fn (SendEvent $event): bool => $event->method === 'capture'
-        && data_get($event->payload, 'distinctId') === $this->user->id
+        && data_get($event->payload, 'event') === WelcomeEvent::ReferralSaved->value
+        && data_get($event->payload, 'properties.referral_source') === ReferralSource::ProductHunt->value);
+    Bus::assertDispatched(SendEvent::class, fn (SendEvent $event): bool => $event->method === 'capture'
         && data_get($event->payload, 'event') === WelcomeEvent::CheckoutStarted->value);
 });
 
@@ -269,8 +215,6 @@ test('welcome steps redirect to activation for subscribed accounts with residual
     'goals store' => ['app.welcome.goals.store', 'post', ['goals' => [Goal::SaveTime->value]]],
     'referral source' => ['app.welcome.referral-source', 'get'],
     'referral source store' => ['app.welcome.referral-source.store', 'post', ['referral_source' => ReferralSource::Google->value]],
-    'subscribe' => ['app.welcome.subscribe', 'get'],
-    'checkout' => ['app.welcome.checkout', 'post'],
 ]);
 
 test('welcome redirects subscribed accounts without residual onboarding to calendar', function (array $attributes) {
@@ -302,8 +246,6 @@ test('welcome steps redirect to calendar in self hosted mode', function (string 
     'goals store' => ['app.welcome.goals.store', 'post', ['goals' => [Goal::SaveTime->value]]],
     'referral source' => ['app.welcome.referral-source', 'get'],
     'referral source store' => ['app.welcome.referral-source.store', 'post', ['referral_source' => ReferralSource::Google->value]],
-    'subscribe' => ['app.welcome.subscribe', 'get'],
-    'checkout' => ['app.welcome.checkout', 'post'],
 ]);
 
 test('legacy welcome URLs redirect to their replacement routes', function (string $legacyRoute, string $routeName) {
@@ -313,5 +255,5 @@ test('legacy welcome URLs redirect to their replacement routes', function (strin
 })->with([
     'goals' => ['app.legacy-onboarding.goals', 'app.welcome.goals'],
     'referral source' => ['app.legacy-onboarding.referral-source', 'app.welcome.referral-source'],
-    'connect' => ['app.legacy-onboarding.connect', 'app.welcome.subscribe'],
+    'connect' => ['app.legacy-onboarding.connect', 'app.welcome.referral-source'],
 ]);

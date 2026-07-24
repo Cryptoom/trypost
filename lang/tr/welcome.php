@@ -49,8 +49,4 @@ return [
         'blog' => 'Blog, bülten veya makale',
         'other' => 'Başka bir şey',
     ],
-    'subscribe' => [
-        'title' => 'TryPost aboneliğinizi başlatın',
-        'description' => 'Yayınlama, planlama ve iş birliği özelliklerini açmak için TryPost planınızı seçin.',
-    ],
 ];

@@ -128,14 +128,23 @@ class WelcomeController extends Controller
             return redirect()->route('app.welcome.goals');
         }
 
+        $plan = Plan::where('slug', Slug::Workspace)->firstOrFail();
+
         return Inertia::render('welcome/ReferralSource', [
             'sources' => array_map(fn (ReferralSource $source): string => $source->value, ReferralSource::cases()),
             'selected' => $user->referral_source?->value,
+            'plan' => [
+                'name' => $plan->name,
+                'interval' => 'monthly',
+            ],
         ]);
     }
 
-    public function storeReferralSource(StoreWelcomeReferralSourceRequest $request, PostHogService $postHog): RedirectResponse
-    {
+    public function storeReferralSource(
+        StoreWelcomeReferralSourceRequest $request,
+        StartSubscriptionCheckout $checkout,
+        PostHogService $postHog,
+    ): SymfonyResponse|RedirectResponse {
         if ($redirect = $this->redirectIfUnavailable($request)) {
             return $redirect;
         }
@@ -164,61 +173,22 @@ class WelcomeController extends Controller
             $user->account,
         );
 
-        return redirect()->route('app.welcome.subscribe');
-    }
-
-    public function subscribe(Request $request): Response|RedirectResponse
-    {
-        if ($redirect = $this->redirectIfUnavailable($request)) {
-            return $redirect;
-        }
-
-        $user = $request->user();
-
-        if (! $user->persona) {
-            return redirect()->route('app.welcome.persona');
-        }
-
-        if (! $user->goals) {
-            return redirect()->route('app.welcome.goals');
-        }
-
-        if (! $user->referral_source) {
-            return redirect()->route('app.welcome.referral-source');
-        }
-
         $plan = Plan::where('slug', Slug::Workspace)->firstOrFail();
-
-        return Inertia::render('welcome/Subscribe', [
-            'plan' => [
-                'name' => $plan->name,
-                'interval' => 'monthly',
-            ],
-        ]);
-    }
-
-    public function checkout(
-        Request $request,
-        StartSubscriptionCheckout $checkout,
-        PostHogService $postHog,
-    ): SymfonyResponse|RedirectResponse {
-        if ($redirect = $this->redirectIfUnavailable($request)) {
-            return $redirect;
-        }
-
-        $plan = Plan::where('slug', Slug::Workspace)->firstOrFail();
-        $user = $request->user();
 
         $response = $checkout->redirect(
             $user->account,
             (string) $plan->stripe_monthly_price_id,
-            route('app.welcome.subscribe'),
+            route('app.welcome.referral-source'),
         );
 
         $postHog->capture(
             $user->id,
             WelcomeEvent::CheckoutStarted->value,
-            account: $user->account,
+            [
+                'plan_name' => $plan->name,
+                'interval' => 'monthly',
+            ],
+            $user->account,
         );
 
         return $response;

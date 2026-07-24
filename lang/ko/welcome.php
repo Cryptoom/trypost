@@ -49,8 +49,4 @@ return [
         'blog' => '블로그, 뉴스레터 또는 기사',
         'other' => '기타',
     ],
-    'subscribe' => [
-        'title' => 'TryPost 구독 시작하기',
-        'description' => 'TryPost 플랜을 선택하고 게시, 예약, 협업 기능을 이용하세요.',
-    ],
 ];

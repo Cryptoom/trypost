@@ -20,17 +20,21 @@ import { trans } from 'laravel-vue-i18n';
 import type { FunctionalComponent } from 'vue';
 
 import { Button } from '@/components/ui/button';
+import { useTracking } from '@/composables/useTracking';
 import WelcomeLayout from '@/layouts/WelcomeLayout.vue';
 import { store } from '@/routes/app/welcome/referral-source';
 
 const props = defineProps<{
     sources: string[];
     selected?: string | null;
+    plan: { name: string; interval: string };
 }>();
 
 const form = useForm<{ referral_source: string }>({
     referral_source: props.selected ?? '',
 });
+
+const { trackBeginCheckout } = useTracking();
 
 const sourceMeta: Record<string, { icon: FunctionalComponent; color: string }> =
     {
@@ -67,6 +71,8 @@ const submit = (): void => {
     if (form.referral_source === '' || form.processing) {
         return;
     }
+
+    trackBeginCheckout({ name: props.plan.name, interval: props.plan.interval });
 
     form.submit(store());
 };

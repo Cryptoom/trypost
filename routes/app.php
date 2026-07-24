@@ -65,12 +65,9 @@ Route::middleware(['auth'])->group(function () {
     Route::post('welcome/goals', [WelcomeController::class, 'storeGoals'])->name('app.welcome.goals.store');
     Route::get('welcome/referral-source', [WelcomeController::class, 'referralSource'])->name('app.welcome.referral-source');
     Route::post('welcome/referral-source', [WelcomeController::class, 'storeReferralSource'])->name('app.welcome.referral-source.store');
-    Route::get('welcome/subscribe', [WelcomeController::class, 'subscribe'])->name('app.welcome.subscribe');
-    Route::post('welcome/checkout', [WelcomeController::class, 'checkout'])->name('app.welcome.checkout');
-
     Route::redirect('onboarding/goals', '/welcome/goals')->name('app.legacy-onboarding.goals');
     Route::redirect('onboarding/referral-source', '/welcome/referral-source')->name('app.legacy-onboarding.referral-source');
-    Route::redirect('onboarding/connect', '/welcome/subscribe')->name('app.legacy-onboarding.connect');
+    Route::redirect('onboarding/connect', '/welcome/referral-source')->name('app.legacy-onboarding.connect');
     Route::get('billing/processing', [BillingController::class, 'processing'])->name('app.billing.processing');
 
     Route::get('workspaces/create', [WorkspaceController::class, 'create'])->name('app.workspaces.create');

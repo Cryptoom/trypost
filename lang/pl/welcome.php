@@ -49,8 +49,4 @@ return [
         'blog' => 'Blog, newsletter lub artykuł',
         'other' => 'Coś innego',
     ],
-    'subscribe' => [
-        'title' => 'Rozpocznij subskrypcję TryPost',
-        'description' => 'Wybierz plan TryPost, aby odblokować publikowanie, planowanie i współpracę.',
-    ],
 ];

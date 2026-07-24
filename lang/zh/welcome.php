@@ -49,8 +49,4 @@ return [
         'blog' => '博客、新闻通讯或文章',
         'other' => '其他',
     ],
-    'subscribe' => [
-        'title' => '开始订阅 TryPost',
-        'description' => '选择 TryPost 套餐，解锁发布、排期和协作功能。',
-    ],
 ];

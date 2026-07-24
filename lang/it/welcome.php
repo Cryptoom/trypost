@@ -49,8 +49,4 @@ return [
         'blog' => 'Blog, newsletter o articolo',
         'other' => 'Qualcos\'altro',
     ],
-    'subscribe' => [
-        'title' => 'Avvia il tuo abbonamento TryPost',
-        'description' => 'Scegli il tuo piano TryPost per sbloccare pubblicazione, programmazione e collaborazione.',
-    ],
 ];

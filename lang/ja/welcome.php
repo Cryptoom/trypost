@@ -49,8 +49,4 @@ return [
         'blog' => 'ブログ、ニュースレター、記事',
         'other' => 'その他',
     ],
-    'subscribe' => [
-        'title' => 'TryPost のサブスクリプションを開始',
-        'description' => 'TryPost プランを選択して、公開、予約投稿、コラボレーションを利用しましょう。',
-    ],
 ];
