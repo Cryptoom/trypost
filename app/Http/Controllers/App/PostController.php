@@ -260,7 +260,11 @@ class PostController extends Controller
             ->where('platform', Platform::Pinterest)
             ->mapWithKeys(fn ($account) => [
                 $account->id => rescue(
-                    fn () => app(PinterestPublisher::class)->getBoards($account),
+                    fn () => data_get(
+                        app(PinterestPublisher::class)->getBoards($account),
+                        'boards',
+                        [],
+                    ),
                     [],
                     report: false,
                 ),

@@ -34,7 +34,11 @@ class GetAutomationEditorData
             ->where('platform', Platform::Pinterest)
             ->mapWithKeys(fn ($account) => [
                 $account->id => rescue(
-                    fn () => $this->pinterestPublisher->getBoards($account),
+                    fn () => data_get(
+                        $this->pinterestPublisher->getBoards($account),
+                        'boards',
+                        [],
+                    ),
                     [],
                     report: false,
                 ),
