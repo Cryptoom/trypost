@@ -232,10 +232,23 @@ const imageCountCap = computed(() =>
     ),
 );
 
-// Single picker: 0 = no image (text-only), 1 = single image, 2+ = carousel.
-const imageCountOptions = computed(() =>
-    Array.from({ length: imageCountCap.value + 1 }, (_, i) => i),
+// Floor at 1 when any selected account requires media (Pinterest pin, IG feed,
+// etc.) — otherwise the empty-accounts clamp to 0 sticks after selecting them
+// and surfaces a false "add an image" compliance error.
+const minImageCount = computed(() =>
+    local.value.accounts.some((a) => getMediaRulesForContentType(a.content_type).requiresMedia)
+        ? 1
+        : 0,
 );
+
+// Single picker: 0 = no image (text-only), 1 = single image, 2+ = carousel.
+// Option 0 is omitted when a media-required account is selected.
+const imageCountOptions = computed(() => {
+    const min = Math.min(minImageCount.value, imageCountCap.value);
+    const max = imageCountCap.value;
+
+    return Array.from({ length: Math.max(0, max - min + 1) }, (_, i) => i + min);
+});
 
 const intendedImageCount = computed(() => local.value.target_slide_count);
 
@@ -254,13 +267,22 @@ const accountIssue = (accountId: string): string | null => {
     return account ? getPlatformMetaIssue(account.platform, entry.meta) : null;
 };
 
-// Clamp the chosen count to what the selected accounts actually allow — runs on
-// mount too so legacy/over-cap values (or text-only accounts → 0) self-correct.
+// Clamp the chosen count into [min, cap] for the current selection. Skip while
+// no accounts are selected so the default of 1 is preserved until the user
+// picks a destination (avoids clamp-to-0 → select Pinterest → stuck at 0).
 watch(
-    imageCountCap,
-    (cap) => {
+    [imageCountCap, minImageCount, () => local.value.accounts.length],
+    ([cap, min, accountCount]) => {
+        if (accountCount === 0) {
+            return;
+        }
+
         if (local.value.target_slide_count > cap) {
             local.value.target_slide_count = cap;
+        }
+
+        if (local.value.target_slide_count < min) {
+            local.value.target_slide_count = Math.min(min, cap);
         }
     },
     { immediate: true },
