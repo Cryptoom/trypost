@@ -35,9 +35,22 @@ class UploadController extends Controller
         }
 
         $workspace = Workspace::findOrFail((string) $request->query('workspace_id'));
+        $file = $request->file('media');
+        $path = $file->getRealPath();
 
-        $media = DB::transaction(function () use ($workspace, $request, $token): Media {
-            $media = $workspace->addMedia($request->file('media'), 'assets');
+        // Stream from PHP's temp upload path — do not load the whole file into
+        // memory (addMedia() uses file_get_contents; videos can be up to 1GB).
+        if ($path === false) {
+            abort(Response::HTTP_UNPROCESSABLE_ENTITY, 'Unable to read uploaded file.');
+        }
+
+        $media = DB::transaction(function () use ($workspace, $file, $path, $token): Media {
+            $media = $workspace->addMediaFromPath(
+                $path,
+                $file->getClientOriginalName(),
+                'assets',
+                mimeType: (string) $file->getMimeType(),
+            );
             $media->upload_token = $token;
             $media->save();
 

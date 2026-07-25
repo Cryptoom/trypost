@@ -405,7 +405,9 @@ class PinterestPublisher
     }
 
     /**
-     * Get user's boards for board selection.
+     * Get user's boards for board selection (follows Pinterest bookmark pagination).
+     *
+     * @return list<array<string, mixed>>
      */
     public function getBoards(SocialAccount $account): array
     {
@@ -413,17 +415,40 @@ class PinterestPublisher
             app(ConnectionVerifier::class)->refreshToken($account);
         }
 
-        $response = $this->socialHttp()->withToken($account->access_token)
-            ->get($this->baseUrl.'/boards', [
-                'page_size' => 100,
-            ]);
+        $boards = [];
+        $bookmark = null;
+        $maxPages = 20;
 
-        if ($response->failed()) {
-            Log::error('Pinterest get boards failed', ['body' => $this->redactResponseBody($response->body())]);
-            $this->handleApiError($response);
+        for ($page = 0; $page < $maxPages; $page++) {
+            $query = ['page_size' => 100];
+
+            if (filled($bookmark)) {
+                $query['bookmark'] = $bookmark;
+            }
+
+            $response = $this->socialHttp()->withToken($account->access_token)
+                ->get($this->baseUrl.'/boards', $query);
+
+            if ($response->failed()) {
+                Log::error('Pinterest get boards failed', ['body' => $this->redactResponseBody($response->body())]);
+                $this->handleApiError($response);
+            }
+
+            $payload = $response->json() ?? [];
+            $items = data_get($payload, 'items', []);
+
+            if (is_array($items) && $items !== []) {
+                array_push($boards, ...$items);
+            }
+
+            $bookmark = data_get($payload, 'bookmark');
+
+            if (blank($bookmark)) {
+                break;
+            }
         }
 
-        return $response->json()['items'] ?? [];
+        return $boards;
     }
 
     private function handleApiError(Response $response): never

@@ -25,28 +25,28 @@ const MB = 1024 * 1024;
 const GB = 1024 * MB;
 
 /**
- * Client-side media constraints that are not duration caps.
- * Video duration comes from ContentType::mediaRulesForFrontend() via
- * Inertia shared once-props (see contentTypeMediaRules).
+ * Client-side media constraints. Duration values here are fallbacks when
+ * Inertia shared contentTypeMediaRules has not synced yet; once synced,
+ * ContentType::maxVideoDurationSec() wins via withSharedDuration().
  */
 const CONTENT_TYPE_RULES: Record<string, MediaRules> = {
     // Instagram
     instagram_feed: {
         maxFiles: 10, acceptImages: true, acceptVideos: true, requiresMedia: true,
         acceptsGif: false,
-        maxImageBytes: 8 * MB, maxVideoBytes: 100 * MB,
+        maxImageBytes: 8 * MB, maxVideoBytes: 100 * MB, maxVideoDurationSec: 60,
         aspectRatioMin: 0.8, aspectRatioMax: 1.91,
     },
     instagram_reel: {
         maxFiles: 1, acceptImages: false, acceptVideos: true, requiresMedia: true,
         acceptsGif: false,
-        maxVideoBytes: 1 * GB,
+        maxVideoBytes: 1 * GB, maxVideoDurationSec: 15 * 60,
         aspectRatioMin: 0.5, aspectRatioMax: 0.6,
     },
     instagram_story: {
         maxFiles: 1, acceptImages: true, acceptVideos: true, requiresMedia: true,
         acceptsGif: false,
-        maxImageBytes: 8 * MB, maxVideoBytes: 100 * MB,
+        maxImageBytes: 8 * MB, maxVideoBytes: 100 * MB, maxVideoDurationSec: 60,
         aspectRatioMin: 0.5, aspectRatioMax: 0.6, autoFitsImage: true,
     },
 
@@ -54,18 +54,18 @@ const CONTENT_TYPE_RULES: Record<string, MediaRules> = {
     facebook_post: {
         maxFiles: 10, acceptImages: true, acceptVideos: true, requiresMedia: false,
         acceptsGif: false,
-        maxImageBytes: 4 * MB, maxVideoBytes: 10 * GB,
+        maxImageBytes: 4 * MB, maxVideoBytes: 10 * GB, maxVideoDurationSec: 240 * 60,
     },
     facebook_reel: {
         maxFiles: 1, acceptImages: false, acceptVideos: true, requiresMedia: true,
         acceptsGif: false,
-        maxVideoBytes: 1 * GB,
+        maxVideoBytes: 1 * GB, maxVideoDurationSec: 90,
         aspectRatioMin: 0.5, aspectRatioMax: 0.6,
     },
     facebook_story: {
         maxFiles: 1, acceptImages: false, acceptVideos: true, requiresMedia: true,
         acceptsGif: false,
-        maxVideoBytes: 1 * GB,
+        maxVideoBytes: 1 * GB, maxVideoDurationSec: 60,
         aspectRatioMin: 0.5, aspectRatioMax: 0.6,
     },
 
@@ -75,12 +75,12 @@ const CONTENT_TYPE_RULES: Record<string, MediaRules> = {
     linkedin_post: {
         maxFiles: 10, acceptImages: true, acceptVideos: true, acceptDocuments: true,
         requiresMedia: false, acceptsGif: false, forbidsMixedMedia: true,
-        maxImageBytes: 5 * MB, maxVideoBytes: 5 * GB, maxDocumentBytes: 100 * MB,
+        maxImageBytes: 5 * MB, maxVideoBytes: 5 * GB, maxVideoDurationSec: 10 * 60, maxDocumentBytes: 100 * MB,
     },
     linkedin_page_post: {
         maxFiles: 10, acceptImages: true, acceptVideos: true, acceptDocuments: true,
         requiresMedia: false, acceptsGif: false, forbidsMixedMedia: true,
-        maxImageBytes: 5 * MB, maxVideoBytes: 5 * GB, maxDocumentBytes: 100 * MB,
+        maxImageBytes: 5 * MB, maxVideoBytes: 5 * GB, maxVideoDurationSec: 10 * 60, maxDocumentBytes: 100 * MB,
     },
 
     // TikTok
@@ -98,7 +98,7 @@ const CONTENT_TYPE_RULES: Record<string, MediaRules> = {
     youtube_short: {
         maxFiles: 1, acceptImages: false, acceptVideos: true, requiresMedia: true,
         acceptsGif: false,
-        maxVideoBytes: 256 * GB,
+        maxVideoBytes: 256 * GB, maxVideoDurationSec: 3 * 60,
         aspectRatioMin: 0.5, aspectRatioMax: 0.6,
     },
 
@@ -111,7 +111,7 @@ const CONTENT_TYPE_RULES: Record<string, MediaRules> = {
     pinterest_video_pin: {
         maxFiles: 1, acceptImages: false, acceptVideos: true, requiresMedia: true,
         acceptsGif: false,
-        maxVideoBytes: 2 * GB,
+        maxVideoBytes: 2 * GB, maxVideoDurationSec: 15 * 60,
     },
     pinterest_carousel: {
         maxFiles: 5, minFiles: 2, acceptImages: true, acceptVideos: false, requiresMedia: true,
@@ -123,14 +123,14 @@ const CONTENT_TYPE_RULES: Record<string, MediaRules> = {
     x_post: {
         maxFiles: 4, acceptImages: true, acceptVideos: true, requiresMedia: false,
         acceptsGif: true,
-        maxImageBytes: 5 * MB, maxVideoBytes: 512 * MB,
+        maxImageBytes: 5 * MB, maxVideoBytes: 512 * MB, maxVideoDurationSec: 140,
     },
 
     // Threads
     threads_post: {
         maxFiles: 10, acceptImages: true, acceptVideos: true, requiresMedia: false,
         acceptsGif: false,
-        maxImageBytes: 8 * MB, maxVideoBytes: 1 * GB,
+        maxImageBytes: 8 * MB, maxVideoBytes: 1 * GB, maxVideoDurationSec: 5 * 60,
     },
 
     // Bluesky — accepts GIF; tight image size (auto-resized by backend).
@@ -138,7 +138,7 @@ const CONTENT_TYPE_RULES: Record<string, MediaRules> = {
     bluesky_post: {
         maxFiles: 4, acceptImages: true, acceptVideos: true, requiresMedia: false,
         acceptsGif: true, forbidsMixedMedia: true,
-        maxVideoBytes: 100 * MB,
+        maxVideoBytes: 100 * MB, maxVideoDurationSec: 60,
     },
 
     // Mastodon — accepts GIF
@@ -158,15 +158,23 @@ const DEFAULT_RULES: MediaRules = {
 };
 
 const withSharedDuration = (contentType: string, rules: MediaRules): MediaRules => {
-    const maxVideoDurationSec = maxVideoDurationSecFor(contentType);
+    const shared = maxVideoDurationSecFor(contentType);
 
-    if (maxVideoDurationSec === undefined) {
+    // Cache not synced yet — keep local hardcoded fallbacks.
+    if (shared === undefined) {
         return rules;
+    }
+
+    // Explicitly unlimited / dynamic on the server (e.g. TikTok).
+    if (shared === null) {
+        const { maxVideoDurationSec: _ignored, ...rest } = rules;
+
+        return rest;
     }
 
     return {
         ...rules,
-        maxVideoDurationSec,
+        maxVideoDurationSec: shared,
     };
 };
 

@@ -129,6 +129,35 @@ test('rejects an image larger than the image media cap even when under the video
     expect(Media::where('upload_token', $token)->exists())->toBeFalse();
 });
 
+test('rejects a document larger than the document media cap even when under the video ceiling', function () {
+    config([
+        'trypost.media.max_size_mb.document' => 1,
+        'trypost.media.max_size_mb.video' => 1024,
+    ]);
+
+    $token = (string) Str::uuid();
+    $file = UploadedFile::fake()->create('big.pdf', 1024 + 1, 'application/pdf');
+
+    $response = $this->postJson(signedUploadUrl($this->workspace, $token), ['media' => $file]);
+
+    $response->assertStatus(422);
+    expect(Media::where('upload_token', $token)->exists())->toBeFalse();
+});
+
+test('stores a video upload via the streaming path', function () {
+    $token = (string) Str::uuid();
+    $file = UploadedFile::fake()->create('clip.mp4', 256, 'video/mp4');
+
+    $this->post(signedUploadUrl($this->workspace, $token), [
+        'media' => $file,
+    ])->assertCreated();
+
+    $media = Media::where('upload_token', $token)->first();
+    expect($media)->not->toBeNull()
+        ->and($media->type->value)->toBe('video')
+        ->and(Storage::exists($media->path))->toBeTrue();
+});
+
 test('rejects disallowed mime type', function () {
     $token = (string) Str::uuid();
     $file = UploadedFile::fake()->create('evil.exe', 10, 'application/octet-stream');

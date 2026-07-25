@@ -58,6 +58,9 @@ return [
     |
     | signed_upload_url_ttl_minutes controls the temporary signed POST URL
     | issued for api.uploads.store (MCP / direct upload flow).
+    | MEDIA_SIGNED_UPLOAD_URL_TTL_MINUTES is preferred; MCP_UPLOAD_URL_TTL_MINUTES
+    | remains as a legacy fallback. MCP_UPLOAD_MAX_SIZE_MB was removed — size
+    | caps come from max_size_mb above (uploads stream to storage).
     |
     */
 
@@ -68,7 +71,7 @@ return [
             // LinkedIn caps document (PDF carousel) uploads at 100MB.
             'document' => (int) env('MEDIA_DOCUMENT_MAX_SIZE_MB', 100),
         ],
-        'signed_upload_url_ttl_minutes' => (int) env('MEDIA_SIGNED_UPLOAD_URL_TTL_MINUTES', 15),
+        'signed_upload_url_ttl_minutes' => (int) (env('MEDIA_SIGNED_UPLOAD_URL_TTL_MINUTES') ?? env('MCP_UPLOAD_URL_TTL_MINUTES', 15)),
     ],
 
     /*

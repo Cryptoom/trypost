@@ -28,6 +28,9 @@ test('returns a single-use signed upload URL', function () {
                 ->has('upload_url')
                 ->has('expires_at')
                 ->where('max_bytes', MediaType::Video->maxSizeInBytes())
+                ->where('max_bytes_by_type.image', MediaType::Image->maxSizeInBytes())
+                ->where('max_bytes_by_type.video', MediaType::Video->maxSizeInBytes())
+                ->where('max_bytes_by_type.document', MediaType::Document->maxSizeInBytes())
                 ->where('field_name', 'media')
                 ->etc();
         });

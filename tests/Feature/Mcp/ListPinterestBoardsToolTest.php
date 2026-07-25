@@ -47,6 +47,24 @@ test('lists pinterest boards as id and name', function () {
         });
 });
 
+test('returns an actionable error when pinterest token is expired', function () {
+    $account = SocialAccount::factory()->pinterest()->create([
+        'workspace_id' => $this->workspace->id,
+        'access_token' => 'expired-token',
+    ]);
+
+    Http::fake([
+        config('trypost.platforms.pinterest.api').'/boards*' => Http::response([
+            'message' => 'Access token has expired or been revoked',
+        ], 401),
+    ]);
+
+    $response = TryPostServer::actingAs($this->user)
+        ->tool(ListPinterestBoardsTool::class, ['account_id' => $account->id]);
+
+    $response->assertHasErrors(['Access token has expired or been revoked']);
+});
+
 test('rejects non-pinterest accounts', function () {
     $account = SocialAccount::factory()->create([
         'workspace_id' => $this->workspace->id,

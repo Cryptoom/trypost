@@ -4,10 +4,9 @@ declare(strict_types=1);
 
 namespace App\Mcp\Tools\SocialAccount;
 
-use App\Actions\SocialAccount\ListPinterestBoards;
+use App\Actions\SocialAccount\ListDiscordChannels;
 use App\Enums\SocialAccount\Platform;
-use App\Exceptions\Social\PinterestPublishException;
-use App\Exceptions\TokenExpiredException;
+use App\Exceptions\PlatformUnavailableException;
 use App\Models\SocialAccount;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Mcp\Request;
@@ -16,8 +15,8 @@ use Laravel\Mcp\ResponseFactory;
 use Laravel\Mcp\Server\Attributes\Description;
 use Laravel\Mcp\Server\Tool;
 
-#[Description('List Pinterest boards for a connected Pinterest account. Use the returned board id as platforms[].meta.board_id when creating or updating a Pinterest post (required to publish).')]
-class ListPinterestBoardsTool extends Tool
+#[Description('List Discord text/announcement channels the bot can post to for a connected Discord server. Use the returned channel id as platforms[].meta.channel_id when creating or updating a Discord post (required to publish).')]
+class ListDiscordChannelsTool extends Tool
 {
     public function handle(Request $request): Response|ResponseFactory
     {
@@ -32,25 +31,23 @@ class ListPinterestBoardsTool extends Tool
             return Response::error('Social account not found.');
         }
 
-        if ($account->platform !== Platform::Pinterest) {
-            return Response::error('This tool only works with Pinterest social accounts.');
+        if ($account->platform !== Platform::Discord) {
+            return Response::error('This tool only works with Discord social accounts.');
         }
 
         try {
             return Response::structured([
-                'boards' => ListPinterestBoards::execute($account),
+                'channels' => ListDiscordChannels::execute($account),
             ]);
-        } catch (TokenExpiredException $e) {
+        } catch (PlatformUnavailableException $e) {
             return Response::error($e->getMessage());
-        } catch (PinterestPublishException $e) {
-            return Response::error($e->userMessage);
         }
     }
 
     public function schema(JsonSchema $schema): array
     {
         return [
-            'account_id' => $schema->string()->required()->description('The UUID of the connected Pinterest social account.'),
+            'account_id' => $schema->string()->required()->description('The UUID of the connected Discord social account.'),
         ];
     }
 }

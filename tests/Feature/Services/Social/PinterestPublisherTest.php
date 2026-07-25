@@ -518,6 +518,31 @@ test('pinterest publisher can get boards', function () {
     expect($boards[0]['id'])->toBe('board_1');
 });
 
+test('pinterest publisher paginates boards via bookmark', function () {
+    Http::fake([
+        config('trypost.platforms.pinterest.api').'/boards*' => Http::sequence()
+            ->push([
+                'items' => [
+                    ['id' => 'board_1', 'name' => 'Board 1'],
+                ],
+                'bookmark' => 'page-2',
+            ], 200)
+            ->push([
+                'items' => [
+                    ['id' => 'board_2', 'name' => 'Board 2'],
+                ],
+            ], 200),
+    ]);
+
+    $boards = $this->publisher->getBoards($this->socialAccount);
+
+    expect($boards)->toHaveCount(2)
+        ->and($boards[0]['id'])->toBe('board_1')
+        ->and($boards[1]['id'])->toBe('board_2');
+
+    Http::assertSentCount(2);
+});
+
 test('pinterest publisher can publish video pin', function () {
     $this->postPlatform->update(['content_type' => ContentType::PinterestVideoPin]);
 

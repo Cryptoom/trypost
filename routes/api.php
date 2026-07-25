@@ -53,6 +53,9 @@ Route::middleware(['auth:api', 'workspace.token', 'throttle:api'])->group(functi
     Route::get('/social-accounts/{account}/boards', [SocialAccountController::class, 'boards'])
         ->middleware('throttle:60,1')
         ->name('api.social-accounts.boards');
+    Route::get('/social-accounts/{account}/channels', [SocialAccountController::class, 'channels'])
+        ->middleware('throttle:60,1')
+        ->name('api.social-accounts.channels');
 
     // API Keys
     Route::get('/api-keys', [ApiKeyController::class, 'index'])->name('api.api-keys.index');
