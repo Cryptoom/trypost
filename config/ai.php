@@ -44,16 +44,14 @@ return [
     | MCP Media Upload
     |--------------------------------------------------------------------------
     |
-    | Settings for the MCP signed-URL upload flow. The hard cap is enforced
-    | per upload regardless of media type and is intentionally smaller than
-    | the per-type caps in config('trypost.media') because uploads flow
-    | through the app server.
+    | Settings for the MCP signed-URL upload flow. Size caps come from
+    | config('trypost.media.max_size_mb') via Media\Type — same source as
+    | web and REST API uploads.
     |
     */
 
     'mcp' => [
         'upload' => [
-            'max_size_mb' => (int) env('MCP_UPLOAD_MAX_SIZE_MB', 300),
             'url_ttl_minutes' => (int) env('MCP_UPLOAD_URL_TTL_MINUTES', 15),
         ],
     ],

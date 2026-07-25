@@ -102,11 +102,26 @@ test('rejects replay of an already-used token', function () {
     expect(Media::where('upload_token', $token)->count())->toBe(1);
 });
 
-test('rejects file larger than the MCP upload cap', function () {
-    config(['ai.mcp.upload.max_size_mb' => 1]);
+test('rejects file larger than the per-type media cap', function () {
+    config(['trypost.media.max_size_mb.video' => 1]);
 
     $token = (string) Str::uuid();
     $file = UploadedFile::fake()->create('huge.mp4', 1024 + 1, 'video/mp4');
+
+    $response = $this->postJson(signedUploadUrl($this->workspace, $token), ['media' => $file]);
+
+    $response->assertStatus(422);
+    expect(Media::where('upload_token', $token)->exists())->toBeFalse();
+});
+
+test('rejects an image larger than the image media cap even when under the video ceiling', function () {
+    config([
+        'trypost.media.max_size_mb.image' => 1,
+        'trypost.media.max_size_mb.video' => 1024,
+    ]);
+
+    $token = (string) Str::uuid();
+    $file = UploadedFile::fake()->create('big.jpg', 1024 + 1, 'image/jpeg');
 
     $response = $this->postJson(signedUploadUrl($this->workspace, $token), ['media' => $file]);
 

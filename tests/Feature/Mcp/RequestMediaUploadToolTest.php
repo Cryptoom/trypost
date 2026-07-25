@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Enums\Media\Type as MediaType;
 use App\Enums\UserWorkspace\Role;
 use App\Mcp\Servers\TryPostServer;
 use App\Mcp\Tools\Post\RequestMediaUploadTool;
@@ -26,7 +27,7 @@ test('returns a single-use signed upload URL', function () {
             $json->has('upload_token')
                 ->has('upload_url')
                 ->has('expires_at')
-                ->where('max_bytes', 300 * 1024 * 1024)
+                ->where('max_bytes', MediaType::Video->maxSizeInBytes())
                 ->where('field_name', 'media')
                 ->etc();
         });
