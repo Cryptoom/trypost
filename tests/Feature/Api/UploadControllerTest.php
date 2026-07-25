@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
@@ -156,6 +157,23 @@ test('stores a video upload via the streaming path', function () {
     expect($media)->not->toBeNull()
         ->and($media->type->value)->toBe('video')
         ->and(Storage::exists($media->path))->toBeTrue();
+});
+
+test('releases the upload token when media persistence fails', function () {
+    $token = (string) Str::uuid();
+    $file = UploadedFile::fake()->create('clip.mp4', 256, 'video/mp4');
+    $cacheKey = "mcp_upload:{$token}";
+
+    DB::shouldReceive('transaction')
+        ->once()
+        ->andThrow(new RuntimeException('disk unavailable'));
+
+    $this->postJson(signedUploadUrl($this->workspace, $token), [
+        'media' => $file,
+    ])->assertServerError();
+
+    expect(Cache::has($cacheKey))->toBeFalse()
+        ->and(Media::where('upload_token', $token)->exists())->toBeFalse();
 });
 
 test('rejects disallowed mime type', function () {

@@ -12,13 +12,14 @@ export type { MediaRules };
 /**
  * Fallback only when Inertia once-props have not synced yet (or unknown type).
  * Real limits live in App\Enums\PostPlatform\ContentType::mediaRules().
+ * Keep this fail-closed (no GIF) — most content types reject animated GIFs.
  */
 const DEFAULT_RULES: MediaRules = {
     maxFiles: 10,
     acceptImages: true,
     acceptVideos: true,
     requiresMedia: false,
-    acceptsGif: true,
+    acceptsGif: false,
 };
 
 export const getMediaRulesForContentType = (contentType: string): MediaRules => {

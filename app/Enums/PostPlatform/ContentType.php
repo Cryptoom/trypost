@@ -224,7 +224,8 @@ enum ContentType: string
     public function acceptsGif(): bool
     {
         return match ($this) {
-            self::XPost, self::BlueskyPost, self::MastodonPost => true,
+            self::XPost, self::BlueskyPost, self::MastodonPost,
+            self::DiscordMessage, self::TelegramPost => true,
             default => false,
         };
     }
@@ -458,7 +459,6 @@ enum ContentType: string
             self::MastodonPost => false,
             self::TelegramPost => false,
             self::FacebookPost => false,
-            self::InstagramFeed => false,
             self::DiscordMessage => false,
             default => true,
         };

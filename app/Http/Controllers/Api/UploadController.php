@@ -13,6 +13,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Symfony\Component\HttpFoundation\Response;
+use Throwable;
 
 class UploadController extends Controller
 {
@@ -26,7 +27,9 @@ class UploadController extends Controller
             $expiresAt - now()->timestamp + self::CACHE_TTL_BUFFER_SECONDS,
         );
 
-        if (! Cache::add("mcp_upload:{$token}", true, $ttl)) {
+        $cacheKey = "mcp_upload:{$token}";
+
+        if (! Cache::add($cacheKey, true, $ttl)) {
             abort(Response::HTTP_CONFLICT);
         }
 
@@ -34,28 +37,36 @@ class UploadController extends Controller
             abort(Response::HTTP_CONFLICT);
         }
 
-        $workspace = Workspace::findOrFail((string) $request->query('workspace_id'));
-        $file = $request->file('media');
-        $path = $file->getRealPath();
+        try {
+            $workspace = Workspace::findOrFail((string) $request->query('workspace_id'));
+            $file = $request->file('media');
+            $path = $file->getRealPath();
 
-        // Stream from PHP's temp upload path — do not load the whole file into
-        // memory (addMedia() uses file_get_contents; videos can be up to 1GB).
-        if ($path === false) {
-            abort(Response::HTTP_UNPROCESSABLE_ENTITY, 'Unable to read uploaded file.');
+            // Stream from PHP's temp upload path — do not load the whole file into
+            // memory (addMedia() uses file_get_contents; videos can be up to 1GB).
+            if ($path === false) {
+                abort(Response::HTTP_UNPROCESSABLE_ENTITY, 'Unable to read uploaded file.');
+            }
+
+            $media = DB::transaction(function () use ($workspace, $file, $path, $token): Media {
+                $media = $workspace->addMediaFromPath(
+                    $path,
+                    $file->getClientOriginalName(),
+                    'assets',
+                    mimeType: (string) $file->getMimeType(),
+                );
+                $media->upload_token = $token;
+                $media->save();
+
+                return $media;
+            });
+        } catch (Throwable $e) {
+            // Claim is only permanent after Media is stored — release so the
+            // signed URL can be retried after a transient disk/storage failure.
+            Cache::forget($cacheKey);
+
+            throw $e;
         }
-
-        $media = DB::transaction(function () use ($workspace, $file, $path, $token): Media {
-            $media = $workspace->addMediaFromPath(
-                $path,
-                $file->getClientOriginalName(),
-                'assets',
-                mimeType: (string) $file->getMimeType(),
-            );
-            $media->upload_token = $token;
-            $media->save();
-
-            return $media;
-        });
 
         return MediaUploadResource::make($media)
             ->response()

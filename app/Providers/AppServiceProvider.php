@@ -164,10 +164,15 @@ class AppServiceProvider extends ServiceProvider
         // workspace_id (bound into the signed URL) so tenants don't share a bucket.
         RateLimiter::for('mcp-uploads', function (Request $request) {
             $workspaceId = (string) $request->query('workspace_id');
+            $ipLimit = Limit::perMinute(1200)->by('ip:'.$request->ip());
+
+            if ($workspaceId === '') {
+                return $ipLimit;
+            }
 
             return [
-                Limit::perMinute(60)->by('workspace:'.$workspaceId),
-                Limit::perMinute(1200)->by('ip:'.$request->ip()),
+                Limit::perMinute(60)->by("workspace:{$workspaceId}"),
+                $ipLimit,
             ];
         });
     }

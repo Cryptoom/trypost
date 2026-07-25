@@ -55,6 +55,9 @@ test('media rules for frontend expose the full editor rule set keyed by content 
     expect($rules['linkedin_post']['max_document_bytes'])->toBe(100 * 1024 * 1024);
     expect($rules['pinterest_carousel']['min_files'])->toBe(2);
     expect($rules['x_post']['accepts_gif'])->toBeTrue();
+    expect($rules['instagram_feed']['requires_media'])->toBeTrue();
+    expect($rules['discord_message']['accepts_gif'])->toBeTrue();
+    expect($rules['telegram_post']['accepts_gif'])->toBeTrue();
 });
 
 test('media rules reuse enum capability helpers', function () {
@@ -135,15 +138,59 @@ test('content type supports mixed media correctly', function () {
 
 test('content type requires media correctly', function () {
     expect(ContentType::InstagramReel->requiresMedia())->toBeTrue();
+    expect(ContentType::InstagramFeed->requiresMedia())->toBeTrue();
     expect(ContentType::TikTokVideo->requiresMedia())->toBeTrue();
     expect(ContentType::YouTubeShort->requiresMedia())->toBeTrue();
     expect(ContentType::PinterestPin->requiresMedia())->toBeTrue();
-    expect(ContentType::InstagramFeed->requiresMedia())->toBeFalse();
     expect(ContentType::LinkedInPost->requiresMedia())->toBeFalse();
     expect(ContentType::XPost->requiresMedia())->toBeFalse();
     expect(ContentType::ThreadsPost->requiresMedia())->toBeFalse();
     expect(ContentType::BlueskyPost->requiresMedia())->toBeFalse();
     expect(ContentType::MastodonPost->requiresMedia())->toBeFalse();
+});
+
+test('media rules keep editor parity for gif and requires_media flags', function () {
+    expect(ContentType::DiscordMessage->acceptsGif())->toBeTrue();
+    expect(ContentType::TelegramPost->acceptsGif())->toBeTrue();
+    expect(ContentType::InstagramFeed->mediaRules()['requires_media'])->toBeTrue();
+    expect(ContentType::DiscordMessage->mediaRules()['accepts_gif'])->toBeTrue();
+});
+
+/**
+ * Lock the flags that used to live in the Vue CONTENT_TYPE_RULES map so a
+ * future centralization drift cannot silently flip editor behavior again.
+ */
+test('media rules preserve pre-centralization requires_media and accepts_gif for mapped types', function () {
+    $expected = [
+        'instagram_feed' => [true, false],
+        'instagram_reel' => [true, false],
+        'instagram_story' => [true, false],
+        'facebook_post' => [false, false],
+        'facebook_reel' => [true, false],
+        'facebook_story' => [true, false],
+        'linkedin_post' => [false, false],
+        'linkedin_page_post' => [false, false],
+        'tiktok_video' => [true, false],
+        'tiktok_photo' => [true, false],
+        'youtube_short' => [true, false],
+        'pinterest_pin' => [true, false],
+        'pinterest_video_pin' => [true, false],
+        'pinterest_carousel' => [true, false],
+        'x_post' => [false, true],
+        'threads_post' => [false, false],
+        'bluesky_post' => [false, true],
+        'mastodon_post' => [false, true],
+        // Previously fell through to DEFAULT_RULES (acceptsGif true).
+        'discord_message' => [false, true],
+        'telegram_post' => [false, true],
+    ];
+
+    foreach ($expected as $type => [$requiresMedia, $acceptsGif]) {
+        $rules = ContentType::from($type)->mediaRules();
+
+        expect($rules['requires_media'])->toBe($requiresMedia, "{$type}.requires_media")
+            ->and($rules['accepts_gif'])->toBe($acceptsGif, "{$type}.accepts_gif");
+    }
 });
 
 test('can get content types for platform', function () {
