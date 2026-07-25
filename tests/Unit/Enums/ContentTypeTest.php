@@ -34,6 +34,15 @@ test('content type exposes max video duration in seconds', function () {
     expect(ContentType::TikTokVideo->maxVideoDurationSec())->toBeNull();
 });
 
+test('media rules for frontend expose duration caps keyed by content type', function () {
+    $rules = ContentType::mediaRulesForFrontend();
+
+    expect($rules['instagram_reel']['max_video_duration_sec'])->toBe(900);
+    expect($rules['facebook_reel']['max_video_duration_sec'])->toBe(90);
+    expect($rules['tiktok_video']['max_video_duration_sec'])->toBeNull();
+    expect($rules)->toHaveCount(count(ContentType::cases()));
+});
+
 test('content type maps to correct platform', function () {
     expect(ContentType::InstagramFeed->platform())->toBe(Platform::Instagram);
     expect(ContentType::InstagramReel->platform())->toBe(Platform::Instagram);

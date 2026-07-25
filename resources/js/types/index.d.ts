@@ -62,12 +62,17 @@ export interface NavItem {
     badge?: string;
 }
 
+export interface ContentTypeMediaRule {
+    max_video_duration_sec: number | null;
+}
+
 export interface SharedData {
     name: string;
     auth: Auth;
     flash: FlashData;
     sidebarOpen: boolean;
     selfHosted: boolean;
+    contentTypeMediaRules?: Record<string, ContentTypeMediaRule>;
     [key: string]: unknown;
 }
 

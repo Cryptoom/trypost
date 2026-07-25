@@ -1,5 +1,6 @@
 import { computed, type Ref, type ComputedRef } from 'vue';
 
+import { maxVideoDurationSecFor } from '@/lib/contentTypeMediaRules';
 import { fromMimeType, MediaType } from '@/lib/mediaType';
 
 export interface MediaRules {
@@ -23,24 +24,29 @@ export interface MediaRules {
 const MB = 1024 * 1024;
 const GB = 1024 * MB;
 
+/**
+ * Client-side media constraints that are not duration caps.
+ * Video duration comes from ContentType::mediaRulesForFrontend() via
+ * Inertia shared once-props (see contentTypeMediaRules).
+ */
 const CONTENT_TYPE_RULES: Record<string, MediaRules> = {
     // Instagram
     instagram_feed: {
         maxFiles: 10, acceptImages: true, acceptVideos: true, requiresMedia: true,
         acceptsGif: false,
-        maxImageBytes: 8 * MB, maxVideoBytes: 100 * MB, maxVideoDurationSec: 60,
+        maxImageBytes: 8 * MB, maxVideoBytes: 100 * MB,
         aspectRatioMin: 0.8, aspectRatioMax: 1.91,
     },
     instagram_reel: {
         maxFiles: 1, acceptImages: false, acceptVideos: true, requiresMedia: true,
         acceptsGif: false,
-        maxVideoBytes: 1 * GB, maxVideoDurationSec: 15 * 60,
+        maxVideoBytes: 1 * GB,
         aspectRatioMin: 0.5, aspectRatioMax: 0.6,
     },
     instagram_story: {
         maxFiles: 1, acceptImages: true, acceptVideos: true, requiresMedia: true,
         acceptsGif: false,
-        maxImageBytes: 8 * MB, maxVideoBytes: 100 * MB, maxVideoDurationSec: 60,
+        maxImageBytes: 8 * MB, maxVideoBytes: 100 * MB,
         aspectRatioMin: 0.5, aspectRatioMax: 0.6, autoFitsImage: true,
     },
 
@@ -48,18 +54,18 @@ const CONTENT_TYPE_RULES: Record<string, MediaRules> = {
     facebook_post: {
         maxFiles: 10, acceptImages: true, acceptVideos: true, requiresMedia: false,
         acceptsGif: false,
-        maxImageBytes: 4 * MB, maxVideoBytes: 10 * GB, maxVideoDurationSec: 240 * 60,
+        maxImageBytes: 4 * MB, maxVideoBytes: 10 * GB,
     },
     facebook_reel: {
         maxFiles: 1, acceptImages: false, acceptVideos: true, requiresMedia: true,
         acceptsGif: false,
-        maxVideoBytes: 1 * GB, maxVideoDurationSec: 90,
+        maxVideoBytes: 1 * GB,
         aspectRatioMin: 0.5, aspectRatioMax: 0.6,
     },
     facebook_story: {
         maxFiles: 1, acceptImages: false, acceptVideos: true, requiresMedia: true,
         acceptsGif: false,
-        maxVideoBytes: 1 * GB, maxVideoDurationSec: 60,
+        maxVideoBytes: 1 * GB,
         aspectRatioMin: 0.5, aspectRatioMax: 0.6,
     },
 
@@ -69,12 +75,12 @@ const CONTENT_TYPE_RULES: Record<string, MediaRules> = {
     linkedin_post: {
         maxFiles: 10, acceptImages: true, acceptVideos: true, acceptDocuments: true,
         requiresMedia: false, acceptsGif: false, forbidsMixedMedia: true,
-        maxImageBytes: 5 * MB, maxVideoBytes: 5 * GB, maxVideoDurationSec: 10 * 60, maxDocumentBytes: 100 * MB,
+        maxImageBytes: 5 * MB, maxVideoBytes: 5 * GB, maxDocumentBytes: 100 * MB,
     },
     linkedin_page_post: {
         maxFiles: 10, acceptImages: true, acceptVideos: true, acceptDocuments: true,
         requiresMedia: false, acceptsGif: false, forbidsMixedMedia: true,
-        maxImageBytes: 5 * MB, maxVideoBytes: 5 * GB, maxVideoDurationSec: 10 * 60, maxDocumentBytes: 100 * MB,
+        maxImageBytes: 5 * MB, maxVideoBytes: 5 * GB, maxDocumentBytes: 100 * MB,
     },
 
     // TikTok
@@ -92,7 +98,7 @@ const CONTENT_TYPE_RULES: Record<string, MediaRules> = {
     youtube_short: {
         maxFiles: 1, acceptImages: false, acceptVideos: true, requiresMedia: true,
         acceptsGif: false,
-        maxVideoBytes: 256 * GB, maxVideoDurationSec: 3 * 60,
+        maxVideoBytes: 256 * GB,
         aspectRatioMin: 0.5, aspectRatioMax: 0.6,
     },
 
@@ -105,7 +111,7 @@ const CONTENT_TYPE_RULES: Record<string, MediaRules> = {
     pinterest_video_pin: {
         maxFiles: 1, acceptImages: false, acceptVideos: true, requiresMedia: true,
         acceptsGif: false,
-        maxVideoBytes: 2 * GB, maxVideoDurationSec: 15 * 60,
+        maxVideoBytes: 2 * GB,
     },
     pinterest_carousel: {
         maxFiles: 5, minFiles: 2, acceptImages: true, acceptVideos: false, requiresMedia: true,
@@ -117,14 +123,14 @@ const CONTENT_TYPE_RULES: Record<string, MediaRules> = {
     x_post: {
         maxFiles: 4, acceptImages: true, acceptVideos: true, requiresMedia: false,
         acceptsGif: true,
-        maxImageBytes: 5 * MB, maxVideoBytes: 512 * MB, maxVideoDurationSec: 140,
+        maxImageBytes: 5 * MB, maxVideoBytes: 512 * MB,
     },
 
     // Threads
     threads_post: {
         maxFiles: 10, acceptImages: true, acceptVideos: true, requiresMedia: false,
         acceptsGif: false,
-        maxImageBytes: 8 * MB, maxVideoBytes: 1 * GB, maxVideoDurationSec: 5 * 60,
+        maxImageBytes: 8 * MB, maxVideoBytes: 1 * GB,
     },
 
     // Bluesky — accepts GIF; tight image size (auto-resized by backend).
@@ -132,7 +138,7 @@ const CONTENT_TYPE_RULES: Record<string, MediaRules> = {
     bluesky_post: {
         maxFiles: 4, acceptImages: true, acceptVideos: true, requiresMedia: false,
         acceptsGif: true, forbidsMixedMedia: true,
-        maxVideoBytes: 100 * MB, maxVideoDurationSec: 60,
+        maxVideoBytes: 100 * MB,
     },
 
     // Mastodon — accepts GIF
@@ -151,9 +157,24 @@ const DEFAULT_RULES: MediaRules = {
     acceptsGif: true,
 };
 
-export function useMediaRules(contentType: Ref<string> | ComputedRef<string>) {
+const withSharedDuration = (contentType: string, rules: MediaRules): MediaRules => {
+    const maxVideoDurationSec = maxVideoDurationSecFor(contentType);
+
+    if (maxVideoDurationSec === undefined) {
+        return rules;
+    }
+
+    return {
+        ...rules,
+        maxVideoDurationSec,
+    };
+};
+
+export const useMediaRules = (contentType: Ref<string> | ComputedRef<string>) => {
     const rules = computed<MediaRules>(() => {
-        return CONTENT_TYPE_RULES[contentType.value] || DEFAULT_RULES;
+        const base = CONTENT_TYPE_RULES[contentType.value] || DEFAULT_RULES;
+
+        return withSharedDuration(contentType.value, base);
     });
 
     const acceptMimeTypes = computed<string>(() => {
@@ -214,8 +235,10 @@ export function useMediaRules(contentType: Ref<string> | ComputedRef<string>) {
         isValidFileType,
         getAcceptDescription,
     };
-}
+};
 
-export function getMediaRulesForContentType(contentType: string): MediaRules {
-    return CONTENT_TYPE_RULES[contentType] || DEFAULT_RULES;
-}
+export const getMediaRulesForContentType = (contentType: string): MediaRules => {
+    const base = CONTENT_TYPE_RULES[contentType] || DEFAULT_RULES;
+
+    return withSharedDuration(contentType, base);
+};

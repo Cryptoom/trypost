@@ -184,7 +184,8 @@ enum ContentType: string
      * platform publishes a hard cap via API. Null when unlimited, unknown,
      * or enforced dynamically (e.g. TikTok creator_info).
      *
-     * Mirrors resources/js/composables/useMediaRules.ts.
+     * Single source of truth for web (via Inertia shared props), REST API,
+     * and MCP content-type listings.
      */
     public function maxVideoDurationSec(): ?int
     {
@@ -203,6 +204,25 @@ enum ContentType: string
             self::BlueskyPost => 60,
             default => null,
         };
+    }
+
+    /**
+     * Media-rule fields the Vue editor needs. Shared once via Inertia so the
+     * frontend does not hardcode the same numbers.
+     *
+     * @return array<string, array{max_video_duration_sec: int|null}>
+     */
+    public static function mediaRulesForFrontend(): array
+    {
+        $rules = [];
+
+        foreach (self::cases() as $type) {
+            $rules[$type->value] = [
+                'max_video_duration_sec' => $type->maxVideoDurationSec(),
+            ];
+        }
+
+        return $rules;
     }
 
     public function supportsVideo(): bool
