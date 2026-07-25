@@ -154,6 +154,7 @@ return [
             'board' => 'Board',
             'select_board' => 'Select a board',
             'no_boards' => 'No Pinterest boards found. Create one in your Pinterest account first.',
+            'boards_truncated' => 'Some boards could not be loaded. If yours is missing, open Pinterest and try again.',
             'search_board' => 'Search boards...',
             'no_board_found' => 'No board matches your search.',
             'board_required' => 'Select a Pinterest board to publish this post.',

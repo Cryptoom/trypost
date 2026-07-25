@@ -154,6 +154,7 @@ return [
             'board' => '보드',
             'select_board' => '보드 선택',
             'no_boards' => 'Pinterest 보드를 찾을 수 없습니다. 먼저 Pinterest 계정에서 보드를 만드세요.',
+            'boards_truncated' => '일부 보드를 불러오지 못했습니다. 내 보드가 없다면 Pinterest를 연 뒤 다시 시도하세요.',
             'search_board' => '보드 검색...',
             'no_board_found' => '검색과 일치하는 보드가 없습니다.',
             'board_required' => '이 게시물을 게시할 Pinterest 보드를 선택하세요.',

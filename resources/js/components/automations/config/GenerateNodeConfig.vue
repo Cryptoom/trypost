@@ -13,7 +13,7 @@ import { Switch } from '@/components/ui/switch';
 import { useExpandedEditor } from '@/composables/useExpandedEditor';
 import { getMediaRulesForContentType } from '@/composables/useMediaRules';
 import { getMediaIncompatibilityReason, getPlatformMetaIssue } from '@/composables/usePostCompliance';
-import type { PinterestBoard } from '@/types';
+import type { PinterestBoard, PinterestBoardsPayload } from '@/types';
 import type { Channel } from '@/types/channel';
 import { ContentType } from '@/types/content-type';
 import type { MediaItem } from '@/types/media';
@@ -91,8 +91,8 @@ const platformConfigs = computed<Record<string, any>>(() => {
     return raw ?? {};
 });
 
-const pinterestBoards = computed<Record<string, PinterestBoard[]>>(() => {
-    const raw = page.props.pinterestBoards as Record<string, PinterestBoard[]> | undefined;
+const pinterestBoards = computed<Record<string, PinterestBoardsPayload>>(() => {
+    const raw = page.props.pinterestBoards as Record<string, PinterestBoardsPayload> | undefined;
     return raw ?? {};
 });
 
@@ -209,7 +209,10 @@ const getCreatorInfo = (account: SocialAccount): TikTokCreatorInfo | null =>
     tiktokCreatorInfos.value[account.id] ?? null;
 
 const getBoards = (account: SocialAccount): PinterestBoard[] =>
-    pinterestBoards.value[account.id] ?? [];
+    pinterestBoards.value[account.id]?.boards ?? [];
+
+const boardsTruncated = (account: SocialAccount): boolean =>
+    pinterestBoards.value[account.id]?.truncated ?? false;
 
 // Image-capability is derived from the SAME media rules the post editor uses
 // (per content type), never a hardcoded list — facebook_post, tiktok_photo,
@@ -279,6 +282,7 @@ const channels = computed<Channel[]>(() =>
             publishConfig: getPublishConfig(account),
             creatorInfo: getCreatorInfo(account),
             boards: getBoards(account),
+            boardsTruncated: boardsTruncated(account),
         };
     }),
 );

@@ -154,6 +154,7 @@ return [
             'board' => 'اللوحة',
             'select_board' => 'اختر لوحة',
             'no_boards' => 'لم يتم العثور على لوحات Pinterest. أنشئ واحدة في حسابك على Pinterest أولًا.',
+            'boards_truncated' => 'تعذر تحميل بعض اللوحات. إذا كانت لوحتك مفقودة، افتح Pinterest وحاول مرة أخرى.',
             'search_board' => 'البحث في اللوحات...',
             'no_board_found' => 'لا توجد لوحة مطابقة لبحثك.',
             'board_required' => 'اختر لوحة Pinterest لنشر هذا المنشور.',

@@ -116,6 +116,12 @@ export interface PinterestBoard {
     name: string;
 }
 
+/** Per-account payload from ListPinterestBoards (Inertia + API/MCP). */
+export interface PinterestBoardsPayload {
+    boards: PinterestBoard[];
+    truncated: boolean;
+}
+
 export interface ContentLanguageOption {
     value: string;
     label: string;

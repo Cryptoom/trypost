@@ -156,6 +156,7 @@ return [
             'board' => 'Pinnwand',
             'select_board' => 'Pinnwand auswählen',
             'no_boards' => 'Keine Pinterest-Pinnwände gefunden. Erstelle zuerst eine in deinem Pinterest-Konto.',
+            'boards_truncated' => 'Einige Pinnwände konnten nicht geladen werden. Fehlt deine, öffne Pinterest und versuche es erneut.',
             'search_board' => 'Pinnwände suchen...',
             'no_board_found' => 'Keine Pinnwand passt zu deiner Suche.',
             'board_required' => 'Wähle eine Pinterest-Pinnwand, um diesen Beitrag zu veröffentlichen.',

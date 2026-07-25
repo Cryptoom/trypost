@@ -39,6 +39,7 @@ interface Props {
     contentType: string;
     media: MediaItem[];
     boards: PinterestBoard[];
+    boardsTruncated?: boolean;
     meta: Record<string, any>;
     disabled?: boolean;
     previewOnly?: boolean;
@@ -47,6 +48,7 @@ interface Props {
 const props = withDefaults(defineProps<Props>(), {
     disabled: false,
     previewOnly: false,
+    boardsTruncated: false,
 });
 
 const emit = defineEmits<{
@@ -187,6 +189,13 @@ const boardError = computed<string | undefined>(() => {
                         </ComboboxList>
                     </Combobox>
                     <InputError :message="boardError" />
+                    <p
+                        v-if="boardsTruncated"
+                        class="flex items-start gap-2 rounded-lg border-2 border-foreground/30 bg-foreground/5 p-2 text-xs font-semibold text-foreground/60"
+                    >
+                        <IconAlertTriangle class="mt-0.5 size-3.5 shrink-0" />
+                        {{ $t('posts.form.pinterest.boards_truncated') }}
+                    </p>
                 </template>
             </div>
 

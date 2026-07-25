@@ -154,6 +154,7 @@ return [
             'board' => 'Tableau',
             'select_board' => 'Sélectionner un tableau',
             'no_boards' => 'Aucun tableau Pinterest trouvé. Créez-en un dans votre compte Pinterest d\'abord.',
+            'boards_truncated' => 'Certains tableaux n’ont pas pu être chargés. S’il manque le vôtre, ouvrez Pinterest et réessayez.',
             'search_board' => 'Rechercher des tableaux...',
             'no_board_found' => 'Aucun tableau ne correspond à votre recherche.',
             'board_required' => 'Sélectionnez un tableau Pinterest pour publier cette publication.',

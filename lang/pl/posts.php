@@ -154,6 +154,7 @@ return [
             'board' => 'Tablica',
             'select_board' => 'Wybierz tablicę',
             'no_boards' => 'Nie znaleziono tablic Pinterest. Najpierw utwórz jedną na swoim koncie Pinterest.',
+            'boards_truncated' => 'Nie udało się wczytać niektórych tablic. Jeśli brakuje twojej, otwórz Pinterest i spróbuj ponownie.',
             'search_board' => 'Szukaj tablic...',
             'no_board_found' => 'Brak tablic pasujących do wyszukiwania.',
             'board_required' => 'Wybierz tablicę Pinterest, aby opublikować ten post.',

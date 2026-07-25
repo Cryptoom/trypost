@@ -154,6 +154,7 @@ return [
             'board' => '图板',
             'select_board' => '选择一个图板',
             'no_boards' => '未找到 Pinterest 图板。请先在你的 Pinterest 账号中创建一个。',
+            'boards_truncated' => '部分图板未能加载。如果没有看到你的图板，请打开 Pinterest 后重试。',
             'search_board' => '搜索图板…',
             'no_board_found' => '没有与搜索匹配的图板。',
             'board_required' => '请选择一个 Pinterest 图板以发布此帖子。',
