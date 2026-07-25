@@ -408,5 +408,6 @@ return [
         'http_request_exception' => 'HTTP-запрос вызвал исключение.',
         'http_request_failed' => 'HTTP-запрос не удался.',
         'http_items_path_not_array' => 'Путь к элементам не привёл к списку.',
+        'generate_image_format_required' => 'ИИ генерирует только изображения. Выберите формат изображения (не видео).',
     ],
 ];

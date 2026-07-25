@@ -408,5 +408,6 @@ return [
         'http_request_exception' => 'The HTTP request threw an exception.',
         'http_request_failed' => 'The HTTP request failed.',
         'http_items_path_not_array' => 'The items path did not resolve to a list.',
+        'generate_image_format_required' => 'AI generate only creates images. Pick an image format (not video).',
     ],
 ];

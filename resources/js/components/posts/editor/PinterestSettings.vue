@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { IconAlertTriangle, IconChevronDown, IconChevronUp } from '@tabler/icons-vue';
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 
 import InputError from '@/components/InputError.vue';
 import { Avatar } from '@/components/ui/avatar';
@@ -17,6 +17,7 @@ import {
 import { getMediaValidationWarning } from '@/composables/useMedia';
 import { usePageErrors } from '@/composables/usePageErrors';
 import { getPlatformLogo } from '@/composables/usePlatformLogo';
+import { fallbackImageCapableVariant, filterImageCapableVariants } from '@/lib/aiGenerateVariants';
 import type { PinterestBoard } from '@/types';
 import { ContentType } from '@/types/content-type';
 import type { MediaItem } from '@/types/media';
@@ -58,11 +59,25 @@ const emit = defineEmits<{
 
 const open = ref(false);
 
-const variants = [
+const allVariants = [
     { value: ContentType.PinterestPin, labelKey: 'posts.form.pinterest.variant.pin' },
     { value: ContentType.PinterestVideoPin, labelKey: 'posts.form.pinterest.variant.video_pin' },
     { value: ContentType.PinterestCarousel, labelKey: 'posts.form.pinterest.variant.carousel' },
-];
+] as const;
+
+// Generate node only creates images — hide Video Pin there.
+const variants = computed(() => filterImageCapableVariants(allVariants, props.previewOnly));
+
+watch(
+    () => [props.previewOnly, props.contentType, variants.value] as const,
+    () => {
+        const fallback = fallbackImageCapableVariant(props.contentType, variants.value);
+        if (fallback) {
+            emit('update:contentType', fallback);
+        }
+    },
+    { immediate: true },
+);
 
 const pickVariant = (value: string) => {
     if (props.disabled) return;

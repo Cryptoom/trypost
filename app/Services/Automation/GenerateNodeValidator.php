@@ -54,12 +54,14 @@ final class GenerateNodeValidator
 
     private function issueForAccount(ContentType $contentType, int $imageCount): ?string
     {
-        if ($contentType->requiresMedia() && $imageCount === 0) {
-            return __('posts.edit.compliance.requires_media');
+        // Generate only produces images — video-only formats (Reel, Video Pin, …)
+        // can never be satisfied by this node.
+        if (! $contentType->supportsImage()) {
+            return __('automations.errors.generate_image_format_required');
         }
 
-        if ($imageCount > 0 && ! $contentType->supportsImage()) {
-            return __('posts.edit.compliance.no_images');
+        if ($contentType->requiresMedia() && $imageCount === 0) {
+            return __('posts.edit.compliance.requires_media');
         }
 
         $max = min(self::MAX_GENERATED_IMAGES, $contentType->maxMediaCount());

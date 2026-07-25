@@ -408,5 +408,6 @@ return [
         'http_request_exception' => 'La petición HTTP lanzó una excepción.',
         'http_request_failed' => 'La petición HTTP falló.',
         'http_items_path_not_array' => 'El items path no resolvió a una lista.',
+        'generate_image_format_required' => 'La generación con IA solo crea imágenes. Elige un formato de imagen (no vídeo).',
     ],
 ];

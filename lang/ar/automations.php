@@ -408,5 +408,6 @@ return [
         'http_request_exception' => 'أطلق طلب HTTP استثناءً.',
         'http_request_failed' => 'فشل طلب HTTP.',
         'http_items_path_not_array' => 'لم يُفضِ مسار العناصر إلى قائمة.',
+        'generate_image_format_required' => 'توليد الذكاء الاصطناعي ينشئ صورًا فقط. اختر تنسيق صورة (وليس فيديو).',
     ],
 ];

@@ -506,6 +506,7 @@ enum ContentType: string
             self::MastodonPost,
             self::FacebookPost,
             self::PinterestPin,
+            self::PinterestCarousel,
         ];
     }
 

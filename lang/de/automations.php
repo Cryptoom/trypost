@@ -408,5 +408,6 @@ return [
         'http_request_exception' => 'Die HTTP-Anfrage hat eine Ausnahme ausgelöst.',
         'http_request_failed' => 'Die HTTP-Anfrage ist fehlgeschlagen.',
         'http_items_path_not_array' => 'Der Pfad zu den Einträgen ergab keine Liste.',
+        'generate_image_format_required' => 'KI-Generierung erstellt nur Bilder. Wähle ein Bildformat (kein Video).',
     ],
 ];

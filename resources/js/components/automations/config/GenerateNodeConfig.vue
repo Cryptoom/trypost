@@ -113,7 +113,7 @@ const defaultContentTypeFor = (platform: string): string => {
         case Platform.LinkedInPage:
             return ContentType.LinkedInPagePost;
         case Platform.TikTok:
-            return ContentType.TikTokVideo;
+            return ContentType.TikTokPhoto;
         case Platform.Pinterest:
             return ContentType.PinterestPin;
         case Platform.YouTube:

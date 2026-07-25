@@ -408,5 +408,6 @@ return [
         'http_request_exception' => 'Het HTTP-verzoek gaf een uitzondering.',
         'http_request_failed' => 'Het HTTP-verzoek is mislukt.',
         'http_items_path_not_array' => 'Het itempad verwees niet naar een lijst.',
+        'generate_image_format_required' => 'AI-generatie maakt alleen afbeeldingen. Kies een afbeeldingsformaat (geen video).',
     ],
 ];

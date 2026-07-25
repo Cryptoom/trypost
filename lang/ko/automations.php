@@ -408,5 +408,6 @@ return [
         'http_request_exception' => 'HTTP 요청에서 예외가 발생했습니다.',
         'http_request_failed' => 'HTTP 요청이 실패했습니다.',
         'http_items_path_not_array' => '항목 경로가 목록으로 해석되지 않았습니다.',
+        'generate_image_format_required' => 'AI 생성은 이미지만 만듭니다. 이미지 형식을 선택하세요(동영상 불가).',
     ],
 ];
