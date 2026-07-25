@@ -28,14 +28,9 @@ class SocialAccountController extends Controller
         return SocialAccountResource::collection($accounts);
     }
 
-    public function toggle(Request $request, SocialAccount $account): SocialAccountResource|JsonResponse
+    public function toggle(Request $request, SocialAccount $account): SocialAccountResource
     {
-        if ($account->workspace_id !== $request->user()->currentWorkspace->id) {
-            return response()->json(
-                ['message' => 'Account not found.'],
-                Response::HTTP_NOT_FOUND,
-            );
-        }
+        $this->authorize('view', $account);
 
         ToggleSocialAccount::execute($account);
 
@@ -44,12 +39,7 @@ class SocialAccountController extends Controller
 
     public function boards(Request $request, SocialAccount $account): JsonResponse
     {
-        if ($account->workspace_id !== $request->user()->currentWorkspace->id) {
-            return response()->json(
-                ['message' => 'Account not found.'],
-                Response::HTTP_NOT_FOUND,
-            );
-        }
+        $this->authorize('view', $account);
 
         if ($account->platform !== Platform::Pinterest) {
             return response()->json(
@@ -77,12 +67,7 @@ class SocialAccountController extends Controller
 
     public function channels(Request $request, SocialAccount $account): JsonResponse
     {
-        if ($account->workspace_id !== $request->user()->currentWorkspace->id) {
-            return response()->json(
-                ['message' => 'Account not found.'],
-                Response::HTTP_NOT_FOUND,
-            );
-        }
+        $this->authorize('view', $account);
 
         if ($account->platform !== Platform::Discord) {
             return response()->json(
