@@ -167,7 +167,7 @@ class AppServiceProvider extends ServiceProvider
 
             return [
                 Limit::perMinute(60)->by('workspace:'.$workspaceId),
-                Limit::perMinute(600)->by('ip:'.$request->ip()),
+                Limit::perMinute(1200)->by('ip:'.$request->ip()),
             ];
         });
     }
