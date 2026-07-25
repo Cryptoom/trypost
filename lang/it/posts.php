@@ -154,6 +154,7 @@ return [
             'board' => 'Bacheca',
             'select_board' => 'Seleziona una bacheca',
             'no_boards' => 'Nessuna bacheca Pinterest trovata. Creane una nel tuo account Pinterest prima.',
+            'boards_truncated' => 'Alcune bacheche non sono state caricate. Se manca la tua, apri Pinterest e riprova.',
             'search_board' => 'Cerca bacheche...',
             'no_board_found' => 'Nessuna bacheca corrisponde alla ricerca.',
             'board_required' => 'Seleziona una bacheca Pinterest per pubblicare questo post.',
@@ -464,7 +465,7 @@ return [
         ],
         'instagram_reel' => [
             'label' => 'Reel',
-            'description' => 'Video breve fino a 90 secondi',
+            'description' => 'Video breve fino a 15 minuti',
         ],
         'instagram_story' => [
             'label' => 'Storia',

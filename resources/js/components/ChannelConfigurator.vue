@@ -153,6 +153,7 @@ const selectedChannels = computed(() => props.channels.filter((channel) => isSel
                 :content-type="channel.contentType"
                 :media="media"
                 :boards="channel.boards ?? []"
+                :boards-truncated="channel.boardsTruncated ?? false"
                 :meta="channel.meta"
                 :disabled="disabled"
                 :preview-only="previewOnly"

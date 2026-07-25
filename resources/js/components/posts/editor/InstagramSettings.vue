@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { IconAlertTriangle, IconChevronDown, IconChevronUp } from '@tabler/icons-vue';
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 
 import { Avatar } from '@/components/ui/avatar';
 import { getMediaValidationWarning } from '@/composables/useMedia';
 import { getPlatformLogo } from '@/composables/usePlatformLogo';
+import { fallbackImageCapableVariant, filterImageCapableVariants } from '@/lib/aiGenerateVariants';
 import { ContentType } from '@/types/content-type';
 import type { MediaItem } from '@/types/media';
 
@@ -38,11 +39,24 @@ const emit = defineEmits<{
 
 const open = ref(false);
 
-const variants = [
+const allVariants = [
     { value: ContentType.InstagramFeed, labelKey: 'posts.form.instagram.variant.feed' },
     { value: ContentType.InstagramReel, labelKey: 'posts.form.instagram.variant.reel' },
     { value: ContentType.InstagramStory, labelKey: 'posts.form.instagram.variant.story' },
-];
+] as const;
+
+const variants = computed(() => filterImageCapableVariants(allVariants, props.previewOnly));
+
+watch(
+    () => [props.previewOnly, props.contentType, variants.value] as const,
+    () => {
+        const fallback = fallbackImageCapableVariant(props.contentType, variants.value);
+        if (fallback) {
+            emit('update:contentType', fallback);
+        }
+    },
+    { immediate: true },
+);
 
 const aspectRatios = [
     { value: '1:1', labelKey: 'posts.form.instagram.aspect.square' },

@@ -25,7 +25,7 @@ import dayjs from '@/dayjs';
 import debounce from '@/debounce';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { destroy as destroyPost, update as updatePost } from '@/routes/app/posts';
-import type { PinterestBoard } from '@/types';
+import type { PinterestBoardsPayload } from '@/types';
 import type { MediaItem } from '@/types/media';
 import { PostStatus } from '@/types/post';
 
@@ -86,7 +86,7 @@ const props = defineProps<{
     post: Post;
     socialAccounts: SocialAccount[];
     platformConfigs: Record<string, any>;
-    pinterestBoards: Record<string, PinterestBoard[]>;
+    pinterestBoards: Record<string, PinterestBoardsPayload>;
     tiktokCreatorInfos?: Record<string, TikTokCreatorInfo> | null;
     labels: { id: string; name: string; color: string }[];
     signatures: { id: string; name: string; content: string }[];

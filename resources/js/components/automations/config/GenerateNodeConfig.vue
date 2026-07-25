@@ -13,7 +13,7 @@ import { Switch } from '@/components/ui/switch';
 import { useExpandedEditor } from '@/composables/useExpandedEditor';
 import { getMediaRulesForContentType } from '@/composables/useMediaRules';
 import { getMediaIncompatibilityReason, getPlatformMetaIssue } from '@/composables/usePostCompliance';
-import type { PinterestBoard } from '@/types';
+import type { PinterestBoard, PinterestBoardsPayload } from '@/types';
 import type { Channel } from '@/types/channel';
 import { ContentType } from '@/types/content-type';
 import type { MediaItem } from '@/types/media';
@@ -91,8 +91,8 @@ const platformConfigs = computed<Record<string, any>>(() => {
     return raw ?? {};
 });
 
-const pinterestBoards = computed<Record<string, PinterestBoard[]>>(() => {
-    const raw = page.props.pinterestBoards as Record<string, PinterestBoard[]> | undefined;
+const pinterestBoards = computed<Record<string, PinterestBoardsPayload>>(() => {
+    const raw = page.props.pinterestBoards as Record<string, PinterestBoardsPayload> | undefined;
     return raw ?? {};
 });
 
@@ -113,7 +113,7 @@ const defaultContentTypeFor = (platform: string): string => {
         case Platform.LinkedInPage:
             return ContentType.LinkedInPagePost;
         case Platform.TikTok:
-            return ContentType.TikTokVideo;
+            return ContentType.TikTokPhoto;
         case Platform.Pinterest:
             return ContentType.PinterestPin;
         case Platform.YouTube:
@@ -209,7 +209,10 @@ const getCreatorInfo = (account: SocialAccount): TikTokCreatorInfo | null =>
     tiktokCreatorInfos.value[account.id] ?? null;
 
 const getBoards = (account: SocialAccount): PinterestBoard[] =>
-    pinterestBoards.value[account.id] ?? [];
+    pinterestBoards.value[account.id]?.boards ?? [];
+
+const boardsTruncated = (account: SocialAccount): boolean =>
+    pinterestBoards.value[account.id]?.truncated ?? false;
 
 // Image-capability is derived from the SAME media rules the post editor uses
 // (per content type), never a hardcoded list — facebook_post, tiktok_photo,
@@ -229,10 +232,31 @@ const imageCountCap = computed(() =>
     ),
 );
 
-// Single picker: 0 = no image (text-only), 1 = single image, 2+ = carousel.
-const imageCountOptions = computed(() =>
-    Array.from({ length: imageCountCap.value + 1 }, (_, i) => i),
+// Floor at requiresMedia (1) or content-type minFiles (e.g. Pinterest carousel = 2)
+// — otherwise the empty-accounts clamp to 0 sticks after selecting them and
+// surfaces a false "add an image" compliance error / under-min carousel.
+const minImageCount = computed(() =>
+    local.value.accounts.reduce((floor, a) => {
+        const rules = getMediaRulesForContentType(a.content_type);
+        let accountMin = 0;
+        if (rules.requiresMedia) {
+            accountMin = Math.max(accountMin, 1);
+        }
+        if (rules.minFiles) {
+            accountMin = Math.max(accountMin, rules.minFiles);
+        }
+        return Math.max(floor, accountMin);
+    }, 0),
 );
+
+// Single picker: 0 = no image (text-only), 1 = single image, 2+ = carousel.
+// Option 0 is omitted when a media-required account is selected.
+const imageCountOptions = computed(() => {
+    const min = Math.min(minImageCount.value, imageCountCap.value);
+    const max = imageCountCap.value;
+
+    return Array.from({ length: Math.max(0, max - min + 1) }, (_, i) => i + min);
+});
 
 const intendedImageCount = computed(() => local.value.target_slide_count);
 
@@ -251,13 +275,22 @@ const accountIssue = (accountId: string): string | null => {
     return account ? getPlatformMetaIssue(account.platform, entry.meta) : null;
 };
 
-// Clamp the chosen count to what the selected accounts actually allow — runs on
-// mount too so legacy/over-cap values (or text-only accounts → 0) self-correct.
+// Clamp the chosen count into [min, cap] for the current selection. Skip while
+// no accounts are selected so the default of 1 is preserved until the user
+// picks a destination (avoids clamp-to-0 → select Pinterest → stuck at 0).
 watch(
-    imageCountCap,
-    (cap) => {
+    [imageCountCap, minImageCount, () => local.value.accounts.length],
+    ([cap, min, accountCount]) => {
+        if (accountCount === 0) {
+            return;
+        }
+
         if (local.value.target_slide_count > cap) {
             local.value.target_slide_count = cap;
+        }
+
+        if (local.value.target_slide_count < min) {
+            local.value.target_slide_count = Math.min(min, cap);
         }
     },
     { immediate: true },
@@ -279,6 +312,7 @@ const channels = computed<Channel[]>(() =>
             publishConfig: getPublishConfig(account),
             creatorInfo: getCreatorInfo(account),
             boards: getBoards(account),
+            boardsTruncated: boardsTruncated(account),
         };
     }),
 );

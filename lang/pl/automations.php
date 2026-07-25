@@ -408,5 +408,6 @@ return [
         'http_request_exception' => 'Żądanie HTTP zgłosiło wyjątek.',
         'http_request_failed' => 'Żądanie HTTP nie powiodło się.',
         'http_items_path_not_array' => 'Ścieżka do elementów nie zwróciła listy.',
+        'generate_image_format_required' => 'Generowanie AI tworzy tylko obrazy. Wybierz format obrazu (nie wideo).',
     ],
 ];

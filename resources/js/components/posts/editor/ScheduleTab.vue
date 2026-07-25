@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { usePageErrors } from '@/composables/usePageErrors';
 import { getPlatformLogo } from '@/composables/usePlatformLogo';
 import { isVideo } from '@/lib/mediaType';
-import type { PinterestBoard } from '@/types';
+import type { PinterestBoard, PinterestBoardsPayload } from '@/types';
 import type { Channel } from '@/types/channel';
 import type { MediaItem } from '@/types/media';
 import { PostPlatformStatus } from '@/types/post';
@@ -77,7 +77,7 @@ const props = defineProps<{
     platformContentTypes: Record<string, string>;
     platformIssues?: Record<string, string>;
     tiktokCreatorInfos?: Record<string, TikTokCreatorInfo> | null;
-    pinterestBoards?: Record<string, PinterestBoard[]> | null;
+    pinterestBoards?: Record<string, PinterestBoardsPayload> | null;
     media?: MediaItem[];
 }>();
 
@@ -94,8 +94,14 @@ const getPublishConfig = (pp: PostPlatform): Record<string, any> | null =>
 const getCreatorInfo = (pp: PostPlatform): TikTokCreatorInfo | null =>
     pp.social_account_id ? props.tiktokCreatorInfos?.[pp.social_account_id] ?? null : null;
 
-const getBoards = (pp: PostPlatform): PinterestBoard[] =>
-    pp.social_account_id ? props.pinterestBoards?.[pp.social_account_id] ?? [] : [];
+const boardsPayload = (pp: PostPlatform): PinterestBoardsPayload =>
+    pp.social_account_id
+        ? props.pinterestBoards?.[pp.social_account_id] ?? { boards: [], truncated: false }
+        : { boards: [], truncated: false };
+
+const getBoards = (pp: PostPlatform): PinterestBoard[] => boardsPayload(pp).boards;
+
+const boardsTruncated = (pp: PostPlatform): boolean => boardsPayload(pp).truncated;
 
 const videoDurationSec = computed(() => {
     const video = props.media?.find((m) => isVideo(m));
@@ -143,6 +149,7 @@ const channels = computed<Channel[]>(() =>
         publishConfig: getPublishConfig(pp),
         creatorInfo: getCreatorInfo(pp),
         boards: getBoards(pp),
+        boardsTruncated: boardsTruncated(pp),
     })),
 );
 </script>

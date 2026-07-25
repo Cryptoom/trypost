@@ -4,6 +4,8 @@ import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import { createSSRApp, DefineComponent, h } from 'vue';
 import { renderToString } from 'vue/server-renderer';
 
+import { syncContentTypeMediaRules } from './lib/contentTypeMediaRules';
+
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
 
 createServer(
@@ -17,8 +19,11 @@ createServer(
                     `./pages/${name}.vue`,
                     import.meta.glob<DefineComponent>('./pages/**/*.vue'),
                 ),
-            setup: ({ App, props, plugin }) =>
-                createSSRApp({ render: () => h(App, props) }).use(plugin),
+            setup: ({ App, props, plugin }) => {
+                syncContentTypeMediaRules(props.initialPage);
+
+                return createSSRApp({ render: () => h(App, props) }).use(plugin);
+            },
         }),
     { cluster: true },
 );

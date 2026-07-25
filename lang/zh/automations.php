@@ -408,5 +408,6 @@ return [
         'http_request_exception' => 'HTTP 请求抛出了异常。',
         'http_request_failed' => 'HTTP 请求失败。',
         'http_items_path_not_array' => '条目路径未解析为列表。',
+        'generate_image_format_required' => 'AI 生成仅创建图片。请选择图片格式（不支持视频）。',
     ],
 ];

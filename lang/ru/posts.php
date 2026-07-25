@@ -154,6 +154,7 @@ return [
             'board' => 'Доска',
             'select_board' => 'Выберите доску',
             'no_boards' => 'Доски Pinterest не найдены. Сначала создайте доску в своём аккаунте Pinterest.',
+            'boards_truncated' => 'Некоторые доски не удалось загрузить. Если вашей нет, откройте Pinterest и попробуйте снова.',
             'search_board' => 'Поиск досок...',
             'no_board_found' => 'Нет досок по вашему запросу.',
             'board_required' => 'Выберите доску Pinterest, чтобы опубликовать этот пост.',
@@ -464,7 +465,7 @@ return [
         ],
         'instagram_reel' => [
             'label' => 'Reels',
-            'description' => 'Короткое видео до 90 секунд',
+            'description' => 'Короткое видео до 15 минут',
         ],
         'instagram_story' => [
             'label' => 'История',

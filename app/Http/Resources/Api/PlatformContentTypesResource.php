@@ -36,13 +36,7 @@ class PlatformContentTypesResource extends JsonResource
             ),
             'default_content_type' => ContentType::defaultFor($platform)->value,
             'content_types' => array_map(
-                fn (ContentType $type) => [
-                    'value' => $type->value,
-                    'label' => $type->label(),
-                    'description' => $type->description(),
-                    'max_media_count' => $type->maxMediaCount(),
-                    'requires_media' => $type->requiresMedia(),
-                ],
+                fn (ContentType $type) => $type->toListingArray(),
                 array_values(ContentType::forPlatform($platform)),
             ),
         ];

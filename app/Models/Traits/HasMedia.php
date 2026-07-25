@@ -16,6 +16,7 @@ use Illuminate\Support\Str;
 use Intervention\Image\Drivers\Gd\Driver;
 use Intervention\Image\Encoders\JpegEncoder;
 use Intervention\Image\ImageManager;
+use InvalidArgumentException;
 use RuntimeException;
 
 trait HasMedia
@@ -109,13 +110,21 @@ trait HasMedia
      * Add media from a file path (used for chunked uploads).
      * Images are normalized in memory; videos/PDFs are streamed to storage.
      */
-    public function addMediaFromPath(string $filePath, string $originalFilename, string $collection = 'default', array $meta = [], ?string $groupId = null): Media
+    public function addMediaFromPath(string $filePath, string $originalFilename, string $collection = 'default', array $meta = [], ?string $groupId = null, ?string $mimeType = null): Media
     {
         if ($this->isSingleMediaCollection($collection)) {
             $this->clearMediaCollection($collection);
         }
 
-        $mimeType = mime_content_type($filePath);
+        // Prefer an explicit MIME (e.g. from UploadedFile after FormRequest
+        // validation) — mime_content_type() misclassifies empty test fakes and
+        // some freshly written temps as application/x-empty.
+        $mimeType ??= mime_content_type($filePath) ?: null;
+
+        if ($mimeType === null) {
+            throw new InvalidArgumentException("Unable to determine MIME type for media file: {$filePath}");
+        }
+
         $type = $this->getMediaType($mimeType);
         $extension = pathinfo($originalFilename, PATHINFO_EXTENSION);
 
@@ -239,7 +248,7 @@ trait HasMedia
     private function getMediaType(string $mimeType): string
     {
         return (Type::classify($mimeType)
-            ?? throw new \InvalidArgumentException("Unsupported media MIME type: {$mimeType}"))->value;
+            ?? throw new InvalidArgumentException("Unsupported media MIME type: {$mimeType}"))->value;
     }
 
     private function getMediaMeta(UploadedFile $file, string $type): array

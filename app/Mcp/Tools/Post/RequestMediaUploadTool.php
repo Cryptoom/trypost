@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Mcp\Tools\Post;
 
+use App\Enums\Media\Type as MediaType;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Illuminate\Support\Facades\URL;
@@ -14,7 +15,7 @@ use Laravel\Mcp\ResponseFactory;
 use Laravel\Mcp\Server\Attributes\Description;
 use Laravel\Mcp\Server\Tool;
 
-#[Description('Issue a one-shot signed POST URL that lets the user upload a local file (image, video, or PDF document, up to the workspace upload cap — 50 MB by default) directly to this workspace. Returns an upload_token and upload_url. Hand the URL to the user (e.g. as a curl command with `-F media=@path/to/file`) or to the MCP client. After upload, call AttachMediaFromUploadTool(post_id, upload_token) to attach the result to a post.')]
+#[Description('Issue a one-shot signed POST URL that lets the user upload a local file (image, video, or PDF document) directly to this workspace. Size caps match web/API media limits — see max_bytes_by_type (max_bytes is the overall ceiling, equal to the video cap). Returns an upload_token, upload_url, max_bytes, and max_bytes_by_type. Hand the URL to the user (e.g. as a curl command with `-F media=@path/to/file`) or to the MCP client. After upload, call AttachMediaFromUploadTool(post_id, upload_token) to attach the result to a post.')]
 class RequestMediaUploadTool extends Tool
 {
     public function handle(Request $request): Response|ResponseFactory
@@ -22,8 +23,7 @@ class RequestMediaUploadTool extends Tool
         $user = $request->user();
         $workspaceId = $user->current_workspace_id;
 
-        $maxBytes = (int) config('ai.mcp.upload.max_size_mb') * 1024 * 1024;
-        $ttlMinutes = (int) config('ai.mcp.upload.url_ttl_minutes');
+        $ttlMinutes = (int) config('trypost.media.signed_upload_url_ttl_minutes');
 
         $token = (string) Str::uuid();
         $expiresAt = CarbonImmutable::now()->addMinutes($ttlMinutes);
@@ -38,7 +38,12 @@ class RequestMediaUploadTool extends Tool
             'upload_token' => $token,
             'upload_url' => $uploadUrl,
             'expires_at' => $expiresAt->toIso8601String(),
-            'max_bytes' => $maxBytes,
+            'max_bytes' => MediaType::Video->maxSizeInBytes(),
+            'max_bytes_by_type' => [
+                'image' => MediaType::Image->maxSizeInBytes(),
+                'video' => MediaType::Video->maxSizeInBytes(),
+                'document' => MediaType::Document->maxSizeInBytes(),
+            ],
             'field_name' => 'media',
         ]);
     }

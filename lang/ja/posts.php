@@ -154,6 +154,7 @@ return [
             'board' => 'ボード',
             'select_board' => 'ボードを選択',
             'no_boards' => 'Pinterest ボードが見つかりません。先に Pinterest アカウントで作成してください。',
+            'boards_truncated' => '一部のボードを読み込めませんでした。見つからない場合は Pinterest を開いて再試行してください。',
             'search_board' => 'ボードを検索...',
             'no_board_found' => '検索に一致するボードがありません。',
             'board_required' => 'この投稿を公開する Pinterest ボードを選択してください。',
@@ -464,7 +465,7 @@ return [
         ],
         'instagram_reel' => [
             'label' => 'リール',
-            'description' => '最大 90 秒のショート動画',
+            'description' => '最大 15 分のショート動画',
         ],
         'instagram_story' => [
             'label' => 'ストーリー',

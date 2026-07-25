@@ -154,6 +154,7 @@ return [
             'board' => 'Bord',
             'select_board' => 'Selecteer een bord',
             'no_boards' => 'Geen Pinterest-borden gevonden. Maak er eerst een aan in je Pinterest-account.',
+            'boards_truncated' => 'Sommige borden konden niet worden geladen. Ontbreekt die van jou, open Pinterest en probeer opnieuw.',
             'search_board' => 'Borden zoeken...',
             'no_board_found' => 'Geen bord komt overeen met je zoekopdracht.',
             'board_required' => 'Selecteer een Pinterest-bord om deze post te publiceren.',
@@ -464,7 +465,7 @@ return [
         ],
         'instagram_reel' => [
             'label' => 'Reel',
-            'description' => 'Korte video tot 90 seconden',
+            'description' => 'Korte video tot 15 minuten',
         ],
         'instagram_story' => [
             'label' => 'Story',

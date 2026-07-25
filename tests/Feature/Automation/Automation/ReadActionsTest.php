@@ -135,7 +135,10 @@ it('returns only active social accounts for the automation workspace', function 
 });
 
 it('maps pinterest boards for pinterest accounts', function () {
-    $this->mock(PinterestPublisher::class, fn ($mock) => $mock->shouldReceive('getBoards')->andReturn([['id' => 'b1']]));
+    $this->mock(PinterestPublisher::class, fn ($mock) => $mock->shouldReceive('getBoards')->andReturn([
+        'boards' => [['id' => 'b1', 'name' => 'Ideas']],
+        'truncated' => true,
+    ]));
     $this->mock(TikTokCreatorInfo::class);
 
     $workspace = Workspace::factory()->create();
@@ -144,5 +147,8 @@ it('maps pinterest boards for pinterest accounts', function () {
 
     $result = app(GetAutomationEditorData::class)($automation);
 
-    expect($result['pinterestBoards']->get($pinterest->id))->toBe([['id' => 'b1']]);
+    expect($result['pinterestBoards']->get($pinterest->id))->toBe([
+        'boards' => [['id' => 'b1', 'name' => 'Ideas']],
+        'truncated' => true,
+    ]);
 });

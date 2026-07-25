@@ -156,6 +156,7 @@ return [
             'board' => 'Pano',
             'select_board' => 'Bir pano seçin',
             'no_boards' => 'Pinterest panosu bulunamadı. Önce Pinterest hesabınızda bir tane oluşturun.',
+            'boards_truncated' => 'Bazı panolar yüklenemedi. Sizinki eksikse Pinterest’i açıp tekrar deneyin.',
             'search_board' => 'Pano ara...',
             'no_board_found' => 'Aramanızla eşleşen pano yok.',
             'board_required' => 'Bu gönderiyi yayınlamak için bir Pinterest panosu seçin.',
@@ -466,7 +467,7 @@ return [
         ],
         'instagram_reel' => [
             'label' => 'Reel',
-            'description' => '90 saniyeye kadar kısa video',
+            'description' => '15 dakikaya kadar kısa video',
         ],
         'instagram_story' => [
             'label' => 'Hikaye',

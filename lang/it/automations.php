@@ -408,5 +408,6 @@ return [
         'http_request_exception' => 'La richiesta HTTP ha generato un\'eccezione.',
         'http_request_failed' => 'La richiesta HTTP non è riuscita.',
         'http_items_path_not_array' => 'Il percorso degli elementi non ha restituito un elenco.',
+        'generate_image_format_required' => 'La generazione AI crea solo immagini. Scegli un formato immagine (non video).',
     ],
 ];

@@ -405,7 +405,10 @@ class PinterestPublisher
     }
 
     /**
-     * Get user's boards for board selection.
+     * Get user's boards for board selection (follows Pinterest bookmark pagination
+     * until the API stops returning a bookmark).
+     *
+     * @return array{boards: list<array<string, mixed>>, truncated: bool}
      */
     public function getBoards(SocialAccount $account): array
     {
@@ -413,17 +416,72 @@ class PinterestPublisher
             app(ConnectionVerifier::class)->refreshToken($account);
         }
 
-        $response = $this->socialHttp()->withToken($account->access_token)
-            ->get($this->baseUrl.'/boards', [
-                'page_size' => 100,
-            ]);
+        $boards = [];
+        $bookmark = null;
+        $pages = 0;
+        $truncated = false;
+        // Absurd ceiling only — normal accounts exit when bookmark is blank.
+        $maxPages = 1000;
 
-        if ($response->failed()) {
-            Log::error('Pinterest get boards failed', ['body' => $this->redactResponseBody($response->body())]);
-            $this->handleApiError($response);
+        while (true) {
+            $pages++;
+
+            if ($pages > $maxPages) {
+                Log::warning('Pinterest get boards hit safety page cap', [
+                    'account_id' => $account->id,
+                    'pages' => $pages,
+                    'boards' => count($boards),
+                ]);
+                $truncated = true;
+
+                break;
+            }
+
+            $query = ['page_size' => 100];
+
+            if (filled($bookmark)) {
+                $query['bookmark'] = $bookmark;
+            }
+
+            $response = $this->socialHttp()->withToken($account->access_token)
+                ->get($this->baseUrl.'/boards', $query);
+
+            if ($response->failed()) {
+                Log::error('Pinterest get boards failed', ['body' => $this->redactResponseBody($response->body())]);
+                $this->handleApiError($response);
+            }
+
+            $payload = $response->json() ?? [];
+            $items = data_get($payload, 'items', []);
+
+            if (is_array($items) && $items !== []) {
+                array_push($boards, ...$items);
+            }
+
+            $nextBookmark = data_get($payload, 'bookmark');
+
+            if (blank($nextBookmark)) {
+                break;
+            }
+
+            if ($nextBookmark === $bookmark) {
+                Log::warning('Pinterest get boards returned a repeated bookmark', [
+                    'account_id' => $account->id,
+                    'pages' => $pages,
+                    'boards' => count($boards),
+                ]);
+                $truncated = true;
+
+                break;
+            }
+
+            $bookmark = $nextBookmark;
         }
 
-        return $response->json()['items'] ?? [];
+        return [
+            'boards' => $boards,
+            'truncated' => $truncated,
+        ];
     }
 
     private function handleApiError(Response $response): never

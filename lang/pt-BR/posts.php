@@ -154,6 +154,7 @@ return [
             'board' => 'Quadro',
             'select_board' => 'Selecione um quadro',
             'no_boards' => 'Nenhum quadro do Pinterest encontrado. Crie um na sua conta do Pinterest primeiro.',
+            'boards_truncated' => 'Alguns boards não puderam ser carregados. Se o seu não aparecer, abra o Pinterest e tente de novo.',
             'search_board' => 'Pesquisar quadros...',
             'no_board_found' => 'Nenhum quadro encontrado.',
             'board_required' => 'Selecione um quadro do Pinterest para publicar este post.',
@@ -464,7 +465,7 @@ return [
         ],
         'instagram_reel' => [
             'label' => 'Reels',
-            'description' => 'Vídeo curto de até 90 segundos',
+            'description' => 'Vídeo curto de até 15 minutos',
         ],
         'instagram_story' => [
             'label' => 'Story',

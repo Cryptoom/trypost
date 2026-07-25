@@ -27,6 +27,8 @@ use App\Mcp\Tools\Signature\CreateSignatureTool;
 use App\Mcp\Tools\Signature\DeleteSignatureTool;
 use App\Mcp\Tools\Signature\ListSignaturesTool;
 use App\Mcp\Tools\Signature\UpdateSignatureTool;
+use App\Mcp\Tools\SocialAccount\ListDiscordChannelsTool;
+use App\Mcp\Tools\SocialAccount\ListPinterestBoardsTool;
 use App\Mcp\Tools\SocialAccount\ListSocialAccountsTool;
 use App\Mcp\Tools\SocialAccount\ToggleSocialAccountTool;
 use App\Mcp\Tools\Workspace\GetWorkspaceTool;
@@ -73,6 +75,8 @@ class TryPostServer extends Server
 
         // Social Accounts
         ListSocialAccountsTool::class,
+        ListPinterestBoardsTool::class,
+        ListDiscordChannelsTool::class,
         ToggleSocialAccountTool::class,
 
         // Workspace

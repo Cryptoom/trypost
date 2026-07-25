@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Enums\PostPlatform;
 
+use App\Enums\Media\Type as MediaType;
 use App\Enums\SocialAccount\Platform as SocialPlatform;
 
 enum ContentType: string
@@ -179,6 +180,267 @@ enum ContentType: string
         };
     }
 
+    /**
+     * Maximum video duration in seconds for this content type, when the
+     * platform publishes a hard cap via API. Null when unlimited, unknown,
+     * or enforced dynamically (e.g. TikTok creator_info).
+     *
+     * Single source of truth for web (via Inertia shared props), REST API,
+     * and MCP content-type listings.
+     */
+    public function maxVideoDurationSec(): ?int
+    {
+        return match ($this) {
+            self::InstagramFeed => 60,
+            self::InstagramReel => 15 * 60,
+            self::InstagramStory => 60,
+            self::FacebookPost => 240 * 60,
+            self::FacebookReel => 90,
+            self::FacebookStory => 60,
+            self::LinkedInPost, self::LinkedInPagePost => 10 * 60,
+            self::YouTubeShort => 3 * 60,
+            self::PinterestVideoPin => 15 * 60,
+            self::XPost => 140,
+            self::ThreadsPost => 5 * 60,
+            self::BlueskyPost => 60,
+            default => null,
+        };
+    }
+
+    /**
+     * Minimum attachments required (0 = no floor beyond requiresMedia()).
+     */
+    public function minMediaCount(): int
+    {
+        return match ($this) {
+            self::PinterestCarousel => 2,
+            self::TikTokPhoto => 1,
+            default => 0,
+        };
+    }
+
+    /**
+     * Whether animated GIFs are accepted (kept as GIF, not flattened to JPEG).
+     */
+    public function acceptsGif(): bool
+    {
+        return match ($this) {
+            self::XPost, self::BlueskyPost, self::MastodonPost,
+            self::DiscordMessage, self::TelegramPost => true,
+            default => false,
+        };
+    }
+
+    /**
+     * Per-type image size cap in bytes, capped at the global upload hard limit
+     * (trypost.media.max_size_mb.image). Null when images are not accepted or
+     * the platform has no tighter editor-side limit than that hard cap.
+     */
+    public function maxImageBytes(): ?int
+    {
+        $bytes = match ($this) {
+            self::InstagramFeed, self::InstagramStory => self::bytesFromMb(8),
+            self::FacebookPost => self::bytesFromMb(4),
+            self::LinkedInPost, self::LinkedInPagePost => self::bytesFromMb(5),
+            self::PinterestPin, self::PinterestCarousel => self::bytesFromMb(20),
+            self::XPost => self::bytesFromMb(5),
+            self::ThreadsPost => self::bytesFromMb(8),
+            self::MastodonPost => self::bytesFromMb(10),
+            default => null,
+        };
+
+        return self::capToHardLimit($bytes, MediaType::Image);
+    }
+
+    /**
+     * Per-type video size cap in bytes, capped at the global upload hard limit
+     * (trypost.media.max_size_mb.video). Null when videos are not accepted or
+     * the platform has no tighter editor-side limit than that hard cap.
+     */
+    public function maxVideoBytes(): ?int
+    {
+        $bytes = match ($this) {
+            self::InstagramFeed, self::InstagramStory => self::bytesFromMb(100),
+            self::InstagramReel => self::bytesFromGb(1),
+            self::FacebookPost => self::bytesFromGb(10),
+            self::FacebookReel, self::FacebookStory => self::bytesFromGb(1),
+            self::LinkedInPost, self::LinkedInPagePost => self::bytesFromGb(5),
+            self::YouTubeShort => self::bytesFromGb(256),
+            self::PinterestVideoPin => self::bytesFromGb(2),
+            self::XPost => self::bytesFromMb(512),
+            self::ThreadsPost => self::bytesFromGb(1),
+            self::BlueskyPost => self::bytesFromMb(100),
+            self::MastodonPost => self::bytesFromMb(40),
+            default => null,
+        };
+
+        return self::capToHardLimit($bytes, MediaType::Video);
+    }
+
+    /**
+     * Per-type PDF size cap in bytes, capped at the global upload hard limit.
+     * Null when documents are not accepted.
+     */
+    public function maxDocumentBytes(): ?int
+    {
+        $bytes = match ($this) {
+            self::LinkedInPost, self::LinkedInPagePost => self::bytesFromMb(100),
+            default => null,
+        };
+
+        return self::capToHardLimit($bytes, MediaType::Document);
+    }
+
+    /**
+     * Soft aspect-ratio window used by the Vue cropper / media picker.
+     *
+     * @return array{min: float, max: float}|null
+     */
+    public function aspectRatioBounds(): ?array
+    {
+        return match ($this) {
+            self::InstagramFeed => ['min' => 0.8, 'max' => 1.91],
+            self::InstagramReel, self::InstagramStory,
+            self::FacebookReel, self::FacebookStory,
+            self::YouTubeShort => ['min' => 0.5, 'max' => 0.6],
+            default => null,
+        };
+    }
+
+    /**
+     * Whether the editor should auto-fit still images into the story frame.
+     */
+    public function autoFitsImage(): bool
+    {
+        return $this === self::InstagramStory;
+    }
+
+    /**
+     * Full media-rule payload for the Vue editor (and any other consumer).
+     * Shared once via Inertia — do not re-hardcode these numbers in JS.
+     *
+     * @return array{
+     *     max_files: int,
+     *     min_files: int|null,
+     *     accept_images: bool,
+     *     accept_videos: bool,
+     *     accept_documents: bool,
+     *     requires_media: bool,
+     *     accepts_gif: bool,
+     *     forbids_mixed_media: bool,
+     *     max_image_bytes: int|null,
+     *     max_video_bytes: int|null,
+     *     max_document_bytes: int|null,
+     *     max_video_duration_sec: int|null,
+     *     aspect_ratio_min: float|null,
+     *     aspect_ratio_max: float|null,
+     *     auto_fits_image: bool
+     * }
+     */
+    public function mediaRules(): array
+    {
+        $bounds = $this->aspectRatioBounds();
+        $minFiles = $this->minMediaCount();
+
+        return [
+            'max_files' => $this->maxMediaCount(),
+            'min_files' => $minFiles > 0 ? $minFiles : null,
+            'accept_images' => $this->supportsImage(),
+            'accept_videos' => $this->supportsVideo(),
+            'accept_documents' => $this->supportsDocument(),
+            'requires_media' => $this->requiresMedia(),
+            'accepts_gif' => $this->acceptsGif(),
+            'forbids_mixed_media' => ! $this->supportsMixedMedia(),
+            'max_image_bytes' => $this->maxImageBytes(),
+            'max_video_bytes' => $this->maxVideoBytes(),
+            'max_document_bytes' => $this->maxDocumentBytes(),
+            'max_video_duration_sec' => $this->maxVideoDurationSec(),
+            'aspect_ratio_min' => $bounds['min'] ?? null,
+            'aspect_ratio_max' => $bounds['max'] ?? null,
+            'auto_fits_image' => $this->autoFitsImage(),
+        ];
+    }
+
+    /**
+     * Content-type row for REST / MCP listings (agents + API clients).
+     * Keep in sync with mediaRules() capability fields — do not omit mins.
+     *
+     * @return array{
+     *     value: string,
+     *     label: string,
+     *     description: string,
+     *     max_media_count: int,
+     *     min_media_count: int,
+     *     requires_media: bool,
+     *     accept_images: bool,
+     *     accept_videos: bool,
+     *     accept_documents: bool,
+     *     accepts_gif: bool,
+     *     forbids_mixed_media: bool,
+     *     max_video_duration_sec: int|null,
+     *     max_image_bytes: int|null,
+     *     max_video_bytes: int|null,
+     *     max_document_bytes: int|null
+     * }
+     */
+    public function toListingArray(): array
+    {
+        return [
+            'value' => $this->value,
+            'label' => $this->label(),
+            'description' => $this->description(),
+            'max_media_count' => $this->maxMediaCount(),
+            'min_media_count' => $this->minMediaCount(),
+            'requires_media' => $this->requiresMedia(),
+            'accept_images' => $this->supportsImage(),
+            'accept_videos' => $this->supportsVideo(),
+            'accept_documents' => $this->supportsDocument(),
+            'accepts_gif' => $this->acceptsGif(),
+            'forbids_mixed_media' => ! $this->supportsMixedMedia(),
+            'max_video_duration_sec' => $this->maxVideoDurationSec(),
+            'max_image_bytes' => $this->maxImageBytes(),
+            'max_video_bytes' => $this->maxVideoBytes(),
+            'max_document_bytes' => $this->maxDocumentBytes(),
+        ];
+    }
+
+    /**
+     * @return array<string, array<string, mixed>>
+     */
+    public static function mediaRulesForFrontend(): array
+    {
+        $rules = [];
+
+        foreach (self::cases() as $type) {
+            $rules[$type->value] = $type->mediaRules();
+        }
+
+        return $rules;
+    }
+
+    private static function bytesFromMb(int $megabytes): int
+    {
+        return $megabytes * 1024 * 1024;
+    }
+
+    private static function bytesFromGb(int $gigabytes): int
+    {
+        return $gigabytes * 1024 * 1024 * 1024;
+    }
+
+    /**
+     * Never advertise a soft platform ceiling above what trypost.media allows
+     * on upload (web / API / MCP signed URL).
+     */
+    private static function capToHardLimit(?int $platformBytes, MediaType $type): ?int
+    {
+        if ($platformBytes === null) {
+            return null;
+        }
+
+        return min($platformBytes, $type->maxSizeInBytes());
+    }
+
     public function supportsVideo(): bool
     {
         return match ($this) {
@@ -263,7 +525,6 @@ enum ContentType: string
             self::MastodonPost => false,
             self::TelegramPost => false,
             self::FacebookPost => false,
-            self::InstagramFeed => false,
             self::DiscordMessage => false,
             default => true,
         };
@@ -288,6 +549,7 @@ enum ContentType: string
             self::MastodonPost,
             self::FacebookPost,
             self::PinterestPin,
+            self::PinterestCarousel,
         ];
     }
 
