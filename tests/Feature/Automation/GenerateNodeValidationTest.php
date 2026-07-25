@@ -37,6 +37,25 @@ it('rejects saving a generate node whose slide count exceeds a content type limi
         ->assertJsonValidationErrors(['nodes.1.data.accounts']);
 });
 
+it('rejects a generate node that targets Pinterest carousel below the minimum slide count', function () {
+    $automation = Automation::factory()->for($this->workspace)->create();
+
+    $this->actingAs($this->user)
+        ->putJson(route('app.automations.update', $automation->id), [
+            'nodes' => [
+                ['id' => 'n1', 'type' => 'trigger', 'position' => ['x' => 0, 'y' => 0], 'data' => ['trigger_type' => 'schedule', 'cron' => '0 9 * * *']],
+                ['id' => 'n2', 'type' => 'generate', 'position' => ['x' => 1, 'y' => 0], 'data' => [
+                    'accounts' => [['social_account_id' => 'acc-1', 'content_type' => 'pinterest_carousel', 'meta' => ['board_id' => 'board-1']]],
+                    'prompt_template' => 'hi',
+                    'target_slide_count' => 1,
+                ]],
+            ],
+            'connections' => [['id' => 'e1', 'source' => 'n1', 'target' => 'n2']],
+        ])
+        ->assertStatus(422)
+        ->assertJsonValidationErrors(['nodes.1.data.accounts']);
+});
+
 it('allows saving a generate node within the content type limit', function () {
     $automation = Automation::factory()->for($this->workspace)->create();
 

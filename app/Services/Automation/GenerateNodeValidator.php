@@ -60,6 +60,12 @@ final class GenerateNodeValidator
             return __('automations.errors.generate_image_format_required');
         }
 
+        $min = $contentType->minMediaCount();
+
+        if ($min > 0 && $imageCount < $min) {
+            return __('posts.edit.compliance.too_few_files', ['min' => (string) $min]);
+        }
+
         if ($contentType->requiresMedia() && $imageCount === 0) {
             return __('posts.edit.compliance.requires_media');
         }

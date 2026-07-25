@@ -232,13 +232,21 @@ const imageCountCap = computed(() =>
     ),
 );
 
-// Floor at 1 when any selected account requires media (Pinterest pin, IG feed,
-// etc.) — otherwise the empty-accounts clamp to 0 sticks after selecting them
-// and surfaces a false "add an image" compliance error.
+// Floor at requiresMedia (1) or content-type minFiles (e.g. Pinterest carousel = 2)
+// — otherwise the empty-accounts clamp to 0 sticks after selecting them and
+// surfaces a false "add an image" compliance error / under-min carousel.
 const minImageCount = computed(() =>
-    local.value.accounts.some((a) => getMediaRulesForContentType(a.content_type).requiresMedia)
-        ? 1
-        : 0,
+    local.value.accounts.reduce((floor, a) => {
+        const rules = getMediaRulesForContentType(a.content_type);
+        let accountMin = 0;
+        if (rules.requiresMedia) {
+            accountMin = Math.max(accountMin, 1);
+        }
+        if (rules.minFiles) {
+            accountMin = Math.max(accountMin, rules.minFiles);
+        }
+        return Math.max(floor, accountMin);
+    }, 0),
 );
 
 // Single picker: 0 = no image (text-only), 1 = single image, 2+ = carousel.
