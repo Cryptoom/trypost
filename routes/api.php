@@ -50,6 +50,9 @@ Route::middleware(['auth:api', 'workspace.token', 'throttle:api'])->group(functi
     // Social Accounts
     Route::get('/social-accounts', [SocialAccountController::class, 'index'])->name('api.social-accounts.index');
     Route::put('/social-accounts/{account}/toggle', [SocialAccountController::class, 'toggle'])->name('api.social-accounts.toggle');
+    Route::get('/social-accounts/{account}/boards', [SocialAccountController::class, 'boards'])
+        ->middleware('throttle:60,1')
+        ->name('api.social-accounts.boards');
 
     // API Keys
     Route::get('/api-keys', [ApiKeyController::class, 'index'])->name('api.api-keys.index');
