@@ -13,8 +13,8 @@ use App\Http\Controllers\Api\WorkspaceController;
 use Illuminate\Support\Facades\Route;
 
 Route::post('/uploads/{token}', [UploadController::class, 'store'])
-    ->middleware(['signed', 'throttle:mcp-uploads'])
-    ->where('token', '[0-9a-f-]{36}')
+    ->middleware(['signed', 'throttle:signed-uploads'])
+    ->whereUuid('token')
     ->name('api.uploads.store');
 
 Route::middleware(['auth:api', 'workspace.token', 'throttle:api'])->group(function () {

@@ -160,20 +160,26 @@ class AppServiceProvider extends ServiceProvider
             return Limit::perMinute(60)->by($request->workspace?->id ?: $request->ip());
         });
 
-        // MCP signed uploads arrive from ChatGPT's shared egress IPs. Key by
-        // workspace_id (bound into the signed URL) so tenants don't share a bucket.
-        RateLimiter::for('mcp-uploads', function (Request $request) {
-            $workspaceId = (string) $request->query('workspace_id');
-            $ipLimit = Limit::perMinute(1200)->by('ip:'.$request->ip());
+        // Signed media uploads (api.uploads.store). MCP hosts share egress IPs
+        // across tenants — key by workspace_id from the signed URL, with a high
+        // IP backstop so one client cannot flood every workspace.
+        RateLimiter::for('signed-uploads', function (Request $request) {
+            $limits = [
+                Limit::perMinute((int) config('trypost.media.signed_upload_per_ip_per_minute'))
+                    ->by("ip:{$request->ip()}"),
+            ];
 
-            if ($workspaceId === '') {
-                return $ipLimit;
+            $workspaceId = $request->query('workspace_id');
+
+            if (filled($workspaceId)) {
+                array_unshift(
+                    $limits,
+                    Limit::perMinute((int) config('trypost.media.signed_upload_per_workspace_per_minute'))
+                        ->by("workspace:{$workspaceId}"),
+                );
             }
 
-            return [
-                Limit::perMinute(60)->by("workspace:{$workspaceId}"),
-                $ipLimit,
-            ];
+            return $limits;
         });
     }
 

@@ -49,9 +49,7 @@ class SocialAccountController extends Controller
         }
 
         try {
-            return response()->json([
-                'boards' => ListPinterestBoards::execute($account),
-            ]);
+            return response()->json(ListPinterestBoards::execute($account));
         } catch (TokenExpiredException $e) {
             return response()->json(
                 ['message' => $e->getMessage()],

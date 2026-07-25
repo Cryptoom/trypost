@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Enums\PostPlatform;
 
+use App\Enums\Media\Type as MediaType;
 use App\Enums\SocialAccount\Platform as SocialPlatform;
 
 enum ContentType: string
@@ -231,12 +232,13 @@ enum ContentType: string
     }
 
     /**
-     * Per-type image size cap in bytes. Null when images are not accepted or
-     * the platform has no tighter editor-side limit than the global media cap.
+     * Per-type image size cap in bytes, capped at the global upload hard limit
+     * (trypost.media.max_size_mb.image). Null when images are not accepted or
+     * the platform has no tighter editor-side limit than that hard cap.
      */
     public function maxImageBytes(): ?int
     {
-        return match ($this) {
+        $bytes = match ($this) {
             self::InstagramFeed, self::InstagramStory => self::bytesFromMb(8),
             self::FacebookPost => self::bytesFromMb(4),
             self::LinkedInPost, self::LinkedInPagePost => self::bytesFromMb(5),
@@ -246,15 +248,18 @@ enum ContentType: string
             self::MastodonPost => self::bytesFromMb(10),
             default => null,
         };
+
+        return self::capToHardLimit($bytes, MediaType::Image);
     }
 
     /**
-     * Per-type video size cap in bytes. Null when videos are not accepted or
-     * the platform has no tighter editor-side limit.
+     * Per-type video size cap in bytes, capped at the global upload hard limit
+     * (trypost.media.max_size_mb.video). Null when videos are not accepted or
+     * the platform has no tighter editor-side limit than that hard cap.
      */
     public function maxVideoBytes(): ?int
     {
-        return match ($this) {
+        $bytes = match ($this) {
             self::InstagramFeed, self::InstagramStory => self::bytesFromMb(100),
             self::InstagramReel => self::bytesFromGb(1),
             self::FacebookPost => self::bytesFromGb(10),
@@ -268,17 +273,22 @@ enum ContentType: string
             self::MastodonPost => self::bytesFromMb(40),
             default => null,
         };
+
+        return self::capToHardLimit($bytes, MediaType::Video);
     }
 
     /**
-     * Per-type PDF size cap in bytes. Null when documents are not accepted.
+     * Per-type PDF size cap in bytes, capped at the global upload hard limit.
+     * Null when documents are not accepted.
      */
     public function maxDocumentBytes(): ?int
     {
-        return match ($this) {
+        $bytes = match ($this) {
             self::LinkedInPost, self::LinkedInPagePost => self::bytesFromMb(100),
             default => null,
         };
+
+        return self::capToHardLimit($bytes, MediaType::Document);
     }
 
     /**
@@ -373,6 +383,19 @@ enum ContentType: string
     private static function bytesFromGb(int $gigabytes): int
     {
         return $gigabytes * 1024 * 1024 * 1024;
+    }
+
+    /**
+     * Never advertise a soft platform ceiling above what trypost.media allows
+     * on upload (web / API / MCP signed URL).
+     */
+    private static function capToHardLimit(?int $platformBytes, MediaType $type): ?int
+    {
+        if ($platformBytes === null) {
+            return null;
+        }
+
+        return min($platformBytes, $type->maxSizeInBytes());
     }
 
     public function supportsVideo(): bool

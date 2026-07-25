@@ -512,10 +512,11 @@ test('pinterest publisher can get boards', function () {
         ], 200),
     ]);
 
-    $boards = $this->publisher->getBoards($this->socialAccount);
+    $result = $this->publisher->getBoards($this->socialAccount);
 
-    expect($boards)->toHaveCount(2);
-    expect($boards[0]['id'])->toBe('board_1');
+    expect($result['boards'])->toHaveCount(2)
+        ->and($result['boards'][0]['id'])->toBe('board_1')
+        ->and($result['truncated'])->toBeFalse();
 });
 
 test('pinterest publisher paginates boards via bookmark', function () {
@@ -540,12 +541,13 @@ test('pinterest publisher paginates boards via bookmark', function () {
             ], 200),
     ]);
 
-    $boards = $this->publisher->getBoards($this->socialAccount);
+    $result = $this->publisher->getBoards($this->socialAccount);
 
-    expect($boards)->toHaveCount(3)
-        ->and($boards[0]['id'])->toBe('board_1')
-        ->and($boards[1]['id'])->toBe('board_2')
-        ->and($boards[2]['id'])->toBe('board_3');
+    expect($result['boards'])->toHaveCount(3)
+        ->and($result['boards'][0]['id'])->toBe('board_1')
+        ->and($result['boards'][1]['id'])->toBe('board_2')
+        ->and($result['boards'][2]['id'])->toBe('board_3')
+        ->and($result['truncated'])->toBeFalse();
 
     Http::assertSentCount(3);
 });
@@ -566,10 +568,11 @@ test('pinterest publisher stops board pagination on a repeated bookmark', functi
             ], 200),
     ]);
 
-    $boards = $this->publisher->getBoards($this->socialAccount);
+    $result = $this->publisher->getBoards($this->socialAccount);
 
-    expect($boards)->toHaveCount(2)
-        ->and(collect($boards)->pluck('id')->all())->toBe(['board_1', 'board_2']);
+    expect($result['boards'])->toHaveCount(2)
+        ->and(collect($result['boards'])->pluck('id')->all())->toBe(['board_1', 'board_2'])
+        ->and($result['truncated'])->toBeTrue();
 
     Http::assertSentCount(2);
 });

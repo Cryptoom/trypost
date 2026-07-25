@@ -62,6 +62,10 @@ return [
     | remains as a legacy fallback. MCP_UPLOAD_MAX_SIZE_MB was removed — size
     | caps come from max_size_mb above (uploads stream to storage).
     |
+    | signed_upload_per_*_per_minute backs the signed-uploads rate limiter:
+    | workspace bucket first (tenants isolated on shared MCP egress), then a
+    | high IP backstop.
+    |
     */
 
     'media' => [
@@ -72,6 +76,8 @@ return [
             'document' => (int) env('MEDIA_DOCUMENT_MAX_SIZE_MB', 100),
         ],
         'signed_upload_url_ttl_minutes' => (int) (env('MEDIA_SIGNED_UPLOAD_URL_TTL_MINUTES') ?? env('MCP_UPLOAD_URL_TTL_MINUTES', 15)),
+        'signed_upload_per_workspace_per_minute' => (int) env('MEDIA_SIGNED_UPLOAD_PER_WORKSPACE_PER_MINUTE', 60),
+        'signed_upload_per_ip_per_minute' => (int) env('MEDIA_SIGNED_UPLOAD_PER_IP_PER_MINUTE', 1200),
     ],
 
     /*

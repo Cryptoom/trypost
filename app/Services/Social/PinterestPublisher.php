@@ -408,7 +408,7 @@ class PinterestPublisher
      * Get user's boards for board selection (follows Pinterest bookmark pagination
      * until the API stops returning a bookmark).
      *
-     * @return list<array<string, mixed>>
+     * @return array{boards: list<array<string, mixed>>, truncated: bool}
      */
     public function getBoards(SocialAccount $account): array
     {
@@ -419,6 +419,7 @@ class PinterestPublisher
         $boards = [];
         $bookmark = null;
         $pages = 0;
+        $truncated = false;
         // Absurd ceiling only — normal accounts exit when bookmark is blank.
         $maxPages = 1000;
 
@@ -431,6 +432,7 @@ class PinterestPublisher
                     'pages' => $pages,
                     'boards' => count($boards),
                 ]);
+                $truncated = true;
 
                 break;
             }
@@ -468,6 +470,7 @@ class PinterestPublisher
                     'pages' => $pages,
                     'boards' => count($boards),
                 ]);
+                $truncated = true;
 
                 break;
             }
@@ -475,7 +478,10 @@ class PinterestPublisher
             $bookmark = $nextBookmark;
         }
 
-        return $boards;
+        return [
+            'boards' => $boards,
+            'truncated' => $truncated,
+        ];
     }
 
     private function handleApiError(Response $response): never

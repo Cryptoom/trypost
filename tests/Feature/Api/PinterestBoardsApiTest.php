@@ -39,6 +39,7 @@ it('lists pinterest boards for a connected account', function () {
             ['id' => 'board_1', 'name' => 'Ideas'],
             ['id' => 'board_2', 'name' => 'Product'],
         ],
+        'truncated' => false,
     ]);
 });
 
@@ -58,7 +59,7 @@ it('returns an empty boards list when pinterest has none', function () {
         'Authorization' => "Bearer {$this->plainToken}",
     ])
         ->assertOk()
-        ->assertExactJson(['boards' => []]);
+        ->assertExactJson(['boards' => [], 'truncated' => false]);
 });
 
 it('returns unauthorized when the pinterest token is expired', function () {

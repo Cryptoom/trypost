@@ -162,7 +162,7 @@ test('stores a video upload via the streaming path', function () {
 test('releases the upload token when media persistence fails', function () {
     $token = (string) Str::uuid();
     $file = UploadedFile::fake()->create('clip.mp4', 256, 'video/mp4');
-    $cacheKey = "mcp_upload:{$token}";
+    $cacheKey = "media:signed-upload:{$token}";
 
     DB::shouldReceive('transaction')
         ->once()

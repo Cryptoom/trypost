@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Enums\Media\Type as MediaType;
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
 
@@ -157,40 +158,116 @@ test('media rules keep editor parity for gif and requires_media flags', function
 });
 
 /**
- * Lock the flags that used to live in the Vue CONTENT_TYPE_RULES map so a
- * future centralization drift cannot silently flip editor behavior again.
+ * Lock the flags / limits that used to live in the Vue CONTENT_TYPE_RULES map
+ * so a future centralization drift cannot silently flip editor behavior again.
+ * Byte caps are the post-clamp values (min(platform, trypost.media hard limit)).
  */
-test('media rules preserve pre-centralization requires_media and accepts_gif for mapped types', function () {
+test('media rules preserve pre-centralization editor limits for mapped types', function () {
+    $mb = 1024 * 1024;
+    $gb = 1024 * $mb;
+    $hardImage = MediaType::Image->maxSizeInBytes();
+    $hardVideo = MediaType::Video->maxSizeInBytes();
+    $hardDocument = MediaType::Document->maxSizeInBytes();
+
     $expected = [
-        'instagram_feed' => [true, false],
-        'instagram_reel' => [true, false],
-        'instagram_story' => [true, false],
-        'facebook_post' => [false, false],
-        'facebook_reel' => [true, false],
-        'facebook_story' => [true, false],
-        'linkedin_post' => [false, false],
-        'linkedin_page_post' => [false, false],
-        'tiktok_video' => [true, false],
-        'tiktok_photo' => [true, false],
-        'youtube_short' => [true, false],
-        'pinterest_pin' => [true, false],
-        'pinterest_video_pin' => [true, false],
-        'pinterest_carousel' => [true, false],
-        'x_post' => [false, true],
-        'threads_post' => [false, false],
-        'bluesky_post' => [false, true],
-        'mastodon_post' => [false, true],
-        // Previously fell through to DEFAULT_RULES (acceptsGif true).
-        'discord_message' => [false, true],
-        'telegram_post' => [false, true],
+        'instagram_feed' => [
+            'requires_media' => true,
+            'accepts_gif' => false,
+            'max_files' => 10,
+            'max_video_duration_sec' => 60,
+            'max_image_bytes' => min(8 * $mb, $hardImage),
+            'max_video_bytes' => min(100 * $mb, $hardVideo),
+        ],
+        'instagram_reel' => [
+            'requires_media' => true,
+            'accepts_gif' => false,
+            'max_files' => 1,
+            'max_video_duration_sec' => 900,
+            'max_video_bytes' => min(1 * $gb, $hardVideo),
+        ],
+        'youtube_short' => [
+            'requires_media' => true,
+            'accepts_gif' => false,
+            'max_files' => 1,
+            'max_video_duration_sec' => 180,
+            // Platform advertises 256GB; editor must not exceed upload hard cap.
+            'max_video_bytes' => $hardVideo,
+        ],
+        'pinterest_pin' => [
+            'requires_media' => true,
+            'accepts_gif' => false,
+            'max_files' => 1,
+            // Platform advertises 20MB; hard image cap is typically 10MB.
+            'max_image_bytes' => $hardImage,
+        ],
+        'facebook_post' => [
+            'requires_media' => false,
+            'accepts_gif' => false,
+            'max_files' => 10,
+            'max_video_duration_sec' => 240 * 60,
+            'max_video_bytes' => $hardVideo,
+        ],
+        'linkedin_post' => [
+            'requires_media' => false,
+            'accepts_gif' => false,
+            'max_files' => 10,
+            'max_document_bytes' => min(100 * $mb, $hardDocument),
+            'max_video_bytes' => $hardVideo,
+        ],
+        'x_post' => [
+            'requires_media' => false,
+            'accepts_gif' => true,
+            'max_files' => 4,
+            'max_video_duration_sec' => 140,
+            'max_video_bytes' => min(512 * $mb, $hardVideo),
+        ],
+        'discord_message' => [
+            'requires_media' => false,
+            'accepts_gif' => true,
+            'max_files' => 10,
+        ],
+        'telegram_post' => [
+            'requires_media' => false,
+            'accepts_gif' => true,
+            'max_files' => 10,
+        ],
     ];
 
-    foreach ($expected as $type => [$requiresMedia, $acceptsGif]) {
+    foreach ($expected as $type => $fields) {
         $rules = ContentType::from($type)->mediaRules();
 
-        expect($rules['requires_media'])->toBe($requiresMedia, "{$type}.requires_media")
-            ->and($rules['accepts_gif'])->toBe($acceptsGif, "{$type}.accepts_gif");
+        foreach ($fields as $key => $value) {
+            expect($rules[$key])->toBe($value, "{$type}.{$key}");
+        }
     }
+});
+
+test('media byte caps never exceed the global upload hard limits', function () {
+    $hardImage = MediaType::Image->maxSizeInBytes();
+    $hardVideo = MediaType::Video->maxSizeInBytes();
+    $hardDocument = MediaType::Document->maxSizeInBytes();
+
+    foreach (ContentType::cases() as $type) {
+        $image = $type->maxImageBytes();
+        $video = $type->maxVideoBytes();
+        $document = $type->maxDocumentBytes();
+
+        if ($image !== null) {
+            expect($image)->toBeLessThanOrEqual($hardImage, "{$type->value}.max_image_bytes");
+        }
+
+        if ($video !== null) {
+            expect($video)->toBeLessThanOrEqual($hardVideo, "{$type->value}.max_video_bytes");
+        }
+
+        if ($document !== null) {
+            expect($document)->toBeLessThanOrEqual($hardDocument, "{$type->value}.max_document_bytes");
+        }
+    }
+
+    expect(ContentType::YouTubeShort->maxVideoBytes())->toBe($hardVideo)
+        ->and(ContentType::PinterestPin->maxImageBytes())->toBe($hardImage)
+        ->and(ContentType::FacebookPost->maxVideoBytes())->toBe($hardVideo);
 });
 
 test('can get content types for platform', function () {

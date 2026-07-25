@@ -11,13 +11,13 @@ use Illuminate\Support\Collection;
 class ListPinterestBoards
 {
     /**
-     * @return list<array{id: string, name: string}>
+     * @return array{boards: list<array{id: string, name: string}>, truncated: bool}
      */
     public static function execute(SocialAccount $account): array
     {
-        $boards = app(PinterestPublisher::class)->getBoards($account);
+        $result = app(PinterestPublisher::class)->getBoards($account);
 
-        return Collection::make($boards)
+        $boards = Collection::make(data_get($result, 'boards', []))
             ->map(fn (mixed $board): array => [
                 'id' => (string) data_get($board, 'id'),
                 'name' => (string) data_get($board, 'name'),
@@ -25,5 +25,10 @@ class ListPinterestBoards
             ->filter(fn (array $board): bool => $board['id'] !== '')
             ->values()
             ->all();
+
+        return [
+            'boards' => $boards,
+            'truncated' => (bool) data_get($result, 'truncated', false),
+        ];
     }
 }

@@ -37,9 +37,7 @@ class ListPinterestBoardsTool extends Tool
         }
 
         try {
-            return Response::structured([
-                'boards' => ListPinterestBoards::execute($account),
-            ]);
+            return Response::structured(ListPinterestBoards::execute($account));
         } catch (TokenExpiredException $e) {
             return Response::error($e->getMessage());
         } catch (PinterestPublishException $e) {

@@ -19,6 +19,12 @@ class UploadController extends Controller
 {
     private const CACHE_TTL_BUFFER_SECONDS = 60;
 
+    /**
+     * One-shot claim for a signed upload token (api.uploads.store).
+     * Survives across MCP and any other client that POSTs the signed URL.
+     */
+    private const CLAIM_CACHE_PREFIX = 'media:signed-upload:';
+
     public function store(StoreUploadRequest $request, string $token): JsonResponse
     {
         $expiresAt = (int) $request->query('expires');
@@ -27,7 +33,7 @@ class UploadController extends Controller
             $expiresAt - now()->timestamp + self::CACHE_TTL_BUFFER_SECONDS,
         );
 
-        $cacheKey = "mcp_upload:{$token}";
+        $cacheKey = self::CLAIM_CACHE_PREFIX.$token;
 
         if (! Cache::add($cacheKey, true, $ttl)) {
             abort(Response::HTTP_CONFLICT);

@@ -43,7 +43,8 @@ test('lists pinterest boards as id and name', function () {
                 ->where('boards.0.id', 'board_1')
                 ->where('boards.0.name', 'Ideas')
                 ->where('boards.1.id', 'board_2')
-                ->where('boards.1.name', 'Product');
+                ->where('boards.1.name', 'Product')
+                ->where('truncated', false);
         });
 });
 
