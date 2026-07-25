@@ -405,7 +405,8 @@ class PinterestPublisher
     }
 
     /**
-     * Get user's boards for board selection (follows Pinterest bookmark pagination).
+     * Get user's boards for board selection (follows Pinterest bookmark pagination
+     * until the API stops returning a bookmark).
      *
      * @return list<array<string, mixed>>
      */
@@ -417,9 +418,23 @@ class PinterestPublisher
 
         $boards = [];
         $bookmark = null;
-        $maxPages = 20;
+        $pages = 0;
+        // Absurd ceiling only — normal accounts exit when bookmark is blank.
+        $maxPages = 1000;
 
-        for ($page = 0; $page < $maxPages; $page++) {
+        while (true) {
+            $pages++;
+
+            if ($pages > $maxPages) {
+                Log::warning('Pinterest get boards hit safety page cap', [
+                    'account_id' => $account->id,
+                    'pages' => $pages,
+                    'boards' => count($boards),
+                ]);
+
+                break;
+            }
+
             $query = ['page_size' => 100];
 
             if (filled($bookmark)) {
@@ -441,11 +456,23 @@ class PinterestPublisher
                 array_push($boards, ...$items);
             }
 
-            $bookmark = data_get($payload, 'bookmark');
+            $nextBookmark = data_get($payload, 'bookmark');
 
-            if (blank($bookmark)) {
+            if (blank($nextBookmark)) {
                 break;
             }
+
+            if ($nextBookmark === $bookmark) {
+                Log::warning('Pinterest get boards returned a repeated bookmark', [
+                    'account_id' => $account->id,
+                    'pages' => $pages,
+                    'boards' => count($boards),
+                ]);
+
+                break;
+            }
+
+            $bookmark = $nextBookmark;
         }
 
         return $boards;

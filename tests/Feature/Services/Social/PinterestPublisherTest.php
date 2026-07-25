@@ -531,14 +531,45 @@ test('pinterest publisher paginates boards via bookmark', function () {
                 'items' => [
                     ['id' => 'board_2', 'name' => 'Board 2'],
                 ],
+                'bookmark' => 'page-3',
+            ], 200)
+            ->push([
+                'items' => [
+                    ['id' => 'board_3', 'name' => 'Board 3'],
+                ],
+            ], 200),
+    ]);
+
+    $boards = $this->publisher->getBoards($this->socialAccount);
+
+    expect($boards)->toHaveCount(3)
+        ->and($boards[0]['id'])->toBe('board_1')
+        ->and($boards[1]['id'])->toBe('board_2')
+        ->and($boards[2]['id'])->toBe('board_3');
+
+    Http::assertSentCount(3);
+});
+
+test('pinterest publisher stops board pagination on a repeated bookmark', function () {
+    Http::fake([
+        config('trypost.platforms.pinterest.api').'/boards*' => Http::sequence()
+            ->push([
+                'items' => [['id' => 'board_1', 'name' => 'Board 1']],
+                'bookmark' => 'stuck',
+            ], 200)
+            ->push([
+                'items' => [['id' => 'board_2', 'name' => 'Board 2']],
+                'bookmark' => 'stuck',
+            ], 200)
+            ->push([
+                'items' => [['id' => 'should_not_fetch', 'name' => 'Nope']],
             ], 200),
     ]);
 
     $boards = $this->publisher->getBoards($this->socialAccount);
 
     expect($boards)->toHaveCount(2)
-        ->and($boards[0]['id'])->toBe('board_1')
-        ->and($boards[1]['id'])->toBe('board_2');
+        ->and(collect($boards)->pluck('id')->all())->toBe(['board_1', 'board_2']);
 
     Http::assertSentCount(2);
 });
