@@ -464,7 +464,7 @@ return [
         ],
         'instagram_reel' => [
             'label' => 'Reel',
-            'description' => 'Short video up to 90 seconds',
+            'description' => 'Short video up to 15 minutes',
         ],
         'instagram_story' => [
             'label' => 'Story',

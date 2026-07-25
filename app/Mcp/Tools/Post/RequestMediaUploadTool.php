@@ -14,7 +14,7 @@ use Laravel\Mcp\ResponseFactory;
 use Laravel\Mcp\Server\Attributes\Description;
 use Laravel\Mcp\Server\Tool;
 
-#[Description('Issue a one-shot signed POST URL that lets the user upload a local file (image, video, or PDF document, up to the workspace upload cap — 50 MB by default) directly to this workspace. Returns an upload_token and upload_url. Hand the URL to the user (e.g. as a curl command with `-F media=@path/to/file`) or to the MCP client. After upload, call AttachMediaFromUploadTool(post_id, upload_token) to attach the result to a post.')]
+#[Description('Issue a one-shot signed POST URL that lets the user upload a local file (image, video, or PDF document, up to the workspace upload cap — 300 MB by default) directly to this workspace. Returns an upload_token and upload_url. Hand the URL to the user (e.g. as a curl command with `-F media=@path/to/file`) or to the MCP client. After upload, call AttachMediaFromUploadTool(post_id, upload_token) to attach the result to a post.')]
 class RequestMediaUploadTool extends Tool
 {
     public function handle(Request $request): Response|ResponseFactory

@@ -42,6 +42,7 @@ class PlatformContentTypesResource extends JsonResource
                     'description' => $type->description(),
                     'max_media_count' => $type->maxMediaCount(),
                     'requires_media' => $type->requiresMedia(),
+                    'max_video_duration_sec' => $type->maxVideoDurationSec(),
                 ],
                 array_values(ContentType::forPlatform($platform)),
             ),

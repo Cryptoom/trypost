@@ -21,9 +21,17 @@ test('content type has correct labels', function () {
 
 test('content type has correct descriptions', function () {
     expect(ContentType::InstagramFeed->description())->toContain('feed');
-    expect(ContentType::InstagramReel->description())->toContain('90 seconds');
+    expect(ContentType::InstagramReel->description())->toContain('15 minutes');
+    expect(ContentType::FacebookReel->description())->toContain('90 seconds');
     expect(ContentType::InstagramStory->description())->toContain('24 hours');
     expect(ContentType::YouTubeShort->description())->toContain('3 minutes');
+});
+
+test('content type exposes max video duration in seconds', function () {
+    expect(ContentType::InstagramReel->maxVideoDurationSec())->toBe(15 * 60);
+    expect(ContentType::FacebookReel->maxVideoDurationSec())->toBe(90);
+    expect(ContentType::YouTubeShort->maxVideoDurationSec())->toBe(3 * 60);
+    expect(ContentType::TikTokVideo->maxVideoDurationSec())->toBeNull();
 });
 
 test('content type maps to correct platform', function () {

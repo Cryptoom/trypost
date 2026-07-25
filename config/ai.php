@@ -53,7 +53,7 @@ return [
 
     'mcp' => [
         'upload' => [
-            'max_size_mb' => (int) env('MCP_UPLOAD_MAX_SIZE_MB', 50),
+            'max_size_mb' => (int) env('MCP_UPLOAD_MAX_SIZE_MB', 300),
             'url_ttl_minutes' => (int) env('MCP_UPLOAD_URL_TTL_MINUTES', 15),
         ],
     ],

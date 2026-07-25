@@ -464,7 +464,7 @@ return [
         ],
         'instagram_reel' => [
             'label' => 'ريل',
-            'description' => 'فيديو قصير حتى 90 ثانية',
+            'description' => 'فيديو قصير حتى 15 دقيقة',
         ],
         'instagram_story' => [
             'label' => 'قصة',

@@ -464,7 +464,7 @@ return [
         ],
         'instagram_reel' => [
             'label' => '릴스',
-            'description' => '최대 90초 짧은 동영상',
+            'description' => '최대 15분 짧은 동영상',
         ],
         'instagram_story' => [
             'label' => '스토리',

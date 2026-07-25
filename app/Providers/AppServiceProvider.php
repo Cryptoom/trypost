@@ -159,6 +159,17 @@ class AppServiceProvider extends ServiceProvider
 
             return Limit::perMinute(60)->by($request->workspace?->id ?: $request->ip());
         });
+
+        // MCP signed uploads arrive from ChatGPT's shared egress IPs. Key by
+        // workspace_id (bound into the signed URL) so tenants don't share a bucket.
+        RateLimiter::for('mcp-uploads', function (Request $request) {
+            $workspaceId = (string) $request->query('workspace_id');
+
+            return [
+                Limit::perMinute(60)->by('workspace:'.$workspaceId),
+                Limit::perMinute(600)->by('ip:'.$request->ip()),
+            ];
+        });
     }
 
     protected function configureStripeWebhooks(): void

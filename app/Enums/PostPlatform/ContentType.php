@@ -179,6 +179,32 @@ enum ContentType: string
         };
     }
 
+    /**
+     * Maximum video duration in seconds for this content type, when the
+     * platform publishes a hard cap via API. Null when unlimited, unknown,
+     * or enforced dynamically (e.g. TikTok creator_info).
+     *
+     * Mirrors resources/js/composables/useMediaRules.ts.
+     */
+    public function maxVideoDurationSec(): ?int
+    {
+        return match ($this) {
+            self::InstagramFeed => 60,
+            self::InstagramReel => 15 * 60,
+            self::InstagramStory => 60,
+            self::FacebookPost => 240 * 60,
+            self::FacebookReel => 90,
+            self::FacebookStory => 60,
+            self::LinkedInPost, self::LinkedInPagePost => 10 * 60,
+            self::YouTubeShort => 3 * 60,
+            self::PinterestVideoPin => 15 * 60,
+            self::XPost => 140,
+            self::ThreadsPost => 5 * 60,
+            self::BlueskyPost => 60,
+            default => null,
+        };
+    }
+
     public function supportsVideo(): bool
     {
         return match ($this) {

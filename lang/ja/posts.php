@@ -464,7 +464,7 @@ return [
         ],
         'instagram_reel' => [
             'label' => 'リール',
-            'description' => '最大 90 秒のショート動画',
+            'description' => '最大 15 分のショート動画',
         ],
         'instagram_story' => [
             'label' => 'ストーリー',

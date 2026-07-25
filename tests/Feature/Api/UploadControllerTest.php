@@ -102,9 +102,11 @@ test('rejects replay of an already-used token', function () {
     expect(Media::where('upload_token', $token)->count())->toBe(1);
 });
 
-test('rejects file larger than 50MB', function () {
+test('rejects file larger than the MCP upload cap', function () {
+    config(['ai.mcp.upload.max_size_mb' => 1]);
+
     $token = (string) Str::uuid();
-    $file = UploadedFile::fake()->create('huge.mp4', 51 * 1024 + 1, 'video/mp4');
+    $file = UploadedFile::fake()->create('huge.mp4', 1024 + 1, 'video/mp4');
 
     $response = $this->postJson(signedUploadUrl($this->workspace, $token), ['media' => $file]);
 
@@ -122,18 +124,37 @@ test('rejects disallowed mime type', function () {
     expect(Media::where('upload_token', $token)->exists())->toBeFalse();
 });
 
-test('rate limits floods from the same IP', function () {
-    for ($i = 0; $i < 10; $i++) {
+test('rate limits floods from the same workspace', function () {
+    for ($i = 0; $i < 60; $i++) {
         $this->postJson(
             signedUploadUrl($this->workspace, (string) Str::uuid()),
             ['media' => UploadedFile::fake()->image("f{$i}.png", 16, 16)],
-        );
+        )->assertSuccessful();
     }
 
-    $response = $this->postJson(
+    $this->postJson(
         signedUploadUrl($this->workspace, (string) Str::uuid()),
         ['media' => UploadedFile::fake()->image('over.png', 16, 16)],
-    );
+    )->assertStatus(429);
+});
 
-    $response->assertStatus(429);
+test('different workspaces on the same IP do not share the upload rate limit', function () {
+    $otherWorkspace = Workspace::factory()->create();
+
+    for ($i = 0; $i < 60; $i++) {
+        $this->postJson(
+            signedUploadUrl($this->workspace, (string) Str::uuid()),
+            ['media' => UploadedFile::fake()->image("a{$i}.png", 16, 16)],
+        )->assertSuccessful();
+    }
+
+    $this->postJson(
+        signedUploadUrl($this->workspace, (string) Str::uuid()),
+        ['media' => UploadedFile::fake()->image('blocked.png', 16, 16)],
+    )->assertStatus(429);
+
+    $this->postJson(
+        signedUploadUrl($otherWorkspace, (string) Str::uuid()),
+        ['media' => UploadedFile::fake()->image('other.png', 16, 16)],
+    )->assertSuccessful();
 });

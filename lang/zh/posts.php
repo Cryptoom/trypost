@@ -464,7 +464,7 @@ return [
         ],
         'instagram_reel' => [
             'label' => 'Reel',
-            'description' => '最长 90 秒的短视频',
+            'description' => '最长 15 分钟的短视频',
         ],
         'instagram_story' => [
             'label' => '快拍',

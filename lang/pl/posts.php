@@ -464,7 +464,7 @@ return [
         ],
         'instagram_reel' => [
             'label' => 'Rolka',
-            'description' => 'Krótki film do 90 sekund',
+            'description' => 'Krótki film do 15 minut',
         ],
         'instagram_story' => [
             'label' => 'Relacja',

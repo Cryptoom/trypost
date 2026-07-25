@@ -26,7 +26,7 @@ test('returns a single-use signed upload URL', function () {
             $json->has('upload_token')
                 ->has('upload_url')
                 ->has('expires_at')
-                ->where('max_bytes', 52428800)
+                ->where('max_bytes', 300 * 1024 * 1024)
                 ->where('field_name', 'media')
                 ->etc();
         });
