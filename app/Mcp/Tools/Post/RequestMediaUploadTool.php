@@ -25,7 +25,7 @@ class RequestMediaUploadTool extends Tool
 
         // Same ceiling the web/API FormRequests use (largest per-type cap).
         $maxBytes = MediaType::Video->maxSizeInBytes();
-        $ttlMinutes = (int) config('ai.mcp.upload.url_ttl_minutes');
+        $ttlMinutes = (int) config('trypost.media.signed_upload_url_ttl_minutes');
 
         $token = (string) Str::uuid();
         $expiresAt = CarbonImmutable::now()->addMinutes($ttlMinutes);

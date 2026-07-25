@@ -56,6 +56,9 @@ return [
     | uploads (StoreAssetRequest, AssetController::storeChunked), URL
     | fetches (MediaAttacher), and the MediaType enum all read from here.
     |
+    | signed_upload_url_ttl_minutes controls the temporary signed POST URL
+    | issued for api.uploads.store (MCP / direct upload flow).
+    |
     */
 
     'media' => [
@@ -65,6 +68,7 @@ return [
             // LinkedIn caps document (PDF carousel) uploads at 100MB.
             'document' => (int) env('MEDIA_DOCUMENT_MAX_SIZE_MB', 100),
         ],
+        'signed_upload_url_ttl_minutes' => (int) env('MEDIA_SIGNED_UPLOAD_URL_TTL_MINUTES', 15),
     ],
 
     /*

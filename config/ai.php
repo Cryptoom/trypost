@@ -41,23 +41,6 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | MCP Media Upload
-    |--------------------------------------------------------------------------
-    |
-    | Settings for the MCP signed-URL upload flow. Size caps come from
-    | config('trypost.media.max_size_mb') via Media\Type — same source as
-    | web and REST API uploads.
-    |
-    */
-
-    'mcp' => [
-        'upload' => [
-            'url_ttl_minutes' => (int) env('MCP_UPLOAD_URL_TTL_MINUTES', 15),
-        ],
-    ],
-
-    /*
-    |--------------------------------------------------------------------------
     | AI Providers
     |--------------------------------------------------------------------------
     |
