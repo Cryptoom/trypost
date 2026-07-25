@@ -1,154 +1,18 @@
 import { computed, type Ref, type ComputedRef } from 'vue';
 
-import { maxVideoDurationSecFor } from '@/lib/contentTypeMediaRules';
+import {
+    mediaRuleFor,
+    toMediaRules,
+    type MediaRules,
+} from '@/lib/contentTypeMediaRules';
 import { fromMimeType, MediaType } from '@/lib/mediaType';
 
-export interface MediaRules {
-    maxFiles: number;
-    minFiles?: number;
-    acceptImages: boolean;
-    acceptVideos: boolean;
-    acceptDocuments?: boolean;
-    requiresMedia: boolean;
-    acceptsGif: boolean;
-    forbidsMixedMedia?: boolean;
-    maxImageBytes?: number;
-    maxVideoBytes?: number;
-    maxDocumentBytes?: number;
-    maxVideoDurationSec?: number;
-    aspectRatioMin?: number;
-    aspectRatioMax?: number;
-    autoFitsImage?: boolean;
-}
-
-const MB = 1024 * 1024;
-const GB = 1024 * MB;
+export type { MediaRules };
 
 /**
- * Client-side media constraints. Duration values here are fallbacks when
- * Inertia shared contentTypeMediaRules has not synced yet; once synced,
- * ContentType::maxVideoDurationSec() wins via withSharedDuration().
+ * Fallback only when Inertia once-props have not synced yet (or unknown type).
+ * Real limits live in App\Enums\PostPlatform\ContentType::mediaRules().
  */
-const CONTENT_TYPE_RULES: Record<string, MediaRules> = {
-    // Instagram
-    instagram_feed: {
-        maxFiles: 10, acceptImages: true, acceptVideos: true, requiresMedia: true,
-        acceptsGif: false,
-        maxImageBytes: 8 * MB, maxVideoBytes: 100 * MB, maxVideoDurationSec: 60,
-        aspectRatioMin: 0.8, aspectRatioMax: 1.91,
-    },
-    instagram_reel: {
-        maxFiles: 1, acceptImages: false, acceptVideos: true, requiresMedia: true,
-        acceptsGif: false,
-        maxVideoBytes: 1 * GB, maxVideoDurationSec: 15 * 60,
-        aspectRatioMin: 0.5, aspectRatioMax: 0.6,
-    },
-    instagram_story: {
-        maxFiles: 1, acceptImages: true, acceptVideos: true, requiresMedia: true,
-        acceptsGif: false,
-        maxImageBytes: 8 * MB, maxVideoBytes: 100 * MB, maxVideoDurationSec: 60,
-        aspectRatioMin: 0.5, aspectRatioMax: 0.6, autoFitsImage: true,
-    },
-
-    // Facebook
-    facebook_post: {
-        maxFiles: 10, acceptImages: true, acceptVideos: true, requiresMedia: false,
-        acceptsGif: false,
-        maxImageBytes: 4 * MB, maxVideoBytes: 10 * GB, maxVideoDurationSec: 240 * 60,
-    },
-    facebook_reel: {
-        maxFiles: 1, acceptImages: false, acceptVideos: true, requiresMedia: true,
-        acceptsGif: false,
-        maxVideoBytes: 1 * GB, maxVideoDurationSec: 90,
-        aspectRatioMin: 0.5, aspectRatioMax: 0.6,
-    },
-    facebook_story: {
-        maxFiles: 1, acceptImages: false, acceptVideos: true, requiresMedia: true,
-        acceptsGif: false,
-        maxVideoBytes: 1 * GB, maxVideoDurationSec: 60,
-        aspectRatioMin: 0.5, aspectRatioMax: 0.6,
-    },
-
-    // LinkedIn — one type per account kind; the publish format (single image,
-    // multi-image, video, or PDF document) is inferred from the attached media.
-    // Images (up to 10) XOR one video XOR one PDF, never mixed.
-    linkedin_post: {
-        maxFiles: 10, acceptImages: true, acceptVideos: true, acceptDocuments: true,
-        requiresMedia: false, acceptsGif: false, forbidsMixedMedia: true,
-        maxImageBytes: 5 * MB, maxVideoBytes: 5 * GB, maxVideoDurationSec: 10 * 60, maxDocumentBytes: 100 * MB,
-    },
-    linkedin_page_post: {
-        maxFiles: 10, acceptImages: true, acceptVideos: true, acceptDocuments: true,
-        requiresMedia: false, acceptsGif: false, forbidsMixedMedia: true,
-        maxImageBytes: 5 * MB, maxVideoBytes: 5 * GB, maxVideoDurationSec: 10 * 60, maxDocumentBytes: 100 * MB,
-    },
-
-    // TikTok
-    tiktok_video: {
-        maxFiles: 1, acceptImages: false, acceptVideos: true, requiresMedia: true,
-        acceptsGif: false,
-        // maxVideoDurationSec is enforced dynamically via creator_info
-    },
-    tiktok_photo: {
-        maxFiles: 35, minFiles: 1, acceptImages: true, acceptVideos: false, requiresMedia: true,
-        acceptsGif: false,
-    },
-
-    // YouTube
-    youtube_short: {
-        maxFiles: 1, acceptImages: false, acceptVideos: true, requiresMedia: true,
-        acceptsGif: false,
-        maxVideoBytes: 256 * GB, maxVideoDurationSec: 3 * 60,
-        aspectRatioMin: 0.5, aspectRatioMax: 0.6,
-    },
-
-    // Pinterest
-    pinterest_pin: {
-        maxFiles: 1, acceptImages: true, acceptVideos: false, requiresMedia: true,
-        acceptsGif: false,
-        maxImageBytes: 20 * MB,
-    },
-    pinterest_video_pin: {
-        maxFiles: 1, acceptImages: false, acceptVideos: true, requiresMedia: true,
-        acceptsGif: false,
-        maxVideoBytes: 2 * GB, maxVideoDurationSec: 15 * 60,
-    },
-    pinterest_carousel: {
-        maxFiles: 5, minFiles: 2, acceptImages: true, acceptVideos: false, requiresMedia: true,
-        acceptsGif: false,
-        maxImageBytes: 20 * MB,
-    },
-
-    // X (Twitter) — accepts GIF with animation
-    x_post: {
-        maxFiles: 4, acceptImages: true, acceptVideos: true, requiresMedia: false,
-        acceptsGif: true,
-        maxImageBytes: 5 * MB, maxVideoBytes: 512 * MB, maxVideoDurationSec: 140,
-    },
-
-    // Threads
-    threads_post: {
-        maxFiles: 10, acceptImages: true, acceptVideos: true, requiresMedia: false,
-        acceptsGif: false,
-        maxImageBytes: 8 * MB, maxVideoBytes: 1 * GB, maxVideoDurationSec: 5 * 60,
-    },
-
-    // Bluesky — accepts GIF; tight image size (auto-resized by backend).
-    // The embed is images XOR video, so the two can't be combined in one post.
-    bluesky_post: {
-        maxFiles: 4, acceptImages: true, acceptVideos: true, requiresMedia: false,
-        acceptsGif: true, forbidsMixedMedia: true,
-        maxVideoBytes: 100 * MB, maxVideoDurationSec: 60,
-    },
-
-    // Mastodon — accepts GIF
-    mastodon_post: {
-        maxFiles: 4, acceptImages: true, acceptVideos: true, requiresMedia: false,
-        acceptsGif: true,
-        maxImageBytes: 10 * MB, maxVideoBytes: 40 * MB,
-    },
-};
-
 const DEFAULT_RULES: MediaRules = {
     maxFiles: 10,
     acceptImages: true,
@@ -157,33 +21,18 @@ const DEFAULT_RULES: MediaRules = {
     acceptsGif: true,
 };
 
-const withSharedDuration = (contentType: string, rules: MediaRules): MediaRules => {
-    const shared = maxVideoDurationSecFor(contentType);
+export const getMediaRulesForContentType = (contentType: string): MediaRules => {
+    const shared = mediaRuleFor(contentType);
 
-    // Cache not synced yet — keep local hardcoded fallbacks.
-    if (shared === undefined) {
-        return rules;
+    if (!shared) {
+        return DEFAULT_RULES;
     }
 
-    // Explicitly unlimited / dynamic on the server (e.g. TikTok).
-    if (shared === null) {
-        const { maxVideoDurationSec: _ignored, ...rest } = rules;
-
-        return rest;
-    }
-
-    return {
-        ...rules,
-        maxVideoDurationSec: shared,
-    };
+    return toMediaRules(shared);
 };
 
 export const useMediaRules = (contentType: Ref<string> | ComputedRef<string>) => {
-    const rules = computed<MediaRules>(() => {
-        const base = CONTENT_TYPE_RULES[contentType.value] || DEFAULT_RULES;
-
-        return withSharedDuration(contentType.value, base);
-    });
+    const rules = computed<MediaRules>(() => getMediaRulesForContentType(contentType.value));
 
     const acceptMimeTypes = computed<string>(() => {
         const types: string[] = [];
@@ -243,10 +92,4 @@ export const useMediaRules = (contentType: Ref<string> | ComputedRef<string>) =>
         isValidFileType,
         getAcceptDescription,
     };
-};
-
-export const getMediaRulesForContentType = (contentType: string): MediaRules => {
-    const base = CONTENT_TYPE_RULES[contentType] || DEFAULT_RULES;
-
-    return withSharedDuration(contentType, base);
 };

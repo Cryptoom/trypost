@@ -207,22 +207,171 @@ enum ContentType: string
     }
 
     /**
-     * Media-rule fields the Vue editor needs. Shared once via Inertia so the
-     * frontend does not hardcode the same numbers.
+     * Minimum attachments required (0 = no floor beyond requiresMedia()).
+     */
+    public function minMediaCount(): int
+    {
+        return match ($this) {
+            self::PinterestCarousel => 2,
+            self::TikTokPhoto => 1,
+            default => 0,
+        };
+    }
+
+    /**
+     * Whether animated GIFs are accepted (kept as GIF, not flattened to JPEG).
+     */
+    public function acceptsGif(): bool
+    {
+        return match ($this) {
+            self::XPost, self::BlueskyPost, self::MastodonPost => true,
+            default => false,
+        };
+    }
+
+    /**
+     * Per-type image size cap in bytes. Null when images are not accepted or
+     * the platform has no tighter editor-side limit than the global media cap.
+     */
+    public function maxImageBytes(): ?int
+    {
+        return match ($this) {
+            self::InstagramFeed, self::InstagramStory => self::bytesFromMb(8),
+            self::FacebookPost => self::bytesFromMb(4),
+            self::LinkedInPost, self::LinkedInPagePost => self::bytesFromMb(5),
+            self::PinterestPin, self::PinterestCarousel => self::bytesFromMb(20),
+            self::XPost => self::bytesFromMb(5),
+            self::ThreadsPost => self::bytesFromMb(8),
+            self::MastodonPost => self::bytesFromMb(10),
+            default => null,
+        };
+    }
+
+    /**
+     * Per-type video size cap in bytes. Null when videos are not accepted or
+     * the platform has no tighter editor-side limit.
+     */
+    public function maxVideoBytes(): ?int
+    {
+        return match ($this) {
+            self::InstagramFeed, self::InstagramStory => self::bytesFromMb(100),
+            self::InstagramReel => self::bytesFromGb(1),
+            self::FacebookPost => self::bytesFromGb(10),
+            self::FacebookReel, self::FacebookStory => self::bytesFromGb(1),
+            self::LinkedInPost, self::LinkedInPagePost => self::bytesFromGb(5),
+            self::YouTubeShort => self::bytesFromGb(256),
+            self::PinterestVideoPin => self::bytesFromGb(2),
+            self::XPost => self::bytesFromMb(512),
+            self::ThreadsPost => self::bytesFromGb(1),
+            self::BlueskyPost => self::bytesFromMb(100),
+            self::MastodonPost => self::bytesFromMb(40),
+            default => null,
+        };
+    }
+
+    /**
+     * Per-type PDF size cap in bytes. Null when documents are not accepted.
+     */
+    public function maxDocumentBytes(): ?int
+    {
+        return match ($this) {
+            self::LinkedInPost, self::LinkedInPagePost => self::bytesFromMb(100),
+            default => null,
+        };
+    }
+
+    /**
+     * Soft aspect-ratio window used by the Vue cropper / media picker.
      *
-     * @return array<string, array{max_video_duration_sec: int|null}>
+     * @return array{min: float, max: float}|null
+     */
+    public function aspectRatioBounds(): ?array
+    {
+        return match ($this) {
+            self::InstagramFeed => ['min' => 0.8, 'max' => 1.91],
+            self::InstagramReel, self::InstagramStory,
+            self::FacebookReel, self::FacebookStory,
+            self::YouTubeShort => ['min' => 0.5, 'max' => 0.6],
+            default => null,
+        };
+    }
+
+    /**
+     * Whether the editor should auto-fit still images into the story frame.
+     */
+    public function autoFitsImage(): bool
+    {
+        return $this === self::InstagramStory;
+    }
+
+    /**
+     * Full media-rule payload for the Vue editor (and any other consumer).
+     * Shared once via Inertia — do not re-hardcode these numbers in JS.
+     *
+     * @return array{
+     *     max_files: int,
+     *     min_files: int|null,
+     *     accept_images: bool,
+     *     accept_videos: bool,
+     *     accept_documents: bool,
+     *     requires_media: bool,
+     *     accepts_gif: bool,
+     *     forbids_mixed_media: bool,
+     *     max_image_bytes: int|null,
+     *     max_video_bytes: int|null,
+     *     max_document_bytes: int|null,
+     *     max_video_duration_sec: int|null,
+     *     aspect_ratio_min: float|null,
+     *     aspect_ratio_max: float|null,
+     *     auto_fits_image: bool
+     * }
+     */
+    public function mediaRules(): array
+    {
+        $bounds = $this->aspectRatioBounds();
+        $minFiles = $this->minMediaCount();
+
+        return [
+            'max_files' => $this->maxMediaCount(),
+            'min_files' => $minFiles > 0 ? $minFiles : null,
+            'accept_images' => $this->supportsImage(),
+            'accept_videos' => $this->supportsVideo(),
+            'accept_documents' => $this->supportsDocument(),
+            'requires_media' => $this->requiresMedia(),
+            'accepts_gif' => $this->acceptsGif(),
+            'forbids_mixed_media' => ! $this->supportsMixedMedia(),
+            'max_image_bytes' => $this->maxImageBytes(),
+            'max_video_bytes' => $this->maxVideoBytes(),
+            'max_document_bytes' => $this->maxDocumentBytes(),
+            'max_video_duration_sec' => $this->maxVideoDurationSec(),
+            'aspect_ratio_min' => $bounds['min'] ?? null,
+            'aspect_ratio_max' => $bounds['max'] ?? null,
+            'auto_fits_image' => $this->autoFitsImage(),
+        ];
+    }
+
+    /**
+     * @return array<string, array<string, mixed>>
      */
     public static function mediaRulesForFrontend(): array
     {
         $rules = [];
 
         foreach (self::cases() as $type) {
-            $rules[$type->value] = [
-                'max_video_duration_sec' => $type->maxVideoDurationSec(),
-            ];
+            $rules[$type->value] = $type->mediaRules();
         }
 
         return $rules;
+    }
+
+    private static function bytesFromMb(int $megabytes): int
+    {
+        return $megabytes * 1024 * 1024;
+    }
+
+    private static function bytesFromGb(int $gigabytes): int
+    {
+        return $gigabytes * 1024 * 1024 * 1024;
     }
 
     public function supportsVideo(): bool

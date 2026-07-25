@@ -34,13 +34,36 @@ test('content type exposes max video duration in seconds', function () {
     expect(ContentType::TikTokVideo->maxVideoDurationSec())->toBeNull();
 });
 
-test('media rules for frontend expose duration caps keyed by content type', function () {
+test('media rules for frontend expose the full editor rule set keyed by content type', function () {
     $rules = ContentType::mediaRulesForFrontend();
 
-    expect($rules['instagram_reel']['max_video_duration_sec'])->toBe(900);
+    expect($rules)->toHaveCount(count(ContentType::cases()));
+
+    expect($rules['instagram_reel'])->toMatchArray([
+        'max_files' => 1,
+        'accept_images' => false,
+        'accept_videos' => true,
+        'requires_media' => true,
+        'max_video_bytes' => 1 * 1024 * 1024 * 1024,
+        'max_video_duration_sec' => 900,
+        'aspect_ratio_min' => 0.5,
+        'aspect_ratio_max' => 0.6,
+    ]);
+
     expect($rules['facebook_reel']['max_video_duration_sec'])->toBe(90);
     expect($rules['tiktok_video']['max_video_duration_sec'])->toBeNull();
-    expect($rules)->toHaveCount(count(ContentType::cases()));
+    expect($rules['linkedin_post']['max_document_bytes'])->toBe(100 * 1024 * 1024);
+    expect($rules['pinterest_carousel']['min_files'])->toBe(2);
+    expect($rules['x_post']['accepts_gif'])->toBeTrue();
+});
+
+test('media rules reuse enum capability helpers', function () {
+    $rules = ContentType::InstagramStory->mediaRules();
+
+    expect($rules['accept_images'])->toBe(ContentType::InstagramStory->supportsImage())
+        ->and($rules['accept_videos'])->toBe(ContentType::InstagramStory->supportsVideo())
+        ->and($rules['auto_fits_image'])->toBeTrue()
+        ->and($rules['max_files'])->toBe(ContentType::InstagramStory->maxMediaCount());
 });
 
 test('content type maps to correct platform', function () {
