@@ -1,10 +1,6 @@
 <script setup lang="ts">
-import { Head, Link, useForm, usePage, usePoll } from '@inertiajs/vue3';
-import {
-    IconCheck,
-    IconCopy,
-    IconLink,
-} from '@tabler/icons-vue';
+import { Head, Link, useForm, usePage } from '@inertiajs/vue3';
+import { IconCheck, IconCopy, IconLink } from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
 import { computed } from 'vue';
 
@@ -12,11 +8,13 @@ import NetworkConnectGrid, {
     type AvailablePlatform,
     type ConnectedAccount,
 } from '@/components/accounts/NetworkConnectGrid.vue';
-import { Badge } from '@/components/ui/badge';
+import OnboardingStepCard from '@/components/onboarding/OnboardingStepCard.vue';
 import { Button } from '@/components/ui/button';
+import { useOnboardingStatusEcho } from '@/composables/echo/useOnboardingStatusEcho';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { copyToClipboard } from '@/lib/utils';
 import { complete, dismiss } from '@/routes/app/onboarding';
+import { create as createPost } from '@/routes/app/posts';
 
 interface OnboardingStatus {
     mcp_connected: boolean;
@@ -40,20 +38,19 @@ const props = defineProps<{
     samplePrompt: string;
     platforms: AvailablePlatform[];
     accounts: ConnectedAccount[];
-    createPostUrl: string;
 }>();
 
 const page = usePage();
-const firstName = computed(
-    () => (page.props.auth.user?.name ?? '').trim().split(' ')[0],
-);
+const firstName = computed(() => {
+    const name = (page.props.auth.user?.name ?? '').trim();
+
+    return name === '' ? '' : (name.split(/\s+/)[0] ?? '');
+});
 
 const dismissForm = useForm({});
 const completeForm = useForm({});
 
-usePoll(2000, {
-    only: ['status', 'accounts'],
-});
+useOnboardingStatusEcho(['status', 'accounts', 'onboardingResidual']);
 
 const mcpClientTheme: Record<string, { bg: string; rotate: string }> = {
     claude: { bg: 'bg-orange-100', rotate: '-rotate-2' },
@@ -80,7 +77,9 @@ const continueToTryPost = (): void => {
     }
 };
 
-const themeFor = (clientId: string) =>
+const themeFor = (
+    clientId: string,
+): { bg: string; rotate: string } =>
     mcpClientTheme[clientId] ?? { bg: 'bg-violet-100', rotate: '' };
 </script>
 
@@ -99,7 +98,12 @@ const themeFor = (clientId: string) =>
                         class="text-xl font-bold text-foreground sm:text-2xl"
                         dusk="onboarding-welcome"
                     >
-                        {{ $t('onboarding.welcome', { name: firstName }) }}
+                        <template v-if="firstName">
+                            {{ $t('onboarding.welcome', { name: firstName }) }}
+                        </template>
+                        <template v-else>
+                            {{ $t('onboarding.welcome_anonymous') }}
+                        </template>
                     </h1>
                     <p class="text-sm text-muted-foreground sm:text-base">
                         {{ $t('onboarding.description') }}
@@ -107,6 +111,7 @@ const themeFor = (clientId: string) =>
                 </div>
 
                 <Button
+                    v-if="!status.all_complete"
                     type="button"
                     variant="ghost"
                     size="sm"
@@ -120,124 +125,37 @@ const themeFor = (clientId: string) =>
             </div>
 
             <div class="grid gap-6">
-                <section
-                    class="overflow-hidden rounded-2xl border-2 border-foreground bg-card shadow-2xs"
+                <OnboardingStepCard
+                    :done="status.social_connected"
+                    :step="1"
+                    :title="$t('onboarding.social.title')"
+                    :description="$t('onboarding.social.description')"
+                    accent-class="bg-sky-100"
                     dusk="onboarding-social"
                 >
-                    <header
-                        :class="[
-                            'flex items-center justify-between gap-4 border-b-2 border-foreground px-5 py-4 sm:px-6',
-                            status.social_connected
-                                ? 'bg-emerald-100'
-                                : 'bg-sky-100',
-                        ]"
-                    >
-                        <div class="flex min-w-0 items-center gap-3">
-                            <span
-                                :class="[
-                                    'inline-flex size-8 shrink-0 items-center justify-center rounded-full border-2 border-foreground text-sm font-bold shadow-2xs',
-                                    status.social_connected
-                                        ? 'bg-emerald-300'
-                                        : 'bg-card',
-                                ]"
-                            >
-                                <IconCheck
-                                    v-if="status.social_connected"
-                                    class="size-4"
-                                    stroke-width="3"
-                                />
-                                <template v-else>1</template>
-                            </span>
-                            <div class="min-w-0">
-                                <h2 class="truncate text-base font-bold">
-                                    {{ $t('onboarding.social.title') }}
-                                </h2>
-                                <p class="truncate text-sm text-foreground/70">
-                                    {{ $t('onboarding.social.description') }}
-                                </p>
-                            </div>
-                        </div>
-                        <Badge
-                            class="shrink-0"
-                            :variant="
-                                status.social_connected ? 'success' : 'outline'
-                            "
-                        >
-                            {{
-                                status.social_connected
-                                    ? $t('onboarding.status.complete')
-                                    : $t('onboarding.status.todo')
-                            }}
-                        </Badge>
-                    </header>
+                    <NetworkConnectGrid
+                        :platforms="platforms"
+                        :connected-accounts="accounts"
+                        grid-class="grid-cols-2 sm:grid-cols-3 xl:grid-cols-5"
+                    />
+                </OnboardingStepCard>
 
-                    <div class="p-5 sm:p-6">
-                        <NetworkConnectGrid
-                            :platforms="platforms"
-                            :connected-accounts="accounts"
-                            grid-class="grid-cols-2 sm:grid-cols-3 xl:grid-cols-5"
-                        />
-                    </div>
-                </section>
-
-                <section
-                    class="overflow-hidden rounded-2xl border-2 border-foreground bg-card shadow-2xs"
+                <OnboardingStepCard
+                    :done="status.mcp_connected"
+                    :step="2"
+                    :title="$t('onboarding.mcp.title')"
+                    :description="$t('onboarding.mcp.description')"
+                    accent-class="bg-violet-100"
                     dusk="onboarding-mcp"
                 >
-                    <header
-                        :class="[
-                            'flex items-center justify-between gap-4 border-b-2 border-foreground px-5 py-4 sm:px-6',
-                            status.mcp_connected
-                                ? 'bg-emerald-100'
-                                : 'bg-violet-100',
-                        ]"
-                    >
-                        <div class="flex min-w-0 items-center gap-3">
-                            <span
-                                :class="[
-                                    'inline-flex size-8 shrink-0 items-center justify-center rounded-full border-2 border-foreground text-sm font-bold shadow-2xs',
-                                    status.mcp_connected
-                                        ? 'bg-emerald-300'
-                                        : 'bg-card',
-                                ]"
-                            >
-                                <IconCheck
-                                    v-if="status.mcp_connected"
-                                    class="size-4"
-                                    stroke-width="3"
-                                />
-                                <template v-else>2</template>
-                            </span>
-                            <div class="min-w-0">
-                                <h2 class="truncate text-base font-bold">
-                                    {{ $t('onboarding.mcp.title') }}
-                                </h2>
-                                <p class="truncate text-sm text-foreground/70">
-                                    {{ $t('onboarding.mcp.description') }}
-                                </p>
-                            </div>
-                        </div>
-                        <Badge
-                            class="shrink-0"
-                            :variant="
-                                status.mcp_connected ? 'success' : 'outline'
-                            "
-                        >
-                            {{
-                                status.mcp_connected
-                                    ? $t('onboarding.status.complete')
-                                    : $t('onboarding.status.todo')
-                            }}
-                        </Badge>
-                    </header>
-
-                    <div class="space-y-6 p-5 sm:p-6">
+                    <div class="space-y-6">
                         <div>
                             <div class="mb-3 flex items-center gap-3">
                                 <span
                                     class="inline-flex size-6 shrink-0 items-center justify-center rounded-full bg-foreground text-xs font-bold text-background"
-                                    >1</span
                                 >
+                                    1
+                                </span>
                                 <p class="text-sm font-bold">
                                     {{ $t('onboarding.mcp.copy_step') }}
                                 </p>
@@ -253,8 +171,9 @@ const themeFor = (clientId: string) =>
                                     />
                                     <code
                                         class="min-w-0 flex-1 truncate text-sm"
-                                        >{{ mcpUrl }}</code
                                     >
+                                        {{ mcpUrl }}
+                                    </code>
                                 </div>
                                 <Button
                                     type="button"
@@ -274,8 +193,9 @@ const themeFor = (clientId: string) =>
                             <div class="mb-3 flex items-center gap-3">
                                 <span
                                     class="inline-flex size-6 shrink-0 items-center justify-center rounded-full bg-foreground text-xs font-bold text-background"
-                                    >2</span
                                 >
+                                    2
+                                </span>
                                 <p class="text-sm font-bold">
                                     {{ $t('onboarding.mcp.open_step') }}
                                 </p>
@@ -317,127 +237,77 @@ const themeFor = (clientId: string) =>
                                         </div>
                                     </div>
 
-                                    <a
-                                        :href="client.settings_url"
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        class="inline-flex h-10 w-full items-center justify-center rounded-md border-2 border-foreground bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-xs transition-all hover:shadow-sm focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
-                                        :dusk="`mcp-client-${client.id}`"
-                                    >
-                                        {{
-                                            $t('onboarding.mcp.connect', {
-                                                client: client.label,
-                                            })
-                                        }}
-                                    </a>
+                                    <Button as-child class="w-full">
+                                        <a
+                                            :href="client.settings_url"
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            :dusk="`mcp-client-${client.id}`"
+                                        >
+                                            {{
+                                                $t('onboarding.mcp.connect', {
+                                                    client: client.label,
+                                                })
+                                            }}
+                                        </a>
+                                    </Button>
                                 </article>
                             </div>
                         </div>
                     </div>
-                </section>
+                </OnboardingStepCard>
 
-                <section
-                    class="overflow-hidden rounded-2xl border-2 border-foreground bg-card shadow-2xs"
+                <OnboardingStepCard
+                    :done="status.first_post_created"
+                    :step="3"
+                    :title="$t('onboarding.first_post.title')"
+                    :description="$t('onboarding.first_post.description')"
+                    accent-class="bg-amber-100"
                     dusk="onboarding-first-post"
                 >
-                    <header
-                        :class="[
-                            'flex items-center justify-between gap-4 border-b-2 border-foreground px-5 py-4 sm:px-6',
-                            status.first_post_created
-                                ? 'bg-emerald-100'
-                                : 'bg-amber-100',
-                        ]"
+                    <div
+                        class="rounded-xl border-2 border-foreground bg-amber-50 p-5 shadow-2xs"
                     >
-                        <div class="flex min-w-0 items-center gap-3">
-                            <span
-                                :class="[
-                                    'inline-flex size-8 shrink-0 items-center justify-center rounded-full border-2 border-foreground text-sm font-bold shadow-2xs',
-                                    status.first_post_created
-                                        ? 'bg-emerald-300'
-                                        : 'bg-card',
-                                ]"
-                            >
-                                <IconCheck
-                                    v-if="status.first_post_created"
-                                    class="size-4"
-                                    stroke-width="3"
-                                />
-                                <template v-else>3</template>
-                            </span>
-                            <div class="min-w-0">
-                                <h2 class="truncate text-base font-bold">
-                                    {{ $t('onboarding.first_post.title') }}
-                                </h2>
-                                <p class="truncate text-sm text-foreground/70">
-                                    {{
-                                        $t('onboarding.first_post.description')
-                                    }}
-                                </p>
-                            </div>
-                        </div>
-                        <Badge
-                            class="shrink-0"
-                            :variant="
-                                status.first_post_created
-                                    ? 'success'
-                                    : 'outline'
-                            "
+                        <p
+                            class="text-xs font-black tracking-widest text-muted-foreground uppercase"
                         >
-                            {{
-                                status.first_post_created
-                                    ? $t('onboarding.status.complete')
-                                    : $t('onboarding.status.todo')
-                            }}
-                        </Badge>
-                    </header>
-
-                    <div class="p-5 sm:p-6">
-                        <div
-                            class="rounded-xl border-2 border-foreground bg-amber-50 p-5 shadow-2xs"
+                            {{ $t('onboarding.first_post.prompt_label') }}
+                        </p>
+                        <p
+                            class="mt-3 text-sm leading-7 text-foreground sm:text-base"
                         >
-                            <p
-                                class="text-xs font-black tracking-widest text-muted-foreground uppercase"
-                            >
-                                {{ $t('onboarding.first_post.prompt_label') }}
-                            </p>
-                            <p
-                                class="mt-3 text-sm leading-7 text-foreground sm:text-base"
-                            >
-                                {{ samplePrompt }}
-                            </p>
-                        </div>
-
-                        <div
-                            class="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center"
-                        >
-                            <Button
-                                type="button"
-                                dusk="copy-sample-prompt"
-                                @click="copySamplePrompt"
-                            >
-                                <IconCopy class="size-4" />
-                                {{ $t('onboarding.first_post.copy_prompt') }}
-                            </Button>
-                            <span
-                                class="text-xs font-semibold text-muted-foreground"
-                            >
-                                {{ $t('onboarding.first_post.or') }}
-                            </span>
-                            <Button as-child variant="outline">
-                                <Link
-                                    :href="createPostUrl"
-                                    dusk="create-first-post"
-                                >
-                                    {{
-                                        $t(
-                                            'onboarding.first_post.create_button',
-                                        )
-                                    }}
-                                </Link>
-                            </Button>
-                        </div>
+                            {{ samplePrompt }}
+                        </p>
                     </div>
-                </section>
+
+                    <div
+                        class="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center"
+                    >
+                        <Button
+                            type="button"
+                            dusk="copy-sample-prompt"
+                            @click="copySamplePrompt"
+                        >
+                            <IconCopy class="size-4" />
+                            {{ $t('onboarding.first_post.copy_prompt') }}
+                        </Button>
+                        <span
+                            class="text-xs font-semibold text-muted-foreground"
+                        >
+                            {{ $t('onboarding.first_post.or') }}
+                        </span>
+                        <Button as-child variant="outline">
+                            <Link
+                                :href="createPost.url()"
+                                dusk="create-first-post"
+                            >
+                                {{
+                                    $t('onboarding.first_post.create_button')
+                                }}
+                            </Link>
+                        </Button>
+                    </div>
+                </OnboardingStepCard>
             </div>
 
             <section

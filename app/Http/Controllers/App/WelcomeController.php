@@ -67,15 +67,11 @@ class WelcomeController extends Controller
 
     public function goals(Request $request): Response|RedirectResponse
     {
-        if ($redirect = $this->redirectIfUnavailable($request)) {
+        if ($redirect = $this->redirectIfStepIncomplete($request)) {
             return $redirect;
         }
 
         $user = $request->user();
-
-        if (! $user->persona) {
-            return redirect()->route('app.welcome.persona');
-        }
 
         return Inertia::render('welcome/Goals', [
             'goals' => array_map(fn (Goal $goal): string => $goal->value, Goal::cases()),
@@ -85,16 +81,11 @@ class WelcomeController extends Controller
 
     public function storeGoals(StoreWelcomeGoalsRequest $request, PostHogService $postHog): RedirectResponse
     {
-        if ($redirect = $this->redirectIfUnavailable($request)) {
+        if ($redirect = $this->redirectIfStepIncomplete($request)) {
             return $redirect;
         }
 
         $user = $request->user();
-
-        if (! $user->persona) {
-            return redirect()->route('app.welcome.persona');
-        }
-
         $goals = array_values($request->validated('goals'));
 
         $user->update(['goals' => $goals]);
@@ -114,20 +105,11 @@ class WelcomeController extends Controller
 
     public function referralSource(Request $request): Response|RedirectResponse
     {
-        if ($redirect = $this->redirectIfUnavailable($request)) {
+        if ($redirect = $this->redirectIfStepIncomplete($request, requireGoals: true)) {
             return $redirect;
         }
 
         $user = $request->user();
-
-        if (! $user->persona) {
-            return redirect()->route('app.welcome.persona');
-        }
-
-        if (! $user->goals) {
-            return redirect()->route('app.welcome.goals');
-        }
-
         $plan = Plan::where('slug', Slug::Workspace)->firstOrFail();
 
         return Inertia::render('welcome/ReferralSource', [
@@ -145,20 +127,11 @@ class WelcomeController extends Controller
         StartSubscriptionCheckout $checkout,
         PostHogService $postHog,
     ): SymfonyResponse|RedirectResponse {
-        if ($redirect = $this->redirectIfUnavailable($request)) {
+        if ($redirect = $this->redirectIfStepIncomplete($request, requireGoals: true)) {
             return $redirect;
         }
 
         $user = $request->user();
-
-        if (! $user->persona) {
-            return redirect()->route('app.welcome.persona');
-        }
-
-        if (! $user->goals) {
-            return redirect()->route('app.welcome.goals');
-        }
-
         $referralSource = (string) $request->validated('referral_source');
 
         $user->update(['referral_source' => $referralSource]);
@@ -192,6 +165,25 @@ class WelcomeController extends Controller
         );
 
         return $response;
+    }
+
+    private function redirectIfStepIncomplete(Request $request, bool $requireGoals = false): ?RedirectResponse
+    {
+        if ($redirect = $this->redirectIfUnavailable($request)) {
+            return $redirect;
+        }
+
+        $user = $request->user();
+
+        if (! $user->persona) {
+            return redirect()->route('app.welcome.persona');
+        }
+
+        if ($requireGoals && ! $user->goals) {
+            return redirect()->route('app.welcome.goals');
+        }
+
+        return null;
     }
 
     private function redirectIfUnavailable(Request $request): ?RedirectResponse

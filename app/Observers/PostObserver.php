@@ -6,6 +6,7 @@ namespace App\Observers;
 
 use App\Enums\Automation\Trigger\Type as TriggerType;
 use App\Enums\Post\Status as PostStatus;
+use App\Events\OnboardingStatusUpdated;
 use App\Events\PostCreated;
 use App\Jobs\Automation\DispatchPostTriggerAutomationsJob;
 use App\Models\Post;
@@ -16,6 +17,8 @@ class PostObserver
     public function created(Post $post): void
     {
         DB::afterCommit(fn () => PostCreated::dispatch($post));
+
+        OnboardingStatusUpdated::dispatchForWorkspace($post->workspace_id);
     }
 
     public function saved(Post $post): void

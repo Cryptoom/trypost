@@ -8,17 +8,20 @@ use App\Enums\PostHog\OnboardingEvent;
 use App\Models\AccessToken;
 use App\Models\Account;
 use App\Models\User;
-use App\Models\Workspace;
 use App\Services\PostHogService;
 use Illuminate\Support\Facades\Cache;
 
 class ResolveOnboardingStatus
 {
+    public const TOTAL_STEPS = 3;
+
     public function __construct(
         private readonly PostHogService $postHog,
     ) {}
 
     /**
+     * Pure read of activation checklist state. Safe for Inertia shared props.
+     *
      * @return array{
      *     mcp_connected: bool,
      *     social_connected: bool,
@@ -31,8 +34,7 @@ class ResolveOnboardingStatus
      */
     public function handle(User $user): array
     {
-        /** @var Account|null $account */
-        $account = data_get($user, 'account');
+        $account = $user->account;
 
         if ($account?->onboarding_completed_at !== null) {
             return [
@@ -46,8 +48,7 @@ class ResolveOnboardingStatus
             ];
         }
 
-        /** @var Workspace|null $workspace */
-        $workspace = data_get($user, 'currentWorkspace');
+        $workspace = $user->currentWorkspace;
 
         $mcpConnected = AccessToken::query()
             ->where('user_id', $user->id)
@@ -58,20 +59,10 @@ class ResolveOnboardingStatus
         $firstPostCreated = $workspace?->posts()->exists() ?? false;
         $allComplete = $mcpConnected && $socialConnected && $firstPostCreated;
 
-        if ($account?->onboarding_dismissed_at === null) {
-            $this->captureCompletedStep($user, $account, 'mcp_connected', $mcpConnected);
-            $this->captureCompletedStep($user, $account, 'social_connected', $socialConnected);
-            $this->captureCompletedStep($user, $account, 'first_post_created', $firstPostCreated);
-        }
-
-        if ($allComplete && $account !== null && $account->onboarding_completed_at === null) {
-            $account->update(['onboarding_completed_at' => now()]);
-        }
-
         $showResidual = ! config('trypost.self_hosted')
             && ($account?->subscribed(Account::SUBSCRIPTION_NAME) ?? false)
-            && $account->onboarding_completed_at === null
-            && $account->onboarding_dismissed_at === null;
+            && $account->onboarding_dismissed_at === null
+            && ! $allComplete;
 
         return [
             'mcp_connected' => $mcpConnected,
@@ -79,14 +70,79 @@ class ResolveOnboardingStatus
             'first_post_created' => $firstPostCreated,
             'all_complete' => $allComplete,
             'show_residual' => $showResidual,
-            'completed_at' => $account?->onboarding_completed_at?->toIso8601String(),
+            'completed_at' => null,
             'dismissed_at' => $account?->onboarding_dismissed_at?->toIso8601String(),
         ];
     }
 
-    private function captureCompletedStep(User $user, ?Account $account, string $step, bool $completed): void
+    /**
+     * Read checklist state, capture step analytics, and stamp completion when done.
+     * Call from intentional onboarding surfaces — not from shared Inertia props.
+     *
+     * @return array{
+     *     mcp_connected: bool,
+     *     social_connected: bool,
+     *     first_post_created: bool,
+     *     all_complete: bool,
+     *     show_residual: bool,
+     *     completed_at: ?string,
+     *     dismissed_at: ?string
+     * }
+     */
+    public function syncProgress(User $user): array
     {
-        if (! $completed || $account === null || ! PostHogService::isEnabled()) {
+        $status = $this->handle($user);
+        $account = $user->account;
+
+        if ($account === null || $account->onboarding_completed_at !== null) {
+            return $status;
+        }
+
+        if ($account->onboarding_dismissed_at === null) {
+            $this->captureCompletedStep($user, $account, 'mcp_connected', $status['mcp_connected']);
+            $this->captureCompletedStep($user, $account, 'social_connected', $status['social_connected']);
+            $this->captureCompletedStep($user, $account, 'first_post_created', $status['first_post_created']);
+        }
+
+        if (! $status['all_complete']) {
+            return $status;
+        }
+
+        $account->update(['onboarding_completed_at' => now()]);
+
+        return [
+            ...$status,
+            'show_residual' => false,
+            'completed_at' => $account->onboarding_completed_at->toIso8601String(),
+        ];
+    }
+
+    /**
+     * Sidebar residual banner payload, or false when the banner should not show.
+     *
+     * @return array{completed: int, total: int}|false
+     */
+    public function residual(User $user): array|false
+    {
+        $status = $this->handle($user);
+
+        if (! $status['show_residual']) {
+            return false;
+        }
+
+        return [
+            'completed' => collect([
+                $status['mcp_connected'],
+                $status['social_connected'],
+                $status['first_post_created'],
+            ])->filter()->count(),
+            'total' => self::TOTAL_STEPS,
+        ];
+    }
+
+    private function captureCompletedStep(User $user, Account $account, string $step, bool $completed): void
+    {
+        if (! $completed || ! PostHogService::isEnabled()) {
             return;
         }
 

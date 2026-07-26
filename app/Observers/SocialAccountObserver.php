@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Observers;
 
 use App\Enums\SocialAccount\Platform;
+use App\Events\OnboardingStatusUpdated;
 use App\Exceptions\SocialAccount\NetworkAlreadyConnectedException;
 use App\Jobs\PostHog\SyncAccountUsage;
 use App\Models\SocialAccount;
@@ -44,6 +45,8 @@ class SocialAccountObserver
     public function created(SocialAccount $socialAccount): void
     {
         $this->syncUsage($socialAccount);
+
+        OnboardingStatusUpdated::dispatchForWorkspace($socialAccount->workspace_id);
     }
 
     public function deleted(SocialAccount $socialAccount): void

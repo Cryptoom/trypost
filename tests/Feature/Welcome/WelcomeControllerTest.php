@@ -19,16 +19,6 @@ beforeEach(function () {
     $this->user = User::factory()->create();
 });
 
-function subscribeWelcomeAccount(Account $account): void
-{
-    $account->subscriptions()->create([
-        'type' => Account::SUBSCRIPTION_NAME,
-        'stripe_id' => 'sub_'.fake()->uuid(),
-        'stripe_status' => 'active',
-        'stripe_price' => 'price_123',
-    ]);
-}
-
 test('welcome redirects to the persona step', function () {
     $this->actingAs($this->user)
         ->get(route('app.welcome'))
@@ -216,7 +206,7 @@ test('referral source store saves the source and starts Stripe checkout without 
 });
 
 test('welcome steps redirect to activation for subscribed accounts with residual onboarding', function (string $routeName, string $method, array $payload = []) {
-    subscribeWelcomeAccount($this->user->account);
+    subscribeAccount($this->user->account);
 
     $this->actingAs($this->user->fresh());
 
@@ -235,7 +225,7 @@ test('welcome steps redirect to activation for subscribed accounts with residual
 ]);
 
 test('welcome redirects subscribed accounts without residual onboarding to calendar', function (array $attributes) {
-    subscribeWelcomeAccount($this->user->account);
+    subscribeAccount($this->user->account);
     $this->user->account->update($attributes);
 
     $this->actingAs($this->user->fresh())

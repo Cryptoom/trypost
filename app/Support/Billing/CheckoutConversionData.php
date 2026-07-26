@@ -22,14 +22,14 @@ final class CheckoutConversionData
         $currency = data_get($session, 'currency');
         $transactionId = data_get($session, 'id');
 
-        if (! is_int($amountTotal) || ! is_string($currency) || $currency === '' || ! is_string($transactionId) || $transactionId === '') {
+        if (! is_int($amountTotal) || blank($currency) || blank($transactionId)) {
             return null;
         }
 
         return [
             'value' => $amountTotal / 100,
-            'currency' => strtoupper($currency),
-            'transaction_id' => $transactionId,
+            'currency' => strtoupper((string) $currency),
+            'transaction_id' => (string) $transactionId,
         ];
     }
 }

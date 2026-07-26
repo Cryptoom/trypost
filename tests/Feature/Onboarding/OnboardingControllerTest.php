@@ -49,24 +49,18 @@ test('onboarding renders activation status and connection props', function () {
             ->where('status.all_complete', false)
             ->where('status.show_residual', true)
             ->where('mcpUrl', url('/mcp/trypost'))
-            ->where('mcpClients', [
-                [
-                    'id' => 'claude',
-                    'label' => 'Claude',
-                    'logo' => '/images/ai/claude.svg',
-                    'settings_url' => 'https://claude.ai/customize/connectors',
-                ],
-                [
-                    'id' => 'chatgpt',
-                    'label' => 'ChatGPT',
-                    'logo' => '/images/ai/chatgpt-white.svg',
-                    'settings_url' => 'https://chatgpt.com/plugins#settings/Connectors?create-connector=true&redirectAfter=%2Fplugins',
-                ],
-            ])
+            ->where('mcpClients', collect(config('trypost.mcp.clients'))
+                ->map(fn (array $client, string $id): array => [
+                    'id' => $id,
+                    'label' => data_get($client, 'label'),
+                    'logo' => data_get($client, 'logo'),
+                    'settings_url' => data_get($client, 'settings_url'),
+                ])
+                ->values()
+                ->all())
             ->where('samplePrompt', __('onboarding.first_post.sample_prompt'))
             ->has('platforms', collect(Platform::cases())->filter->isConnectable()->count())
             ->where('accounts.0.id', $socialAccount->id)
-            ->where('createPostUrl', route('app.posts.create'))
         );
 
     Bus::assertDispatched(SendEvent::class, fn (SendEvent $event): bool => $event->method === 'capture'
@@ -82,7 +76,7 @@ test('onboarding does not capture viewed during a partial reload', function () {
     Bus::fake();
 
     $response->assertInertia(fn ($page) => $page
-        ->reloadOnly(['status', 'accounts'], fn ($reload) => $reload
+        ->reloadOnly(['status', 'accounts', 'onboardingResidual'], fn ($reload) => $reload
             ->has('status')
             ->has('accounts')
         )

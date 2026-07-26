@@ -49,6 +49,7 @@ import {
 } from '@/components/ui/sidebar';
 import WorkspaceMenuContent from '@/components/WorkspaceMenuContent.vue';
 import { useActiveUrl } from '@/composables/useActiveUrl';
+import { useOnboardingResidualEcho } from '@/composables/echo/useOnboardingStatusEcho';
 import { useWorkspaceRole } from '@/composables/useWorkspaceRole';
 import { accounts, analytics, calendar, onboarding } from '@/routes/app';
 import { index as assets } from '@/routes/app/assets';
@@ -88,6 +89,8 @@ const onboardingProgress = computed(() => {
 
     return total > 0 ? Math.round((completed / total) * 100) : 0;
 });
+
+useOnboardingResidualEcho();
 
 const {
     canCreatePost,

@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Events\OnboardingStatusUpdated;
 use App\Events\PostCreated;
 use App\Models\Post;
 use App\Models\User;
@@ -9,7 +10,7 @@ use App\Models\Workspace;
 use Illuminate\Support\Facades\Event;
 
 test('creating a post dispatches PostCreated via the observer', function () {
-    Event::fake([PostCreated::class]);
+    Event::fake([PostCreated::class, OnboardingStatusUpdated::class]);
 
     $user = User::factory()->create();
     $workspace = Workspace::factory()->create(['user_id' => $user->id]);
@@ -23,10 +24,15 @@ test('creating a post dispatches PostCreated via the observer', function () {
         PostCreated::class,
         fn (PostCreated $event) => $event->post->id === $post->id,
     );
+
+    Event::assertDispatched(
+        OnboardingStatusUpdated::class,
+        fn (OnboardingStatusUpdated $event) => $event->workspaceId === $workspace->id,
+    );
 });
 
 test('creating a post quietly does not dispatch PostCreated', function () {
-    Event::fake([PostCreated::class]);
+    Event::fake([PostCreated::class, OnboardingStatusUpdated::class]);
 
     $user = User::factory()->create();
     $workspace = Workspace::factory()->create(['user_id' => $user->id]);
@@ -37,4 +43,5 @@ test('creating a post quietly does not dispatch PostCreated', function () {
     ]);
 
     Event::assertNotDispatched(PostCreated::class);
+    Event::assertNotDispatched(OnboardingStatusUpdated::class);
 });

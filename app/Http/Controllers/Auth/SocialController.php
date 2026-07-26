@@ -38,14 +38,7 @@ class SocialController extends Controller
 
         $this->authorize('manageAccounts', $workspace);
 
-        $platforms = collect(SocialPlatform::cases())
-            ->filter(fn ($platform) => $platform->isConnectable())
-            ->map(fn ($platform) => [
-                'value' => $platform->value,
-                'label' => $platform->label(),
-                'color' => $platform->color(),
-                'network' => $platform->network(),
-            ])->values();
+        $platforms = SocialPlatform::connectableOptions();
 
         return Inertia::render('accounts/Index', [
             'workspace' => $workspace,

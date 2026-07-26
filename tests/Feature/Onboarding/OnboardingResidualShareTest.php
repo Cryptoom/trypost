@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Actions\Onboarding\ResolveOnboardingStatus;
 use App\Models\User;
 use App\Models\Workspace;
 
@@ -25,7 +26,7 @@ test('shares the onboarding residual progress for subscribed accounts', function
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->where('onboardingResidual.completed', 0)
-            ->where('onboardingResidual.total', 3)
+            ->where('onboardingResidual.total', ResolveOnboardingStatus::TOTAL_STEPS)
         );
 });
 
@@ -33,6 +34,15 @@ test('does not share the onboarding residual state after dismissal', function ()
     $this->user->account->update(['onboarding_dismissed_at' => now()]);
 
     $this->actingAs($this->user->fresh())
+        ->get(route('app.calendar'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page->where('onboardingResidual', false));
+});
+
+test('does not share the onboarding residual in self-hosted mode', function () {
+    config(['trypost.self_hosted' => true]);
+
+    $this->actingAs($this->user)
         ->get(route('app.calendar'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page->where('onboardingResidual', false));

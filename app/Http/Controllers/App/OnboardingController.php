@@ -23,22 +23,13 @@ class OnboardingController extends Controller
 
     public function index(Request $request): Response|RedirectResponse
     {
-        if (config('trypost.self_hosted')) {
-            return redirect()->route('app.calendar');
+        if ($redirect = $this->redirectIfSelfHosted()) {
+            return $redirect;
         }
 
         $user = $request->user();
         $workspace = $user->currentWorkspace;
-        $status = $this->resolveOnboardingStatus->handle($user);
-
-        $platforms = collect(SocialPlatform::cases())
-            ->filter(fn (SocialPlatform $platform): bool => $platform->isConnectable())
-            ->map(fn (SocialPlatform $platform): array => [
-                'value' => $platform->value,
-                'label' => $platform->label(),
-                'color' => $platform->color(),
-                'network' => $platform->network(),
-            ])->values();
+        $status = $this->resolveOnboardingStatus->syncProgress($user);
 
         if (! $request->hasHeader('X-Inertia-Partial-Component')) {
             $this->postHog->capture(
@@ -51,33 +42,27 @@ class OnboardingController extends Controller
         return Inertia::render('onboarding/Index', [
             'status' => $status,
             'mcpUrl' => url('/mcp/trypost'),
-            'mcpClients' => [
-                [
-                    'id' => 'claude',
-                    'label' => 'Claude',
-                    'logo' => '/images/ai/claude.svg',
-                    'settings_url' => 'https://claude.ai/customize/connectors',
-                ],
-                [
-                    'id' => 'chatgpt',
-                    'label' => 'ChatGPT',
-                    'logo' => '/images/ai/chatgpt-white.svg',
-                    'settings_url' => 'https://chatgpt.com/plugins#settings/Connectors?create-connector=true&redirectAfter=%2Fplugins',
-                ],
-            ],
+            'mcpClients' => collect(config('trypost.mcp.clients', []))
+                ->map(fn (array $client, string $id): array => [
+                    'id' => $id,
+                    'label' => (string) data_get($client, 'label'),
+                    'logo' => (string) data_get($client, 'logo'),
+                    'settings_url' => (string) data_get($client, 'settings_url'),
+                ])
+                ->values()
+                ->all(),
             'samplePrompt' => __('onboarding.first_post.sample_prompt'),
-            'platforms' => $platforms,
+            'platforms' => SocialPlatform::connectableOptions(),
             'accounts' => SocialAccountResource::collection(
                 $workspace->socialAccounts()->orderBy('id')->get(),
             )->resolve(),
-            'createPostUrl' => route('app.posts.create'),
         ]);
     }
 
     public function dismiss(Request $request): RedirectResponse
     {
-        if (config('trypost.self_hosted')) {
-            return redirect()->route('app.calendar');
+        if ($redirect = $this->redirectIfSelfHosted()) {
+            return $redirect;
         }
 
         $user = $request->user();
@@ -94,8 +79,8 @@ class OnboardingController extends Controller
 
     public function complete(Request $request): RedirectResponse
     {
-        if (config('trypost.self_hosted')) {
-            return redirect()->route('app.calendar');
+        if ($redirect = $this->redirectIfSelfHosted()) {
+            return $redirect;
         }
 
         $user = $request->user();
@@ -114,6 +99,15 @@ class OnboardingController extends Controller
             OnboardingEvent::Completed->value,
             account: $user->account,
         );
+
+        return redirect()->route('app.calendar');
+    }
+
+    private function redirectIfSelfHosted(): ?RedirectResponse
+    {
+        if (! config('trypost.self_hosted')) {
+            return null;
+        }
 
         return redirect()->route('app.calendar');
     }

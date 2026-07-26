@@ -102,8 +102,8 @@ test('captures each completed step once for thirty days', function () {
     Cache::forget($cacheKey);
     SocialAccount::factory()->create(['workspace_id' => $this->workspace->id]);
 
-    app(ResolveOnboardingStatus::class)->handle($this->user);
-    app(ResolveOnboardingStatus::class)->handle($this->user);
+    app(ResolveOnboardingStatus::class)->syncProgress($this->user);
+    app(ResolveOnboardingStatus::class)->syncProgress($this->user);
 
     Bus::assertDispatchedTimes(SendEvent::class, 1);
     Bus::assertDispatched(SendEvent::class, fn (SendEvent $event): bool => $event->method === 'capture'
@@ -111,7 +111,7 @@ test('captures each completed step once for thirty days', function () {
         && data_get($event->payload, 'properties.step') === 'social_connected');
 
     Carbon::setTestNow(now()->addDays(31));
-    app(ResolveOnboardingStatus::class)->handle($this->user);
+    app(ResolveOnboardingStatus::class)->syncProgress($this->user);
 
     Bus::assertDispatchedTimes(SendEvent::class, 2);
 });
@@ -172,7 +172,7 @@ test('marks onboarding completed once all three steps are complete', function ()
         'user_id' => $this->user->id,
     ]);
 
-    $status = app(ResolveOnboardingStatus::class)->handle($this->user);
+    $status = app(ResolveOnboardingStatus::class)->syncProgress($this->user);
 
     expect($status)->toBe([
         'mcp_connected' => true,
@@ -185,10 +185,30 @@ test('marks onboarding completed once all three steps are complete', function ()
     ])->and($this->user->account->fresh()->onboarding_completed_at?->equalTo(now()))->toBeTrue();
 
     Carbon::setTestNow(now()->addHour());
-    app(ResolveOnboardingStatus::class)->handle($this->user->fresh());
+    app(ResolveOnboardingStatus::class)->syncProgress($this->user->fresh());
 
     expect($this->user->account->fresh()->onboarding_completed_at?->toIso8601String())
         ->toBe('2026-07-24T12:00:00+00:00');
+});
+
+test('handle does not mutate the account when every step is complete', function () {
+    $result = $this->user->createToken('OAuth Session');
+    AccessToken::find($result->token->id)
+        ->forceFill(['workspace_id' => null])
+        ->saveQuietly();
+    SocialAccount::factory()->create(['workspace_id' => $this->workspace->id]);
+    Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+    ]);
+
+    $status = app(ResolveOnboardingStatus::class)->handle($this->user);
+
+    expect($status)->toMatchArray([
+        'all_complete' => true,
+        'show_residual' => false,
+        'completed_at' => null,
+    ])->and($this->user->account->fresh()->onboarding_completed_at)->toBeNull();
 });
 
 test('dismissed onboarding does not show the residual checklist', function () {
@@ -207,7 +227,7 @@ test('completed onboarding returns immediately without resolving steps or captur
     Bus::fake();
     $this->user->account->update(['onboarding_completed_at' => now()]);
 
-    $status = app(ResolveOnboardingStatus::class)->handle($this->user->fresh());
+    $status = app(ResolveOnboardingStatus::class)->syncProgress($this->user->fresh());
 
     expect($status)->toBe([
         'mcp_connected' => true,
@@ -235,4 +255,21 @@ test('unsubscribed account does not show the residual checklist', function () {
     $status = app(ResolveOnboardingStatus::class)->handle($this->user);
 
     expect($status['show_residual'])->toBeFalse();
+});
+
+test('residual returns progress counts while onboarding is active', function () {
+    SocialAccount::factory()->create([
+        'workspace_id' => $this->workspace->id,
+    ]);
+
+    expect(app(ResolveOnboardingStatus::class)->residual($this->user))->toBe([
+        'completed' => 1,
+        'total' => ResolveOnboardingStatus::TOTAL_STEPS,
+    ]);
+});
+
+test('residual returns false when the banner should not show', function () {
+    $this->user->account->update(['onboarding_dismissed_at' => now()]);
+
+    expect(app(ResolveOnboardingStatus::class)->residual($this->user->fresh()))->toBeFalse();
 });
