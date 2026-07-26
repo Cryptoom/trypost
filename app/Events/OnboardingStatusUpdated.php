@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Events;
 
 use App\Actions\Onboarding\ResolveOnboardingStatus;
+use App\Models\Account;
 use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Broadcasting\InteractsWithSockets;
@@ -19,6 +20,33 @@ class OnboardingStatusUpdated implements ShouldBroadcast, ShouldDispatchAfterCom
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
     public function __construct(public string $workspaceId) {}
+
+    /**
+     * Broadcast to every workspace on the account and sync progress once per user.
+     * Use when a step is account-scoped (e.g. MCP OAuth).
+     */
+    public static function dispatchForAccount(?Account $account): void
+    {
+        if ($account === null
+            || $account->onboarding_completed_at !== null
+            || $account->onboarding_dismissed_at !== null
+        ) {
+            return;
+        }
+
+        $workspaceIds = $account->workspaces()->pluck('id');
+
+        foreach ($workspaceIds as $workspaceId) {
+            static::dispatch((string) $workspaceId);
+        }
+
+        User::query()
+            ->with(['account', 'currentWorkspace'])
+            ->where('account_id', $account->id)
+            ->each(function (User $user): void {
+                app(ResolveOnboardingStatus::class)->syncProgress($user);
+            });
+    }
 
     /**
      * Broadcast only while the workspace account still has active onboarding.

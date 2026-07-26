@@ -96,7 +96,7 @@ test('resolves a social account in the current workspace as connected', function
     ]);
 });
 
-test('captures each completed step once for thirty days', function () {
+test('captures each completed step once without re-firing later', function () {
     config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test']);
     Carbon::setTestNow('2026-07-24 12:00:00');
     Bus::fake();
@@ -116,7 +116,56 @@ test('captures each completed step once for thirty days', function () {
     Carbon::setTestNow(now()->addDays(31));
     app(ResolveOnboardingStatus::class)->syncProgress($this->user);
 
-    Bus::assertDispatchedTimes(SendEvent::class, 2);
+    Bus::assertDispatchedTimes(SendEvent::class, 1);
+});
+
+test('does not resolve an expired oauth token as mcp connected', function () {
+    $token = AccessToken::withoutEvents(fn () => mcpAccessToken($this->user, mcpOauthClient()));
+    $token->forceFill(['expires_at' => now()->subMinute()])->saveQuietly();
+
+    $status = app(ResolveOnboardingStatus::class)->handle($this->user);
+
+    expect($status['mcp_connected'])->toBeFalse();
+});
+
+test('does not resolve steps when the user has no current workspace', function () {
+    $this->user->update(['current_workspace_id' => null]);
+    SocialAccount::withoutEvents(fn () => SocialAccount::factory()->create([
+        'workspace_id' => $this->workspace->id,
+    ]));
+    Post::withoutEvents(fn () => Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+    ]));
+    AccessToken::withoutEvents(fn () => mcpAccessToken($this->user, mcpOauthClient()));
+
+    $status = app(ResolveOnboardingStatus::class)->handle($this->user->fresh());
+
+    expect($status)->toMatchArray([
+        'mcp_connected' => true,
+        'social_connected' => false,
+        'first_post_created' => false,
+        'all_complete' => false,
+    ]);
+});
+
+test('members do not see the residual checklist', function () {
+    $member = User::factory()->create(['account_id' => $this->user->account_id]);
+    $member->update(['current_workspace_id' => $this->workspace->id]);
+
+    expect(app(ResolveOnboardingStatus::class)->residual($member->fresh()))->toBeFalse()
+        ->and(app(ResolveOnboardingStatus::class)->handle($member->fresh())['show_residual'])->toBeFalse();
+});
+
+test('generic trial without card still shows residual for the owner', function () {
+    config(['trypost.billing.require_card_for_trial' => false]);
+    $this->user->account->subscriptions()->delete();
+    $this->user->account->update(['trial_ends_at' => now()->addDays(7)]);
+
+    expect(app(ResolveOnboardingStatus::class)->residual($this->user->fresh()))->toBe([
+        'completed' => 0,
+        'total' => ResolveOnboardingStatus::TOTAL_STEPS,
+    ]);
 });
 
 test('does not resolve a social account in another workspace as connected', function () {

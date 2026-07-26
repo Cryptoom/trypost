@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Actions\Onboarding\ResolveOnboardingStatus;
+use App\Enums\UserWorkspace\Role;
 use App\Models\User;
 use App\Models\Workspace;
 
@@ -34,6 +35,19 @@ test('does not share the onboarding residual state after dismissal', function ()
     $this->user->account->update(['onboarding_dismissed_at' => now()]);
 
     $this->actingAs($this->user->fresh())
+        ->get(route('app.calendar'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page->where('onboardingResidual', false));
+});
+
+test('does not share the onboarding residual with workspace members', function () {
+    $member = User::factory()->create(['account_id' => $this->user->account_id]);
+    $this->workspace->members()->attach($member->id, [
+        'role' => Role::Member->value,
+    ]);
+    $member->update(['current_workspace_id' => $this->workspace->id]);
+
+    $this->actingAs($member->fresh())
         ->get(route('app.calendar'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page->where('onboardingResidual', false));

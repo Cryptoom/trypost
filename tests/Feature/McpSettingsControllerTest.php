@@ -3,9 +3,11 @@
 declare(strict_types=1);
 
 use App\Enums\UserWorkspace\Role;
+use App\Events\OnboardingStatusUpdated;
 use App\Models\AccessToken;
 use App\Models\User;
 use App\Models\Workspace;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Str;
 
 beforeEach(function (): void {
@@ -33,9 +35,15 @@ it('shows the mcp settings page', function (): void {
             ->has('connectedClients'));
 });
 
-it('lists oauth clients as connected, excluding the personal access client', function (): void {
-    $clientId = mcpOauthClient('My Agent');
-    mcpAccessToken($this->user, $clientId);
+it('lists oauth clients as connected across the account, excluding personal access tokens', function (): void {
+    $member = User::factory()->create(['account_id' => $this->user->account_id]);
+    $this->workspace->members()->attach($member->id, ['role' => Role::Member->value]);
+
+    $ownerClientId = mcpOauthClient('Owner Agent');
+    mcpAccessToken($this->user, $ownerClientId);
+
+    $memberClientId = mcpOauthClient('Member Agent');
+    mcpAccessToken($member, $memberClientId);
 
     $pat = $this->user->createToken('API Key');
     AccessToken::query()->findOrFail($pat->token->id)
@@ -45,13 +53,23 @@ it('lists oauth clients as connected, excluding the personal access client', fun
     $this->actingAs($this->user)
         ->get(route('app.mcp.index'))
         ->assertInertia(fn ($page) => $page
-            ->has('connectedClients', 1)
-            ->where('connectedClients.0.name', 'My Agent'));
+            ->has('connectedClients', 2)
+            ->where('connectedClients', fn ($clients): bool => collect($clients)->contains(
+                fn (array $client): bool => $client['name'] === 'Owner Agent'
+                    && $client['can_disconnect'] === true
+                    && $client['user_id'] === (string) $this->user->id,
+            ) && collect($clients)->contains(
+                fn (array $client): bool => $client['name'] === 'Member Agent'
+                    && $client['can_disconnect'] === false
+                    && $client['user_name'] === $member->name,
+            )));
 });
 
-it('disconnects a client by revoking its tokens', function (): void {
+it('disconnects a client by revoking its tokens and broadcasting onboarding status', function (): void {
+    Event::fake([OnboardingStatusUpdated::class]);
+
     $clientId = mcpOauthClient();
-    $token = mcpAccessToken($this->user, $clientId);
+    $token = AccessToken::withoutEvents(fn () => mcpAccessToken($this->user, $clientId));
 
     $this->actingAs($this->user)
         ->delete(route('app.mcp.disconnect', ['client' => $clientId]))
@@ -59,13 +77,39 @@ it('disconnects a client by revoking its tokens', function (): void {
         ->assertSessionHas('flash.success', __('mcp.disconnected'));
 
     expect($token->fresh()->revoked)->toBeTrue();
+
+    Event::assertDispatched(
+        OnboardingStatusUpdated::class,
+        fn (OnboardingStatusUpdated $event): bool => $event->workspaceId === $this->workspace->id,
+    );
 });
 
-it('does not flash success when disconnecting an unknown client', function (): void {
+it('does not flash success or broadcast when disconnecting an unknown client', function (): void {
+    Event::fake([OnboardingStatusUpdated::class]);
+
     $this->actingAs($this->user)
         ->delete(route('app.mcp.disconnect', ['client' => (string) Str::uuid()]))
         ->assertRedirect()
         ->assertSessionMissing('flash.success');
+
+    Event::assertNotDispatched(OnboardingStatusUpdated::class);
+});
+
+it('lists a teammates connection but does not allow disconnecting it', function (): void {
+    $member = User::factory()->create(['account_id' => $this->user->account_id]);
+    $this->workspace->members()->attach($member->id, ['role' => Role::Member->value]);
+    $member->update(['current_workspace_id' => $this->workspace->id]);
+
+    $clientId = mcpOauthClient('Owner Agent');
+    mcpAccessToken($this->user, $clientId);
+
+    $this->actingAs($member->fresh())
+        ->get(route('app.mcp.index'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->has('connectedClients', 1)
+            ->where('connectedClients.0.name', 'Owner Agent')
+            ->where('connectedClients.0.can_disconnect', false));
 });
 
 it('allows workspace members to view and disconnect their own mcp clients', function (): void {

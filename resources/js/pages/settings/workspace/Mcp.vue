@@ -29,6 +29,9 @@ import { disconnect as mcpDisconnect } from '@/routes/app/mcp';
 interface ConnectedClient {
     client_id: string;
     name: string;
+    user_id: string;
+    user_name: string;
+    can_disconnect: boolean;
     last_used_at: string | null;
 }
 
@@ -106,14 +109,15 @@ const onClientToggle = (value: string | string[]): void => {
 
 const deleteModal = ref<InstanceType<typeof ConfirmDeleteModal> | null>(null);
 
+const copiedToast = (): string => trans('mcp.copied');
+
 const copyMcpUrl = (): void => {
-    copyToClipboard(props.mcpUrl, trans('onboarding.mcp.copied'));
+    copyToClipboard(props.mcpUrl, copiedToast());
 };
 
 const confirmDisconnect = (client: ConnectedClient): void => {
     deleteModal.value?.open({
         url: mcpDisconnect.url({ client: client.client_id }),
-        confirmText: client.name,
     });
 };
 </script>
@@ -312,6 +316,7 @@ const confirmDisconnect = (client: ConnectedClient): void => {
                                                     @click="
                                                         copyToClipboard(
                                                             connectorName,
+                                                            copiedToast(),
                                                         )
                                                     "
                                                 >
@@ -337,7 +342,10 @@ const confirmDisconnect = (client: ConnectedClient): void => {
                                                     size="icon"
                                                     class="size-9 shrink-0"
                                                     @click="
-                                                        copyToClipboard(mcpUrl)
+                                                        copyToClipboard(
+                                                            mcpUrl,
+                                                            copiedToast(),
+                                                        )
                                                     "
                                                 >
                                                     <IconCopy class="size-4" />
@@ -360,6 +368,7 @@ const confirmDisconnect = (client: ConnectedClient): void => {
                                                     @click="
                                                         copyToClipboard(
                                                             configSnippet,
+                                                            copiedToast(),
                                                         )
                                                     "
                                                 >
@@ -390,12 +399,22 @@ const confirmDisconnect = (client: ConnectedClient): void => {
                     <div v-else class="grid gap-3">
                         <div
                             v-for="client in connectedClients"
-                            :key="client.client_id"
+                            :key="`${client.client_id}:${client.user_id}`"
                             class="flex items-center justify-between gap-4 rounded-xl border-2 border-foreground bg-card px-4 py-3 shadow-2xs"
                         >
                             <div class="min-w-0">
                                 <p class="truncate text-sm font-bold">
                                     {{ client.name }}
+                                </p>
+                                <p
+                                    v-if="client.user_name"
+                                    class="truncate text-xs font-medium text-foreground/60"
+                                >
+                                    {{
+                                        $t('mcp.connected_by', {
+                                            name: client.user_name,
+                                        })
+                                    }}
                                 </p>
                                 <p
                                     class="text-xs font-medium text-foreground/60"
@@ -411,6 +430,7 @@ const confirmDisconnect = (client: ConnectedClient): void => {
                                 </p>
                             </div>
                             <Button
+                                v-if="client.can_disconnect"
                                 variant="outline"
                                 size="sm"
                                 @click="confirmDisconnect(client)"

@@ -18,7 +18,16 @@ class PostObserver
     {
         DB::afterCommit(fn () => PostCreated::dispatch($post));
 
-        OnboardingStatusUpdated::dispatchForWorkspace($post->workspace_id);
+        // Only the first post unlocks the onboarding step — later creates would
+        // just spam Echo reloads while activation is still open.
+        $isFirstPost = Post::query()
+            ->where('workspace_id', $post->workspace_id)
+            ->whereKeyNot($post->id)
+            ->doesntExist();
+
+        if ($isFirstPost) {
+            OnboardingStatusUpdated::dispatchForWorkspace($post->workspace_id);
+        }
     }
 
     public function deleted(Post $post): void

@@ -63,7 +63,8 @@ class ResolveOnboardingStatus
         $allComplete = $mcpConnected && $socialConnected && $firstPostCreated;
 
         $showResidual = ! config('trypost.self_hosted')
-            && ($account?->subscribed(Account::SUBSCRIPTION_NAME) ?? false)
+            && $user->isAccountOwner()
+            && ($account?->hasAppAccess() ?? false)
             && $account->onboarding_dismissed_at === null
             && ! $allComplete;
 
@@ -107,16 +108,17 @@ class ResolveOnboardingStatus
             $this->captureCompletedStep($user, $account, 'first_post_created', $status['first_post_created']);
         }
 
-        if (! $status['all_complete']) {
+        if (! $status['all_complete'] || $account->onboarding_dismissed_at !== null) {
             return $status;
         }
 
         $this->markCompleted($user);
+        $account->refresh();
 
         return [
             ...$status,
             'show_residual' => false,
-            'completed_at' => $account->fresh()->onboarding_completed_at?->toIso8601String(),
+            'completed_at' => $account->onboarding_completed_at?->toIso8601String(),
         ];
     }
 
@@ -131,7 +133,18 @@ class ResolveOnboardingStatus
             return false;
         }
 
-        $account->update(['onboarding_completed_at' => now()]);
+        $completedAt = now();
+
+        $updated = Account::query()
+            ->whereKey($account->id)
+            ->whereNull('onboarding_completed_at')
+            ->update(['onboarding_completed_at' => $completedAt]);
+
+        if ($updated === 0) {
+            return false;
+        }
+
+        $account->setAttribute('onboarding_completed_at', $completedAt);
 
         if (PostHogService::isEnabled()) {
             $this->postHog->capture(
@@ -154,10 +167,11 @@ class ResolveOnboardingStatus
         $account = $user->account;
 
         if ($account === null
+            || ! $user->isAccountOwner()
             || $account->onboarding_completed_at !== null
             || $account->onboarding_dismissed_at !== null
             || config('trypost.self_hosted')
-            || ! $account->subscribed(Account::SUBSCRIPTION_NAME)
+            || ! $account->hasAppAccess()
         ) {
             return false;
         }
@@ -184,7 +198,8 @@ class ResolveOnboardingStatus
             return;
         }
 
-        if (! Cache::add("onboarding_step:{$account->id}:{$step}", true, now()->addDays(30))) {
+        // Durable once-per-account dedupe (no short TTL re-fire).
+        if (! Cache::add("onboarding_step:{$account->id}:{$step}", true, now()->addYears(100))) {
             return;
         }
 

@@ -11,8 +11,8 @@ use App\Models\User;
 class AccessTokenObserver
 {
     /**
-     * OAuth MCP grants unlock the MCP onboarding step. Broadcast to the user's
-     * current workspace UI so the checklist can refresh.
+     * OAuth MCP grants unlock the MCP onboarding step for the whole account.
+     * Broadcast to every workspace so teammates see the checklist update.
      */
     public function created(AccessToken $accessToken): void
     {
@@ -38,14 +38,11 @@ class AccessTokenObserver
             return;
         }
 
-        $workspaceId = User::query()
-            ->whereKey($accessToken->user_id)
-            ->value('current_workspace_id');
+        $account = User::query()
+            ->with('account')
+            ->find($accessToken->user_id)
+            ?->account;
 
-        if (blank($workspaceId)) {
-            return;
-        }
-
-        OnboardingStatusUpdated::dispatchForWorkspace($workspaceId);
+        OnboardingStatusUpdated::dispatchForAccount($account);
     }
 }

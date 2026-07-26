@@ -56,9 +56,15 @@ class AccessToken extends Token
     {
         return $query
             ->where('revoked', false)
+            ->where(function (Builder $expires): void {
+                $expires->whereNull('expires_at')
+                    ->orWhere('expires_at', '>', now());
+            })
             ->whereHas(
                 'client',
-                fn (Builder $client): Builder => $client->whereJsonDoesntContain('grant_types', 'personal_access'),
+                fn (Builder $client): Builder => $client
+                    ->where('revoked', false)
+                    ->whereJsonDoesntContain('grant_types', 'personal_access'),
             );
     }
 
@@ -66,6 +72,14 @@ class AccessToken extends Token
     {
         $this->loadMissing('client');
 
-        return $this->client !== null && ! $this->client->hasGrantType('personal_access');
+        if ($this->client === null || $this->client->revoked || $this->client->hasGrantType('personal_access')) {
+            return false;
+        }
+
+        if ($this->expires_at !== null && $this->expires_at->isPast()) {
+            return false;
+        }
+
+        return true;
     }
 }

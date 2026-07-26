@@ -93,19 +93,27 @@ test('deleting a post broadcasts onboarding status for its workspace', function 
     );
 });
 
-test('creating an oauth mcp token broadcasts onboarding status for the current workspace', function () {
-    $user = User::factory()->create();
-    $workspace = Workspace::factory()->create([
+test('creating an oauth mcp token broadcasts onboarding status for every account workspace', function () {
+    $user = User::factory()->create(['current_workspace_id' => null]);
+    $workspaceA = Workspace::factory()->create([
         'account_id' => $user->account_id,
         'user_id' => $user->id,
     ]);
-    $user->update(['current_workspace_id' => $workspace->id]);
+    $workspaceB = Workspace::factory()->create([
+        'account_id' => $user->account_id,
+        'user_id' => $user->id,
+    ]);
 
     mcpAccessToken($user, mcpOauthClient());
 
+    Event::assertDispatchedTimes(OnboardingStatusUpdated::class, 2);
     Event::assertDispatched(
         OnboardingStatusUpdated::class,
-        fn (OnboardingStatusUpdated $event): bool => $event->workspaceId === $workspace->id,
+        fn (OnboardingStatusUpdated $event): bool => $event->workspaceId === $workspaceA->id,
+    );
+    Event::assertDispatched(
+        OnboardingStatusUpdated::class,
+        fn (OnboardingStatusUpdated $event): bool => $event->workspaceId === $workspaceB->id,
     );
 });
 
@@ -182,14 +190,24 @@ test('tokens without an oauth client do not broadcast', function () {
     Event::assertNotDispatched(OnboardingStatusUpdated::class);
 });
 
-test('personal tokens without a current workspace do not broadcast', function () {
-    $user = User::factory()->create(['current_workspace_id' => null]);
+test('additional posts after the first do not broadcast onboarding status', function () {
+    $user = User::factory()->create();
+    $workspace = Workspace::factory()->create([
+        'account_id' => $user->account_id,
+        'user_id' => $user->id,
+    ]);
 
-    $token = AccessToken::withoutEvents(fn () => mcpAccessToken($user, mcpOauthClient()));
+    Post::factory()->create([
+        'workspace_id' => $workspace->id,
+        'user_id' => $user->id,
+    ]);
 
     Event::fake([OnboardingStatusUpdated::class]);
 
-    (new AccessTokenObserver)->created($token);
+    Post::factory()->create([
+        'workspace_id' => $workspace->id,
+        'user_id' => $user->id,
+    ]);
 
     Event::assertNotDispatched(OnboardingStatusUpdated::class);
 });

@@ -6,6 +6,7 @@ namespace App\Http\Controllers\App;
 
 use App\Events\OnboardingStatusUpdated;
 use App\Models\AccessToken;
+use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -25,7 +26,6 @@ class McpSettingsController extends Controller
         $this->authorize('view', $workspace);
 
         return Inertia::render('settings/workspace/Mcp', [
-            'workspace' => $workspace,
             'mcpUrl' => route('mcp.trypost'),
             'mcpClients' => collect(config('trypost.mcp.clients', []))
                 ->map(fn (array $client, string $id): array => [
@@ -68,30 +68,48 @@ class McpSettingsController extends Controller
             $token->forceFill(['revoked' => true])->saveQuietly();
         });
 
-        OnboardingStatusUpdated::dispatchForWorkspace($request->user()->current_workspace_id);
+        OnboardingStatusUpdated::dispatchForAccount($request->user()->account);
 
         return back()->with('flash.success', __('mcp.disconnected'));
     }
 
     /**
-     * The user's active OAuth grants (MCP connections), excluding the personal
-     * access client used to mint API tokens.
+     * Active OAuth MCP grants across the account (any teammate), excluding
+     * personal access API tokens.
      *
-     * @return array<int, array{client_id: string, name: string, last_used_at: mixed}>
+     * @return array<int, array{client_id: string, name: string, user_id: string, user_name: string, can_disconnect: bool, last_used_at: mixed}>
      */
     private function connectedClients(Request $request): array
     {
-        return AccessToken::query()
-            ->where('user_id', $request->user()->id)
+        $currentUser = $request->user();
+        $accountId = $currentUser->account_id;
+
+        $tokens = AccessToken::query()
+            ->whereIn('user_id', User::query()->select('id')->where('account_id', $accountId))
             ->activeMcpOAuth()
             ->with('client')
+            ->get();
+
+        $users = User::query()
+            ->whereIn('id', $tokens->pluck('user_id')->unique()->filter()->all())
             ->get()
-            ->groupBy('client_id')
-            ->map(fn ($tokens): array => [
-                'client_id' => $tokens->first()->client_id,
-                'name' => $tokens->first()->client->name,
-                'last_used_at' => $tokens->max('last_used_at'),
-            ])
+            ->keyBy('id');
+
+        return $tokens
+            ->groupBy(fn (AccessToken $token): string => "{$token->client_id}:{$token->user_id}")
+            ->map(function ($grouped) use ($currentUser, $users): array {
+                $first = $grouped->first();
+                $owner = $users->get($first->user_id);
+
+                return [
+                    'client_id' => $first->client_id,
+                    'name' => $first->client->name,
+                    'user_id' => (string) $first->user_id,
+                    'user_name' => (string) ($owner?->name ?? ''),
+                    'can_disconnect' => $first->user_id === $currentUser->id,
+                    'last_used_at' => $grouped->max('last_used_at'),
+                ];
+            })
             ->values()
             ->all();
     }
