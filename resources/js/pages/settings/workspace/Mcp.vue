@@ -19,7 +19,6 @@ import {
     AccordionTrigger,
 } from '@/components/ui/accordion';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useWorkspaceSettingsTabs } from '@/composables/useWorkspaceSettingsTabs';
 import date from '@/date';
@@ -57,42 +56,42 @@ const clients = [
         name: 'Claude',
         description: 'mcp.clients.claude',
         icon: ClaudeIcon,
-        bgClass: 'bg-[#D97757]/10',
+        tileClass: 'bg-orange-100 -rotate-2',
     },
     {
         key: 'chatgpt',
         name: 'ChatGPT',
         description: 'mcp.clients.chatgpt',
         icon: ChatgptIcon,
-        bgClass: 'bg-muted',
+        tileClass: 'bg-black rotate-1 text-white',
     },
     {
         key: 'cursor',
         name: 'Cursor',
         description: 'mcp.clients.cursor',
         icon: CursorIcon,
-        bgClass: 'bg-muted',
+        tileClass: 'bg-violet-100 -rotate-1',
     },
     {
         key: 'vscode',
         name: 'VS Code',
         description: 'mcp.clients.vscode',
         icon: VscodeIcon,
-        bgClass: 'bg-[#0098FF]/10',
+        tileClass: 'bg-sky-100 rotate-2',
     },
     {
         key: 'claude_code',
         name: 'Claude Code',
         description: 'mcp.clients.claude_code',
         icon: ClaudeIcon,
-        bgClass: 'bg-[#D97757]/10',
+        tileClass: 'bg-orange-100 rotate-1',
     },
     {
         key: 'other',
         name: 'mcp.clients.other_name',
         description: 'mcp.clients.other',
         icon: OtherClientsIcon,
-        bgClass: 'bg-muted',
+        tileClass: 'bg-amber-100 -rotate-2',
     },
 ];
 
@@ -126,18 +125,18 @@ const confirmDisconnect = (client: ConnectedClient): void => {
 
             <div class="flex max-w-3xl flex-col gap-10">
                 <div>
-                    <h2 class="text-lg font-semibold">{{ $t('mcp.title') }}</h2>
-                    <p class="mt-1 text-sm text-muted-foreground">
+                    <h2 class="text-lg font-bold">{{ $t('mcp.title') }}</h2>
+                    <p class="mt-1 text-sm text-foreground/70">
                         {{ $t('mcp.subtitle') }}
                     </p>
                 </div>
 
                 <section class="space-y-4">
                     <div>
-                        <h3 class="text-base font-semibold">
+                        <h3 class="text-base font-bold">
                             {{ $t('mcp.connect_title') }}
                         </h3>
-                        <p class="mt-1 text-sm text-muted-foreground">
+                        <p class="mt-1 text-sm text-foreground/70">
                             {{ $t('mcp.connect_description') }}
                         </p>
                     </div>
@@ -146,28 +145,30 @@ const confirmDisconnect = (client: ConnectedClient): void => {
                         type="single"
                         collapsible
                         :model-value="openClient"
-                        class="space-y-3"
+                        class="space-y-4"
                         @update:model-value="onClientToggle"
                     >
                         <AccordionItem
                             v-for="client in clients"
                             :key="client.key"
                             :value="client.key"
-                            class="overflow-hidden rounded-xl border"
+                            class="overflow-hidden rounded-xl border-b-0 border-2 border-foreground bg-card shadow-2xs"
                         >
-                            <AccordionTrigger class="px-4 hover:no-underline">
-                                <div class="flex items-center gap-3 text-left">
+                            <AccordionTrigger
+                                class="px-5 py-4 hover:no-underline data-[state=open]:border-b-2 data-[state=open]:border-foreground"
+                            >
+                                <div class="flex items-center gap-4 text-left">
                                     <div
-                                        class="flex size-9 shrink-0 items-center justify-center rounded-lg"
-                                        :class="client.bgClass"
+                                        class="inline-flex size-12 shrink-0 items-center justify-center rounded-xl border-2 border-foreground shadow-sm"
+                                        :class="client.tileClass"
                                     >
                                         <component
                                             :is="client.icon"
-                                            class="size-5"
+                                            class="size-6"
                                         />
                                     </div>
-                                    <div>
-                                        <div class="text-[15px] font-medium">
+                                    <div class="min-w-0">
+                                        <div class="font-bold">
                                             {{
                                                 client.name.startsWith('mcp.')
                                                     ? $t(client.name)
@@ -175,38 +176,42 @@ const confirmDisconnect = (client: ConnectedClient): void => {
                                             }}
                                         </div>
                                         <div
-                                            class="text-[13px] text-muted-foreground"
+                                            class="mt-0.5 text-sm text-foreground/70"
                                         >
                                             {{ $t(client.description) }}
                                         </div>
                                     </div>
                                 </div>
                             </AccordionTrigger>
-                            <AccordionContent class="px-4 pb-4">
-                                <div class="space-y-4">
-                                    <ol
-                                        class="m-0 list-none space-y-3 p-0 text-sm text-muted-foreground"
-                                    >
-                                        <li class="flex gap-2">
-                                            <span
-                                                class="flex size-5 shrink-0 items-center justify-center rounded-full bg-muted text-[11px] font-medium text-foreground"
-                                                >1</span
-                                            >
-                                            <span>{{ $t('mcp.step_add') }}</span>
-                                        </li>
-                                    </ol>
+                            <AccordionContent class="px-5 pb-5">
+                                <div class="space-y-5">
+                                    <div class="flex items-start gap-3">
+                                        <span
+                                            class="inline-flex size-6 shrink-0 items-center justify-center rounded-full bg-foreground text-xs font-bold text-background"
+                                        >
+                                            1
+                                        </span>
+                                        <p class="text-sm font-medium text-foreground/70">
+                                            {{ $t('mcp.step_add') }}
+                                        </p>
+                                    </div>
 
                                     <div class="grid gap-2">
-                                        <Label>{{ $t('mcp.name_label') }}</Label>
-                                        <div class="flex items-center gap-2">
-                                            <Input
-                                                :model-value="connectorName"
-                                                readonly
-                                                class="flex-1 font-mono text-xs"
-                                            />
+                                        <Label class="font-bold">{{
+                                            $t('mcp.name_label')
+                                        }}</Label>
+                                        <div
+                                            class="flex items-center gap-2 rounded-xl border-2 border-foreground bg-background p-2 shadow-2xs"
+                                        >
+                                            <code
+                                                class="min-w-0 flex-1 truncate px-2 font-mono text-sm"
+                                            >
+                                                {{ connectorName }}
+                                            </code>
                                             <Button
                                                 variant="outline"
                                                 size="icon"
+                                                class="size-9 shrink-0"
                                                 @click="
                                                     copyToClipboard(
                                                         connectorName,
@@ -219,16 +224,21 @@ const confirmDisconnect = (client: ConnectedClient): void => {
                                     </div>
 
                                     <div class="grid gap-2">
-                                        <Label>{{ $t('mcp.url_label') }}</Label>
-                                        <div class="flex items-center gap-2">
-                                            <Input
-                                                :model-value="mcpUrl"
-                                                readonly
-                                                class="flex-1 font-mono text-xs"
-                                            />
+                                        <Label class="font-bold">{{
+                                            $t('mcp.url_label')
+                                        }}</Label>
+                                        <div
+                                            class="flex items-center gap-2 rounded-xl border-2 border-foreground bg-background p-2 shadow-2xs"
+                                        >
+                                            <code
+                                                class="min-w-0 flex-1 truncate px-2 font-mono text-sm"
+                                            >
+                                                {{ mcpUrl }}
+                                            </code>
                                             <Button
                                                 variant="outline"
                                                 size="icon"
+                                                class="size-9 shrink-0"
                                                 @click="copyToClipboard(mcpUrl)"
                                             >
                                                 <IconCopy class="size-4" />
@@ -237,17 +247,17 @@ const confirmDisconnect = (client: ConnectedClient): void => {
                                     </div>
 
                                     <div class="grid gap-2">
-                                        <Label>{{
+                                        <Label class="font-bold">{{
                                             $t('mcp.config_label')
                                         }}</Label>
                                         <div class="relative">
                                             <pre
-                                                class="overflow-x-auto rounded-lg border bg-muted/40 p-3 pr-12 font-mono text-xs"
+                                                class="overflow-x-auto rounded-xl border-2 border-foreground bg-background p-3 pr-14 font-mono text-xs shadow-2xs"
                                             ><code>{{ configSnippet }}</code></pre>
                                             <Button
                                                 variant="outline"
-                                                size="icon-sm"
-                                                class="absolute top-2 right-2"
+                                                size="icon"
+                                                class="absolute top-2 right-2 size-9"
                                                 @click="
                                                     copyToClipboard(
                                                         configSnippet,
@@ -266,32 +276,32 @@ const confirmDisconnect = (client: ConnectedClient): void => {
 
                 <section class="space-y-4">
                     <div>
-                        <h3 class="text-base font-semibold">
+                        <h3 class="text-base font-bold">
                             {{ $t('mcp.connected_title') }}
                         </h3>
-                        <p class="mt-1 text-sm text-muted-foreground">
+                        <p class="mt-1 text-sm text-foreground/70">
                             {{ $t('mcp.connected_description') }}
                         </p>
                     </div>
 
                     <div
                         v-if="connectedClients.length === 0"
-                        class="rounded-xl border px-4 py-6 text-center text-sm text-muted-foreground"
+                        class="rounded-xl border-2 border-dashed border-foreground/25 bg-card/40 px-4 py-6 text-center text-sm font-medium text-foreground/60"
                     >
                         {{ $t('mcp.connected_empty') }}
                     </div>
 
-                    <div v-else class="grid gap-2">
+                    <div v-else class="grid gap-3">
                         <div
                             v-for="client in connectedClients"
                             :key="client.client_id"
-                            class="flex items-center justify-between gap-4 rounded-lg border px-4 py-3"
+                            class="flex items-center justify-between gap-4 rounded-xl border-2 border-foreground bg-card px-4 py-3 shadow-2xs"
                         >
                             <div class="min-w-0">
-                                <p class="truncate text-sm font-medium">
+                                <p class="truncate text-sm font-bold">
                                     {{ client.name }}
                                 </p>
-                                <p class="text-xs text-muted-foreground">
+                                <p class="text-xs font-medium text-foreground/60">
                                     {{ $t('mcp.last_used') }}:
                                     {{
                                         client.last_used_at
@@ -315,10 +325,10 @@ const confirmDisconnect = (client: ConnectedClient): void => {
 
                 <section class="space-y-4">
                     <div>
-                        <h3 class="text-base font-semibold">
+                        <h3 class="text-base font-bold">
                             {{ $t('mcp.documentation_title') }}
                         </h3>
-                        <p class="mt-1 text-sm text-muted-foreground">
+                        <p class="mt-1 text-sm text-foreground/70">
                             {{ $t('mcp.documentation_description') }}
                         </p>
                     </div>
