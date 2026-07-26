@@ -6,8 +6,8 @@ return [
     'title' => 'Что лучше всего вас описывает?',
     'description' => 'Выберите ближайший вариант — мы настроим опыт под вас.',
     'continue' => 'Продолжить',
-    'progress' => 'Welcome progress',
-    'go_to_step' => 'Go to step :step',
+    'progress' => 'Прогресс приветствия',
+    'go_to_step' => 'Перейти к шагу :step',
     'personas' => [
         'creator' => 'Автор контента',
         'freelancer' => 'Фрилансер',

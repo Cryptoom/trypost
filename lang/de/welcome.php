@@ -6,8 +6,8 @@ return [
     'title' => 'Was beschreibt dich am besten?',
     'description' => 'Wähle die passende Option, und wir passen dein Erlebnis an.',
     'continue' => 'Weiter',
-    'progress' => 'Welcome progress',
-    'go_to_step' => 'Go to step :step',
+    'progress' => 'Willkommensfortschritt',
+    'go_to_step' => 'Zu Schritt :step gehen',
     'personas' => [
         'creator' => 'Content Creator',
         'freelancer' => 'Freelancer',

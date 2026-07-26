@@ -6,8 +6,8 @@ return [
     'title' => 'Qu\'est-ce qui vous décrit le mieux ?',
     'description' => 'Choisissez l\'option la plus proche et nous personnaliserons votre expérience.',
     'continue' => 'Continuer',
-    'progress' => 'Welcome progress',
-    'go_to_step' => 'Go to step :step',
+    'progress' => 'Progression d’accueil',
+    'go_to_step' => 'Aller à l’étape :step',
     'personas' => [
         'creator' => 'Créateur de contenu',
         'freelancer' => 'Freelance',

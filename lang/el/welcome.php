@@ -6,8 +6,8 @@ return [
     'title' => 'Τι σας περιγράφει καλύτερα;',
     'description' => 'Επιλέξτε την πιο κοντινή επιλογή και θα προσαρμόσουμε την εμπειρία σας.',
     'continue' => 'Συνέχεια',
-    'progress' => 'Welcome progress',
-    'go_to_step' => 'Go to step :step',
+    'progress' => 'Πρόοδος καλωσορίσματος',
+    'go_to_step' => 'Μετάβαση στο βήμα :step',
     'personas' => [
         'creator' => 'Δημιουργός περιεχομένου',
         'freelancer' => 'Ελεύθερος επαγγελματίας',

@@ -6,8 +6,8 @@ return [
     'title' => 'Wat omschrijft jou het beste?',
     'description' => 'Kies de dichtstbijzijnde optie, dan stemmen we je ervaring af.',
     'continue' => 'Doorgaan',
-    'progress' => 'Welcome progress',
-    'go_to_step' => 'Go to step :step',
+    'progress' => 'Welkomstvoortgang',
+    'go_to_step' => 'Ga naar stap :step',
     'personas' => [
         'creator' => 'Contentmaker',
         'freelancer' => 'Freelancer',

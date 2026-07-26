@@ -6,8 +6,8 @@ return [
     'title' => '무엇을 가장 잘 설명하나요?',
     'description' => '가장 가까운 항목을 선택하면 맞춤 경험을 제공해 드립니다.',
     'continue' => '계속',
-    'progress' => 'Welcome progress',
-    'go_to_step' => 'Go to step :step',
+    'progress' => '환영 진행률',
+    'go_to_step' => ':step단계로 이동',
     'personas' => [
         'creator' => '콘텐츠 크리에이터',
         'freelancer' => '프리랜서',

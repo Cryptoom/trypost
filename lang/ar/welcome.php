@@ -6,8 +6,8 @@ return [
     'title' => 'ما الذي يصفك بشكل أفضل؟',
     'description' => 'اختر الخيار الأقرب وسنخصص تجربتك.',
     'continue' => 'متابعة',
-    'progress' => 'Welcome progress',
-    'go_to_step' => 'Go to step :step',
+    'progress' => 'تقدم الترحيب',
+    'go_to_step' => 'الانتقال إلى الخطوة :step',
     'personas' => [
         'creator' => 'صانع محتوى',
         'freelancer' => 'مستقل',

@@ -6,8 +6,8 @@ return [
     'title' => 'あなたに一番近いのは？',
     'description' => '近いものを選ぶと、体験を最適化します。',
     'continue' => '続ける',
-    'progress' => 'Welcome progress',
-    'go_to_step' => 'Go to step :step',
+    'progress' => 'ようこそ進捗',
+    'go_to_step' => 'ステップ :step へ',
     'personas' => [
         'creator' => 'コンテンツクリエイター',
         'freelancer' => 'フリーランス',

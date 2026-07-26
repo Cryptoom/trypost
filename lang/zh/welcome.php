@@ -6,8 +6,8 @@ return [
     'title' => '哪项最能描述你？',
     'description' => '选择最接近的一项，我们会为你定制体验。',
     'continue' => '继续',
-    'progress' => 'Welcome progress',
-    'go_to_step' => 'Go to step :step',
+    'progress' => '欢迎进度',
+    'go_to_step' => '前往第 :step 步',
     'personas' => [
         'creator' => '内容创作者',
         'freelancer' => '自由职业者',

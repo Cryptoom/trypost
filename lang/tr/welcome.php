@@ -6,8 +6,8 @@ return [
     'title' => 'Sizi en iyi ne tanımlar?',
     'description' => 'En yakın seçeneği seçin, deneyiminizi kişiselleştirelim.',
     'continue' => 'Devam et',
-    'progress' => 'Welcome progress',
-    'go_to_step' => 'Go to step :step',
+    'progress' => 'Karşılama ilerlemesi',
+    'go_to_step' => ':step. adıma git',
     'personas' => [
         'creator' => 'İçerik üreticisi',
         'freelancer' => 'Serbest çalışan',
