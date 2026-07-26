@@ -306,7 +306,7 @@ const confirmDisconnect = (client: ConnectedClient): void => {
                                         </div>
                                     </div>
                                 </AccordionTrigger>
-                                <AccordionContent class="px-5 pb-5">
+                                <AccordionContent class="px-5 pt-1 pb-5">
                                     <div class="space-y-5">
                                         <div class="flex items-start gap-3">
                                             <span
