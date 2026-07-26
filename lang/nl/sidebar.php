@@ -8,6 +8,8 @@ return [
     'create_workspace' => 'Workspace aanmaken',
     'create_post' => 'Post aanmaken',
     'profile' => 'Profiel',
+    'my_account' => 'Mijn account',
+    'account_settings' => 'Account en facturatie',
     'log_out' => 'Uitloggen',
 
     'workspace' => 'Workspace: :name',
@@ -46,6 +48,7 @@ return [
         'signatures' => 'Handtekeningen',
         'labels' => 'Labels',
         'assets' => 'Assets',
+        'settings' => 'Instellingen',
         'api_keys' => 'API-sleutels',
     ],
 

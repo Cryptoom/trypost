@@ -18,6 +18,7 @@ import {
     IconPencil,
     IconPhoto,
     IconSelector,
+    IconSettings,
     IconTag,
 } from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
@@ -57,6 +58,7 @@ import { index as automations } from '@/routes/app/automations';
 import { portal } from '@/routes/app/billing';
 import { index as labels } from '@/routes/app/labels';
 import { index as signatures } from '@/routes/app/signatures';
+import { settings as workspaceSettings } from '@/routes/app/workspace';
 import type { NavItem, OnboardingResidual, User } from '@/types';
 
 interface Workspace {
@@ -96,6 +98,7 @@ const {
     canCreatePost,
     canManageAccounts,
     canManageAutomations,
+    canManageWorkspace,
     canCreateWorkspace,
 } = useWorkspaceRole();
 const { urlIsActive } = useActiveUrl();
@@ -181,9 +184,18 @@ const workspaceNavItems = computed<NavItem[]>(() => [
               },
           ]
         : []),
+    ...(canManageWorkspace.value
+        ? [
+              {
+                  title: trans('sidebar.workspace.settings'),
+                  href: workspaceSettings.url(),
+                  icon: IconSettings,
+              },
+          ]
+        : []),
 ]);
 
-const supportNavItems = computed(() => [
+const bottomNavItems = computed(() => [
     {
         title: trans('sidebar.support.referral'),
         href: 'https://affiliates.trypost.it/',
@@ -283,13 +295,15 @@ const supportNavItems = computed(() => [
                 :items="workspaceNavItems"
                 :label="$t('sidebar.groups.workspace')"
             />
-            <NavSupport
-                v-if="currentWorkspace"
-                :items="supportNavItems"
-                :label="$t('sidebar.groups.others')"
-            />
-        </SidebarContent>
 
+            <div class="mt-auto">
+                <NavSupport
+                    v-if="currentWorkspace"
+                    :items="bottomNavItems"
+                    :label="$t('sidebar.groups.others')"
+                />
+            </div>
+        </SidebarContent>
         <SidebarFooter>
             <div
                 v-if="

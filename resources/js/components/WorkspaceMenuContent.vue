@@ -2,10 +2,10 @@
 import { Link, router, usePage } from '@inertiajs/vue3';
 import {
     IconCheck,
+    IconCreditCard,
     IconLanguage,
     IconLogout,
     IconPlus,
-    IconSettings,
     IconUser,
 } from '@tabler/icons-vue';
 import { computed } from 'vue';
@@ -22,10 +22,11 @@ import {
     DropdownMenuSubContent,
     DropdownMenuSubTrigger,
 } from '@/components/ui/dropdown-menu';
+import { useWorkspaceRole } from '@/composables/useWorkspaceRole';
 import posthog from '@/posthog';
 import { logout } from '@/routes';
-import { settings as settingsHub } from '@/routes/app';
-import { edit } from '@/routes/app/profile';
+import { edit as accountEdit } from '@/routes/app/account';
+import { edit as profileEdit } from '@/routes/app/profile';
 import { create as createWorkspaceRoute, switchMethod } from '@/routes/app/workspaces';
 import type { User } from '@/types';
 
@@ -48,6 +49,11 @@ const props = defineProps<{
 }>();
 
 const page = usePage();
+const { canManageBilling } = useWorkspaceRole();
+const selfHosted = computed(() => Boolean(page.props.selfHosted));
+const showAccountSettings = computed(
+    () => canManageBilling.value && !selfHosted.value,
+);
 const languages = computed<Language[]>(
     () => page.props.languages as Language[],
 );
@@ -98,19 +104,23 @@ const handleLogout = (): void => {
 
     <DropdownMenuGroup>
         <DropdownMenuItem :as-child="true">
-            <Link class="block w-full cursor-pointer" :href="edit()" prefetch>
-                <IconUser class="size-4" />
-                {{ $t('sidebar.profile') }}
-            </Link>
-        </DropdownMenuItem>
-        <DropdownMenuItem :as-child="true">
             <Link
                 class="block w-full cursor-pointer"
-                :href="settingsHub.url()"
+                :href="profileEdit.url()"
                 prefetch
             >
-                <IconSettings class="size-4" />
-                {{ $t('sidebar.settings') }}
+                <IconUser class="size-4" />
+                {{ $t('sidebar.my_account') }}
+            </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem v-if="showAccountSettings" :as-child="true">
+            <Link
+                class="block w-full cursor-pointer"
+                :href="accountEdit.url()"
+                prefetch
+            >
+                <IconCreditCard class="size-4" />
+                {{ $t('sidebar.account_settings') }}
             </Link>
         </DropdownMenuItem>
     </DropdownMenuGroup>

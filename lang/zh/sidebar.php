@@ -8,6 +8,8 @@ return [
     'create_workspace' => '创建工作区',
     'create_post' => '创建帖子',
     'profile' => '个人资料',
+    'my_account' => '我的账户',
+    'account_settings' => '账户与账单',
     'log_out' => '退出登录',
 
     'workspace' => '工作区：:name',
@@ -46,6 +48,7 @@ return [
         'signatures' => '签名',
         'labels' => '标签',
         'assets' => '素材库',
+        'settings' => '设置',
         'api_keys' => 'API 密钥',
     ],
 

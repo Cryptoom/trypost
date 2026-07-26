@@ -8,6 +8,8 @@ return [
     'create_workspace' => 'Δημιουργία workspace',
     'create_post' => 'Δημιουργία δημοσίευσης',
     'profile' => 'Προφίλ',
+    'my_account' => 'Ο λογαριασμός μου',
+    'account_settings' => 'Λογαριασμός και χρέωση',
     'log_out' => 'Αποσύνδεση',
 
     'workspace' => 'Workspace: :name',
@@ -46,6 +48,7 @@ return [
         'signatures' => 'Υπογραφές',
         'labels' => 'Ετικέτες',
         'assets' => 'Στοιχεία',
+        'settings' => 'Ρυθμίσεις',
         'api_keys' => 'Κλειδιά API',
     ],
 

@@ -8,6 +8,8 @@ return [
     'create_workspace' => 'Crea workspace',
     'create_post' => 'Crea post',
     'profile' => 'Profilo',
+    'my_account' => 'Il mio account',
+    'account_settings' => 'Account e fatturazione',
     'log_out' => 'Esci',
 
     'workspace' => 'Workspace: :name',
@@ -46,6 +48,7 @@ return [
         'signatures' => 'Firme',
         'labels' => 'Etichette',
         'assets' => 'Risorse',
+        'settings' => 'Impostazioni',
         'api_keys' => 'Chiavi API',
     ],
 
