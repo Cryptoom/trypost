@@ -145,14 +145,14 @@ const confirmDisconnect = (client: ConnectedClient): void => {
                         type="single"
                         collapsible
                         :model-value="openClient"
-                        class="space-y-4"
+                        class="flex flex-col gap-4 pb-1"
                         @update:model-value="onClientToggle"
                     >
                         <AccordionItem
                             v-for="client in clients"
                             :key="client.key"
                             :value="client.key"
-                            class="overflow-hidden rounded-xl border-b-0 border-2 border-foreground bg-card shadow-2xs"
+                            class="overflow-hidden rounded-xl border-2 border-foreground bg-card shadow-2xs"
                         >
                             <AccordionTrigger
                                 class="px-5 py-4 hover:no-underline data-[state=open]:border-b-2 data-[state=open]:border-foreground"
