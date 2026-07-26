@@ -25,6 +25,9 @@ return [
     'view_docs' => 'View Documentation',
     'connector_name' => 'TryPost',
 
+    'other_clients_title' => 'Other clients',
+    'other_clients_description' => 'Paste the TryPost MCP URL or config into Cursor, VS Code, Claude Code, and other MCP-compatible apps.',
+
     'clients' => [
         'claude' => 'Add TryPost as a custom connector inside claude.ai.',
         'chatgpt' => 'Connect via ChatGPT\'s Developer mode connectors. Requires Pro/Business.',
