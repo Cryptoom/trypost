@@ -72,7 +72,7 @@ const advancedClients = [
         name: 'Cursor',
         description: 'mcp.clients.cursor',
         icon: CursorIcon,
-        tileClass: 'bg-violet-100 -rotate-1',
+        tileClass: 'bg-white -rotate-1',
     },
     {
         key: 'vscode',
