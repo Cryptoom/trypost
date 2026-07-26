@@ -38,11 +38,10 @@ class AccessTokenObserver
             return;
         }
 
-        $account = User::query()
-            ->with('account')
-            ->find($accessToken->user_id)
-            ?->account;
+        $user = User::query()
+            ->with(['account', 'currentWorkspace'])
+            ->find($accessToken->user_id);
 
-        OnboardingStatusUpdated::dispatchForAccount($account);
+        OnboardingStatusUpdated::dispatchForAccount($user?->account, $user);
     }
 }

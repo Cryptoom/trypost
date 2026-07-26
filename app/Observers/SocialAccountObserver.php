@@ -9,7 +9,9 @@ use App\Events\OnboardingStatusUpdated;
 use App\Exceptions\SocialAccount\NetworkAlreadyConnectedException;
 use App\Jobs\PostHog\SyncAccountUsage;
 use App\Models\SocialAccount;
+use App\Models\User;
 use App\Services\PostHogService;
+use Illuminate\Support\Facades\Auth;
 
 class SocialAccountObserver
 {
@@ -46,14 +48,35 @@ class SocialAccountObserver
     {
         $this->syncUsage($socialAccount);
 
-        OnboardingStatusUpdated::dispatchForWorkspace($socialAccount->workspace_id);
+        OnboardingStatusUpdated::dispatchForWorkspace(
+            $socialAccount->workspace_id,
+            $this->actorFor($socialAccount),
+        );
     }
 
     public function deleted(SocialAccount $socialAccount): void
     {
         $this->syncUsage($socialAccount);
 
-        OnboardingStatusUpdated::dispatchForWorkspace($socialAccount->workspace_id);
+        OnboardingStatusUpdated::dispatchForWorkspace(
+            $socialAccount->workspace_id,
+            $this->actorFor($socialAccount),
+        );
+    }
+
+    private function actorFor(SocialAccount $socialAccount): ?User
+    {
+        $user = Auth::user();
+
+        if (! $user instanceof User) {
+            return null;
+        }
+
+        if ((string) $user->account_id !== (string) $socialAccount->workspace?->account_id) {
+            return null;
+        }
+
+        return $user;
     }
 
     private function syncUsage(SocialAccount $socialAccount): void

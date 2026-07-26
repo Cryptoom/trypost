@@ -50,8 +50,8 @@ import {
     useSidebar,
 } from '@/components/ui/sidebar';
 import WorkspaceMenuContent from '@/components/WorkspaceMenuContent.vue';
-import { useActiveUrl } from '@/composables/useActiveUrl';
 import { useOnboardingResidualEcho } from '@/composables/echo/useOnboardingStatusEcho';
+import { useActiveUrl } from '@/composables/useActiveUrl';
 import { useWorkspaceRole } from '@/composables/useWorkspaceRole';
 import { accounts, analytics, calendar, onboarding } from '@/routes/app';
 import { index as assets } from '@/routes/app/assets';

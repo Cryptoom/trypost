@@ -36,7 +36,7 @@ class McpSettingsController extends Controller
                 ])
                 ->values()
                 ->all(),
-            'connectedClients' => $this->connectedClients($request),
+            'connectedClients' => $this->connectedClients($workspace->account_id, $request->user()),
         ]);
     }
 
@@ -50,8 +50,10 @@ class McpSettingsController extends Controller
 
         $this->authorize('view', $workspace);
 
+        $user = $request->user();
+
         $tokens = AccessToken::query()
-            ->where('user_id', $request->user()->id)
+            ->where('user_id', $user->id)
             ->where('client_id', $client)
             ->activeMcpOAuth()
             ->get();
@@ -60,15 +62,17 @@ class McpSettingsController extends Controller
             return back();
         }
 
-        $tokenIds = $tokens->pluck('id');
+        DB::transaction(function () use ($tokens): void {
+            $tokenIds = $tokens->pluck('id');
 
-        DB::table('oauth_refresh_tokens')->whereIn('access_token_id', $tokenIds)->update(['revoked' => true]);
+            DB::table('oauth_refresh_tokens')->whereIn('access_token_id', $tokenIds)->update(['revoked' => true]);
 
-        $tokens->each(function (AccessToken $token): void {
-            $token->forceFill(['revoked' => true])->saveQuietly();
+            $tokens->each(function (AccessToken $token): void {
+                $token->forceFill(['revoked' => true])->saveQuietly();
+            });
         });
 
-        OnboardingStatusUpdated::dispatchForAccount($request->user()->account);
+        OnboardingStatusUpdated::dispatchForAccount($user->account, $user);
 
         return back()->with('flash.success', __('mcp.disconnected'));
     }
@@ -79,11 +83,8 @@ class McpSettingsController extends Controller
      *
      * @return array<int, array{client_id: string, name: string, user_id: string, user_name: string, can_disconnect: bool, last_used_at: mixed}>
      */
-    private function connectedClients(Request $request): array
+    private function connectedClients(string $accountId, User $currentUser): array
     {
-        $currentUser = $request->user();
-        $accountId = $currentUser->account_id;
-
         $tokens = AccessToken::query()
             ->whereIn('user_id', User::query()->select('id')->where('account_id', $accountId))
             ->activeMcpOAuth()

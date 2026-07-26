@@ -8,6 +8,7 @@ use App\Enums\PostHog\OnboardingEvent;
 use App\Models\AccessToken;
 use App\Models\Account;
 use App\Models\User;
+use App\Models\Workspace;
 use App\Services\PostHogService;
 use Illuminate\Support\Facades\Cache;
 
@@ -123,6 +124,42 @@ class ResolveOnboardingStatus
     }
 
     /**
+     * Stamp account completion when MCP is connected and any workspace has
+     * both a social account and a post — used when the actor's current
+     * workspace is not the one that already finished social/post steps.
+     */
+    public function tryMarkAccountComplete(Account $account, User $actor): bool
+    {
+        if ($account->onboarding_completed_at !== null || $account->onboarding_dismissed_at !== null) {
+            return false;
+        }
+
+        $hasMcp = AccessToken::query()
+            ->whereIn(
+                'user_id',
+                User::query()->select('id')->where('account_id', $account->id),
+            )
+            ->activeMcpOAuth()
+            ->exists();
+
+        if (! $hasMcp) {
+            return false;
+        }
+
+        $workspaceReady = Workspace::query()
+            ->where('account_id', $account->id)
+            ->whereHas('socialAccounts')
+            ->whereHas('posts')
+            ->exists();
+
+        if (! $workspaceReady) {
+            return false;
+        }
+
+        return $this->markCompleted($actor);
+    }
+
+    /**
      * Stamp account onboarding completion once and capture the funnel event.
      */
     public function markCompleted(User $user): bool
@@ -144,7 +181,8 @@ class ResolveOnboardingStatus
             return false;
         }
 
-        $account->setAttribute('onboarding_completed_at', $completedAt);
+        $account->forceFill(['onboarding_completed_at' => $completedAt]);
+        $account->syncOriginalAttribute('onboarding_completed_at');
 
         if (PostHogService::isEnabled()) {
             $this->postHog->capture(
@@ -164,18 +202,6 @@ class ResolveOnboardingStatus
      */
     public function residual(User $user): array|false
     {
-        $account = $user->account;
-
-        if ($account === null
-            || ! $user->isAccountOwner()
-            || $account->onboarding_completed_at !== null
-            || $account->onboarding_dismissed_at !== null
-            || config('trypost.self_hosted')
-            || ! $account->hasAppAccess()
-        ) {
-            return false;
-        }
-
         $status = $this->handle($user);
 
         if (! $status['show_residual']) {

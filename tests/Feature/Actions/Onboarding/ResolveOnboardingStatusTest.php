@@ -350,3 +350,75 @@ test('residual returns false when the banner should not show', function () {
 
     expect(app(ResolveOnboardingStatus::class)->residual($this->user->fresh()))->toBeFalse();
 });
+
+test('tryMarkAccountComplete stamps when another workspace is already ready', function () {
+    Carbon::setTestNow('2026-07-24 12:00:00');
+
+    SocialAccount::withoutEvents(fn () => SocialAccount::factory()->create([
+        'workspace_id' => $this->workspace->id,
+    ]));
+    Post::withoutEvents(fn () => Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+    ]));
+
+    $member = User::factory()->create(['account_id' => $this->user->account_id]);
+    $memberWorkspace = Workspace::factory()->create([
+        'account_id' => $this->user->account_id,
+        'user_id' => $member->id,
+    ]);
+    $member->update(['current_workspace_id' => $memberWorkspace->id]);
+
+    expect(app(ResolveOnboardingStatus::class)->tryMarkAccountComplete(
+        $this->user->account->fresh(),
+        $member->fresh(),
+    ))->toBeFalse();
+
+    AccessToken::withoutEvents(fn () => mcpAccessToken($member, mcpOauthClient()));
+
+    expect(app(ResolveOnboardingStatus::class)->tryMarkAccountComplete(
+        $this->user->account->fresh(),
+        $member->fresh(),
+    ))->toBeTrue()
+        ->and($this->user->account->fresh()->onboarding_completed_at?->equalTo(now()))->toBeTrue();
+});
+
+test('mcp connection attributes step analytics to the acting teammate', function () {
+    config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test']);
+    Bus::fake();
+    Cache::flush();
+
+    SocialAccount::withoutEvents(fn () => SocialAccount::factory()->create([
+        'workspace_id' => $this->workspace->id,
+    ]));
+    Post::withoutEvents(fn () => Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+    ]));
+
+    $member = User::factory()->create([
+        'account_id' => $this->user->account_id,
+        'current_workspace_id' => $this->workspace->id,
+    ]);
+
+    // Owner has a lower id and would win if we still fan-out by users.id asc.
+    expect($this->user->id < $member->id)->toBeTrue();
+
+    mcpAccessToken($member, mcpOauthClient());
+
+    Bus::assertDispatched(
+        SendEvent::class,
+        fn (SendEvent $event): bool => $event->method === 'capture'
+            && data_get($event->payload, 'event') === OnboardingEvent::StepCompleted->value
+            && data_get($event->payload, 'properties.step') === 'mcp_connected'
+            && data_get($event->payload, 'distinctId') === (string) $member->id,
+    );
+});
+
+test('markCompleted leaves the in-memory account clean', function () {
+    Carbon::setTestNow('2026-07-24 12:00:00');
+
+    expect(app(ResolveOnboardingStatus::class)->markCompleted($this->user))->toBeTrue()
+        ->and($this->user->account->isDirty())->toBeFalse()
+        ->and($this->user->account->onboarding_completed_at?->equalTo(now()))->toBeTrue();
+});

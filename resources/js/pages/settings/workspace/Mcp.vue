@@ -5,11 +5,11 @@ import { trans } from 'laravel-vue-i18n';
 import { computed, ref } from 'vue';
 
 import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.vue';
+import HeadingSmall from '@/components/HeadingSmall.vue';
 import ClaudeIcon from '@/components/mcp/icons/ClaudeIcon.vue';
 import CursorIcon from '@/components/mcp/icons/CursorIcon.vue';
 import OtherClientsIcon from '@/components/mcp/icons/OtherClientsIcon.vue';
 import VscodeIcon from '@/components/mcp/icons/VscodeIcon.vue';
-import HeadingSmall from '@/components/HeadingSmall.vue';
 import PageHeader from '@/components/PageHeader.vue';
 import SettingsTabsNav from '@/components/settings/SettingsTabsNav.vue';
 import {
@@ -103,7 +103,7 @@ const advancedClients = [
 
 const openClient = ref<string>('');
 
-const onClientToggle = (value: string | string[]): void => {
+const onClientToggle = (value: string | string[] | undefined): void => {
     openClient.value = Array.isArray(value) ? (value[0] ?? '') : (value ?? '');
 };
 
