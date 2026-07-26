@@ -308,18 +308,9 @@ const confirmDisconnect = (client: ConnectedClient): void => {
                                 </AccordionTrigger>
                                 <AccordionContent class="px-5 pt-1 pb-5">
                                     <div class="space-y-5">
-                                        <div class="flex items-start gap-3">
-                                            <span
-                                                class="inline-flex size-6 shrink-0 items-center justify-center rounded-full bg-foreground text-xs font-bold text-background"
-                                            >
-                                                1
-                                            </span>
-                                            <p
-                                                class="text-sm font-medium text-foreground/70"
-                                            >
-                                                {{ $t('mcp.step_add') }}
-                                            </p>
-                                        </div>
+                                        <p class="text-sm font-medium text-foreground/70">
+                                            {{ $t('mcp.step_add') }}
+                                        </p>
 
                                         <div class="grid gap-2">
                                             <Label class="font-bold">{{
