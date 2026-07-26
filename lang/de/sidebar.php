@@ -30,7 +30,7 @@ return [
     'analytics' => 'Analytics',
     'automations' => 'Automatisierungen',
     'settings' => 'Einstellungen',
-    'onboarding' => 'Getting started',
+    'onboarding' => 'Erste Schritte',
     'onboarding_hint' => 'Einrichtung abschließen',
 
     'posts' => [

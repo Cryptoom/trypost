@@ -30,7 +30,7 @@ return [
     'analytics' => 'Statistieken',
     'automations' => 'Automatiseringen',
     'settings' => 'Instellingen',
-    'onboarding' => 'Getting started',
+    'onboarding' => 'Aan de slag',
     'onboarding_hint' => 'Setup afronden',
 
     'posts' => [

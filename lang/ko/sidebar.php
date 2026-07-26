@@ -30,7 +30,7 @@ return [
     'analytics' => '분석',
     'automations' => '자동화',
     'settings' => '설정',
-    'onboarding' => 'Getting started',
+    'onboarding' => '시작하기',
     'onboarding_hint' => '설정 마치기',
 
     'posts' => [

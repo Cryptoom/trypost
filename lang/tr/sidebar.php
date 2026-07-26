@@ -30,7 +30,7 @@ return [
     'analytics' => 'Analitik',
     'automations' => 'Otomasyonlar',
     'settings' => 'Ayarlar',
-    'onboarding' => 'Getting started',
+    'onboarding' => 'Başlarken',
     'onboarding_hint' => 'Kurulumu bitir',
 
     'posts' => [

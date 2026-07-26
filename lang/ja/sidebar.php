@@ -30,7 +30,7 @@ return [
     'analytics' => 'アナリティクス',
     'automations' => 'オートメーション',
     'settings' => '設定',
-    'onboarding' => 'Getting started',
+    'onboarding' => 'はじめに',
     'onboarding_hint' => 'セットアップを完了',
 
     'posts' => [

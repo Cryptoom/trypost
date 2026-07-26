@@ -30,7 +30,7 @@ return [
     'analytics' => 'Στατιστικά',
     'automations' => 'Αυτοματισμοί',
     'settings' => 'Ρυθμίσεις',
-    'onboarding' => 'Getting started',
+    'onboarding' => 'Ξεκινώντας',
     'onboarding_hint' => 'Ολοκλήρωση ρύθμισης',
 
     'posts' => [
