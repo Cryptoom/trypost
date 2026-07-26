@@ -12,6 +12,7 @@ use App\Models\Plan;
 use App\Models\User;
 use App\Services\PostHogService;
 use Illuminate\Support\Facades\DB;
+use RuntimeException;
 
 class CreateUser
 {
@@ -30,8 +31,17 @@ class CreateUser
             ];
 
             if (! $requiresCardForTrial) {
+                $trialDays = (int) config('cashier.trial_days');
+
+                if ($trialDays < 1) {
+                    throw new RuntimeException(
+                        'CASHIER_TRIAL_DAYS must be at least 1 when REQUIRE_CARD_FOR_TRIAL=false, '
+                        .'otherwise new accounts would have no trial and no subscription access.'
+                    );
+                }
+
                 $accountAttributes['plan_id'] = Plan::where('slug', Slug::Workspace)->value('id');
-                $accountAttributes['trial_ends_at'] = now()->addDays(config('cashier.trial_days'));
+                $accountAttributes['trial_ends_at'] = now()->addDays($trialDays);
             }
 
             $account = Account::create($accountAttributes);

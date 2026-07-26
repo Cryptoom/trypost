@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Support\Billing\CashierCheckoutEnv;
 use Laravel\Cashier\Console\WebhookCommand;
 use Laravel\Cashier\Invoices\DompdfInvoiceRenderer;
 
@@ -131,25 +132,29 @@ return [
     | Trial Period
     |--------------------------------------------------------------------------
     |
-    | The number of days for the trial period. Set to 0 to disable trials.
+    | Days of Stripe Checkout trial when REQUIRE_CARD_FOR_TRIAL is enabled, and
+    | the generic no-card trial length when it is disabled. Set to 0 to disable
+    | Checkout trials (customer is charged immediately at checkout).
+    |
+    | Empty / missing env falls back to 8 (an empty string must not become 0).
+    | Values of 1 are clamped to 2 at checkout — Stripe requires ≥ 48 hours.
     |
     */
 
-    'trial_days' => env('CASHIER_TRIAL_DAYS', 8),
+    'trial_days' => CashierCheckoutEnv::trialDays(env('CASHIER_TRIAL_DAYS', 8)),
 
     /*
     |--------------------------------------------------------------------------
-    | Paid First Month Coupon
+    | Allow Promotion Codes
     |--------------------------------------------------------------------------
     |
-    | Stripe Coupon ID applied at checkout so the first invoice comes out to
-    | $1 instead of the full monthly price — a real charge validates the
-    | card up front instead of a $0 trial authorization. Must be an
-    | `amount_off` coupon with `duration: once`, so it discounts only the
-    | first invoice and the full price bills automatically afterward.
+    | Show Stripe Checkout's promotion-code field so customers can redeem
+    | promotion codes created in the Stripe Dashboard.
     |
     */
 
-    'first_month_coupon_id' => env('STRIPE_FIRST_MONTH_COUPON_ID'),
+    'allow_promotion_codes' => CashierCheckoutEnv::allowPromotionCodes(
+        env('CASHIER_ALLOW_PROMOTION_CODES', true)
+    ),
 
 ];

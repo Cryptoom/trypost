@@ -8,6 +8,10 @@ test('the default trial length is 8 days', function () {
     expect(config('cashier.trial_days'))->toBe(8);
 });
 
+test('promotion codes are allowed by default', function () {
+    expect(config('cashier.allow_promotion_codes'))->toBeTrue();
+});
+
 test('signup grants a trial of cashier.trial_days in no-card mode', function () {
     config(['trypost.billing.require_card_for_trial' => false]);
 
@@ -19,4 +23,17 @@ test('signup grants a trial of cashier.trial_days in no-card mode', function () 
 
     expect($user->account->trial_ends_at->toDateString())
         ->toBe(now()->addDays(config('cashier.trial_days'))->toDateString());
+});
+
+test('no-card signup refuses CASHIER_TRIAL_DAYS=0 so accounts are not locked out', function () {
+    config([
+        'trypost.billing.require_card_for_trial' => false,
+        'cashier.trial_days' => 0,
+    ]);
+
+    expect(fn () => CreateUser::execute([
+        'name' => 'Locked Out',
+        'email' => 'locked@example.com',
+        'password' => 'secret123',
+    ]))->toThrow(RuntimeException::class);
 });

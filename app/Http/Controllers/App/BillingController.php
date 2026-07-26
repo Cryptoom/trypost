@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\App;
 
 use App\Models\Account;
+use App\Support\Billing\CheckoutConversionData;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -55,29 +56,12 @@ class BillingController extends Controller
         try {
             $session = $account->stripe()->checkout->sessions->retrieve(
                 $sessionId,
-                ['expand' => ['line_items.data.price']],
             );
         } catch (Throwable) {
             return null;
         }
 
-        if (data_get($session, 'customer') !== $account->stripe_id) {
-            return null;
-        }
-
-        $unitAmount = data_get($session, 'line_items.data.0.price.unit_amount');
-        $currency = data_get($session, 'line_items.data.0.price.currency');
-        $transactionId = data_get($session, 'id');
-
-        if (! is_int($unitAmount) || ! is_string($currency) || ! is_string($transactionId)) {
-            return null;
-        }
-
-        return [
-            'value' => $unitAmount / 100,
-            'currency' => strtoupper($currency),
-            'transaction_id' => $transactionId,
-        ];
+        return CheckoutConversionData::fromSession($session, (string) $account->stripe_id);
     }
 
     public function index(Request $request): Response|RedirectResponse
