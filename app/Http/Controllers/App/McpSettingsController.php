@@ -26,7 +26,7 @@ class McpSettingsController extends Controller
         return Inertia::render('settings/workspace/Mcp', [
             'workspace' => $workspace,
             'mcpUrl' => url('/mcp/trypost'),
-            'docsUrl' => 'https://docs.trypost.it',
+            'docsUrl' => 'https://docs.trypost.it/ai/introduction',
             'mcpClients' => collect(config('trypost.mcp.clients', []))
                 ->map(fn (array $client, string $id): array => [
                     'id' => $id,
