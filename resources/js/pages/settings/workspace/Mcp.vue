@@ -274,7 +274,7 @@ const confirmDisconnect = (client: ConnectedClient): void => {
                                 class="overflow-hidden rounded-xl border-2 border-foreground bg-card shadow-2xs"
                             >
                                 <AccordionTrigger
-                                    class="px-5 py-4 hover:no-underline data-[state=open]:border-b-2 data-[state=open]:border-foreground"
+                                    class="px-5 py-4 hover:no-underline"
                                 >
                                     <div
                                         class="flex items-center gap-4 text-left"
