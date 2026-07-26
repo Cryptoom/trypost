@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 return [
     'title' => 'MCP',
-    'subtitle' => 'Bu workspace’te gönderi oluşturup yönetmeleri için yapay zeka asistanlarını bağlayın.',
+    'subtitle' => 'TryPost hesabınızla gönderi oluşturup yönetmeleri için yapay zeka asistanlarını bağlayın.',
     'step_add' => 'Adı, URL’yi veya config’i aşağıdaki gibi uygulamanıza yapıştırın. İlk bağlantıda oturum açma tarayıcıda açılır.',
     'name_label' => 'Ad',
     'url_label' => 'Sunucu URL’si',
@@ -28,8 +28,8 @@ return [
 
     'clients' => [
         'cursor' => 'Cursor’da TryPost’u uzak MCP sunucusu olarak ekleyin.',
-        'vscode' => 'TryPost’u VS Code’un MCP yükleyicisiyle ekleyin.',
-        'claude_code' => 'Sunucuyu tek bir CLI komutuyla ekleyin.',
+        'vscode' => 'Aşağıdaki yapılandırmayı VS Code\'un MCP ayarlarına yapıştırın.',
+        'claude_code' => 'Aşağıdaki yapılandırmayı Claude Code\'un MCP ayarlarına yapıştırın.',
         'other' => 'mcpServers config okuyan her istemciyle çalışır.',
         'other_name' => 'Diğer',
     ],

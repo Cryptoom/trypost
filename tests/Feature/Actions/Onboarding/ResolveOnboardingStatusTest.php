@@ -43,10 +43,7 @@ test('resolves the empty onboarding state', function () {
 });
 
 test('resolves an OAuth token as MCP connected', function () {
-    $result = $this->user->createToken('OAuth Session');
-    AccessToken::find($result->token->id)
-        ->forceFill(['workspace_id' => null])
-        ->saveQuietly();
+    mcpAccessToken($this->user, mcpOauthClient());
 
     $status = app(ResolveOnboardingStatus::class)->handle($this->user);
 
@@ -56,6 +53,14 @@ test('resolves an OAuth token as MCP connected', function () {
         'first_post_created' => false,
         'all_complete' => false,
     ]);
+});
+
+test('does not resolve a personal access token as MCP connected', function () {
+    $this->user->createToken('Personal Access Token');
+
+    $status = app(ResolveOnboardingStatus::class)->handle($this->user);
+
+    expect($status['mcp_connected'])->toBeFalse();
 });
 
 test('does not resolve a workspace-bound personal access token as MCP connected', function () {
@@ -70,10 +75,8 @@ test('does not resolve a workspace-bound personal access token as MCP connected'
 });
 
 test('does not resolve a revoked token as MCP connected', function () {
-    $result = $this->user->createToken('OAuth Session');
-    AccessToken::find($result->token->id)
-        ->forceFill(['workspace_id' => null, 'revoked' => true])
-        ->saveQuietly();
+    $token = mcpAccessToken($this->user, mcpOauthClient());
+    $token->forceFill(['revoked' => true])->saveQuietly();
 
     $status = app(ResolveOnboardingStatus::class)->handle($this->user);
 
@@ -162,10 +165,7 @@ test('does not resolve a post in another workspace as the first post', function 
 test('marks onboarding completed once all three steps are complete', function () {
     Carbon::setTestNow('2026-07-24 12:00:00');
 
-    $result = $this->user->createToken('OAuth Session');
-    AccessToken::find($result->token->id)
-        ->forceFill(['workspace_id' => null])
-        ->saveQuietly();
+    mcpAccessToken($this->user, mcpOauthClient());
     SocialAccount::factory()->create(['workspace_id' => $this->workspace->id]);
     Post::factory()->create([
         'workspace_id' => $this->workspace->id,
@@ -192,15 +192,14 @@ test('marks onboarding completed once all three steps are complete', function ()
 });
 
 test('handle does not mutate the account when every step is complete', function () {
-    $result = $this->user->createToken('OAuth Session');
-    AccessToken::find($result->token->id)
-        ->forceFill(['workspace_id' => null])
-        ->saveQuietly();
-    SocialAccount::factory()->create(['workspace_id' => $this->workspace->id]);
-    Post::factory()->create([
+    AccessToken::withoutEvents(fn () => mcpAccessToken($this->user, mcpOauthClient()));
+    SocialAccount::withoutEvents(fn () => SocialAccount::factory()->create([
+        'workspace_id' => $this->workspace->id,
+    ]));
+    Post::withoutEvents(fn () => Post::factory()->create([
         'workspace_id' => $this->workspace->id,
         'user_id' => $this->user->id,
-    ]);
+    ]));
 
     $status = app(ResolveOnboardingStatus::class)->handle($this->user);
 
@@ -209,6 +208,22 @@ test('handle does not mutate the account when every step is complete', function 
         'show_residual' => false,
         'completed_at' => null,
     ])->and($this->user->account->fresh()->onboarding_completed_at)->toBeNull();
+});
+
+test('stamps completion when the last step completes off the onboarding page', function () {
+    Carbon::setTestNow('2026-07-24 12:00:00');
+
+    mcpAccessToken($this->user, mcpOauthClient());
+    SocialAccount::factory()->create(['workspace_id' => $this->workspace->id]);
+
+    expect($this->user->account->fresh()->onboarding_completed_at)->toBeNull();
+
+    Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+    ]);
+
+    expect($this->user->account->fresh()->onboarding_completed_at?->equalTo(now()))->toBeTrue();
 });
 
 test('dismissed onboarding does not show the residual checklist', function () {

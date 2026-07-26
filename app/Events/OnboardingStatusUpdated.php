@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Events;
 
+use App\Actions\Onboarding\ResolveOnboardingStatus;
+use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Broadcasting\PrivateChannel;
@@ -20,6 +22,8 @@ class OnboardingStatusUpdated implements ShouldBroadcast, ShouldDispatchAfterCom
 
     /**
      * Broadcast only while the workspace account still has active onboarding.
+     * Sync progress after broadcasting so the last completed step still reaches
+     * the UI before onboarding_completed_at is stamped.
      */
     public static function dispatchForWorkspace(?string $workspaceId): void
     {
@@ -37,6 +41,14 @@ class OnboardingStatusUpdated implements ShouldBroadcast, ShouldDispatchAfterCom
         }
 
         static::dispatch($workspaceId);
+
+        User::query()
+            ->with(['account', 'currentWorkspace'])
+            ->where('current_workspace_id', $workspaceId)
+            ->where('account_id', $account->id)
+            ->each(function (User $user): void {
+                app(ResolveOnboardingStatus::class)->syncProgress($user);
+            });
     }
 
     public function broadcastAs(): string

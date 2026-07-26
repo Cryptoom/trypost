@@ -41,10 +41,11 @@ interface McpClient {
 
 const props = defineProps<{
     mcpUrl: string;
-    docsUrl: string;
     mcpClients: McpClient[];
     connectedClients: ConnectedClient[];
 }>();
+
+const docsUrl = 'https://docs.trypost.it/ai/introduction';
 
 const tabs = useWorkspaceSettingsTabs();
 

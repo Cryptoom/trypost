@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 return [
     'title' => 'MCP',
-    'subtitle' => 'Collega assistenti IA così possono creare e gestire post in questo workspace.',
+    'subtitle' => 'Collega assistenti IA così possono creare e gestire post con il tuo account TryPost.',
     'step_add' => 'Incolla nome, URL o config qui sotto nella tua app. Il login si apre nel browser al primo collegamento.',
     'name_label' => 'Nome',
     'url_label' => 'URL del server',
@@ -28,8 +28,8 @@ return [
 
     'clients' => [
         'cursor' => 'Aggiungi TryPost come server MCP remoto in Cursor.',
-        'vscode' => 'Aggiungi TryPost con l’installer MCP di VS Code.',
-        'claude_code' => 'Aggiungi il server con un comando CLI.',
+        'vscode' => 'Incolla la config qui sotto nelle impostazioni MCP di VS Code.',
+        'claude_code' => 'Incolla la config qui sotto nelle impostazioni MCP di Claude Code.',
         'other' => 'Funziona con qualsiasi client che legge una config mcpServers.',
         'other_name' => 'Altri',
     ],

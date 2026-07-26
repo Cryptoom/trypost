@@ -6,7 +6,6 @@ use App\Enums\UserWorkspace\Role;
 use App\Models\AccessToken;
 use App\Models\User;
 use App\Models\Workspace;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 beforeEach(function (): void {
@@ -20,41 +19,6 @@ beforeEach(function (): void {
     $this->user->refresh();
 });
 
-function mcpOauthClient(string $name = 'My Agent'): string
-{
-    $id = (string) Str::uuid();
-
-    DB::table('oauth_clients')->insert([
-        'id' => $id,
-        'name' => $name,
-        'secret' => null,
-        'provider' => null,
-        'redirect_uris' => '[]',
-        'grant_types' => json_encode(['authorization_code']),
-        'revoked' => false,
-        'created_at' => now(),
-        'updated_at' => now(),
-    ]);
-
-    return $id;
-}
-
-function mcpAccessToken(User $user, string $clientId): AccessToken
-{
-    $token = new AccessToken;
-    $token->forceFill([
-        'id' => Str::random(80),
-        'user_id' => $user->id,
-        'client_id' => $clientId,
-        'workspace_id' => null,
-        'name' => 'MCP',
-        'scopes' => [],
-        'revoked' => false,
-    ])->save();
-
-    return $token->refresh();
-}
-
 it('shows the mcp settings page', function (): void {
     $this->actingAs($this->user)
         ->get(route('app.mcp.index'))
@@ -62,7 +26,7 @@ it('shows the mcp settings page', function (): void {
         ->assertInertia(fn ($page) => $page
             ->component('settings/workspace/Mcp')
             ->where('mcpUrl', url('/mcp/trypost'))
-            ->has('docsUrl')
+            ->missing('docsUrl')
             ->has('mcpClients', 2)
             ->where('mcpClients.0.id', 'claude')
             ->where('mcpClients.1.id', 'chatgpt')
@@ -91,11 +55,67 @@ it('disconnects a client by revoking its tokens', function (): void {
 
     $this->actingAs($this->user)
         ->delete(route('app.mcp.disconnect', ['client' => $clientId]))
-        ->assertRedirect();
+        ->assertRedirect()
+        ->assertSessionHas('flash.success', __('mcp.disconnected'));
 
     expect($token->fresh()->revoked)->toBeTrue();
 });
 
+it('does not flash success when disconnecting an unknown client', function (): void {
+    $this->actingAs($this->user)
+        ->delete(route('app.mcp.disconnect', ['client' => (string) Str::uuid()]))
+        ->assertRedirect()
+        ->assertSessionMissing('flash.success');
+});
+
+it('allows workspace members to view and disconnect their own mcp clients', function (): void {
+    $member = User::factory()->create(['account_id' => $this->user->account_id]);
+    $this->workspace->members()->attach($member->id, ['role' => Role::Member->value]);
+    $member->update(['current_workspace_id' => $this->workspace->id]);
+
+    $clientId = mcpOauthClient('Member Agent');
+    $token = mcpAccessToken($member, $clientId);
+
+    $this->actingAs($member->fresh())
+        ->get(route('app.mcp.index'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->has('connectedClients', 1)
+            ->where('connectedClients.0.name', 'Member Agent'));
+
+    $this->actingAs($member->fresh())
+        ->delete(route('app.mcp.disconnect', ['client' => $clientId]))
+        ->assertRedirect()
+        ->assertSessionHas('flash.success');
+
+    expect($token->fresh()->revoked)->toBeTrue();
+});
+
+it('does not revoke another users mcp client tokens', function (): void {
+    $member = User::factory()->create(['account_id' => $this->user->account_id]);
+    $this->workspace->members()->attach($member->id, ['role' => Role::Member->value]);
+    $member->update(['current_workspace_id' => $this->workspace->id]);
+
+    $clientId = mcpOauthClient('Owner Agent');
+    $token = mcpAccessToken($this->user, $clientId);
+
+    $this->actingAs($member->fresh())
+        ->delete(route('app.mcp.disconnect', ['client' => $clientId]))
+        ->assertRedirect()
+        ->assertSessionMissing('flash.success');
+
+    expect($token->fresh()->revoked)->toBeFalse();
+});
+
 it('requires authentication', function (): void {
     $this->get(route('app.mcp.index'))->assertRedirect();
+});
+
+it('forbids users without workspace access', function (): void {
+    $outsider = User::factory()->create();
+    $outsider->update(['current_workspace_id' => $this->workspace->id]);
+
+    $this->actingAs($outsider->fresh())
+        ->get(route('app.mcp.index'))
+        ->assertForbidden();
 });

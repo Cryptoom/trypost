@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Enums\PostHog\OnboardingEvent;
 use App\Enums\SocialAccount\Platform;
+use App\Enums\UserWorkspace\Role;
 use App\Jobs\PostHog\SendEvent;
 use App\Models\AccessToken;
 use App\Models\Post;
@@ -113,15 +114,14 @@ test('onboarding cannot be completed before every activation step', function () 
 test('onboarding completes after every activation step', function () {
     Carbon::setTestNow('2026-07-24 12:00:00');
 
-    $token = $this->user->createToken('OAuth Session');
-    AccessToken::findOrFail($token->token->id)
-        ->forceFill(['workspace_id' => null])
-        ->saveQuietly();
-    SocialAccount::factory()->create(['workspace_id' => $this->workspace->id]);
-    Post::factory()->create([
+    AccessToken::withoutEvents(fn () => mcpAccessToken($this->user, mcpOauthClient()));
+    SocialAccount::withoutEvents(fn () => SocialAccount::factory()->create([
+        'workspace_id' => $this->workspace->id,
+    ]));
+    Post::withoutEvents(fn () => Post::factory()->create([
         'workspace_id' => $this->workspace->id,
         'user_id' => $this->user->id,
-    ]);
+    ]));
 
     $this->actingAs($this->user->fresh())
         ->post(route('app.onboarding.complete'))
@@ -130,6 +130,20 @@ test('onboarding completes after every activation step', function () {
     expect($this->user->account->fresh()->onboarding_completed_at?->equalTo(now()))->toBeTrue();
 
     Bus::assertDispatched(SendEvent::class, fn (SendEvent $event): bool => data_get($event->payload, 'event') === OnboardingEvent::Completed->value);
+});
+
+test('only the account owner can dismiss onboarding', function () {
+    $member = User::factory()->create(['account_id' => $this->user->account_id]);
+    $this->workspace->members()->attach($member->id, [
+        'role' => Role::Member->value,
+    ]);
+    $member->update(['current_workspace_id' => $this->workspace->id]);
+
+    $this->actingAs($member->fresh())
+        ->post(route('app.onboarding.dismiss'))
+        ->assertForbidden();
+
+    expect($this->user->account->fresh()->onboarding_dismissed_at)->toBeNull();
 });
 
 test('unsubscribed accounts are redirected to welcome by middleware', function (string $routeName, string $method) {

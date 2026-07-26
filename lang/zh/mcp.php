@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 return [
     'title' => 'MCP',
-    'subtitle' => '连接 AI 助手，让它们在此工作区创建和管理帖子。',
+    'subtitle' => '连接 AI 助手，让它们用你的 TryPost 账户创建和管理帖子。',
     'step_add' => '将下方的名称、URL 或配置粘贴到你的应用中。首次连接时会在浏览器中打开登录。',
     'name_label' => '名称',
     'url_label' => '服务器 URL',
@@ -28,8 +28,8 @@ return [
 
     'clients' => [
         'cursor' => '在 Cursor 中将 TryPost 添加为远程 MCP 服务器。',
-        'vscode' => '通过 VS Code 的 MCP 安装程序添加 TryPost。',
-        'claude_code' => '用一条 CLI 命令添加服务器。',
+        'vscode' => '将下方配置粘贴到 VS Code 的 MCP 设置中。',
+        'claude_code' => '将下方配置粘贴到 Claude Code 的 MCP 设置中。',
         'other' => '适用于任何读取 mcpServers 配置的客户端。',
         'other_name' => '其他',
     ],

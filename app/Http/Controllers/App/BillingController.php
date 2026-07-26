@@ -41,6 +41,9 @@ class BillingController extends Controller
         return Inertia::render('billing/Processing', [
             'subscriptionActive' => $account && $account->subscribed(Account::SUBSCRIPTION_NAME),
             'fromCheckout' => $fromCheckout,
+            'redirectToOnboarding' => $account !== null
+                && $account->onboarding_completed_at === null
+                && $account->onboarding_dismissed_at === null,
             'persona' => $request->user()->persona?->value,
             'conversion' => $fromCheckout && $account?->stripe_id
                 ? fn () => $this->buildConversionData($account, $sessionId)

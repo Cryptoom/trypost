@@ -52,8 +52,7 @@ class ResolveOnboardingStatus
 
         $mcpConnected = AccessToken::query()
             ->where('user_id', $user->id)
-            ->whereNull('workspace_id')
-            ->where('revoked', false)
+            ->activeMcpOAuth()
             ->exists();
         $socialConnected = $workspace?->socialAccounts()->exists() ?? false;
         $firstPostCreated = $workspace?->posts()->exists() ?? false;

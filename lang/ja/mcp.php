@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 return [
     'title' => 'MCP',
-    'subtitle' => 'このワークスペースで投稿の作成・管理ができるよう、AIアシスタントを接続します。',
+    'subtitle' => 'TryPostアカウントで投稿の作成・管理ができるよう、AIアシスタントを接続します。',
     'step_add' => '下の名前・URL・設定をアプリに貼り付けてください。初回接続時はブラウザでログインが開きます。',
     'name_label' => '名前',
     'url_label' => 'サーバーURL',
@@ -28,8 +28,8 @@ return [
 
     'clients' => [
         'cursor' => 'CursorでTryPostをリモートMCPサーバーとして追加します。',
-        'vscode' => 'VS CodeのMCPインストーラーからTryPostを追加します。',
-        'claude_code' => 'CLIコマンド1つでサーバーを追加します。',
+        'vscode' => '下の設定をVS CodeのMCP設定に貼り付けます。',
+        'claude_code' => '下の設定をClaude CodeのMCP設定に貼り付けます。',
         'other' => 'mcpServers設定を読むクライアントならどれでも使えます。',
         'other_name' => 'その他',
     ],

@@ -32,6 +32,27 @@ test('creating a social account broadcasts onboarding status for its workspace',
     );
 });
 
+test('deleting a social account broadcasts onboarding status for its workspace', function () {
+    $user = User::factory()->create();
+    $workspace = Workspace::factory()->create([
+        'account_id' => $user->account_id,
+        'user_id' => $user->id,
+    ]);
+
+    $socialAccount = SocialAccount::withoutEvents(fn () => SocialAccount::factory()->create([
+        'workspace_id' => $workspace->id,
+    ]));
+
+    Event::fake([OnboardingStatusUpdated::class]);
+
+    $socialAccount->delete();
+
+    Event::assertDispatched(
+        OnboardingStatusUpdated::class,
+        fn (OnboardingStatusUpdated $event): bool => $event->workspaceId === $workspace->id,
+    );
+});
+
 test('creating a post broadcasts onboarding status for its workspace', function () {
     $user = User::factory()->create();
     $workspace = Workspace::factory()->create([
@@ -50,7 +71,29 @@ test('creating a post broadcasts onboarding status for its workspace', function 
     );
 });
 
-test('creating a personal access token broadcasts onboarding status for the current workspace', function () {
+test('deleting a post broadcasts onboarding status for its workspace', function () {
+    $user = User::factory()->create();
+    $workspace = Workspace::factory()->create([
+        'account_id' => $user->account_id,
+        'user_id' => $user->id,
+    ]);
+
+    $post = Post::withoutEvents(fn () => Post::factory()->create([
+        'workspace_id' => $workspace->id,
+        'user_id' => $user->id,
+    ]));
+
+    Event::fake([OnboardingStatusUpdated::class]);
+
+    $post->delete();
+
+    Event::assertDispatched(
+        OnboardingStatusUpdated::class,
+        fn (OnboardingStatusUpdated $event): bool => $event->workspaceId === $workspace->id,
+    );
+});
+
+test('creating an oauth mcp token broadcasts onboarding status for the current workspace', function () {
     $user = User::factory()->create();
     $workspace = Workspace::factory()->create([
         'account_id' => $user->account_id,
@@ -58,7 +101,40 @@ test('creating a personal access token broadcasts onboarding status for the curr
     ]);
     $user->update(['current_workspace_id' => $workspace->id]);
 
-    $user->createToken('MCP');
+    mcpAccessToken($user, mcpOauthClient());
+
+    Event::assertDispatched(
+        OnboardingStatusUpdated::class,
+        fn (OnboardingStatusUpdated $event): bool => $event->workspaceId === $workspace->id,
+    );
+});
+
+test('creating a personal access token does not broadcast onboarding status', function () {
+    $user = User::factory()->create();
+    $workspace = Workspace::factory()->create([
+        'account_id' => $user->account_id,
+        'user_id' => $user->id,
+    ]);
+    $user->update(['current_workspace_id' => $workspace->id]);
+
+    $user->createToken('API Key');
+
+    Event::assertNotDispatched(OnboardingStatusUpdated::class);
+});
+
+test('revoking an oauth mcp token broadcasts onboarding status', function () {
+    $user = User::factory()->create();
+    $workspace = Workspace::factory()->create([
+        'account_id' => $user->account_id,
+        'user_id' => $user->id,
+    ]);
+    $user->update(['current_workspace_id' => $workspace->id]);
+
+    $token = AccessToken::withoutEvents(fn () => mcpAccessToken($user, mcpOauthClient()));
+
+    Event::fake([OnboardingStatusUpdated::class]);
+
+    $token->update(['revoked' => true]);
 
     Event::assertDispatched(
         OnboardingStatusUpdated::class,

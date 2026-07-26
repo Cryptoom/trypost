@@ -149,8 +149,29 @@ test('billing processing shows processing page', function () {
         ->component('billing/Processing', false)
         ->has('subscriptionActive')
         ->where('fromCheckout', false)
+        ->where('redirectToOnboarding', true)
         ->where('conversion', null)
     );
+});
+
+test('billing processing skips onboarding when already completed', function () {
+    config(['trypost.self_hosted' => false]);
+    $this->user->account->update(['onboarding_completed_at' => now()]);
+
+    $this->actingAs($this->user->fresh())
+        ->get(route('app.billing.processing'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page->where('redirectToOnboarding', false));
+});
+
+test('billing processing skips onboarding when dismissed', function () {
+    config(['trypost.self_hosted' => false]);
+    $this->user->account->update(['onboarding_dismissed_at' => now()]);
+
+    $this->actingAs($this->user->fresh())
+        ->get(route('app.billing.processing'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page->where('redirectToOnboarding', false));
 });
 
 test('billing processing exposes fromCheckout=true only the first time a session_id is seen', function () {

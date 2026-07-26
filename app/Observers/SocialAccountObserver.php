@@ -52,6 +52,8 @@ class SocialAccountObserver
     public function deleted(SocialAccount $socialAccount): void
     {
         $this->syncUsage($socialAccount);
+
+        OnboardingStatusUpdated::dispatchForWorkspace($socialAccount->workspace_id);
     }
 
     private function syncUsage(SocialAccount $socialAccount): void

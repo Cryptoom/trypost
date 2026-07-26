@@ -13,6 +13,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 
 class OnboardingController extends Controller
 {
@@ -66,6 +67,9 @@ class OnboardingController extends Controller
         }
 
         $user = $request->user();
+
+        abort_unless($user->isAccountOwner(), SymfonyResponse::HTTP_FORBIDDEN);
+
         $user->account->update(['onboarding_dismissed_at' => now()]);
 
         $this->postHog->capture(

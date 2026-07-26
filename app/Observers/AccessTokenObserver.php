@@ -11,12 +11,30 @@ use App\Models\User;
 class AccessTokenObserver
 {
     /**
-     * Personal tokens (no workspace_id) unlock the MCP onboarding step.
-     * Broadcast to the user's current workspace UI so the checklist can refresh.
+     * OAuth MCP grants unlock the MCP onboarding step. Broadcast to the user's
+     * current workspace UI so the checklist can refresh.
      */
     public function created(AccessToken $accessToken): void
     {
-        if ($accessToken->workspace_id !== null || $accessToken->revoked) {
+        if ($accessToken->revoked) {
+            return;
+        }
+
+        $this->broadcastIfMcpOAuth($accessToken);
+    }
+
+    public function updated(AccessToken $accessToken): void
+    {
+        if (! $accessToken->wasChanged('revoked')) {
+            return;
+        }
+
+        $this->broadcastIfMcpOAuth($accessToken);
+    }
+
+    private function broadcastIfMcpOAuth(AccessToken $accessToken): void
+    {
+        if (! $accessToken->isMcpOAuthClient()) {
             return;
         }
 

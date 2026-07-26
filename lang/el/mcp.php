@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 return [
     'title' => 'MCP',
-    'subtitle' => 'Συνδέστε βοηθούς AI για να δημιουργούν και να διαχειρίζονται αναρτήσεις σε αυτό το workspace.',
+    'subtitle' => 'Συνδέστε βοηθούς AI για να δημιουργούν και να διαχειρίζονται αναρτήσεις με τον λογαριασμό TryPost σας.',
     'step_add' => 'Επικολλήστε το όνομα, το URL ή το config παρακάτω στην εφαρμογή σας. Η σύνδεση ανοίγει στο πρόγραμμα περιήγησης την πρώτη φορά.',
     'name_label' => 'Όνομα',
     'url_label' => 'URL διακομιστή',
@@ -28,8 +28,8 @@ return [
 
     'clients' => [
         'cursor' => 'Προσθέστε το TryPost ως απομακρυσμένο MCP server στο Cursor.',
-        'vscode' => 'Προσθέστε το TryPost μέσω του εγκαταστάτη MCP του VS Code.',
-        'claude_code' => 'Προσθέστε τον server με μία εντολή CLI.',
+        'vscode' => 'Επικολλήστε το config παρακάτω στις ρυθμίσεις MCP του VS Code.',
+        'claude_code' => 'Επικολλήστε το config παρακάτω στις ρυθμίσεις MCP του Claude Code.',
         'other' => 'Λειτουργεί με κάθε client που διαβάζει config mcpServers.',
         'other_name' => 'Άλλα',
     ],

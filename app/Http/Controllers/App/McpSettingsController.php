@@ -26,7 +26,6 @@ class McpSettingsController extends Controller
         return Inertia::render('settings/workspace/Mcp', [
             'workspace' => $workspace,
             'mcpUrl' => url('/mcp/trypost'),
-            'docsUrl' => 'https://docs.trypost.it/ai/introduction',
             'mcpClients' => collect(config('trypost.mcp.clients', []))
                 ->map(fn (array $client, string $id): array => [
                     'id' => $id,
@@ -53,12 +52,19 @@ class McpSettingsController extends Controller
         $tokenIds = AccessToken::query()
             ->where('user_id', $request->user()->id)
             ->where('client_id', $client)
+            ->where('revoked', false)
             ->pluck('id');
 
-        if ($tokenIds->isNotEmpty()) {
-            DB::table('oauth_refresh_tokens')->whereIn('access_token_id', $tokenIds)->update(['revoked' => true]);
-            AccessToken::query()->whereIn('id', $tokenIds)->update(['revoked' => true]);
+        if ($tokenIds->isEmpty()) {
+            return back();
         }
+
+        DB::table('oauth_refresh_tokens')->whereIn('access_token_id', $tokenIds)->update(['revoked' => true]);
+
+        AccessToken::query()
+            ->whereIn('id', $tokenIds)
+            ->get()
+            ->each(fn (AccessToken $token): bool => $token->update(['revoked' => true]));
 
         return back()->with('flash.success', __('mcp.disconnected'));
     }
@@ -73,10 +79,9 @@ class McpSettingsController extends Controller
     {
         return AccessToken::query()
             ->where('user_id', $request->user()->id)
-            ->where('revoked', false)
+            ->activeMcpOAuth()
             ->with('client')
             ->get()
-            ->filter(fn (AccessToken $token): bool => $token->client !== null && ! $token->client->hasGrantType('personal_access'))
             ->groupBy('client_id')
             ->map(fn ($tokens): array => [
                 'client_id' => $tokens->first()->client_id,

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 return [
     'title' => 'MCP',
-    'subtitle' => '이 워크스페이스에서 게시물을 만들고 관리할 수 있도록 AI 어시스턴트를 연결하세요.',
+    'subtitle' => 'TryPost 계정으로 게시물을 만들고 관리할 수 있도록 AI 어시스턴트를 연결하세요.',
     'step_add' => '아래 이름, URL 또는 설정을 앱에 붙여넣으세요. 처음 연결할 때 브라우저에서 로그인이 열립니다.',
     'name_label' => '이름',
     'url_label' => '서버 URL',
@@ -28,8 +28,8 @@ return [
 
     'clients' => [
         'cursor' => 'Cursor에서 TryPost를 원격 MCP 서버로 추가하세요.',
-        'vscode' => 'VS Code MCP 설치 프로그램으로 TryPost를 추가하세요.',
-        'claude_code' => 'CLI 명령 하나로 서버를 추가하세요.',
+        'vscode' => '아래 설정을 VS Code MCP 설정에 붙여넣으세요.',
+        'claude_code' => '아래 설정을 Claude Code MCP 설정에 붙여넣으세요.',
         'other' => 'mcpServers 설정을 읽는 모든 클라이언트에서 동작합니다.',
         'other_name' => '기타',
     ],

@@ -21,6 +21,11 @@ class PostObserver
         OnboardingStatusUpdated::dispatchForWorkspace($post->workspace_id);
     }
 
+    public function deleted(Post $post): void
+    {
+        OnboardingStatusUpdated::dispatchForWorkspace($post->workspace_id);
+    }
+
     public function saved(Post $post): void
     {
         if (! $post->wasChanged('status')) {

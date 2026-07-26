@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 return [
     'title' => 'MCP',
-    'subtitle' => 'اربط مساعدي الذكاء الاصطناعي لإنشاء المنشورات وإدارتها في مساحة العمل هذه.',
+    'subtitle' => 'اربط مساعدي الذكاء الاصطناعي لإنشاء المنشورات وإدارتها بحساب TryPost الخاص بك.',
     'step_add' => 'الصق الاسم أو الرابط أو الإعداد أدناه في تطبيقك. يفتح تسجيل الدخول في المتصفح عند أول اتصال.',
     'name_label' => 'الاسم',
     'url_label' => 'رابط الخادم',
@@ -28,8 +28,8 @@ return [
 
     'clients' => [
         'cursor' => 'أضف TryPost كخادم MCP بعيد في Cursor.',
-        'vscode' => 'أضف TryPost عبر مثبّت MCP في VS Code.',
-        'claude_code' => 'أضف الخادم بأمر CLI واحد.',
+        'vscode' => 'الصق الإعداد أدناه في إعدادات MCP في VS Code.',
+        'claude_code' => 'الصق الإعداد أدناه في إعدادات MCP في Claude Code.',
         'other' => 'يعمل مع أي عميل يقرأ إعداد mcpServers.',
         'other_name' => 'أخرى',
     ],

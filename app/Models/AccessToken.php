@@ -6,6 +6,7 @@ namespace App\Models;
 
 use App\Observers\AccessTokenObserver;
 use Illuminate\Database\Eloquent\Attributes\ObservedBy;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Laravel\Passport\Token;
 
@@ -43,5 +44,28 @@ class AccessToken extends Token
     public function workspace(): BelongsTo
     {
         return $this->belongsTo(Workspace::class);
+    }
+
+    /**
+     * Active OAuth grants used by MCP clients (excludes personal access API keys).
+     *
+     * @param  Builder<static>  $query
+     * @return Builder<static>
+     */
+    public function scopeActiveMcpOAuth(Builder $query): Builder
+    {
+        return $query
+            ->where('revoked', false)
+            ->whereHas(
+                'client',
+                fn (Builder $client): Builder => $client->whereJsonDoesntContain('grant_types', 'personal_access'),
+            );
+    }
+
+    public function isMcpOAuthClient(): bool
+    {
+        $this->loadMissing('client');
+
+        return $this->client !== null && ! $this->client->hasGrantType('personal_access');
     }
 }
