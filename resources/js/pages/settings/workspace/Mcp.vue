@@ -9,6 +9,7 @@ import ClaudeIcon from '@/components/mcp/icons/ClaudeIcon.vue';
 import CursorIcon from '@/components/mcp/icons/CursorIcon.vue';
 import OtherClientsIcon from '@/components/mcp/icons/OtherClientsIcon.vue';
 import VscodeIcon from '@/components/mcp/icons/VscodeIcon.vue';
+import HeadingSmall from '@/components/HeadingSmall.vue';
 import PageHeader from '@/components/PageHeader.vue';
 import SettingsTabsNav from '@/components/settings/SettingsTabsNav.vue';
 import {
@@ -129,23 +130,12 @@ const confirmDisconnect = (client: ConnectedClient): void => {
             <SettingsTabsNav :tabs="tabs" active="mcp" />
 
             <div class="flex max-w-3xl flex-col gap-10">
-                <div>
-                    <h2 class="text-lg font-bold">{{ $t('mcp.title') }}</h2>
-                    <p class="mt-1 text-sm text-foreground/70">
-                        {{ $t('mcp.subtitle') }}
-                    </p>
-                </div>
+                <HeadingSmall
+                    :title="$t('mcp.title')"
+                    :description="$t('mcp.subtitle')"
+                />
 
                 <section class="space-y-6">
-                    <div>
-                        <h3 class="text-base font-bold">
-                            {{ $t('mcp.connect_title') }}
-                        </h3>
-                        <p class="mt-1 text-sm text-foreground/70">
-                            {{ $t('mcp.connect_description') }}
-                        </p>
-                    </div>
-
                     <div>
                         <div class="mb-3 flex items-center gap-3">
                             <span
@@ -251,14 +241,10 @@ const confirmDisconnect = (client: ConnectedClient): void => {
                     </div>
 
                     <div class="space-y-4">
-                        <div>
-                            <h4 class="text-sm font-bold">
-                                {{ $t('mcp.other_clients_title') }}
-                            </h4>
-                            <p class="mt-1 text-sm text-foreground/70">
-                                {{ $t('mcp.other_clients_description') }}
-                            </p>
-                        </div>
+                        <HeadingSmall
+                            :title="$t('mcp.other_clients_title')"
+                            :description="$t('mcp.other_clients_description')"
+                        />
 
                         <Accordion
                             type="single"
@@ -394,14 +380,10 @@ const confirmDisconnect = (client: ConnectedClient): void => {
                 </section>
 
                 <section class="space-y-4">
-                    <div>
-                        <h3 class="text-base font-bold">
-                            {{ $t('mcp.connected_title') }}
-                        </h3>
-                        <p class="mt-1 text-sm text-foreground/70">
-                            {{ $t('mcp.connected_description') }}
-                        </p>
-                    </div>
+                    <HeadingSmall
+                        :title="$t('mcp.connected_title')"
+                        :description="$t('mcp.connected_description')"
+                    />
 
                     <div
                         v-if="connectedClients.length === 0"
@@ -445,14 +427,10 @@ const confirmDisconnect = (client: ConnectedClient): void => {
                 </section>
 
                 <section class="space-y-4">
-                    <div>
-                        <h3 class="text-base font-bold">
-                            {{ $t('mcp.documentation_title') }}
-                        </h3>
-                        <p class="mt-1 text-sm text-foreground/70">
-                            {{ $t('mcp.documentation_description') }}
-                        </p>
-                    </div>
+                    <HeadingSmall
+                        :title="$t('mcp.documentation_title')"
+                        :description="$t('mcp.documentation_description')"
+                    />
                     <Button
                         as="a"
                         variant="outline"
