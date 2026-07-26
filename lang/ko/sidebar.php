@@ -50,6 +50,7 @@ return [
         'assets' => '에셋',
         'settings' => '설정',
         'api_keys' => 'API 키',
+        'mcp' => 'MCP',
     ],
 
     'notifications' => '알림',

@@ -50,6 +50,7 @@ return [
         'assets' => 'Медиафайлы',
         'settings' => 'Настройки',
         'api_keys' => 'API-ключи',
+        'mcp' => 'MCP',
     ],
 
     'notifications' => 'Уведомления',

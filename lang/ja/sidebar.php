@@ -50,6 +50,7 @@ return [
         'assets' => 'アセット',
         'settings' => '設定',
         'api_keys' => 'API キー',
+        'mcp' => 'MCP',
     ],
 
     'notifications' => '通知',

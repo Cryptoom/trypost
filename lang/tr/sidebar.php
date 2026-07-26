@@ -50,6 +50,7 @@ return [
         'assets' => 'Varlıklar',
         'settings' => 'Ayarlar',
         'api_keys' => 'API Anahtarları',
+        'mcp' => 'MCP',
     ],
 
     'notifications' => 'Bildirimler',

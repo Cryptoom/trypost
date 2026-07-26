@@ -50,6 +50,7 @@ return [
         'assets' => 'الوسائط',
         'settings' => 'الإعدادات',
         'api_keys' => 'مفاتيح API',
+        'mcp' => 'MCP',
     ],
 
     'notifications' => 'الإشعارات',

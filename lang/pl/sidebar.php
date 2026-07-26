@@ -50,6 +50,7 @@ return [
         'assets' => 'Zasoby',
         'settings' => 'Ustawienia',
         'api_keys' => 'Klucze API',
+        'mcp' => 'MCP',
     ],
 
     'notifications' => 'Powiadomienia',

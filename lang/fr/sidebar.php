@@ -50,6 +50,7 @@ return [
         'assets' => 'Médias',
         'settings' => 'Paramètres',
         'api_keys' => 'Clés API',
+        'mcp' => 'MCP',
     ],
 
     'notifications' => 'Notifications',

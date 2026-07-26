@@ -50,6 +50,7 @@ return [
         'assets' => '素材库',
         'settings' => '设置',
         'api_keys' => 'API 密钥',
+        'mcp' => 'MCP',
     ],
 
     'notifications' => '通知',

@@ -50,6 +50,7 @@ return [
         'assets' => 'Στοιχεία',
         'settings' => 'Ρυθμίσεις',
         'api_keys' => 'Κλειδιά API',
+        'mcp' => 'MCP',
     ],
 
     'notifications' => 'Ειδοποιήσεις',
