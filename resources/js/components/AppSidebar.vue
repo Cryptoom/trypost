@@ -197,6 +197,7 @@ const workspaceNavItems = computed<NavItem[]>(() => [
                   title: trans('sidebar.workspace.settings'),
                   href: workspaceSettings.url(),
                   icon: IconSettings,
+                  excludeActive: [mcp.url()],
               },
           ]
         : []),
