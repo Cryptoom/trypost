@@ -70,21 +70,21 @@ const themeFor = (clientId: string): { bg: string; rotate: string } =>
 const advancedClients = [
     {
         key: 'cursor',
-        name: 'Cursor',
+        name: 'mcp.clients.cursor_name',
         description: 'mcp.clients.cursor',
         icon: CursorIcon,
         tileClass: 'bg-white -rotate-1',
     },
     {
         key: 'vscode',
-        name: 'VS Code',
+        name: 'mcp.clients.vscode_name',
         description: 'mcp.clients.vscode',
         icon: VscodeIcon,
         tileClass: 'bg-sky-100 rotate-2',
     },
     {
         key: 'claude_code',
-        name: 'Claude Code',
+        name: 'mcp.clients.claude_code_name',
         description: 'mcp.clients.claude_code',
         icon: ClaudeIcon,
         tileClass: 'bg-orange-100 rotate-1',
@@ -277,13 +277,7 @@ const confirmDisconnect = (client: ConnectedClient): void => {
                                         </div>
                                         <div class="min-w-0">
                                             <div class="font-bold">
-                                                {{
-                                                    client.name.startsWith(
-                                                        'mcp.',
-                                                    )
-                                                        ? $t(client.name)
-                                                        : client.name
-                                                }}
+                                                {{ $t(client.name) }}
                                             </div>
                                             <div
                                                 class="mt-0.5 text-sm text-foreground/70"

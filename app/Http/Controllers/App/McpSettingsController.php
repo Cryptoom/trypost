@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\App;
 
+use App\Events\OnboardingStatusUpdated;
 use App\Models\AccessToken;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -25,7 +26,7 @@ class McpSettingsController extends Controller
 
         return Inertia::render('settings/workspace/Mcp', [
             'workspace' => $workspace,
-            'mcpUrl' => url('/mcp/trypost'),
+            'mcpUrl' => route('mcp.trypost'),
             'mcpClients' => collect(config('trypost.mcp.clients', []))
                 ->map(fn (array $client, string $id): array => [
                     'id' => $id,
@@ -49,22 +50,25 @@ class McpSettingsController extends Controller
 
         $this->authorize('view', $workspace);
 
-        $tokenIds = AccessToken::query()
+        $tokens = AccessToken::query()
             ->where('user_id', $request->user()->id)
             ->where('client_id', $client)
-            ->where('revoked', false)
-            ->pluck('id');
+            ->activeMcpOAuth()
+            ->get();
 
-        if ($tokenIds->isEmpty()) {
+        if ($tokens->isEmpty()) {
             return back();
         }
 
+        $tokenIds = $tokens->pluck('id');
+
         DB::table('oauth_refresh_tokens')->whereIn('access_token_id', $tokenIds)->update(['revoked' => true]);
 
-        AccessToken::query()
-            ->whereIn('id', $tokenIds)
-            ->get()
-            ->each(fn (AccessToken $token): bool => $token->update(['revoked' => true]));
+        $tokens->each(function (AccessToken $token): void {
+            $token->forceFill(['revoked' => true])->saveQuietly();
+        });
+
+        OnboardingStatusUpdated::dispatchForWorkspace($request->user()->current_workspace_id);
 
         return back()->with('flash.success', __('mcp.disconnected'));
     }

@@ -28,8 +28,11 @@ return [
 
     'clients' => [
         'cursor' => '在 Cursor 中将 TryPost 添加为远程 MCP 服务器。',
+        'cursor_name' => 'Cursor',
         'vscode' => '将下方配置粘贴到 VS Code 的 MCP 设置中。',
+        'vscode_name' => 'VS Code',
         'claude_code' => '将下方配置粘贴到 Claude Code 的 MCP 设置中。',
+        'claude_code_name' => 'Claude Code',
         'other' => '适用于任何读取 mcpServers 配置的客户端。',
         'other_name' => '其他',
     ],

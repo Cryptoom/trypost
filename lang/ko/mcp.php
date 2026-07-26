@@ -28,8 +28,11 @@ return [
 
     'clients' => [
         'cursor' => 'Cursor에서 TryPost를 원격 MCP 서버로 추가하세요.',
+        'cursor_name' => 'Cursor',
         'vscode' => '아래 설정을 VS Code MCP 설정에 붙여넣으세요.',
+        'vscode_name' => 'VS Code',
         'claude_code' => '아래 설정을 Claude Code MCP 설정에 붙여넣으세요.',
+        'claude_code_name' => 'Claude Code',
         'other' => 'mcpServers 설정을 읽는 모든 클라이언트에서 동작합니다.',
         'other_name' => '기타',
     ],

@@ -28,8 +28,11 @@ return [
 
     'clients' => [
         'cursor' => 'أضف TryPost كخادم MCP بعيد في Cursor.',
+        'cursor_name' => 'Cursor',
         'vscode' => 'الصق الإعداد أدناه في إعدادات MCP في VS Code.',
+        'vscode_name' => 'VS Code',
         'claude_code' => 'الصق الإعداد أدناه في إعدادات MCP في Claude Code.',
+        'claude_code_name' => 'Claude Code',
         'other' => 'يعمل مع أي عميل يقرأ إعداد mcpServers.',
         'other_name' => 'أخرى',
     ],

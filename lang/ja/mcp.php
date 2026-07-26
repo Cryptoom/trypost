@@ -28,8 +28,11 @@ return [
 
     'clients' => [
         'cursor' => 'CursorでTryPostをリモートMCPサーバーとして追加します。',
+        'cursor_name' => 'Cursor',
         'vscode' => '下の設定をVS CodeのMCP設定に貼り付けます。',
+        'vscode_name' => 'VS Code',
         'claude_code' => '下の設定をClaude CodeのMCP設定に貼り付けます。',
+        'claude_code_name' => 'Claude Code',
         'other' => 'mcpServers設定を読むクライアントならどれでも使えます。',
         'other_name' => 'その他',
     ],

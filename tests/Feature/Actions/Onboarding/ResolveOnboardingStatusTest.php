@@ -211,7 +211,9 @@ test('handle does not mutate the account when every step is complete', function 
 });
 
 test('stamps completion when the last step completes off the onboarding page', function () {
+    config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test']);
     Carbon::setTestNow('2026-07-24 12:00:00');
+    Bus::fake();
 
     mcpAccessToken($this->user, mcpOauthClient());
     SocialAccount::factory()->create(['workspace_id' => $this->workspace->id]);
@@ -224,6 +226,17 @@ test('stamps completion when the last step completes off the onboarding page', f
     ]);
 
     expect($this->user->account->fresh()->onboarding_completed_at?->equalTo(now()))->toBeTrue();
+
+    Bus::assertDispatched(SendEvent::class, fn (SendEvent $event): bool => data_get($event->payload, 'event') === OnboardingEvent::Completed->value);
+});
+
+test('resolves a teammate oauth token as mcp connected for the account', function () {
+    $member = User::factory()->create(['account_id' => $this->user->account_id]);
+    AccessToken::withoutEvents(fn () => mcpAccessToken($member, mcpOauthClient()));
+
+    $status = app(ResolveOnboardingStatus::class)->handle($this->user);
+
+    expect($status['mcp_connected'])->toBeTrue();
 });
 
 test('dismissed onboarding does not show the residual checklist', function () {

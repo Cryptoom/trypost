@@ -42,7 +42,8 @@ class OnboardingController extends Controller
 
         return Inertia::render('onboarding/Index', [
             'status' => $status,
-            'mcpUrl' => url('/mcp/trypost'),
+            'canDismiss' => $user->isAccountOwner(),
+            'mcpUrl' => route('mcp.trypost'),
             'mcpClients' => collect(config('trypost.mcp.clients', []))
                 ->map(fn (array $client, string $id): array => [
                     'id' => $id,
@@ -94,15 +95,7 @@ class OnboardingController extends Controller
             return redirect()->route('app.onboarding');
         }
 
-        if ($user->account->onboarding_completed_at === null) {
-            $user->account->update(['onboarding_completed_at' => now()]);
-        }
-
-        $this->postHog->capture(
-            $user->id,
-            OnboardingEvent::Completed->value,
-            account: $user->account,
-        );
+        $this->resolveOnboardingStatus->markCompleted($user);
 
         return redirect()->route('app.calendar');
     }

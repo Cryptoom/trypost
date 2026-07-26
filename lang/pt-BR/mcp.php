@@ -28,8 +28,11 @@ return [
 
     'clients' => [
         'cursor' => 'Adicione o TryPost como servidor MCP remoto no Cursor.',
+        'cursor_name' => 'Cursor',
         'vscode' => 'Cole o config abaixo nas configurações MCP do VS Code.',
+        'vscode_name' => 'VS Code',
         'claude_code' => 'Cole o config abaixo nas configurações MCP do Claude Code.',
+        'claude_code_name' => 'Claude Code',
         'other' => 'Funciona com qualquer cliente que leia um config mcpServers.',
         'other_name' => 'Outros',
     ],

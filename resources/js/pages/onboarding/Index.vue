@@ -33,6 +33,7 @@ interface McpClient {
 
 const props = defineProps<{
     status: OnboardingStatus;
+    canDismiss: boolean;
     mcpUrl: string;
     mcpClients: McpClient[];
     samplePrompt: string;
@@ -111,7 +112,7 @@ const themeFor = (
                 </div>
 
                 <Button
-                    v-if="!status.all_complete"
+                    v-if="canDismiss && !status.all_complete"
                     type="button"
                     variant="ghost"
                     size="sm"

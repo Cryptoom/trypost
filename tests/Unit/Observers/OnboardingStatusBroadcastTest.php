@@ -142,12 +142,34 @@ test('revoking an oauth mcp token broadcasts onboarding status', function () {
     );
 });
 
-test('workspace-scoped access tokens do not broadcast onboarding status', function () {
+test('oauth tokens bound to a workspace still broadcast onboarding status', function () {
     $user = User::factory()->create();
     $workspace = Workspace::factory()->create([
         'account_id' => $user->account_id,
         'user_id' => $user->id,
     ]);
+    $user->update(['current_workspace_id' => $workspace->id]);
+
+    $token = AccessToken::withoutEvents(fn () => mcpAccessToken($user, mcpOauthClient()));
+    $token->forceFill(['workspace_id' => $workspace->id])->saveQuietly();
+
+    Event::fake([OnboardingStatusUpdated::class]);
+
+    (new AccessTokenObserver)->created($token->fresh());
+
+    Event::assertDispatched(
+        OnboardingStatusUpdated::class,
+        fn (OnboardingStatusUpdated $event): bool => $event->workspaceId === $workspace->id,
+    );
+});
+
+test('tokens without an oauth client do not broadcast', function () {
+    $user = User::factory()->create();
+    $workspace = Workspace::factory()->create([
+        'account_id' => $user->account_id,
+        'user_id' => $user->id,
+    ]);
+    $user->update(['current_workspace_id' => $workspace->id]);
 
     $token = new AccessToken([
         'user_id' => $user->id,
@@ -163,11 +185,9 @@ test('workspace-scoped access tokens do not broadcast onboarding status', functi
 test('personal tokens without a current workspace do not broadcast', function () {
     $user = User::factory()->create(['current_workspace_id' => null]);
 
-    $token = new AccessToken([
-        'user_id' => $user->id,
-        'workspace_id' => null,
-        'revoked' => false,
-    ]);
+    $token = AccessToken::withoutEvents(fn () => mcpAccessToken($user, mcpOauthClient()));
+
+    Event::fake([OnboardingStatusUpdated::class]);
 
     (new AccessTokenObserver)->created($token);
 

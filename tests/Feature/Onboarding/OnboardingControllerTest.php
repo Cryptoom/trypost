@@ -49,7 +49,8 @@ test('onboarding renders activation status and connection props', function () {
             ->where('status.first_post_created', false)
             ->where('status.all_complete', false)
             ->where('status.show_residual', true)
-            ->where('mcpUrl', url('/mcp/trypost'))
+            ->where('mcpUrl', route('mcp.trypost'))
+            ->where('canDismiss', true)
             ->where('mcpClients', collect(config('trypost.mcp.clients'))
                 ->map(fn (array $client, string $id): array => [
                     'id' => $id,
@@ -130,6 +131,44 @@ test('onboarding completes after every activation step', function () {
     expect($this->user->account->fresh()->onboarding_completed_at?->equalTo(now()))->toBeTrue();
 
     Bus::assertDispatched(SendEvent::class, fn (SendEvent $event): bool => data_get($event->payload, 'event') === OnboardingEvent::Completed->value);
+});
+
+test('onboarding complete does not re-fire completed when already stamped', function () {
+    Carbon::setTestNow('2026-07-24 12:00:00');
+
+    AccessToken::withoutEvents(fn () => mcpAccessToken($this->user, mcpOauthClient()));
+    SocialAccount::withoutEvents(fn () => SocialAccount::factory()->create([
+        'workspace_id' => $this->workspace->id,
+    ]));
+    Post::withoutEvents(fn () => Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+    ]));
+    $this->user->account->update(['onboarding_completed_at' => now()]);
+
+    Bus::fake();
+
+    $this->actingAs($this->user->fresh())
+        ->post(route('app.onboarding.complete'))
+        ->assertRedirect(route('app.calendar'));
+
+    Bus::assertNotDispatched(
+        SendEvent::class,
+        fn (SendEvent $event): bool => data_get($event->payload, 'event') === OnboardingEvent::Completed->value,
+    );
+});
+
+test('members do not see the skip control', function () {
+    $member = User::factory()->create(['account_id' => $this->user->account_id]);
+    $this->workspace->members()->attach($member->id, [
+        'role' => Role::Member->value,
+    ]);
+    $member->update(['current_workspace_id' => $this->workspace->id]);
+
+    $this->actingAs($member->fresh())
+        ->get(route('app.onboarding'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page->where('canDismiss', false));
 });
 
 test('only the account owner can dismiss onboarding', function () {

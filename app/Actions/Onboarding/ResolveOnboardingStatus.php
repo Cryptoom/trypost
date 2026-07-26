@@ -50,10 +50,14 @@ class ResolveOnboardingStatus
 
         $workspace = $user->currentWorkspace;
 
-        $mcpConnected = AccessToken::query()
-            ->where('user_id', $user->id)
-            ->activeMcpOAuth()
-            ->exists();
+        $mcpConnected = $account !== null
+            && AccessToken::query()
+                ->whereIn(
+                    'user_id',
+                    User::query()->select('id')->where('account_id', $account->id),
+                )
+                ->activeMcpOAuth()
+                ->exists();
         $socialConnected = $workspace?->socialAccounts()->exists() ?? false;
         $firstPostCreated = $workspace?->posts()->exists() ?? false;
         $allComplete = $mcpConnected && $socialConnected && $firstPostCreated;
@@ -107,13 +111,37 @@ class ResolveOnboardingStatus
             return $status;
         }
 
-        $account->update(['onboarding_completed_at' => now()]);
+        $this->markCompleted($user);
 
         return [
             ...$status,
             'show_residual' => false,
-            'completed_at' => $account->onboarding_completed_at->toIso8601String(),
+            'completed_at' => $account->fresh()->onboarding_completed_at?->toIso8601String(),
         ];
+    }
+
+    /**
+     * Stamp account onboarding completion once and capture the funnel event.
+     */
+    public function markCompleted(User $user): bool
+    {
+        $account = $user->account;
+
+        if ($account === null || $account->onboarding_completed_at !== null) {
+            return false;
+        }
+
+        $account->update(['onboarding_completed_at' => now()]);
+
+        if (PostHogService::isEnabled()) {
+            $this->postHog->capture(
+                $user->id,
+                OnboardingEvent::Completed->value,
+                account: $account,
+            );
+        }
+
+        return true;
     }
 
     /**
@@ -123,6 +151,17 @@ class ResolveOnboardingStatus
      */
     public function residual(User $user): array|false
     {
+        $account = $user->account;
+
+        if ($account === null
+            || $account->onboarding_completed_at !== null
+            || $account->onboarding_dismissed_at !== null
+            || config('trypost.self_hosted')
+            || ! $account->subscribed(Account::SUBSCRIPTION_NAME)
+        ) {
+            return false;
+        }
+
         $status = $this->handle($user);
 
         if (! $status['show_residual']) {

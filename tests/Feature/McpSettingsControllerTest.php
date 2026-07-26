@@ -25,7 +25,7 @@ it('shows the mcp settings page', function (): void {
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->component('settings/workspace/Mcp')
-            ->where('mcpUrl', url('/mcp/trypost'))
+            ->where('mcpUrl', route('mcp.trypost'))
             ->missing('docsUrl')
             ->has('mcpClients', 2)
             ->where('mcpClients.0.id', 'claude')
@@ -101,6 +101,19 @@ it('does not revoke another users mcp client tokens', function (): void {
 
     $this->actingAs($member->fresh())
         ->delete(route('app.mcp.disconnect', ['client' => $clientId]))
+        ->assertRedirect()
+        ->assertSessionMissing('flash.success');
+
+    expect($token->fresh()->revoked)->toBeFalse();
+});
+
+it('does not revoke personal access tokens via disconnect', function (): void {
+    $pat = $this->user->createToken('API Key');
+    $token = AccessToken::query()->findOrFail($pat->token->id);
+    $token->forceFill(['workspace_id' => $this->workspace->id])->saveQuietly();
+
+    $this->actingAs($this->user)
+        ->delete(route('app.mcp.disconnect', ['client' => $token->client_id]))
         ->assertRedirect()
         ->assertSessionMissing('flash.success');
 
