@@ -382,7 +382,7 @@ test('residual returns false when the banner should not show', function () {
     expect(app(ResolveOnboardingStatus::class)->residual($this->user->fresh()))->toBeFalse();
 });
 
-test('tryMarkAccountComplete stamps when another workspace is already ready', function () {
+test('syncProgress stamps when a teammate is on an empty workspace but account activation is done', function () {
     Carbon::setTestNow('2026-07-24 12:00:00');
 
     SocialAccount::withoutEvents(fn () => SocialAccount::factory()->create([
@@ -400,17 +400,11 @@ test('tryMarkAccountComplete stamps when another workspace is already ready', fu
     ]);
     $member->update(['current_workspace_id' => $memberWorkspace->id]);
 
-    expect(app(ResolveOnboardingStatus::class)->tryMarkAccountComplete(
-        $this->user->account->fresh(),
-        $member->fresh(),
-    ))->toBeFalse();
+    expect(app(ResolveOnboardingStatus::class)->syncProgress($member->fresh())['all_complete'])->toBeFalse();
 
     AccessToken::withoutEvents(fn () => mcpAccessToken($member, mcpOauthClient()));
 
-    expect(app(ResolveOnboardingStatus::class)->tryMarkAccountComplete(
-        $this->user->account->fresh(),
-        $member->fresh(),
-    ))->toBeTrue()
+    expect(app(ResolveOnboardingStatus::class)->syncProgress($member->fresh())['all_complete'])->toBeTrue()
         ->and($this->user->account->fresh()->onboarding_completed_at?->equalTo(now()))->toBeTrue();
 });
 

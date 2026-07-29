@@ -137,6 +137,25 @@ test('still grants a trial after an incomplete checkout attempt', function () {
         ->and(ConfigureSubscriptionCheckout::qualifiesForCheckoutTrial($this->account))->toBeTrue();
 });
 
+test('still grants a trial after an incomplete_expired checkout attempt', function () {
+    config(['cashier.trial_days' => 8]);
+
+    $this->account->subscriptions()->create([
+        'type' => Account::SUBSCRIPTION_NAME,
+        'stripe_id' => 'sub_'.fake()->uuid(),
+        'stripe_status' => 'incomplete_expired',
+        'stripe_price' => 'price_123',
+    ]);
+
+    $subscription = checkoutSubscription($this->account);
+
+    ConfigureSubscriptionCheckout::apply($subscription, $this->account);
+
+    expect(trialExpires($subscription)->toDateString())
+        ->toBe(now()->addDays(8)->toDateString())
+        ->and(ConfigureSubscriptionCheckout::qualifiesForCheckoutTrial($this->account))->toBeTrue();
+});
+
 test('skips checkout trial when REQUIRE_CARD_FOR_TRIAL is false', function () {
     config([
         'cashier.trial_days' => 8,

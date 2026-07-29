@@ -118,31 +118,7 @@ class ResolveOnboardingStatus
             ];
         }
 
-        // Current workspace may still be incomplete while another workspace on
-        // the account already finished social + post with MCP connected.
-        if ($this->tryMarkAccountComplete($account, $user)) {
-            return $this->handle($user->fresh());
-        }
-
         return $status;
-    }
-
-    /**
-     * Stamp account completion when MCP is connected and any workspace has
-     * both a social account and a post — used when the actor's current
-     * workspace is not the one that already finished social/post steps.
-     */
-    public function tryMarkAccountComplete(Account $account, User $actor): bool
-    {
-        if ($account->onboarding_completed_at !== null || $account->onboarding_dismissed_at !== null) {
-            return false;
-        }
-
-        if (! $this->accountHasMcpConnection($account) || ! $this->accountHasReadyWorkspace($account)) {
-            return false;
-        }
-
-        return $this->markCompleted($actor);
     }
 
     /**
@@ -257,19 +233,6 @@ class ResolveOnboardingStatus
 
         return Workspace::query()
             ->where('account_id', $account->id)
-            ->whereHas('posts')
-            ->exists();
-    }
-
-    private function accountHasReadyWorkspace(?Account $account): bool
-    {
-        if ($account === null) {
-            return false;
-        }
-
-        return Workspace::query()
-            ->where('account_id', $account->id)
-            ->whereHas('socialAccounts')
             ->whereHas('posts')
             ->exists();
     }

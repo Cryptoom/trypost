@@ -79,14 +79,9 @@ class OnboardingStatusUpdated implements ShouldBroadcast, ShouldDispatchAfterCom
                 : null;
 
             if ($actor !== null) {
+                // Steps are account-scoped — syncProgress stamps when MCP + social
+                // + post exist anywhere on the account.
                 $resolver->syncProgress($actor);
-                $account->refresh();
-            }
-
-            // Actor's current workspace may lack social/post while another workspace
-            // on the account is already ready — still stamp account completion.
-            if ($account->onboarding_completed_at === null && $actor !== null) {
-                $resolver->tryMarkAccountComplete($account, $actor);
             }
         });
     }
@@ -174,15 +169,10 @@ class OnboardingStatusUpdated implements ShouldBroadcast, ShouldDispatchAfterCom
                     $account->refresh();
                 });
 
-            // Actor (or nobody currently on this workspace) may still complete the
-            // account when MCP is done and any workspace already has social+post.
-            if ($account->onboarding_completed_at === null && $actor !== null) {
-                $resolver->tryMarkAccountComplete($account, $actor);
-                $account->refresh();
-            }
-
             // Fan out Echo to sibling workspaces so residual progress updates
-            // everywhere (sync already ran for this workspace only).
+            // everywhere (sync already ran for users on this workspace).
+            $account->refresh();
+
             if ($account->onboarding_completed_at === null
                 && $account->onboarding_dismissed_at === null
             ) {

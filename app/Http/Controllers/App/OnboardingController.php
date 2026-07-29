@@ -149,22 +149,17 @@ class OnboardingController extends Controller
         }
 
         // Any teammate who finishes activation may stamp — observers/syncProgress
-        // already do the same. Dismiss remains owner-only.
+        // already do the same. Dismiss remains owner-only. Steps are account-scoped.
         $status = $this->resolveOnboardingStatus->handle($user);
 
-        if ($status['all_complete']) {
-            // markCompleted broadcasts account-wide so residual banners clear immediately.
-            $this->resolveOnboardingStatus->markCompleted($user);
-
-            return redirect()->route('app.calendar');
+        if (! $status['all_complete']) {
+            return redirect()->route('app.onboarding');
         }
 
-        // Current workspace incomplete, but MCP + another workspace already ready.
-        if ($account !== null && $this->resolveOnboardingStatus->tryMarkAccountComplete($account, $user)) {
-            return redirect()->route('app.calendar');
-        }
+        // markCompleted broadcasts account-wide so residual banners clear immediately.
+        $this->resolveOnboardingStatus->markCompleted($user);
 
-        return redirect()->route('app.onboarding');
+        return redirect()->route('app.calendar');
     }
 
     private function redirectIfSelfHosted(): ?RedirectResponse

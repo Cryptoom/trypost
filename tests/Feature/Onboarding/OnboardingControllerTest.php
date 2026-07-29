@@ -395,7 +395,7 @@ test('teammates can stamp completion via the complete endpoint', function () {
     );
 });
 
-test('complete stamps via tryMarkAccountComplete when another workspace is ready', function () {
+test('complete stamps when activation finished on another workspace', function () {
     Carbon::setTestNow('2026-07-29 12:00:00');
     Event::fake([OnboardingStatusUpdated::class]);
 

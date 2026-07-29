@@ -177,7 +177,7 @@ test('dispatchForWorkspace stamps completion when actor current workspace differ
     expect($user->account->fresh()->onboarding_completed_at?->equalTo(now()))->toBeTrue();
 });
 
-test('dispatchForWorkspace stamps via tryMarkAccountComplete when nobody is currently on the workspace', function () {
+test('dispatchForWorkspace stamps when nobody is currently on the workspace', function () {
     Carbon::setTestNow('2026-07-29 12:00:00');
     config(['trypost.self_hosted' => false]);
 
