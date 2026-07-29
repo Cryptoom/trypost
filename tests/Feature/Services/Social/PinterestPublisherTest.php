@@ -512,10 +512,69 @@ test('pinterest publisher can get boards', function () {
         ], 200),
     ]);
 
-    $boards = $this->publisher->getBoards($this->socialAccount);
+    $result = $this->publisher->getBoards($this->socialAccount);
 
-    expect($boards)->toHaveCount(2);
-    expect($boards[0]['id'])->toBe('board_1');
+    expect($result['boards'])->toHaveCount(2)
+        ->and($result['boards'][0]['id'])->toBe('board_1')
+        ->and($result['truncated'])->toBeFalse();
+});
+
+test('pinterest publisher paginates boards via bookmark', function () {
+    Http::fake([
+        config('trypost.platforms.pinterest.api').'/boards*' => Http::sequence()
+            ->push([
+                'items' => [
+                    ['id' => 'board_1', 'name' => 'Board 1'],
+                ],
+                'bookmark' => 'page-2',
+            ], 200)
+            ->push([
+                'items' => [
+                    ['id' => 'board_2', 'name' => 'Board 2'],
+                ],
+                'bookmark' => 'page-3',
+            ], 200)
+            ->push([
+                'items' => [
+                    ['id' => 'board_3', 'name' => 'Board 3'],
+                ],
+            ], 200),
+    ]);
+
+    $result = $this->publisher->getBoards($this->socialAccount);
+
+    expect($result['boards'])->toHaveCount(3)
+        ->and($result['boards'][0]['id'])->toBe('board_1')
+        ->and($result['boards'][1]['id'])->toBe('board_2')
+        ->and($result['boards'][2]['id'])->toBe('board_3')
+        ->and($result['truncated'])->toBeFalse();
+
+    Http::assertSentCount(3);
+});
+
+test('pinterest publisher stops board pagination on a repeated bookmark', function () {
+    Http::fake([
+        config('trypost.platforms.pinterest.api').'/boards*' => Http::sequence()
+            ->push([
+                'items' => [['id' => 'board_1', 'name' => 'Board 1']],
+                'bookmark' => 'stuck',
+            ], 200)
+            ->push([
+                'items' => [['id' => 'board_2', 'name' => 'Board 2']],
+                'bookmark' => 'stuck',
+            ], 200)
+            ->push([
+                'items' => [['id' => 'should_not_fetch', 'name' => 'Nope']],
+            ], 200),
+    ]);
+
+    $result = $this->publisher->getBoards($this->socialAccount);
+
+    expect($result['boards'])->toHaveCount(2)
+        ->and(collect($result['boards'])->pluck('id')->all())->toBe(['board_1', 'board_2'])
+        ->and($result['truncated'])->toBeTrue();
+
+    Http::assertSentCount(2);
 });
 
 test('pinterest publisher can publish video pin', function () {

@@ -408,5 +408,6 @@ return [
         'http_request_exception' => 'HTTP isteği bir istisna oluşturdu.',
         'http_request_failed' => 'HTTP isteği başarısız oldu.',
         'http_items_path_not_array' => 'Öğe yolu bir listeye çözümlenmedi.',
+        'generate_image_format_required' => 'AI oluşturma yalnızca görsel üretir. Görsel formatı seçin (video değil).',
     ],
 ];

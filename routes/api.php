@@ -13,8 +13,8 @@ use App\Http\Controllers\Api\WorkspaceController;
 use Illuminate\Support\Facades\Route;
 
 Route::post('/uploads/{token}', [UploadController::class, 'store'])
-    ->middleware(['signed', 'throttle:10,1'])
-    ->where('token', '[0-9a-f-]{36}')
+    ->middleware(['signed', 'throttle:signed-uploads'])
+    ->whereUuid('token')
     ->name('api.uploads.store');
 
 Route::middleware(['auth:api', 'workspace.token', 'throttle:api'])->group(function () {
@@ -50,6 +50,12 @@ Route::middleware(['auth:api', 'workspace.token', 'throttle:api'])->group(functi
     // Social Accounts
     Route::get('/social-accounts', [SocialAccountController::class, 'index'])->name('api.social-accounts.index');
     Route::put('/social-accounts/{account}/toggle', [SocialAccountController::class, 'toggle'])->name('api.social-accounts.toggle');
+    Route::get('/social-accounts/{account}/boards', [SocialAccountController::class, 'boards'])
+        ->middleware('throttle:60,1')
+        ->name('api.social-accounts.boards');
+    Route::get('/social-accounts/{account}/channels', [SocialAccountController::class, 'channels'])
+        ->middleware('throttle:60,1')
+        ->name('api.social-accounts.channels');
 
     // API Keys
     Route::get('/api-keys', [ApiKeyController::class, 'index'])->name('api.api-keys.index');

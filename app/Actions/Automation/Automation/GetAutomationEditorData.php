@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Actions\Automation\Automation;
 
+use App\Actions\SocialAccount\ListPinterestBoards;
 use App\Enums\SocialAccount\Platform;
 use App\Models\Automation;
 use App\Models\SocialAccount;
-use App\Services\Social\PinterestPublisher;
 use App\Services\Social\TikTokCreatorInfo;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Collection as SupportCollection;
@@ -15,14 +15,13 @@ use Illuminate\Support\Collection as SupportCollection;
 class GetAutomationEditorData
 {
     public function __construct(
-        private PinterestPublisher $pinterestPublisher,
         private TikTokCreatorInfo $tikTokCreatorInfo,
     ) {}
 
     /**
      * @return array{
      *     socialAccounts: Collection<int, SocialAccount>,
-     *     pinterestBoards: SupportCollection<string, array<int, mixed>>,
+     *     pinterestBoards: SupportCollection<string, array{boards: list<array{id: string, name: string}>, truncated: bool}>,
      *     tiktokCreatorInfos: SupportCollection<string, mixed>,
      * }
      */
@@ -34,8 +33,8 @@ class GetAutomationEditorData
             ->where('platform', Platform::Pinterest)
             ->mapWithKeys(fn ($account) => [
                 $account->id => rescue(
-                    fn () => $this->pinterestPublisher->getBoards($account),
-                    [],
+                    fn () => ListPinterestBoards::execute($account),
+                    ['boards' => [], 'truncated' => false],
                     report: false,
                 ),
             ]);

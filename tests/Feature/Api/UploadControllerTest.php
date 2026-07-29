@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
@@ -102,14 +103,77 @@ test('rejects replay of an already-used token', function () {
     expect(Media::where('upload_token', $token)->count())->toBe(1);
 });
 
-test('rejects file larger than 50MB', function () {
+test('rejects file larger than the per-type media cap', function () {
+    config(['trypost.media.max_size_mb.video' => 1]);
+
     $token = (string) Str::uuid();
-    $file = UploadedFile::fake()->create('huge.mp4', 51 * 1024 + 1, 'video/mp4');
+    $file = UploadedFile::fake()->create('huge.mp4', 1024 + 1, 'video/mp4');
 
     $response = $this->postJson(signedUploadUrl($this->workspace, $token), ['media' => $file]);
 
     $response->assertStatus(422);
     expect(Media::where('upload_token', $token)->exists())->toBeFalse();
+});
+
+test('rejects an image larger than the image media cap even when under the video ceiling', function () {
+    config([
+        'trypost.media.max_size_mb.image' => 1,
+        'trypost.media.max_size_mb.video' => 1024,
+    ]);
+
+    $token = (string) Str::uuid();
+    $file = UploadedFile::fake()->create('big.jpg', 1024 + 1, 'image/jpeg');
+
+    $response = $this->postJson(signedUploadUrl($this->workspace, $token), ['media' => $file]);
+
+    $response->assertStatus(422);
+    expect(Media::where('upload_token', $token)->exists())->toBeFalse();
+});
+
+test('rejects a document larger than the document media cap even when under the video ceiling', function () {
+    config([
+        'trypost.media.max_size_mb.document' => 1,
+        'trypost.media.max_size_mb.video' => 1024,
+    ]);
+
+    $token = (string) Str::uuid();
+    $file = UploadedFile::fake()->create('big.pdf', 1024 + 1, 'application/pdf');
+
+    $response = $this->postJson(signedUploadUrl($this->workspace, $token), ['media' => $file]);
+
+    $response->assertStatus(422);
+    expect(Media::where('upload_token', $token)->exists())->toBeFalse();
+});
+
+test('stores a video upload via the streaming path', function () {
+    $token = (string) Str::uuid();
+    $file = UploadedFile::fake()->create('clip.mp4', 256, 'video/mp4');
+
+    $this->post(signedUploadUrl($this->workspace, $token), [
+        'media' => $file,
+    ])->assertCreated();
+
+    $media = Media::where('upload_token', $token)->first();
+    expect($media)->not->toBeNull()
+        ->and($media->type->value)->toBe('video')
+        ->and(Storage::exists($media->path))->toBeTrue();
+});
+
+test('releases the upload token when media persistence fails', function () {
+    $token = (string) Str::uuid();
+    $file = UploadedFile::fake()->create('clip.mp4', 256, 'video/mp4');
+    $cacheKey = "media:signed-upload:{$token}";
+
+    DB::shouldReceive('transaction')
+        ->once()
+        ->andThrow(new RuntimeException('disk unavailable'));
+
+    $this->postJson(signedUploadUrl($this->workspace, $token), [
+        'media' => $file,
+    ])->assertServerError();
+
+    expect(Cache::has($cacheKey))->toBeFalse()
+        ->and(Media::where('upload_token', $token)->exists())->toBeFalse();
 });
 
 test('rejects disallowed mime type', function () {
@@ -122,18 +186,37 @@ test('rejects disallowed mime type', function () {
     expect(Media::where('upload_token', $token)->exists())->toBeFalse();
 });
 
-test('rate limits floods from the same IP', function () {
-    for ($i = 0; $i < 10; $i++) {
+test('rate limits floods from the same workspace', function () {
+    for ($i = 0; $i < 60; $i++) {
         $this->postJson(
             signedUploadUrl($this->workspace, (string) Str::uuid()),
             ['media' => UploadedFile::fake()->image("f{$i}.png", 16, 16)],
-        );
+        )->assertSuccessful();
     }
 
-    $response = $this->postJson(
+    $this->postJson(
         signedUploadUrl($this->workspace, (string) Str::uuid()),
         ['media' => UploadedFile::fake()->image('over.png', 16, 16)],
-    );
+    )->assertStatus(429);
+});
 
-    $response->assertStatus(429);
+test('different workspaces on the same IP do not share the upload rate limit', function () {
+    $otherWorkspace = Workspace::factory()->create();
+
+    for ($i = 0; $i < 60; $i++) {
+        $this->postJson(
+            signedUploadUrl($this->workspace, (string) Str::uuid()),
+            ['media' => UploadedFile::fake()->image("a{$i}.png", 16, 16)],
+        )->assertSuccessful();
+    }
+
+    $this->postJson(
+        signedUploadUrl($this->workspace, (string) Str::uuid()),
+        ['media' => UploadedFile::fake()->image('blocked.png', 16, 16)],
+    )->assertStatus(429);
+
+    $this->postJson(
+        signedUploadUrl($otherWorkspace, (string) Str::uuid()),
+        ['media' => UploadedFile::fake()->image('other.png', 16, 16)],
+    )->assertSuccessful();
 });

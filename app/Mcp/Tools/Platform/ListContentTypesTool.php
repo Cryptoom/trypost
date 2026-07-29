@@ -14,7 +14,7 @@ use Laravel\Mcp\Server\Tool;
 use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 
 #[IsReadOnly]
-#[Description('List the valid content_types per social platform plus their constraints (max content length, recommended length, max media count, whether media is required, default content_type). Use before create-post-tool / update-post-tool to know which content_type to set.')]
+#[Description('List the valid content_types per social platform plus their constraints (max/min media count, whether media is required, accept_images/videos/documents/gif, forbids_mixed_media, max video duration in seconds, per-type max image/video/document bytes, default content_type). Use before create-post-tool / update-post-tool to know which content_type to set.')]
 class ListContentTypesTool extends Tool
 {
     public function handle(Request $request): ResponseFactory
@@ -23,13 +23,7 @@ class ListContentTypesTool extends Tool
 
         foreach (Platform::cases() as $platform) {
             $contentTypes = array_map(
-                fn (ContentType $type) => [
-                    'value' => $type->value,
-                    'label' => $type->label(),
-                    'description' => $type->description(),
-                    'max_media_count' => $type->maxMediaCount(),
-                    'requires_media' => $type->requiresMedia(),
-                ],
+                fn (ContentType $type) => $type->toListingArray(),
                 array_values(ContentType::forPlatform($platform)),
             );
 

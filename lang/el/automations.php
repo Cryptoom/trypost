@@ -408,5 +408,6 @@ return [
         'http_request_exception' => 'Το αίτημα HTTP προκάλεσε εξαίρεση.',
         'http_request_failed' => 'Το αίτημα HTTP απέτυχε.',
         'http_items_path_not_array' => 'Η διαδρομή στοιχείων δεν αντιστοιχήθηκε σε λίστα.',
+        'generate_image_format_required' => 'Η δημιουργία AI παράγει μόνο εικόνες. Επίλεξε μορφή εικόνας (όχι βίντεο).',
     ],
 ];

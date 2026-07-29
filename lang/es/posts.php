@@ -154,6 +154,7 @@ return [
             'board' => 'Tablero',
             'select_board' => 'Selecciona un tablero',
             'no_boards' => 'No se encontraron tableros de Pinterest. Crea uno en tu cuenta de Pinterest primero.',
+            'boards_truncated' => 'No se pudieron cargar algunos tableros. Si falta el tuyo, abre Pinterest e inténtalo de nuevo.',
             'search_board' => 'Buscar tableros...',
             'no_board_found' => 'Ningún tablero coincide con tu búsqueda.',
             'board_required' => 'Selecciona un tablero de Pinterest para publicar este post.',
@@ -464,7 +465,7 @@ return [
         ],
         'instagram_reel' => [
             'label' => 'Reel',
-            'description' => 'Video corto de hasta 90 segundos',
+            'description' => 'Video corto de hasta 15 minutos',
         ],
         'instagram_story' => [
             'label' => 'Historia',

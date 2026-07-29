@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Enums\Media\Type as MediaType;
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
 
@@ -21,9 +22,67 @@ test('content type has correct labels', function () {
 
 test('content type has correct descriptions', function () {
     expect(ContentType::InstagramFeed->description())->toContain('feed');
-    expect(ContentType::InstagramReel->description())->toContain('90 seconds');
+    expect(ContentType::InstagramReel->description())->toContain('15 minutes');
+    expect(ContentType::FacebookReel->description())->toContain('90 seconds');
     expect(ContentType::InstagramStory->description())->toContain('24 hours');
     expect(ContentType::YouTubeShort->description())->toContain('3 minutes');
+});
+
+test('content type exposes max video duration in seconds', function () {
+    expect(ContentType::InstagramReel->maxVideoDurationSec())->toBe(15 * 60);
+    expect(ContentType::FacebookReel->maxVideoDurationSec())->toBe(90);
+    expect(ContentType::YouTubeShort->maxVideoDurationSec())->toBe(3 * 60);
+    expect(ContentType::TikTokVideo->maxVideoDurationSec())->toBeNull();
+});
+
+test('media rules for frontend expose the full editor rule set keyed by content type', function () {
+    $rules = ContentType::mediaRulesForFrontend();
+
+    expect($rules)->toHaveCount(count(ContentType::cases()));
+
+    expect($rules['instagram_reel'])->toMatchArray([
+        'max_files' => 1,
+        'accept_images' => false,
+        'accept_videos' => true,
+        'requires_media' => true,
+        'max_video_bytes' => 1 * 1024 * 1024 * 1024,
+        'max_video_duration_sec' => 900,
+        'aspect_ratio_min' => 0.5,
+        'aspect_ratio_max' => 0.6,
+    ]);
+
+    expect($rules['facebook_reel']['max_video_duration_sec'])->toBe(90);
+    expect($rules['tiktok_video']['max_video_duration_sec'])->toBeNull();
+    expect($rules['linkedin_post']['max_document_bytes'])->toBe(100 * 1024 * 1024);
+    expect($rules['pinterest_carousel']['min_files'])->toBe(2);
+    expect($rules['x_post']['accepts_gif'])->toBeTrue();
+    expect($rules['instagram_feed']['requires_media'])->toBeTrue();
+    expect($rules['discord_message']['accepts_gif'])->toBeTrue();
+    expect($rules['telegram_post']['accepts_gif'])->toBeTrue();
+});
+
+test('listing array mirrors media capability fields for api and mcp', function () {
+    $listing = ContentType::PinterestCarousel->toListingArray();
+
+    expect($listing)->toMatchArray([
+        'value' => 'pinterest_carousel',
+        'max_media_count' => 5,
+        'min_media_count' => 2,
+        'requires_media' => true,
+        'accept_images' => true,
+        'accept_videos' => false,
+    ]);
+
+    expect(ContentType::InstagramReel->toListingArray()['accept_images'])->toBeFalse();
+});
+
+test('media rules reuse enum capability helpers', function () {
+    $rules = ContentType::InstagramStory->mediaRules();
+
+    expect($rules['accept_images'])->toBe(ContentType::InstagramStory->supportsImage())
+        ->and($rules['accept_videos'])->toBe(ContentType::InstagramStory->supportsVideo())
+        ->and($rules['auto_fits_image'])->toBeTrue()
+        ->and($rules['max_files'])->toBe(ContentType::InstagramStory->maxMediaCount());
 });
 
 test('content type maps to correct platform', function () {
@@ -95,15 +154,135 @@ test('content type supports mixed media correctly', function () {
 
 test('content type requires media correctly', function () {
     expect(ContentType::InstagramReel->requiresMedia())->toBeTrue();
+    expect(ContentType::InstagramFeed->requiresMedia())->toBeTrue();
     expect(ContentType::TikTokVideo->requiresMedia())->toBeTrue();
     expect(ContentType::YouTubeShort->requiresMedia())->toBeTrue();
     expect(ContentType::PinterestPin->requiresMedia())->toBeTrue();
-    expect(ContentType::InstagramFeed->requiresMedia())->toBeFalse();
     expect(ContentType::LinkedInPost->requiresMedia())->toBeFalse();
     expect(ContentType::XPost->requiresMedia())->toBeFalse();
     expect(ContentType::ThreadsPost->requiresMedia())->toBeFalse();
     expect(ContentType::BlueskyPost->requiresMedia())->toBeFalse();
     expect(ContentType::MastodonPost->requiresMedia())->toBeFalse();
+});
+
+test('media rules keep editor parity for gif and requires_media flags', function () {
+    expect(ContentType::DiscordMessage->acceptsGif())->toBeTrue();
+    expect(ContentType::TelegramPost->acceptsGif())->toBeTrue();
+    expect(ContentType::InstagramFeed->mediaRules()['requires_media'])->toBeTrue();
+    expect(ContentType::DiscordMessage->mediaRules()['accepts_gif'])->toBeTrue();
+});
+
+/**
+ * Lock the flags / limits that used to live in the Vue CONTENT_TYPE_RULES map
+ * so a future centralization drift cannot silently flip editor behavior again.
+ * Byte caps are the post-clamp values (min(platform, trypost.media hard limit)).
+ */
+test('media rules preserve pre-centralization editor limits for mapped types', function () {
+    $mb = 1024 * 1024;
+    $gb = 1024 * $mb;
+    $hardImage = MediaType::Image->maxSizeInBytes();
+    $hardVideo = MediaType::Video->maxSizeInBytes();
+    $hardDocument = MediaType::Document->maxSizeInBytes();
+
+    $expected = [
+        'instagram_feed' => [
+            'requires_media' => true,
+            'accepts_gif' => false,
+            'max_files' => 10,
+            'max_video_duration_sec' => 60,
+            'max_image_bytes' => min(8 * $mb, $hardImage),
+            'max_video_bytes' => min(100 * $mb, $hardVideo),
+        ],
+        'instagram_reel' => [
+            'requires_media' => true,
+            'accepts_gif' => false,
+            'max_files' => 1,
+            'max_video_duration_sec' => 900,
+            'max_video_bytes' => min(1 * $gb, $hardVideo),
+        ],
+        'youtube_short' => [
+            'requires_media' => true,
+            'accepts_gif' => false,
+            'max_files' => 1,
+            'max_video_duration_sec' => 180,
+            // Platform advertises 256GB; editor must not exceed upload hard cap.
+            'max_video_bytes' => $hardVideo,
+        ],
+        'pinterest_pin' => [
+            'requires_media' => true,
+            'accepts_gif' => false,
+            'max_files' => 1,
+            // Platform advertises 20MB; hard image cap is typically 10MB.
+            'max_image_bytes' => $hardImage,
+        ],
+        'facebook_post' => [
+            'requires_media' => false,
+            'accepts_gif' => false,
+            'max_files' => 10,
+            'max_video_duration_sec' => 240 * 60,
+            'max_video_bytes' => $hardVideo,
+        ],
+        'linkedin_post' => [
+            'requires_media' => false,
+            'accepts_gif' => false,
+            'max_files' => 10,
+            'max_document_bytes' => min(100 * $mb, $hardDocument),
+            'max_video_bytes' => $hardVideo,
+        ],
+        'x_post' => [
+            'requires_media' => false,
+            'accepts_gif' => true,
+            'max_files' => 4,
+            'max_video_duration_sec' => 140,
+            'max_video_bytes' => min(512 * $mb, $hardVideo),
+        ],
+        'discord_message' => [
+            'requires_media' => false,
+            'accepts_gif' => true,
+            'max_files' => 10,
+        ],
+        'telegram_post' => [
+            'requires_media' => false,
+            'accepts_gif' => true,
+            'max_files' => 10,
+        ],
+    ];
+
+    foreach ($expected as $type => $fields) {
+        $rules = ContentType::from($type)->mediaRules();
+
+        foreach ($fields as $key => $value) {
+            expect($rules[$key])->toBe($value, "{$type}.{$key}");
+        }
+    }
+});
+
+test('media byte caps never exceed the global upload hard limits', function () {
+    $hardImage = MediaType::Image->maxSizeInBytes();
+    $hardVideo = MediaType::Video->maxSizeInBytes();
+    $hardDocument = MediaType::Document->maxSizeInBytes();
+
+    foreach (ContentType::cases() as $type) {
+        $image = $type->maxImageBytes();
+        $video = $type->maxVideoBytes();
+        $document = $type->maxDocumentBytes();
+
+        if ($image !== null) {
+            expect($image)->toBeLessThanOrEqual($hardImage, "{$type->value}.max_image_bytes");
+        }
+
+        if ($video !== null) {
+            expect($video)->toBeLessThanOrEqual($hardVideo, "{$type->value}.max_video_bytes");
+        }
+
+        if ($document !== null) {
+            expect($document)->toBeLessThanOrEqual($hardDocument, "{$type->value}.max_document_bytes");
+        }
+    }
+
+    expect(ContentType::YouTubeShort->maxVideoBytes())->toBe($hardVideo)
+        ->and(ContentType::PinterestPin->maxImageBytes())->toBe($hardImage)
+        ->and(ContentType::FacebookPost->maxVideoBytes())->toBe($hardVideo);
 });
 
 test('can get content types for platform', function () {

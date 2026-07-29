@@ -159,6 +159,28 @@ class AppServiceProvider extends ServiceProvider
 
             return Limit::perMinute(60)->by($request->workspace?->id ?: $request->ip());
         });
+
+        // Signed media uploads (api.uploads.store). MCP hosts share egress IPs
+        // across tenants — key by workspace_id from the signed URL, with a high
+        // IP backstop so one client cannot flood every workspace.
+        RateLimiter::for('signed-uploads', function (Request $request) {
+            $limits = [
+                Limit::perMinute((int) config('trypost.media.signed_upload_per_ip_per_minute'))
+                    ->by("ip:{$request->ip()}"),
+            ];
+
+            $workspaceId = $request->query('workspace_id');
+
+            if (filled($workspaceId)) {
+                array_unshift(
+                    $limits,
+                    Limit::perMinute((int) config('trypost.media.signed_upload_per_workspace_per_minute'))
+                        ->by("workspace:{$workspaceId}"),
+                );
+            }
+
+            return $limits;
+        });
     }
 
     protected function configureStripeWebhooks(): void

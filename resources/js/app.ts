@@ -9,6 +9,7 @@ import { createApp, h } from 'vue';
 
 import { initializeDataLayer } from './datalayer';
 import dayjs from './dayjs';
+import { syncContentTypeMediaRules } from './lib/contentTypeMediaRules';
 import { capturePageview, initializePostHog, syncPostHogContext } from './posthog';
 import type { Auth } from './types';
 
@@ -46,10 +47,12 @@ createInertiaApp({
         // re-attach the right workspace group.
         initializePostHog();
         syncPostHogContext(props.initialPage);
+        syncContentTypeMediaRules(props.initialPage);
         capturePageview();
 
         router.on('navigate', (event) => {
             syncPostHogContext(event.detail.page);
+            syncContentTypeMediaRules(event.detail.page);
             capturePageview();
         });
 

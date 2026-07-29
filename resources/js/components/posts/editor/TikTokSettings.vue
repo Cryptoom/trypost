@@ -16,6 +16,7 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { getPlatformLogo } from '@/composables/usePlatformLogo';
+import { fallbackImageCapableVariant, filterImageCapableVariants } from '@/lib/aiGenerateVariants';
 import { ContentType } from '@/types/content-type';
 
 interface SocialAccount {
@@ -62,10 +63,23 @@ const emit = defineEmits<{
     'update:contentType': [value: string];
 }>();
 
-const variants = [
+const allVariants = [
     { value: ContentType.TikTokVideo, labelKey: 'posts.form.tiktok.variant.video' },
     { value: ContentType.TikTokPhoto, labelKey: 'posts.form.tiktok.variant.photo' },
 ] as const;
+
+const variants = computed(() => filterImageCapableVariants(allVariants, props.previewOnly));
+
+watch(
+    () => [props.previewOnly, props.contentType, variants.value] as const,
+    () => {
+        const fallback = fallbackImageCapableVariant(props.contentType, variants.value);
+        if (fallback) {
+            emit('update:contentType', fallback);
+        }
+    },
+    { immediate: true },
+);
 
 const pickVariant = (value: string) => {
     if (props.disabled) return;

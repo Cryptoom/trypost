@@ -154,6 +154,7 @@ return [
             'board' => 'Tablica',
             'select_board' => 'Wybierz tablicę',
             'no_boards' => 'Nie znaleziono tablic Pinterest. Najpierw utwórz jedną na swoim koncie Pinterest.',
+            'boards_truncated' => 'Nie udało się wczytać niektórych tablic. Jeśli brakuje twojej, otwórz Pinterest i spróbuj ponownie.',
             'search_board' => 'Szukaj tablic...',
             'no_board_found' => 'Brak tablic pasujących do wyszukiwania.',
             'board_required' => 'Wybierz tablicę Pinterest, aby opublikować ten post.',
@@ -464,7 +465,7 @@ return [
         ],
         'instagram_reel' => [
             'label' => 'Rolka',
-            'description' => 'Krótki film do 90 sekund',
+            'description' => 'Krótki film do 15 minut',
         ],
         'instagram_story' => [
             'label' => 'Relacja',

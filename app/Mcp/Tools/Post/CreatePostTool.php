@@ -63,7 +63,7 @@ class CreatePostTool extends Tool
                 ->items($schema->object(fn ($p) => [
                     'social_account_id' => $p->string()->required()->description('UUID of the connected social account.'),
                     'content_type' => $p->string()->required()->description('Format for this platform (e.g. linkedin_post, x_post, instagram_feed).'),
-                    'meta' => $p->object()->description('Per-platform metadata. Instagram/Facebook: aspect_ratio (1:1|4:5|16:9|original). TikTok: privacy_level (required to publish) + flags (allow_comments, allow_duet, allow_stitch, disclose, brand_content_toggle, brand_organic_toggle, is_aigc, auto_add_music). Pinterest: board_id (required to publish). Discord: channel_id (required to publish), mentions ([{token,label}]), embeds ([{title,description,url,image,color}]).'),
+                    'meta' => $p->object()->description('Per-platform metadata. Instagram/Facebook: aspect_ratio (1:1|4:5|16:9|original). TikTok: privacy_level (required to publish) + flags (allow_comments, allow_duet, allow_stitch, disclose, brand_content_toggle, brand_organic_toggle, is_aigc, auto_add_music). Pinterest: board_id (required to publish — call ListPinterestBoardsTool first). Discord: channel_id (required to publish — call ListDiscordChannelsTool first), mentions ([{token,label}]), embeds ([{title,description,url,image,color}]).'),
                 ]))
                 ->description('Platforms to publish on. Accounts not listed remain available but disabled.'),
         ];

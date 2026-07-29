@@ -58,7 +58,7 @@ class AttachMediaFromUrlTool extends Tool
                     'alt' => $u->string()->description('Optional accessibility alt text for the image (ignored for video/PDF, which have no alt text).'),
                 ]))
                 ->required()
-                ->description('Media to attach. Max 10 per call, 50MB per file. Allowed types: image/jpeg, image/png, image/gif, image/webp, video/mp4, video/quicktime, application/pdf.'),
+                ->description('Media to attach. Max 10 per call. Per-type size caps match config trypost.media (image/video/document). Allowed types: image/jpeg, image/png, image/gif, image/webp, video/mp4, video/quicktime, application/pdf.'),
         ];
     }
 }

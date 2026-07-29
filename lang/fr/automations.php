@@ -408,5 +408,6 @@ return [
         'http_request_exception' => 'La requête HTTP a levé une exception.',
         'http_request_failed' => 'La requête HTTP a échoué.',
         'http_items_path_not_array' => 'Le chemin des éléments ne correspond pas à une liste.',
+        'generate_image_format_required' => 'La génération IA ne crée que des images. Choisissez un format image (pas vidéo).',
     ],
 ];

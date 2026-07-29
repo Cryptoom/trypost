@@ -408,5 +408,6 @@ return [
         'http_request_exception' => 'HTTP リクエストで例外が発生しました。',
         'http_request_failed' => 'HTTP リクエストが失敗しました。',
         'http_items_path_not_array' => 'アイテムのパスがリストとして解決されませんでした。',
+        'generate_image_format_required' => 'AI生成は画像のみ作成します。画像フォーマットを選んでください（動画不可）。',
     ],
 ];

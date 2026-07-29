@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Middleware\App;
 
 use App\Actions\Onboarding\ResolveOnboardingStatus;
+use App\Enums\PostPlatform\ContentType;
 use App\Http\Resources\App\HandleInertiaRequests\AuthAccountResource;
 use App\Http\Resources\App\HandleInertiaRequests\AuthPlanResource;
 use App\Http\Resources\App\HandleInertiaRequests\AuthUserResource;
@@ -64,6 +65,17 @@ class HandleInertiaRequests extends Middleware
             'selfHosted' => $isSelfHosted,
             'googleAuthEnabled' => config('trypost.google_auth_enabled'),
             'githubAuthEnabled' => config('trypost.github_auth_enabled'),
+        ];
+    }
+
+    /**
+     * @return array<string, callable>
+     */
+    public function shareOnce(Request $request): array
+    {
+        return [
+            ...parent::shareOnce($request),
+            'contentTypeMediaRules' => fn (): array => ContentType::mediaRulesForFrontend(),
         ];
     }
 }

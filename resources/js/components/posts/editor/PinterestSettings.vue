@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { IconAlertTriangle, IconChevronDown, IconChevronUp } from '@tabler/icons-vue';
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 
 import InputError from '@/components/InputError.vue';
 import { Avatar } from '@/components/ui/avatar';
@@ -17,6 +17,7 @@ import {
 import { getMediaValidationWarning } from '@/composables/useMedia';
 import { usePageErrors } from '@/composables/usePageErrors';
 import { getPlatformLogo } from '@/composables/usePlatformLogo';
+import { fallbackImageCapableVariant, filterImageCapableVariants } from '@/lib/aiGenerateVariants';
 import type { PinterestBoard } from '@/types';
 import { ContentType } from '@/types/content-type';
 import type { MediaItem } from '@/types/media';
@@ -39,6 +40,7 @@ interface Props {
     contentType: string;
     media: MediaItem[];
     boards: PinterestBoard[];
+    boardsTruncated?: boolean;
     meta: Record<string, any>;
     disabled?: boolean;
     previewOnly?: boolean;
@@ -47,6 +49,7 @@ interface Props {
 const props = withDefaults(defineProps<Props>(), {
     disabled: false,
     previewOnly: false,
+    boardsTruncated: false,
 });
 
 const emit = defineEmits<{
@@ -56,11 +59,25 @@ const emit = defineEmits<{
 
 const open = ref(false);
 
-const variants = [
+const allVariants = [
     { value: ContentType.PinterestPin, labelKey: 'posts.form.pinterest.variant.pin' },
     { value: ContentType.PinterestVideoPin, labelKey: 'posts.form.pinterest.variant.video_pin' },
     { value: ContentType.PinterestCarousel, labelKey: 'posts.form.pinterest.variant.carousel' },
-];
+] as const;
+
+// Generate node only creates images — hide Video Pin there.
+const variants = computed(() => filterImageCapableVariants(allVariants, props.previewOnly));
+
+watch(
+    () => [props.previewOnly, props.contentType, variants.value] as const,
+    () => {
+        const fallback = fallbackImageCapableVariant(props.contentType, variants.value);
+        if (fallback) {
+            emit('update:contentType', fallback);
+        }
+    },
+    { immediate: true },
+);
 
 const pickVariant = (value: string) => {
     if (props.disabled) return;
@@ -187,6 +204,13 @@ const boardError = computed<string | undefined>(() => {
                         </ComboboxList>
                     </Combobox>
                     <InputError :message="boardError" />
+                    <p
+                        v-if="boardsTruncated"
+                        class="flex items-start gap-2 rounded-lg border-2 border-foreground/30 bg-foreground/5 p-2 text-xs font-semibold text-foreground/60"
+                    >
+                        <IconAlertTriangle class="mt-0.5 size-3.5 shrink-0" />
+                        {{ $t('posts.form.pinterest.boards_truncated') }}
+                    </p>
                 </template>
             </div>
 

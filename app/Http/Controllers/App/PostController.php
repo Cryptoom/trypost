@@ -9,6 +9,7 @@ use App\Actions\Post\DeletePost;
 use App\Actions\Post\DuplicatePost;
 use App\Actions\Post\SyncPostPlatforms;
 use App\Actions\Post\UpdatePost;
+use App\Actions\SocialAccount\ListPinterestBoards;
 use App\Ai\Templates\AiContentTemplate;
 use App\Ai\Templates\AiTemplateRegistry;
 use App\Enums\Post\Action as PostAction;
@@ -23,7 +24,6 @@ use App\Http\Resources\App\SocialAccountResource;
 use App\Models\Post;
 use App\Models\PostPlatform;
 use App\Services\Post\PostMetricsFetcher;
-use App\Services\Social\PinterestPublisher;
 use App\Services\Social\TikTokCreatorInfo;
 use App\Support\PostStatusRules;
 use Carbon\Carbon;
@@ -260,8 +260,8 @@ class PostController extends Controller
             ->where('platform', Platform::Pinterest)
             ->mapWithKeys(fn ($account) => [
                 $account->id => rescue(
-                    fn () => app(PinterestPublisher::class)->getBoards($account),
-                    [],
+                    fn () => ListPinterestBoards::execute($account),
+                    ['boards' => [], 'truncated' => false],
                     report: false,
                 ),
             ]);
