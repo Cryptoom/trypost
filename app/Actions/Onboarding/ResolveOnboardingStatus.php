@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Actions\Onboarding;
 
 use App\Enums\PostHog\OnboardingEvent;
+use App\Events\OnboardingStatusUpdated;
 use App\Models\AccessToken;
 use App\Models\Account;
 use App\Models\User;
@@ -195,6 +196,10 @@ class ResolveOnboardingStatus
                 account: $account,
             );
         }
+
+        // Every stamp path (endpoint, syncProgress, observers) must clear residual
+        // banners account-wide — not only the explicit complete() action.
+        OnboardingStatusUpdated::broadcastForAccount($account);
 
         return true;
     }

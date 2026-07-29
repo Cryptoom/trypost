@@ -113,11 +113,8 @@ class OnboardingController extends Controller
             return redirect()->route('app.onboarding');
         }
 
-        if ($this->resolveOnboardingStatus->markCompleted($user)) {
-            // Owner residual listens on workspace channels — notify every workspace
-            // so the banner clears without waiting for the residual poll.
-            OnboardingStatusUpdated::broadcastForAccount($user->account->fresh());
-        }
+        // markCompleted broadcasts account-wide so residual banners clear immediately.
+        $this->resolveOnboardingStatus->markCompleted($user);
 
         return redirect()->route('app.calendar');
     }

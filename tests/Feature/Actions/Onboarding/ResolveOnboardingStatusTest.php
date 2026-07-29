@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Actions\Onboarding\ResolveOnboardingStatus;
 use App\Enums\PostHog\OnboardingEvent;
+use App\Events\OnboardingStatusUpdated;
 use App\Jobs\PostHog\SendEvent;
 use App\Models\AccessToken;
 use App\Models\Post;
@@ -13,6 +14,7 @@ use App\Models\Workspace;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Event;
 
 beforeEach(function () {
     config(['trypost.self_hosted' => false]);
@@ -417,10 +419,16 @@ test('mcp connection attributes step analytics to the acting teammate', function
 
 test('markCompleted leaves the in-memory account clean', function () {
     Carbon::setTestNow('2026-07-24 12:00:00');
+    Event::fake([OnboardingStatusUpdated::class]);
 
     expect(app(ResolveOnboardingStatus::class)->markCompleted($this->user))->toBeTrue()
         ->and($this->user->account->isDirty())->toBeFalse()
         ->and($this->user->account->onboarding_completed_at?->equalTo(now()))->toBeTrue();
+
+    Event::assertDispatched(
+        OnboardingStatusUpdated::class,
+        fn (OnboardingStatusUpdated $event): bool => $event->workspaceId === $this->workspace->id,
+    );
 });
 
 test('markCompleted refuses to stamp after onboarding was dismissed', function () {

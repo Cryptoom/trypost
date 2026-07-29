@@ -178,6 +178,18 @@ class OnboardingStatusUpdated implements ShouldBroadcast, ShouldDispatchAfterCom
             // account when MCP is done and any workspace already has social+post.
             if ($account->onboarding_completed_at === null && $actor !== null) {
                 $resolver->tryMarkAccountComplete($account, $actor);
+                $account->refresh();
+            }
+
+            // Fan out Echo to sibling workspaces so residual progress updates
+            // everywhere (sync already ran for this workspace only).
+            if ($account->onboarding_completed_at === null
+                && $account->onboarding_dismissed_at === null
+            ) {
+                $account->workspaces()
+                    ->whereKeyNot($workspaceId)
+                    ->pluck('id')
+                    ->each(fn ($siblingId) => static::dispatch((string) $siblingId));
             }
         });
     }

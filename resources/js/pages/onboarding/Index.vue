@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Head, Link, useForm, usePage, usePoll } from '@inertiajs/vue3';
+import { Head, Link, router, useForm, usePage, usePoll } from '@inertiajs/vue3';
 import { IconCheck, IconCopy, IconLink } from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
 import { computed, watch } from 'vue';
@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button';
 import { useOnboardingStatusEcho } from '@/composables/echo/useOnboardingStatusEcho';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { copyToClipboard } from '@/lib/utils';
+import { calendar } from '@/routes/app';
 import { complete, dismiss } from '@/routes/app/onboarding';
 import { create as createPost } from '@/routes/app/posts';
 
@@ -22,6 +23,8 @@ interface OnboardingStatus {
     first_post_created: boolean;
     all_complete: boolean;
     show_residual: boolean;
+    completed_at: string | null;
+    dismissed_at: string | null;
 }
 
 interface McpClient {
@@ -63,9 +66,21 @@ const { start: startOnboardingPoll, stop: stopOnboardingPoll } = usePoll(
 );
 
 watch(
-    () => props.status.all_complete,
-    (allComplete) => {
-        if (allComplete) {
+    () => ({
+        allComplete: props.status.all_complete,
+        completedAt: props.status.completed_at,
+        dismissedAt: props.status.dismissed_at,
+    }),
+    ({ allComplete, completedAt, dismissedAt }) => {
+        // Remote skip from another tab/device — leave the checklist.
+        if (dismissedAt) {
+            stopOnboardingPoll();
+            router.visit(calendar.url());
+
+            return;
+        }
+
+        if (allComplete || completedAt) {
             stopOnboardingPoll();
 
             return;

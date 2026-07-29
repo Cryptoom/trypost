@@ -77,6 +77,34 @@ test('broadcastForAccount notifies every workspace even after completion', funct
     );
 });
 
+test('dispatchForWorkspace fans out Echo to sibling workspaces while onboarding is open', function () {
+    Event::fake([OnboardingStatusUpdated::class]);
+    config(['trypost.self_hosted' => false]);
+
+    $user = User::factory()->create();
+    $workspaceA = Workspace::factory()->create([
+        'account_id' => $user->account_id,
+        'user_id' => $user->id,
+    ]);
+    $workspaceB = Workspace::factory()->create([
+        'account_id' => $user->account_id,
+        'user_id' => $user->id,
+    ]);
+    $user->update(['current_workspace_id' => $workspaceA->id]);
+    subscribeAccount($user->account);
+
+    OnboardingStatusUpdated::dispatchForWorkspace($workspaceA->id, $user->fresh());
+
+    Event::assertDispatched(
+        OnboardingStatusUpdated::class,
+        fn (OnboardingStatusUpdated $event): bool => $event->workspaceId === $workspaceA->id,
+    );
+    Event::assertDispatched(
+        OnboardingStatusUpdated::class,
+        fn (OnboardingStatusUpdated $event): bool => $event->workspaceId === $workspaceB->id,
+    );
+});
+
 test('dispatchForWorkspace stamps completion when actor current workspace differs', function () {
     Carbon::setTestNow('2026-07-29 12:00:00');
     config(['trypost.self_hosted' => false]);
