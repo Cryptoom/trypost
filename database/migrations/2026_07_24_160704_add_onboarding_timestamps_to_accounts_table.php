@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use App\Models\Account;
+use App\Support\Onboarding\DismissAccountsWithAppAccess;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -19,14 +19,9 @@ return new class extends Migration
             $table->timestamp('onboarding_dismissed_at')->nullable()->after('onboarding_completed_at');
         });
 
-        Account::query()
-            ->whereHas('subscriptions', function ($query) {
-                $query->where('type', Account::SUBSCRIPTION_NAME)
-                    ->whereIn('stripe_status', ['active', 'trialing']);
-            })
-            ->whereNull('onboarding_dismissed_at')
-            ->whereNull('onboarding_completed_at')
-            ->update(['onboarding_dismissed_at' => now()]);
+        // Match hasAppAccess() — active/trialing/past_due/grace + generic trial —
+        // so existing customers never see the new residual activation banner.
+        DismissAccountsWithAppAccess::run();
     }
 
     /**

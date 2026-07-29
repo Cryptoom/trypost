@@ -3,8 +3,14 @@
 declare(strict_types=1);
 
 use App\Events\OnboardingStatusUpdated;
+use App\Models\AccessToken;
+use App\Models\Post;
+use App\Models\SocialAccount;
+use App\Models\User;
+use App\Models\Workspace;
 use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Events\ShouldDispatchAfterCommit;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Event;
 
 test('event broadcasts on the workspace channel', function () {
@@ -42,4 +48,70 @@ test('dispatchForWorkspace skips blank workspace ids', function () {
     OnboardingStatusUpdated::dispatchForWorkspace('');
 
     Event::assertNotDispatched(OnboardingStatusUpdated::class);
+});
+
+test('dispatchForWorkspace stamps completion when actor current workspace differs', function () {
+    Carbon::setTestNow('2026-07-29 12:00:00');
+    config(['trypost.self_hosted' => false]);
+
+    $user = User::factory()->create();
+    $readyWorkspace = Workspace::factory()->create([
+        'account_id' => $user->account_id,
+        'user_id' => $user->id,
+    ]);
+    $otherWorkspace = Workspace::factory()->create([
+        'account_id' => $user->account_id,
+        'user_id' => $user->id,
+    ]);
+
+    // Persisted current workspace is elsewhere (API/MCP in-memory mutation case).
+    $user->update(['current_workspace_id' => $otherWorkspace->id]);
+    subscribeAccount($user->account);
+
+    AccessToken::withoutEvents(fn () => mcpAccessToken($user, mcpOauthClient()));
+    SocialAccount::withoutEvents(fn () => SocialAccount::factory()->create([
+        'workspace_id' => $readyWorkspace->id,
+    ]));
+    Post::withoutEvents(fn () => Post::factory()->create([
+        'workspace_id' => $readyWorkspace->id,
+        'user_id' => $user->id,
+    ]));
+
+    // Align the request user to the ready workspace in memory only.
+    $actor = $user->fresh();
+    $actor->setRelation('currentWorkspace', $readyWorkspace);
+    $actor->current_workspace_id = $readyWorkspace->id;
+
+    OnboardingStatusUpdated::dispatchForWorkspace($readyWorkspace->id, $actor);
+
+    expect($user->account->fresh()->onboarding_completed_at?->equalTo(now()))->toBeTrue();
+});
+
+test('dispatchForWorkspace stamps via tryMarkAccountComplete when nobody is currently on the workspace', function () {
+    Carbon::setTestNow('2026-07-29 12:00:00');
+    config(['trypost.self_hosted' => false]);
+
+    $owner = User::factory()->create(['current_workspace_id' => null]);
+    $readyWorkspace = Workspace::factory()->create([
+        'account_id' => $owner->account_id,
+        'user_id' => $owner->id,
+    ]);
+    subscribeAccount($owner->account);
+
+    AccessToken::withoutEvents(fn () => mcpAccessToken($owner, mcpOauthClient()));
+    SocialAccount::withoutEvents(fn () => SocialAccount::factory()->create([
+        'workspace_id' => $readyWorkspace->id,
+    ]));
+    Post::withoutEvents(fn () => Post::factory()->create([
+        'workspace_id' => $readyWorkspace->id,
+        'user_id' => $owner->id,
+    ]));
+
+    $actor = $owner->fresh();
+    $actor->setRelation('currentWorkspace', $readyWorkspace);
+    $actor->current_workspace_id = $readyWorkspace->id;
+
+    OnboardingStatusUpdated::dispatchForWorkspace($readyWorkspace->id, $actor);
+
+    expect($owner->account->fresh()->onboarding_completed_at?->equalTo(now()))->toBeTrue();
 });

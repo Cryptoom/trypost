@@ -6,6 +6,7 @@ return [
     'title' => 'Sizi en iyi ne tanımlar?',
     'description' => 'En yakın seçeneği seçin, deneyiminizi kişiselleştirelim.',
     'continue' => 'Devam et',
+    'checkout_owner_only' => 'Hesap sahibinden ödemeyi tamamlayıp aboneliği başlatmasını isteyin.',
     'progress' => 'Karşılama ilerlemesi',
     'go_to_step' => ':step. adıma git',
     'personas' => [

@@ -89,6 +89,20 @@ class OnboardingController extends Controller
         }
 
         $user = $request->user();
+        $account = $user->account;
+
+        // Already stamped (e.g. observer auto-complete) — just leave.
+        if ($account?->onboarding_completed_at !== null) {
+            return redirect()->route('app.calendar');
+        }
+
+        // Skip must stay terminal: never let Continue re-open completion after dismiss.
+        if ($account?->onboarding_dismissed_at !== null) {
+            return redirect()->route('app.calendar');
+        }
+
+        abort_unless($user->isAccountOwner(), SymfonyResponse::HTTP_FORBIDDEN);
+
         $status = $this->resolveOnboardingStatus->handle($user);
 
         if (! $status['all_complete']) {

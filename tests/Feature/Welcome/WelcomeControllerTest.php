@@ -150,6 +150,7 @@ test('referral source renders after prior steps are complete', function () {
         ->assertInertia(fn ($page) => $page
             ->component('welcome/ReferralSource', false)
             ->has('sources', count(ReferralSource::cases()))
+            ->where('canCheckout', true)
             ->where('plan.name', $plan->name)
             ->where('plan.interval', 'monthly')
         );
@@ -264,3 +265,26 @@ test('legacy welcome URLs redirect to their replacement routes', function (strin
     'referral source' => ['app.legacy-onboarding.referral-source', 'app.welcome.referral-source'],
     'connect' => ['app.legacy-onboarding.connect', 'app.welcome.referral-source'],
 ]);
+
+test('members cannot start Stripe checkout from welcome', function () {
+    $member = User::factory()->create(['account_id' => $this->user->account_id]);
+    $member->update([
+        'persona' => Persona::Agency->value,
+        'goals' => [Goal::SaveTime->value],
+    ]);
+
+    $this->mock(StartSubscriptionCheckout::class)->shouldNotReceive('redirect');
+
+    $this->actingAs($member->fresh())
+        ->get(route('app.welcome.referral-source'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page->where('canCheckout', false));
+
+    $this->actingAs($member->fresh())
+        ->post(route('app.welcome.referral-source.store'), [
+            'referral_source' => ReferralSource::Google->value,
+        ])
+        ->assertForbidden();
+
+    expect($member->fresh()->referral_source)->toBeNull();
+});

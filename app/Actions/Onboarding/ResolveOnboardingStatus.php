@@ -166,7 +166,11 @@ class ResolveOnboardingStatus
     {
         $account = $user->account;
 
-        if ($account === null || $account->onboarding_completed_at !== null) {
+        if (
+            $account === null
+            || $account->onboarding_completed_at !== null
+            || $account->onboarding_dismissed_at !== null
+        ) {
             return false;
         }
 
@@ -175,6 +179,7 @@ class ResolveOnboardingStatus
         $updated = Account::query()
             ->whereKey($account->id)
             ->whereNull('onboarding_completed_at')
+            ->whereNull('onboarding_dismissed_at')
             ->update(['onboarding_completed_at' => $completedAt]);
 
         if ($updated === 0) {

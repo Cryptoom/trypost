@@ -6,6 +6,7 @@ return [
     'title' => '哪项最能描述你？',
     'description' => '选择最接近的一项，我们会为你定制体验。',
     'continue' => '继续',
+    'checkout_owner_only' => '请让账户所有者完成结账并开始订阅。',
     'progress' => '欢迎进度',
     'go_to_step' => '前往第 :step 步',
     'personas' => [

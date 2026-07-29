@@ -78,14 +78,30 @@ class OnboardingStatusUpdated implements ShouldBroadcast, ShouldDispatchAfterCom
         static::dispatch($workspaceId);
 
         $resolver = app(ResolveOnboardingStatus::class);
+        $syncedActor = false;
 
-        if ($actor !== null && (string) $actor->current_workspace_id === (string) $workspaceId) {
+        if ($actor !== null) {
             $actor->loadMissing(['account', 'currentWorkspace']);
-            $resolver->syncProgress($actor);
-            $account->refresh();
 
-            if ($account->onboarding_completed_at !== null) {
-                return;
+            // API/MCP tokens often mutate the request user's workspace in memory
+            // only — align the actor to this workspace for checklist resolution.
+            if ((string) $actor->current_workspace_id !== (string) $workspaceId) {
+                $workspace = Workspace::query()->find($workspaceId);
+
+                if ($workspace !== null) {
+                    $actor->setRelation('currentWorkspace', $workspace);
+                    $actor->current_workspace_id = $workspace->id;
+                }
+            }
+
+            if ((string) $actor->current_workspace_id === (string) $workspaceId) {
+                $resolver->syncProgress($actor);
+                $account->refresh();
+                $syncedActor = true;
+
+                if ($account->onboarding_completed_at !== null) {
+                    return;
+                }
             }
         }
 
@@ -94,7 +110,7 @@ class OnboardingStatusUpdated implements ShouldBroadcast, ShouldDispatchAfterCom
             ->where('current_workspace_id', $workspaceId)
             ->where('account_id', $account->id)
             ->when(
-                $actor !== null && (string) $actor->current_workspace_id === (string) $workspaceId,
+                $syncedActor && $actor !== null,
                 fn ($query) => $query->whereKeyNot($actor->id),
             )
             ->each(function (User $user) use ($resolver, $account): void {
@@ -105,6 +121,12 @@ class OnboardingStatusUpdated implements ShouldBroadcast, ShouldDispatchAfterCom
                 $resolver->syncProgress($user);
                 $account->refresh();
             });
+
+        // Actor (or nobody currently on this workspace) may still complete the
+        // account when MCP is done and any workspace already has social+post.
+        if ($account->onboarding_completed_at === null && $actor !== null) {
+            $resolver->tryMarkAccountComplete($account, $actor);
+        }
     }
 
     public function broadcastAs(): string

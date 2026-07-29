@@ -25,6 +25,7 @@ import { store } from '@/routes/app/welcome/referral-source';
 const props = defineProps<{
     sources: string[];
     selected?: string | null;
+    canCheckout: boolean;
     plan: { name: string; interval: string };
 }>();
 
@@ -121,7 +122,7 @@ const select = (value: string): void => {
 };
 
 const submit = (): void => {
-    if (form.referral_source === '' || form.processing) {
+    if (!props.canCheckout || form.referral_source === '' || form.processing) {
         return;
     }
 
@@ -188,11 +189,20 @@ const submit = (): void => {
         </div>
 
         <div class="mx-auto flex w-full max-w-sm flex-col items-center gap-3">
+            <p
+                v-if="!canCheckout"
+                class="text-center text-sm text-muted-foreground"
+                dusk="welcome-checkout-owner-only"
+            >
+                {{ $t('welcome.checkout_owner_only') }}
+            </p>
             <Button
+                v-else
                 type="button"
                 size="lg"
                 class="w-full rounded-full"
                 :disabled="form.referral_source === '' || form.processing"
+                dusk="welcome-start-checkout"
                 @click="submit"
             >
                 {{ $t('welcome.continue') }}

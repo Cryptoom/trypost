@@ -10,6 +10,8 @@ use App\Events\OnboardingStatusUpdated;
 use App\Events\PostCreated;
 use App\Jobs\Automation\DispatchPostTriggerAutomationsJob;
 use App\Models\Post;
+use App\Models\User;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 class PostObserver
@@ -36,7 +38,7 @@ class PostObserver
         if ($isFirstPost) {
             OnboardingStatusUpdated::dispatchForWorkspace(
                 $post->workspace_id,
-                $post->user,
+                $this->actorFor($post),
             );
         }
     }
@@ -45,8 +47,25 @@ class PostObserver
     {
         OnboardingStatusUpdated::dispatchForWorkspace(
             $post->workspace_id,
-            $post->user,
+            $this->actorFor($post),
         );
+    }
+
+    /**
+     * Prefer the authenticated request user (may carry an in-memory API/MCP
+     * workspace) over the persisted post author for checklist sync.
+     */
+    private function actorFor(Post $post): ?User
+    {
+        $user = Auth::user();
+
+        if ($user instanceof User
+            && (string) $user->account_id === (string) $post->workspace?->account_id
+        ) {
+            return $user;
+        }
+
+        return $post->user;
     }
 
     public function saved(Post $post): void

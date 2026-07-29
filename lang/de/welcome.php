@@ -6,6 +6,7 @@ return [
     'title' => 'Was beschreibt dich am besten?',
     'description' => 'Wähle die passende Option, und wir passen dein Erlebnis an.',
     'continue' => 'Weiter',
+    'checkout_owner_only' => 'Bitte den Kontoinhaber, den Checkout abzuschließen und das Abo zu starten.',
     'progress' => 'Willkommensfortschritt',
     'go_to_step' => 'Zu Schritt :step gehen',
     'personas' => [

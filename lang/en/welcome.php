@@ -6,6 +6,7 @@ return [
     'title' => 'What best describes you?',
     'description' => 'Choose the closest match and we\'ll tailor your experience.',
     'continue' => 'Continue',
+    'checkout_owner_only' => 'Ask the account owner to finish checkout and start your subscription.',
     'progress' => 'Welcome progress',
     'go_to_step' => 'Go to step :step',
     'personas' => [

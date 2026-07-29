@@ -6,6 +6,7 @@ return [
     'title' => 'O que melhor descreve você?',
     'description' => 'Escolha a opção mais próxima e a gente personaliza sua experiência.',
     'continue' => 'Continuar',
+    'checkout_owner_only' => 'Peça ao dono da conta para concluir o checkout e iniciar a assinatura.',
     'progress' => 'Progresso do onboarding',
     'go_to_step' => 'Ir para a etapa :step',
     'personas' => [

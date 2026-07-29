@@ -6,6 +6,7 @@ return [
     'title' => 'Wat omschrijft jou het beste?',
     'description' => 'Kies de dichtstbijzijnde optie, dan stemmen we je ervaring af.',
     'continue' => 'Doorgaan',
+    'checkout_owner_only' => 'Vraag de accounteigenaar om de checkout af te ronden en het abonnement te starten.',
     'progress' => 'Welkomstvoortgang',
     'go_to_step' => 'Ga naar stap :step',
     'personas' => [

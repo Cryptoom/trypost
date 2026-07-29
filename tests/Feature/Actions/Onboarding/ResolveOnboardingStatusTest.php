@@ -422,3 +422,10 @@ test('markCompleted leaves the in-memory account clean', function () {
         ->and($this->user->account->isDirty())->toBeFalse()
         ->and($this->user->account->onboarding_completed_at?->equalTo(now()))->toBeTrue();
 });
+
+test('markCompleted refuses to stamp after onboarding was dismissed', function () {
+    $this->user->account->update(['onboarding_dismissed_at' => now()]);
+
+    expect(app(ResolveOnboardingStatus::class)->markCompleted($this->user->fresh()))->toBeFalse()
+        ->and($this->user->account->fresh()->onboarding_completed_at)->toBeNull();
+});

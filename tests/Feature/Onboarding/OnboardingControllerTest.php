@@ -185,6 +185,56 @@ test('only the account owner can dismiss onboarding', function () {
     expect($this->user->account->fresh()->onboarding_dismissed_at)->toBeNull();
 });
 
+test('only the account owner can stamp completion via the complete endpoint', function () {
+    AccessToken::withoutEvents(fn () => mcpAccessToken($this->user, mcpOauthClient()));
+    SocialAccount::withoutEvents(fn () => SocialAccount::factory()->create([
+        'workspace_id' => $this->workspace->id,
+    ]));
+    Post::withoutEvents(fn () => Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+    ]));
+
+    $member = User::factory()->create(['account_id' => $this->user->account_id]);
+    $this->workspace->members()->attach($member->id, [
+        'role' => Role::Member->value,
+    ]);
+    $member->update(['current_workspace_id' => $this->workspace->id]);
+
+    $this->actingAs($member->fresh())
+        ->post(route('app.onboarding.complete'))
+        ->assertForbidden();
+
+    expect($this->user->account->fresh()->onboarding_completed_at)->toBeNull();
+});
+
+test('complete after dismiss redirects without stamping completion', function () {
+    Carbon::setTestNow('2026-07-24 12:00:00');
+
+    AccessToken::withoutEvents(fn () => mcpAccessToken($this->user, mcpOauthClient()));
+    SocialAccount::withoutEvents(fn () => SocialAccount::factory()->create([
+        'workspace_id' => $this->workspace->id,
+    ]));
+    Post::withoutEvents(fn () => Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+    ]));
+    $this->user->account->update(['onboarding_dismissed_at' => now()]);
+
+    Bus::fake();
+
+    $this->actingAs($this->user->fresh())
+        ->post(route('app.onboarding.complete'))
+        ->assertRedirect(route('app.calendar'));
+
+    expect($this->user->account->fresh()->onboarding_completed_at)->toBeNull();
+
+    Bus::assertNotDispatched(
+        SendEvent::class,
+        fn (SendEvent $event): bool => data_get($event->payload, 'event') === OnboardingEvent::Completed->value,
+    );
+});
+
 test('unsubscribed accounts are redirected to welcome by middleware', function (string $routeName, string $method) {
     $this->user->account->subscriptions()->delete();
     $this->actingAs($this->user->fresh());

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Head, Link, useForm, usePage } from '@inertiajs/vue3';
+import { Head, Link, useForm, usePage, usePoll } from '@inertiajs/vue3';
 import { IconCheck, IconCopy, IconLink } from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
 import { computed } from 'vue';
@@ -51,7 +51,11 @@ const firstName = computed(() => {
 const dismissForm = useForm({});
 const completeForm = useForm({});
 
-useOnboardingStatusEcho(['status', 'accounts', 'onboardingResidual']);
+const onboardingReloadOnly = ['status', 'accounts', 'onboardingResidual'];
+
+// Echo is the fast path; slow poll covers MCP clients when Reverb is down.
+useOnboardingStatusEcho(onboardingReloadOnly);
+usePoll(5000, { only: onboardingReloadOnly });
 
 const mcpClientTheme: Record<string, { bg: string; rotate: string }> = {
     claude: { bg: 'bg-orange-100', rotate: '-rotate-2' },

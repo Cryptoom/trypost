@@ -40,6 +40,15 @@ test('does not share the onboarding residual state after dismissal', function ()
         ->assertInertia(fn ($page) => $page->where('onboardingResidual', false));
 });
 
+test('does not share the onboarding residual state after completion', function () {
+    $this->user->account->update(['onboarding_completed_at' => now()]);
+
+    $this->actingAs($this->user->fresh())
+        ->get(route('app.calendar'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page->where('onboardingResidual', false));
+});
+
 test('does not share the onboarding residual with workspace members', function () {
     $member = User::factory()->create(['account_id' => $this->user->account_id]);
     $this->workspace->members()->attach($member->id, [

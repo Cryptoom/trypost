@@ -6,6 +6,7 @@ return [
     'title' => 'あなたに一番近いのは？',
     'description' => '近いものを選ぶと、体験を最適化します。',
     'continue' => '続ける',
+    'checkout_owner_only' => 'アカウントのオーナーにチェックアウトを完了してサブスクリプションを開始するよう依頼してください。',
     'progress' => 'ようこそ進捗',
     'go_to_step' => 'ステップ :step へ',
     'personas' => [

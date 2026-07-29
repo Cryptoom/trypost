@@ -26,7 +26,11 @@ const props = defineProps<{
 
 const EXCLUSIVE_GOAL = 'just_exploring';
 
-const form = useForm<{ goals: string[] }>({ goals: props.selected ?? [] });
+// Drop removed/legacy goal values so mid-welcome users aren't soft-locked
+// with selections that fail Rule::enum(Goal::class) on submit.
+const form = useForm<{ goals: string[] }>({
+    goals: (props.selected ?? []).filter((goal) => props.goals.includes(goal)),
+});
 
 const goalMeta: Record<
     string,

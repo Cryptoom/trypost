@@ -115,6 +115,7 @@ class WelcomeController extends Controller
         return Inertia::render('welcome/ReferralSource', [
             'sources' => array_map(fn (ReferralSource $source): string => $source->value, ReferralSource::cases()),
             'selected' => $user->referral_source?->value,
+            'canCheckout' => $user->isAccountOwner(),
             'plan' => [
                 'name' => $plan->name,
                 'interval' => 'monthly',
@@ -132,6 +133,9 @@ class WelcomeController extends Controller
         }
 
         $user = $request->user();
+
+        abort_unless($user->isAccountOwner(), SymfonyResponse::HTTP_FORBIDDEN);
+
         $referralSource = (string) $request->validated('referral_source');
 
         $user->update(['referral_source' => $referralSource]);

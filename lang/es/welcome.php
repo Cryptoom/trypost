@@ -6,6 +6,7 @@ return [
     'title' => '¿Qué te describe mejor?',
     'description' => 'Elige la opción más cercana y personalizaremos tu experiencia.',
     'continue' => 'Continuar',
+    'checkout_owner_only' => 'Pide al propietario de la cuenta que complete el checkout e inicie la suscripción.',
     'progress' => 'Progreso de bienvenida',
     'go_to_step' => 'Ir al paso :step',
     'personas' => [
