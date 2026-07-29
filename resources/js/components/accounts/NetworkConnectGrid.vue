@@ -34,10 +34,13 @@ const props = withDefaults(
         platforms: AvailablePlatform[];
         connectedAccounts?: ConnectedAccount[];
         gridClass?: string;
+        /** When set, OAuth success reloads only these Inertia props (e.g. onboarding). */
+        reloadOnly?: string[];
     }>(),
     {
         connectedAccounts: () => [],
         gridClass: 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-5',
+        reloadOnly: undefined,
     },
 );
 
@@ -157,7 +160,11 @@ const disconnectModal = ref<InstanceType<typeof ConfirmDeleteModal> | null>(
 const { openOAuthPopup } = useOAuthPopup((result) => {
     if (result.success) {
         toast.success(result.message);
-        router.reload();
+        router.reload(
+            props.reloadOnly !== undefined && props.reloadOnly.length > 0
+                ? { only: props.reloadOnly }
+                : undefined,
+        );
         return;
     }
 

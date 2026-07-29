@@ -181,6 +181,7 @@ const themeFor = (
                     <NetworkConnectGrid
                         :platforms="platforms"
                         :connected-accounts="accounts"
+                        :reload-only="onboardingReloadOnly"
                         grid-class="grid-cols-2 sm:grid-cols-3 xl:grid-cols-5"
                     />
                 </OnboardingStepCard>

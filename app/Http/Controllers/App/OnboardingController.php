@@ -43,20 +43,17 @@ class OnboardingController extends Controller
 
         // Completed revisits leave — keep celebration for Echo/poll partials and
         // for the immediate full reload after OAuth stamps completion.
-        $justCompleted = (bool) $request->session()->pull('onboarding_just_completed');
+        // Never pull the flash on partials: poll/Echo would consume it before the
+        // post-OAuth full reload and bounce the user to calendar.
+        $isPartial = $request->hasHeader('X-Inertia-Partial-Component');
+        $justCompleted = ! $isPartial
+            && (bool) $request->session()->pull('onboarding_just_completed');
 
-        if (
-            $wasAlreadyComplete
-            && ! $justCompleted
-            && ! $request->hasHeader('X-Inertia-Partial-Component')
-        ) {
+        if ($wasAlreadyComplete && ! $justCompleted && ! $isPartial) {
             return redirect()->route('app.calendar');
         }
 
-        if (
-            ! $request->hasHeader('X-Inertia-Partial-Component')
-            && ! $wasAlreadyComplete
-        ) {
+        if (! $isPartial && ! $wasAlreadyComplete) {
             $this->postHog->capture(
                 $user->id,
                 OnboardingEvent::Viewed->value,

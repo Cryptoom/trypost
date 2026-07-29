@@ -144,6 +144,45 @@ test('completed accounts are redirected away from onboarding on full visits', fu
     );
 });
 
+test('partial reloads do not consume the just-completed celebration flash', function () {
+    Carbon::setTestNow('2026-07-29 12:00:00');
+
+    AccessToken::withoutEvents(fn () => mcpAccessToken($this->user, mcpOauthClient()));
+    SocialAccount::withoutEvents(fn () => SocialAccount::factory()->create([
+        'workspace_id' => $this->workspace->id,
+    ]));
+    Post::withoutEvents(fn () => Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+    ]));
+    $this->user->account->update(['onboarding_completed_at' => now()]);
+
+    $this->actingAs($this->user->fresh())
+        ->withSession(['onboarding_just_completed' => true])
+        ->withHeaders([
+            'X-Inertia' => 'true',
+            'X-Requested-With' => 'XMLHttpRequest',
+            'X-Inertia-Partial-Component' => 'onboarding/Index',
+            'X-Inertia-Partial-Data' => 'status,accounts,onboardingResidual',
+        ])
+        ->get(route('app.onboarding'))
+        ->assertOk();
+
+    // Flash must survive the poll/Echo partial so a later full visit can celebrate.
+    expect(session()->get('onboarding_just_completed'))->toBeTrue();
+
+    // Drop partial headers — withHeaders persists on the test case.
+    $this->flushHeaders();
+
+    $this->actingAs($this->user->fresh())
+        ->get(route('app.onboarding'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('onboarding/Index', false)
+            ->where('status.all_complete', true)
+        );
+});
+
 test('completed accounts still see celebration after just-completed session flash', function () {
     Carbon::setTestNow('2026-07-29 12:00:00');
 
