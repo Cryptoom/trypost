@@ -31,7 +31,10 @@ class LoadWorkspaceFromToken
             return response()->json(['message' => 'No workspace selected.'], Response::HTTP_UNAUTHORIZED);
         }
 
-        if (! config('trypost.self_hosted') && ! $workspace->account?->hasActiveSubscription()) {
+        // Match web access (EnsureAccountReady): Stripe subscription OR generic
+        // no-card trial. MCP onboarding is a first-class checklist step for
+        // those accounts — requiring subscribed() alone returned 402 after OAuth.
+        if (! config('trypost.self_hosted') && ! $workspace->account?->hasAppAccess()) {
             return response()->json(['message' => 'Active subscription required.'], Response::HTTP_PAYMENT_REQUIRED);
         }
 
