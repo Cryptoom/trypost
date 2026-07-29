@@ -127,6 +127,49 @@ test('dismissed accounts are redirected away from onboarding index', function ()
     );
 });
 
+test('completed accounts are redirected away from onboarding on full visits', function () {
+    Carbon::setTestNow('2026-07-29 12:00:00');
+    $this->user->account->update(['onboarding_completed_at' => now()]);
+
+    Bus::fake();
+
+    $this->actingAs($this->user->fresh())
+        ->get(route('app.onboarding'))
+        ->assertRedirect(route('app.calendar'));
+
+    Bus::assertNotDispatched(
+        SendEvent::class,
+        fn (SendEvent $event): bool => data_get($event->payload, 'event') === OnboardingEvent::Viewed->value,
+    );
+});
+
+test('completed accounts still see celebration on onboarding partial reloads', function () {
+    Carbon::setTestNow('2026-07-29 12:00:00');
+
+    AccessToken::withoutEvents(fn () => mcpAccessToken($this->user, mcpOauthClient()));
+    SocialAccount::withoutEvents(fn () => SocialAccount::factory()->create([
+        'workspace_id' => $this->workspace->id,
+    ]));
+    Post::withoutEvents(fn () => Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+    ]));
+    $this->user->account->update(['onboarding_completed_at' => now()]);
+
+    $this->actingAs($this->user->fresh())
+        ->withHeaders([
+            'X-Inertia' => 'true',
+            'X-Requested-With' => 'XMLHttpRequest',
+            'X-Inertia-Partial-Component' => 'onboarding/Index',
+            'X-Inertia-Partial-Data' => 'status,accounts,onboardingResidual',
+        ])
+        ->get(route('app.onboarding'))
+        ->assertOk()
+        ->assertJsonPath('component', 'onboarding/Index')
+        ->assertJsonPath('props.status.all_complete', true)
+        ->assertJsonPath('props.status.completed_at', now()->toIso8601String());
+});
+
 test('dismiss after completion redirects without rewriting dismissed_at', function () {
     Carbon::setTestNow('2026-07-29 12:00:00');
     Event::fake([OnboardingStatusUpdated::class]);
@@ -274,6 +317,32 @@ test('teammates can stamp completion via the complete endpoint', function () {
         OnboardingStatusUpdated::class,
         fn (OnboardingStatusUpdated $event): bool => $event->workspaceId === $otherWorkspace->id,
     );
+});
+
+test('complete stamps via tryMarkAccountComplete when another workspace is ready', function () {
+    Carbon::setTestNow('2026-07-29 12:00:00');
+    Event::fake([OnboardingStatusUpdated::class]);
+
+    AccessToken::withoutEvents(fn () => mcpAccessToken($this->user, mcpOauthClient()));
+    SocialAccount::withoutEvents(fn () => SocialAccount::factory()->create([
+        'workspace_id' => $this->workspace->id,
+    ]));
+    Post::withoutEvents(fn () => Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+    ]));
+
+    $emptyWorkspace = Workspace::factory()->create([
+        'account_id' => $this->user->account_id,
+        'user_id' => $this->user->id,
+    ]);
+    $this->user->update(['current_workspace_id' => $emptyWorkspace->id]);
+
+    $this->actingAs($this->user->fresh())
+        ->post(route('app.onboarding.complete'))
+        ->assertRedirect(route('app.calendar'));
+
+    expect($this->user->account->fresh()->onboarding_completed_at?->equalTo(now()))->toBeTrue();
 });
 
 test('complete after dismiss redirects without stamping completion', function () {

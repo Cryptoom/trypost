@@ -347,6 +347,34 @@ test('residual returns progress counts while onboarding is active', function () 
     ]);
 });
 
+test('residual counts social and posts from any workspace on the account', function () {
+    AccessToken::withoutEvents(fn () => mcpAccessToken($this->user, mcpOauthClient()));
+
+    $otherWorkspace = Workspace::factory()->create([
+        'account_id' => $this->user->account_id,
+        'user_id' => $this->user->id,
+    ]);
+    SocialAccount::withoutEvents(fn () => SocialAccount::factory()->create([
+        'workspace_id' => $otherWorkspace->id,
+    ]));
+
+    $emptyWorkspace = Workspace::factory()->create([
+        'account_id' => $this->user->account_id,
+        'user_id' => $this->user->id,
+    ]);
+    $this->user->update(['current_workspace_id' => $emptyWorkspace->id]);
+
+    expect(app(ResolveOnboardingStatus::class)->handle($this->user->fresh()))->toMatchArray([
+        'mcp_connected' => true,
+        'social_connected' => false,
+        'first_post_created' => false,
+        'show_residual' => true,
+    ])->and(app(ResolveOnboardingStatus::class)->residual($this->user->fresh()))->toBe([
+        'completed' => 2,
+        'total' => ResolveOnboardingStatus::TOTAL_STEPS,
+    ]);
+});
+
 test('residual returns false when the banner should not show', function () {
     $this->user->account->update(['onboarding_dismissed_at' => now()]);
 

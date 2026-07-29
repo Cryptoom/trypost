@@ -32,10 +32,21 @@ class OnboardingController extends Controller
 
         $user = $request->user();
         $workspace = $user->currentWorkspace;
+        // Capture before syncProgress — same-request auto-stamp still shows celebration.
+        $wasAlreadyComplete = $user->account?->onboarding_completed_at !== null;
         $status = $this->resolveOnboardingStatus->syncProgress($user);
 
-        // Skip is terminal — don't flash the checklist or re-fire Viewed.
+        // Skip is always terminal (including Echo partial reloads).
         if ($status['dismissed_at'] !== null) {
+            return redirect()->route('app.calendar');
+        }
+
+        // Completed revisits leave — but Echo/poll partials after auto-stamp still
+        // render the celebration so Continue can finish the funnel.
+        if (
+            $wasAlreadyComplete
+            && ! $request->hasHeader('X-Inertia-Partial-Component')
+        ) {
             return redirect()->route('app.calendar');
         }
 
@@ -138,14 +149,19 @@ class OnboardingController extends Controller
         // already do the same. Dismiss remains owner-only.
         $status = $this->resolveOnboardingStatus->handle($user);
 
-        if (! $status['all_complete']) {
-            return redirect()->route('app.onboarding');
+        if ($status['all_complete']) {
+            // markCompleted broadcasts account-wide so residual banners clear immediately.
+            $this->resolveOnboardingStatus->markCompleted($user);
+
+            return redirect()->route('app.calendar');
         }
 
-        // markCompleted broadcasts account-wide so residual banners clear immediately.
-        $this->resolveOnboardingStatus->markCompleted($user);
+        // Current workspace incomplete, but MCP + another workspace already ready.
+        if ($account !== null && $this->resolveOnboardingStatus->tryMarkAccountComplete($account, $user)) {
+            return redirect()->route('app.calendar');
+        }
 
-        return redirect()->route('app.calendar');
+        return redirect()->route('app.onboarding');
     }
 
     private function redirectIfSelfHosted(): ?RedirectResponse

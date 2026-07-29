@@ -210,6 +210,10 @@ class ResolveOnboardingStatus
      * Pure read — safe for Inertia shared props and prefetch. Cross-workspace
      * completion is stamped by syncProgress / observers, not here.
      *
+     * Progress counts are account-scoped (MCP anywhere, social/post on any
+     * workspace) so the banner does not under-count when the owner is on an
+     * empty workspace while activation happened elsewhere.
+     *
      * @return array{completed: int, total: int}|false
      */
     public function residual(User $user): array|false
@@ -220,11 +224,13 @@ class ResolveOnboardingStatus
             return false;
         }
 
+        $account = $user->account;
+
         return [
             'completed' => collect([
                 $status['mcp_connected'],
-                $status['social_connected'],
-                $status['first_post_created'],
+                $status['social_connected'] || $this->accountHasSocialConnection($account),
+                $status['first_post_created'] || $this->accountHasPost($account),
             ])->filter()->count(),
             'total' => self::TOTAL_STEPS,
         ];
@@ -242,6 +248,30 @@ class ResolveOnboardingStatus
                 User::query()->select('id')->where('account_id', $account->id),
             )
             ->activeMcpOAuth()
+            ->exists();
+    }
+
+    private function accountHasSocialConnection(?Account $account): bool
+    {
+        if ($account === null) {
+            return false;
+        }
+
+        return Workspace::query()
+            ->where('account_id', $account->id)
+            ->whereHas('socialAccounts')
+            ->exists();
+    }
+
+    private function accountHasPost(?Account $account): bool
+    {
+        if ($account === null) {
+            return false;
+        }
+
+        return Workspace::query()
+            ->where('account_id', $account->id)
+            ->whereHas('posts')
             ->exists();
     }
 
