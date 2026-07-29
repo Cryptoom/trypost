@@ -50,32 +50,18 @@ class ResolveOnboardingStatus
             ];
         }
 
-        $workspace = $user->currentWorkspace;
-
-        $mcpConnected = $account !== null
-            && AccessToken::query()
-                ->whereIn(
-                    'user_id',
-                    User::query()->select('id')->where('account_id', $account->id),
-                )
-                ->activeMcpOAuth()
-                ->exists();
-        $socialConnected = $workspace?->socialAccounts()->exists() ?? false;
-        $firstPostCreated = $workspace?->posts()->exists() ?? false;
+        // All three steps are account-scoped so checklist checkmarks, residual
+        // progress, and cross-workspace completion stay aligned.
+        $mcpConnected = $this->accountHasMcpConnection($account);
+        $socialConnected = $this->accountHasSocialConnection($account);
+        $firstPostCreated = $this->accountHasPost($account);
         $allComplete = $mcpConnected && $socialConnected && $firstPostCreated;
-
-        // Hide residual when another workspace already finished activation even
-        // if the owner's current workspace is still empty (read-only — no stamp).
-        $accountReadyElsewhere = ! $allComplete
-            && $mcpConnected
-            && $this->accountHasReadyWorkspace($account);
 
         $showResidual = ! config('trypost.self_hosted')
             && $user->isAccountOwner()
             && ($account?->hasAppAccess() ?? false)
             && $account->onboarding_dismissed_at === null
-            && ! $allComplete
-            && ! $accountReadyElsewhere;
+            && ! $allComplete;
 
         return [
             'mcp_connected' => $mcpConnected,
@@ -216,10 +202,6 @@ class ResolveOnboardingStatus
      * Pure read — safe for Inertia shared props and prefetch. Cross-workspace
      * completion is stamped by syncProgress / observers, not here.
      *
-     * Progress counts are account-scoped (MCP anywhere, social/post on any
-     * workspace) so the banner does not under-count when the owner is on an
-     * empty workspace while activation happened elsewhere.
-     *
      * @return array{completed: int, total: int}|false
      */
     public function residual(User $user): array|false
@@ -230,13 +212,11 @@ class ResolveOnboardingStatus
             return false;
         }
 
-        $account = $user->account;
-
         return [
             'completed' => collect([
                 $status['mcp_connected'],
-                $status['social_connected'] || $this->accountHasSocialConnection($account),
-                $status['first_post_created'] || $this->accountHasPost($account),
+                $status['social_connected'],
+                $status['first_post_created'],
             ])->filter()->count(),
             'total' => self::TOTAL_STEPS,
         ];

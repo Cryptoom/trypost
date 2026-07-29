@@ -130,7 +130,7 @@ test('does not resolve an expired oauth token as mcp connected', function () {
     expect($status['mcp_connected'])->toBeFalse();
 });
 
-test('does not resolve steps when the user has no current workspace', function () {
+test('resolves account-scoped steps even when the user has no current workspace', function () {
     $this->user->update(['current_workspace_id' => null]);
     SocialAccount::withoutEvents(fn () => SocialAccount::factory()->create([
         'workspace_id' => $this->workspace->id,
@@ -145,9 +145,9 @@ test('does not resolve steps when the user has no current workspace', function (
 
     expect($status)->toMatchArray([
         'mcp_connected' => true,
-        'social_connected' => false,
-        'first_post_created' => false,
-        'all_complete' => false,
+        'social_connected' => true,
+        'first_post_created' => true,
+        'all_complete' => true,
     ]);
 });
 
@@ -170,7 +170,7 @@ test('generic trial without card still shows residual for the owner', function (
     ]);
 });
 
-test('does not resolve a social account in another workspace as connected', function () {
+test('resolves a social account in another workspace as connected', function () {
     $otherWorkspace = Workspace::factory()->create([
         'account_id' => $this->user->account_id,
         'user_id' => $this->user->id,
@@ -179,7 +179,7 @@ test('does not resolve a social account in another workspace as connected', func
 
     $status = app(ResolveOnboardingStatus::class)->handle($this->user);
 
-    expect($status['social_connected'])->toBeFalse();
+    expect($status['social_connected'])->toBeTrue();
 });
 
 test('resolves any post in the current workspace as the first post', function () {
@@ -198,7 +198,7 @@ test('resolves any post in the current workspace as the first post', function ()
     ]);
 });
 
-test('does not resolve a post in another workspace as the first post', function () {
+test('resolves a post in another workspace as the first post', function () {
     $otherWorkspace = Workspace::factory()->create([
         'account_id' => $this->user->account_id,
         'user_id' => $this->user->id,
@@ -210,7 +210,7 @@ test('does not resolve a post in another workspace as the first post', function 
 
     $status = app(ResolveOnboardingStatus::class)->handle($this->user);
 
-    expect($status['first_post_created'])->toBeFalse();
+    expect($status['first_post_created'])->toBeTrue();
 });
 
 test('marks onboarding completed once all three steps are complete', function () {
@@ -347,7 +347,7 @@ test('residual returns progress counts while onboarding is active', function () 
     ]);
 });
 
-test('residual counts social and posts from any workspace on the account', function () {
+test('checklist and residual both count social and posts from any workspace', function () {
     AccessToken::withoutEvents(fn () => mcpAccessToken($this->user, mcpOauthClient()));
 
     $otherWorkspace = Workspace::factory()->create([
@@ -366,8 +366,9 @@ test('residual counts social and posts from any workspace on the account', funct
 
     expect(app(ResolveOnboardingStatus::class)->handle($this->user->fresh()))->toMatchArray([
         'mcp_connected' => true,
-        'social_connected' => false,
+        'social_connected' => true,
         'first_post_created' => false,
+        'all_complete' => false,
         'show_residual' => true,
     ])->and(app(ResolveOnboardingStatus::class)->residual($this->user->fresh()))->toBe([
         'completed' => 2,

@@ -50,6 +50,7 @@ final class ConfigureSubscriptionCheckout
         }
 
         return ! $account->subscriptions()
+            ->where('type', Account::SUBSCRIPTION_NAME)
             ->whereNotIn('stripe_status', [
                 StripeSubscription::STATUS_INCOMPLETE,
                 StripeSubscription::STATUS_INCOMPLETE_EXPIRED,

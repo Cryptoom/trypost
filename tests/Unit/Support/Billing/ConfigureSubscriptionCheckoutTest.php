@@ -151,3 +151,23 @@ test('skips checkout trial when REQUIRE_CARD_FOR_TRIAL is false', function () {
         ->and($subscription->allowPromotionCodes)->toBeTrue()
         ->and(ConfigureSubscriptionCheckout::qualifiesForCheckoutTrial($this->account))->toBeFalse();
 });
+
+test('ignores non-default subscription types when deciding checkout trial eligibility', function () {
+    config(['cashier.trial_days' => 8]);
+
+    $this->account->subscriptions()->create([
+        'type' => 'addon',
+        'stripe_id' => 'sub_'.fake()->uuid(),
+        'stripe_status' => 'canceled',
+        'stripe_price' => 'price_addon',
+        'ends_at' => now()->subDay(),
+    ]);
+
+    $subscription = checkoutSubscription($this->account);
+
+    ConfigureSubscriptionCheckout::apply($subscription, $this->account);
+
+    expect(trialExpires($subscription)->toDateString())
+        ->toBe(now()->addDays(8)->toDateString())
+        ->and(ConfigureSubscriptionCheckout::qualifiesForCheckoutTrial($this->account))->toBeTrue();
+});
