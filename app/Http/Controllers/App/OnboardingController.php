@@ -91,7 +91,7 @@ class OnboardingController extends Controller
         $user = $request->user();
         $account = $user->account;
 
-        // Already stamped (e.g. observer auto-complete) — just leave.
+        // Already stamped (e.g. observer / syncProgress auto-complete) — just leave.
         if ($account?->onboarding_completed_at !== null) {
             return redirect()->route('app.calendar');
         }
@@ -101,8 +101,8 @@ class OnboardingController extends Controller
             return redirect()->route('app.calendar');
         }
 
-        abort_unless($user->isAccountOwner(), SymfonyResponse::HTTP_FORBIDDEN);
-
+        // Any teammate who finishes activation may stamp — observers/syncProgress
+        // already do the same. Dismiss remains owner-only.
         $status = $this->resolveOnboardingStatus->handle($user);
 
         if (! $status['all_complete']) {

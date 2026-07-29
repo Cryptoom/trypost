@@ -65,7 +65,9 @@ Route::middleware(['auth'])->group(function () {
     Route::get('welcome/goals', [WelcomeController::class, 'goals'])->name('app.welcome.goals');
     Route::post('welcome/goals', [WelcomeController::class, 'storeGoals'])->name('app.welcome.goals.store');
     Route::get('welcome/referral-source', [WelcomeController::class, 'referralSource'])->name('app.welcome.referral-source');
-    Route::post('welcome/referral-source', [WelcomeController::class, 'storeReferralSource'])->name('app.welcome.referral-source.store');
+    Route::post('welcome/referral-source', [WelcomeController::class, 'storeReferralSource'])
+        ->middleware('throttle:6,1')
+        ->name('app.welcome.referral-source.store');
     Route::redirect('onboarding/goals', '/welcome/goals')->name('app.legacy-onboarding.goals');
     Route::redirect('onboarding/referral-source', '/welcome/referral-source')->name('app.legacy-onboarding.referral-source');
     Route::redirect('onboarding/connect', '/welcome/referral-source')->name('app.legacy-onboarding.connect');
@@ -87,11 +89,10 @@ Route::middleware(['auth'])->group(function () {
 
 // Social Connect routes
 Route::middleware(['auth'])->group(function () {
-    // Starting a connection reads the user's current workspace, so these require
-    // one — during onboarding they redirect to workspace creation. Disconnecting
-    // lives here too (and not behind EnsureAccountReady) so it works before a
-    // subscription exists; the controller still authorizes workspace ownership.
-    Route::middleware(EnsureHasWorkspace::class)->group(function () {
+    // Starting a connection requires app access (post-subscription onboarding /
+    // paid accounts). Disconnect stays reachable without a subscription so
+    // cleanup still works; the controller still authorizes workspace ownership.
+    Route::middleware([EnsureAccountReady::class, EnsureHasWorkspace::class])->group(function () {
         Route::get('connect/linkedin', [LinkedInController::class, 'connect'])->name('app.social.linkedin.connect');
         Route::get('connect/x', [XController::class, 'connect'])->name('app.social.x.connect');
         Route::get('connect/tiktok', [TikTokController::class, 'connect'])->name('app.social.tiktok.connect');
@@ -107,7 +108,9 @@ Route::middleware(['auth'])->group(function () {
         Route::post('connect/mastodon', [MastodonController::class, 'authorizeInstance'])->name('app.social.mastodon.authorize');
         Route::post('connect/telegram', [TelegramController::class, 'connect'])->name('app.social.telegram.connect');
         Route::get('connect/discord', [DiscordController::class, 'connect'])->name('app.social.discord.connect');
+    });
 
+    Route::middleware(EnsureHasWorkspace::class)->group(function () {
         Route::delete('accounts/{account}', [SocialController::class, 'disconnect'])->name('app.accounts.disconnect');
     });
 

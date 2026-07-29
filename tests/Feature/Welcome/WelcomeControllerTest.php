@@ -237,6 +237,22 @@ test('welcome redirects subscribed accounts without residual onboarding to calen
     'completed' => [['onboarding_completed_at' => now()]],
 ]);
 
+test('welcome redirects generic-trial accounts with app access to calendar', function () {
+    config(['trypost.billing.require_card_for_trial' => false]);
+
+    $this->user->account->update([
+        'trial_ends_at' => now()->addDays(8),
+        'onboarding_dismissed_at' => now(),
+    ]);
+
+    expect($this->user->account->fresh()->hasAppAccess())->toBeTrue()
+        ->and($this->user->account->fresh()->subscribed(Account::SUBSCRIPTION_NAME))->toBeFalse();
+
+    $this->actingAs($this->user->fresh())
+        ->get(route('app.welcome.persona'))
+        ->assertRedirect(route('app.calendar'));
+});
+
 test('welcome steps redirect to calendar in self hosted mode', function (string $routeName, string $method, array $payload = []) {
     config(['trypost.self_hosted' => true]);
 

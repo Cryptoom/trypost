@@ -63,11 +63,18 @@ class ResolveOnboardingStatus
         $firstPostCreated = $workspace?->posts()->exists() ?? false;
         $allComplete = $mcpConnected && $socialConnected && $firstPostCreated;
 
+        // Hide residual when another workspace already finished activation even
+        // if the owner's current workspace is still empty (read-only — no stamp).
+        $accountReadyElsewhere = ! $allComplete
+            && $mcpConnected
+            && $this->accountHasReadyWorkspace($account);
+
         $showResidual = ! config('trypost.self_hosted')
             && $user->isAccountOwner()
             && ($account?->hasAppAccess() ?? false)
             && $account->onboarding_dismissed_at === null
-            && ! $allComplete;
+            && ! $allComplete
+            && ! $accountReadyElsewhere;
 
         return [
             'mcp_connected' => $mcpConnected,
@@ -144,25 +151,7 @@ class ResolveOnboardingStatus
             return false;
         }
 
-        $hasMcp = AccessToken::query()
-            ->whereIn(
-                'user_id',
-                User::query()->select('id')->where('account_id', $account->id),
-            )
-            ->activeMcpOAuth()
-            ->exists();
-
-        if (! $hasMcp) {
-            return false;
-        }
-
-        $workspaceReady = Workspace::query()
-            ->where('account_id', $account->id)
-            ->whereHas('socialAccounts')
-            ->whereHas('posts')
-            ->exists();
-
-        if (! $workspaceReady) {
+        if (! $this->accountHasMcpConnection($account) || ! $this->accountHasReadyWorkspace($account)) {
             return false;
         }
 
@@ -213,9 +202,8 @@ class ResolveOnboardingStatus
     /**
      * Sidebar residual banner payload, or false when the banner should not show.
      *
-     * When the current workspace looks incomplete but another workspace on the
-     * account already finished activation, stamp completion so the banner does
-     * not stick forever for owners parked on an empty workspace.
+     * Pure read — safe for Inertia shared props and prefetch. Cross-workspace
+     * completion is stamped by syncProgress / observers, not here.
      *
      * @return array{completed: int, total: int}|false
      */
@@ -227,12 +215,6 @@ class ResolveOnboardingStatus
             return false;
         }
 
-        $account = $user->account;
-
-        if ($account !== null && $this->tryMarkAccountComplete($account, $user)) {
-            return false;
-        }
-
         return [
             'completed' => collect([
                 $status['mcp_connected'],
@@ -241,6 +223,34 @@ class ResolveOnboardingStatus
             ])->filter()->count(),
             'total' => self::TOTAL_STEPS,
         ];
+    }
+
+    private function accountHasMcpConnection(?Account $account): bool
+    {
+        if ($account === null) {
+            return false;
+        }
+
+        return AccessToken::query()
+            ->whereIn(
+                'user_id',
+                User::query()->select('id')->where('account_id', $account->id),
+            )
+            ->activeMcpOAuth()
+            ->exists();
+    }
+
+    private function accountHasReadyWorkspace(?Account $account): bool
+    {
+        if ($account === null) {
+            return false;
+        }
+
+        return Workspace::query()
+            ->where('account_id', $account->id)
+            ->whereHas('socialAccounts')
+            ->whereHas('posts')
+            ->exists();
     }
 
     private function captureCompletedStep(User $user, Account $account, string $step, bool $completed): void

@@ -14,7 +14,6 @@ use App\Enums\User\ReferralSource;
 use App\Http\Requests\App\Welcome\StoreWelcomeGoalsRequest;
 use App\Http\Requests\App\Welcome\StoreWelcomePersonaRequest;
 use App\Http\Requests\App\Welcome\StoreWelcomeReferralSourceRequest;
-use App\Models\Account;
 use App\Models\Plan;
 use App\Services\PostHogService;
 use Illuminate\Http\RedirectResponse;
@@ -198,7 +197,9 @@ class WelcomeController extends Controller
 
         $user = $request->user();
 
-        if ($user->account?->subscribed(Account::SUBSCRIPTION_NAME)) {
+        // Match EnsureAccountReady — generic-trial (no-card) users already have
+        // app access and must not be sent through Stripe checkout again.
+        if ($user->account?->hasAppAccess()) {
             $status = $this->resolveOnboardingStatus->handle($user);
 
             return redirect()->route($status['show_residual'] ? 'app.onboarding' : 'app.calendar');

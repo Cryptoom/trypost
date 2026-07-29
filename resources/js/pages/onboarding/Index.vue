@@ -2,7 +2,7 @@
 import { Head, Link, useForm, usePage, usePoll } from '@inertiajs/vue3';
 import { IconCheck, IconCopy, IconLink } from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
-import { computed } from 'vue';
+import { computed, watch } from 'vue';
 
 import NetworkConnectGrid, {
     type AvailablePlatform,
@@ -55,7 +55,26 @@ const onboardingReloadOnly = ['status', 'accounts', 'onboardingResidual'];
 
 // Echo is the fast path; slow poll covers MCP clients when Reverb is down.
 useOnboardingStatusEcho(onboardingReloadOnly);
-usePoll(5000, { only: onboardingReloadOnly });
+
+const { start: startOnboardingPoll, stop: stopOnboardingPoll } = usePoll(
+    5000,
+    { only: onboardingReloadOnly },
+    { autoStart: false },
+);
+
+watch(
+    () => props.status.all_complete,
+    (allComplete) => {
+        if (allComplete) {
+            stopOnboardingPoll();
+
+            return;
+        }
+
+        startOnboardingPoll();
+    },
+    { immediate: true },
+);
 
 const mcpClientTheme: Record<string, { bg: string; rotate: string }> = {
     claude: { bg: 'bg-orange-100', rotate: '-rotate-2' },

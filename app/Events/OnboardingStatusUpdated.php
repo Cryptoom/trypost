@@ -14,6 +14,7 @@ use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Contracts\Events\ShouldDispatchAfterCommit;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\DB;
 
 class OnboardingStatusUpdated implements ShouldBroadcast, ShouldDispatchAfterCommit
 {
@@ -24,6 +25,9 @@ class OnboardingStatusUpdated implements ShouldBroadcast, ShouldDispatchAfterCom
     /**
      * Broadcast to every workspace on the account and sync progress for the actor.
      * Use when a step is account-scoped (e.g. MCP OAuth).
+     *
+     * Sync/analytics run afterCommit so Cache/PostHog never outlive a rolled-back
+     * CreatePost (or similar) transaction.
      */
     public static function dispatchForAccount(?Account $account, ?User $actor = null): void
     {
@@ -34,31 +38,50 @@ class OnboardingStatusUpdated implements ShouldBroadcast, ShouldDispatchAfterCom
             return;
         }
 
-        $workspaceIds = $account->workspaces()->pluck('id');
+        $accountId = $account->id;
+        $actorId = $actor?->id;
 
-        foreach ($workspaceIds as $workspaceId) {
-            static::dispatch((string) $workspaceId);
-        }
+        DB::afterCommit(function () use ($accountId, $actorId): void {
+            $account = Account::query()->find($accountId);
 
-        $resolver = app(ResolveOnboardingStatus::class);
+            if ($account === null
+                || $account->onboarding_completed_at !== null
+                || $account->onboarding_dismissed_at !== null
+            ) {
+                return;
+            }
 
-        if ($actor !== null) {
-            $actor->loadMissing(['account', 'currentWorkspace']);
-            $resolver->syncProgress($actor);
-            $account->refresh();
-        }
+            $workspaceIds = $account->workspaces()->pluck('id');
 
-        // Actor's current workspace may lack social/post while another workspace
-        // on the account is already ready — still stamp account completion.
-        if ($account->onboarding_completed_at === null && $actor !== null) {
-            $resolver->tryMarkAccountComplete($account, $actor);
-        }
+            foreach ($workspaceIds as $workspaceId) {
+                static::dispatch((string) $workspaceId);
+            }
+
+            $resolver = app(ResolveOnboardingStatus::class);
+            $actor = $actorId !== null
+                ? User::query()->with(['account', 'currentWorkspace'])->find($actorId)
+                : null;
+
+            if ($actor !== null) {
+                $resolver->syncProgress($actor);
+                $account->refresh();
+            }
+
+            // Actor's current workspace may lack social/post while another workspace
+            // on the account is already ready — still stamp account completion.
+            if ($account->onboarding_completed_at === null && $actor !== null) {
+                $resolver->tryMarkAccountComplete($account, $actor);
+            }
+        });
     }
 
     /**
      * Broadcast only while the workspace account still has active onboarding.
      * Sync the actor first (correct PostHog attribution), then any other users
      * currently on this workspace so completion can stamp if they are ready.
+     *
+     * Sync/analytics run afterCommit so Cache/PostHog never outlive a rolled-back
+     * CreatePost (or similar) transaction.
      */
     public static function dispatchForWorkspace(?string $workspaceId, ?User $actor = null): void
     {
@@ -75,58 +98,72 @@ class OnboardingStatusUpdated implements ShouldBroadcast, ShouldDispatchAfterCom
             return;
         }
 
-        static::dispatch($workspaceId);
+        $actorId = $actor?->id;
 
-        $resolver = app(ResolveOnboardingStatus::class);
-        $syncedActor = false;
+        DB::afterCommit(function () use ($workspaceId, $actorId): void {
+            $account = Workspace::query()->find($workspaceId)?->account;
 
-        if ($actor !== null) {
-            $actor->loadMissing(['account', 'currentWorkspace']);
+            if ($account === null
+                || $account->onboarding_completed_at !== null
+                || $account->onboarding_dismissed_at !== null
+            ) {
+                return;
+            }
 
-            // API/MCP tokens often mutate the request user's workspace in memory
-            // only — align the actor to this workspace for checklist resolution.
-            if ((string) $actor->current_workspace_id !== (string) $workspaceId) {
-                $workspace = Workspace::query()->find($workspaceId);
+            static::dispatch($workspaceId);
 
-                if ($workspace !== null) {
-                    $actor->setRelation('currentWorkspace', $workspace);
-                    $actor->current_workspace_id = $workspace->id;
+            $resolver = app(ResolveOnboardingStatus::class);
+            $syncedActor = false;
+            $actor = $actorId !== null
+                ? User::query()->with(['account', 'currentWorkspace'])->find($actorId)
+                : null;
+
+            if ($actor !== null) {
+                // API/MCP tokens often mutate the request user's workspace in memory
+                // only — align the actor to this workspace for checklist resolution.
+                if ((string) $actor->current_workspace_id !== (string) $workspaceId) {
+                    $workspace = Workspace::query()->find($workspaceId);
+
+                    if ($workspace !== null) {
+                        $actor->setRelation('currentWorkspace', $workspace);
+                        $actor->current_workspace_id = $workspace->id;
+                    }
+                }
+
+                if ((string) $actor->current_workspace_id === (string) $workspaceId) {
+                    $resolver->syncProgress($actor);
+                    $account->refresh();
+                    $syncedActor = true;
+
+                    if ($account->onboarding_completed_at !== null) {
+                        return;
+                    }
                 }
             }
 
-            if ((string) $actor->current_workspace_id === (string) $workspaceId) {
-                $resolver->syncProgress($actor);
-                $account->refresh();
-                $syncedActor = true;
+            User::query()
+                ->with(['account', 'currentWorkspace'])
+                ->where('current_workspace_id', $workspaceId)
+                ->where('account_id', $account->id)
+                ->when(
+                    $syncedActor && $actor !== null,
+                    fn ($query) => $query->whereKeyNot($actor->id),
+                )
+                ->each(function (User $user) use ($resolver, $account): void {
+                    if ($account->onboarding_completed_at !== null) {
+                        return;
+                    }
 
-                if ($account->onboarding_completed_at !== null) {
-                    return;
-                }
+                    $resolver->syncProgress($user);
+                    $account->refresh();
+                });
+
+            // Actor (or nobody currently on this workspace) may still complete the
+            // account when MCP is done and any workspace already has social+post.
+            if ($account->onboarding_completed_at === null && $actor !== null) {
+                $resolver->tryMarkAccountComplete($account, $actor);
             }
-        }
-
-        User::query()
-            ->with(['account', 'currentWorkspace'])
-            ->where('current_workspace_id', $workspaceId)
-            ->where('account_id', $account->id)
-            ->when(
-                $syncedActor && $actor !== null,
-                fn ($query) => $query->whereKeyNot($actor->id),
-            )
-            ->each(function (User $user) use ($resolver, $account): void {
-                if ($account->onboarding_completed_at !== null) {
-                    return;
-                }
-
-                $resolver->syncProgress($user);
-                $account->refresh();
-            });
-
-        // Actor (or nobody currently on this workspace) may still complete the
-        // account when MCP is done and any workspace already has social+post.
-        if ($account->onboarding_completed_at === null && $actor !== null) {
-            $resolver->tryMarkAccountComplete($account, $actor);
-        }
+        });
     }
 
     public function broadcastAs(): string

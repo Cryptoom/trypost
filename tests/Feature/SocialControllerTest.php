@@ -108,6 +108,14 @@ test('an unsubscribed account can disconnect during welcome (no active subscript
     expect(SocialAccount::find($account->id))->toBeNull();
 });
 
+test('an unsubscribed account cannot start a social connection', function () {
+    config(['trypost.self_hosted' => false]);
+
+    $this->actingAs($this->user)
+        ->get(route('app.social.linkedin.connect'))
+        ->assertRedirect(route('app.welcome.persona'));
+});
+
 test('accounts index redirects if no workspace', function () {
     $this->user->update(['current_workspace_id' => null]);
 

@@ -455,9 +455,7 @@ test('syncProgress stamps when another workspace already finished social and pos
         ->and($this->user->account->fresh()->onboarding_completed_at?->equalTo(now()))->toBeTrue();
 });
 
-test('residual stamps and hides when another workspace already finished activation', function () {
-    Carbon::setTestNow('2026-07-29 12:00:00');
-
+test('residual hides without writing when another workspace already finished activation', function () {
     SocialAccount::withoutEvents(fn () => SocialAccount::factory()->create([
         'workspace_id' => $this->workspace->id,
     ]));
@@ -474,5 +472,5 @@ test('residual stamps and hides when another workspace already finished activati
     $this->user->update(['current_workspace_id' => $emptyWorkspace->id]);
 
     expect(app(ResolveOnboardingStatus::class)->residual($this->user->fresh()))->toBeFalse()
-        ->and($this->user->account->fresh()->onboarding_completed_at?->equalTo(now()))->toBeTrue();
+        ->and($this->user->account->fresh()->onboarding_completed_at)->toBeNull();
 });

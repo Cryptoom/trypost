@@ -185,7 +185,9 @@ test('only the account owner can dismiss onboarding', function () {
     expect($this->user->account->fresh()->onboarding_dismissed_at)->toBeNull();
 });
 
-test('only the account owner can stamp completion via the complete endpoint', function () {
+test('teammates can stamp completion via the complete endpoint', function () {
+    Carbon::setTestNow('2026-07-29 12:00:00');
+
     AccessToken::withoutEvents(fn () => mcpAccessToken($this->user, mcpOauthClient()));
     SocialAccount::withoutEvents(fn () => SocialAccount::factory()->create([
         'workspace_id' => $this->workspace->id,
@@ -203,9 +205,9 @@ test('only the account owner can stamp completion via the complete endpoint', fu
 
     $this->actingAs($member->fresh())
         ->post(route('app.onboarding.complete'))
-        ->assertForbidden();
+        ->assertRedirect(route('app.calendar'));
 
-    expect($this->user->account->fresh()->onboarding_completed_at)->toBeNull();
+    expect($this->user->account->fresh()->onboarding_completed_at?->equalTo(now()))->toBeTrue();
 });
 
 test('complete after dismiss redirects without stamping completion', function () {
