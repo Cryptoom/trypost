@@ -19,9 +19,11 @@ export const useOnboardingStatusEcho = (only: string[]): void => {
  * Echo is the fast path; a slow poll covers Reverb outages. Polling only runs
  * while the banner is visible so completed/dismissed owners are not hit.
  *
- * Early-return when residual is false is safe: every path to false is terminal
- * (completed, dismissed, non-owner, or no app access). A future non-terminal
- * false would need this guard revisited.
+ * When residual is false we stop listening/polling. That is effectively terminal
+ * in practice (completed, dismissed, non-owner, no app access, or another
+ * workspace already finished activation). Observers/syncProgress stamp
+ * completion for the cross-workspace case, so false rarely flips back to a
+ * progress object without a full navigation.
  */
 export const useOnboardingResidualEcho = (): void => {
     const page = usePage();

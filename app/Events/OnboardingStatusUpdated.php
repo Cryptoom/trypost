@@ -23,6 +23,22 @@ class OnboardingStatusUpdated implements ShouldBroadcast, ShouldDispatchAfterCom
     public function __construct(public string $workspaceId) {}
 
     /**
+     * Notify every workspace channel that onboarding state changed — no sync.
+     * Use after complete/dismiss so owner residual banners update immediately
+     * even when dispatchForAccount would early-return on stamped timestamps.
+     */
+    public static function broadcastForAccount(?Account $account): void
+    {
+        if ($account === null) {
+            return;
+        }
+
+        foreach ($account->workspaces()->pluck('id') as $workspaceId) {
+            static::dispatch((string) $workspaceId);
+        }
+    }
+
+    /**
      * Broadcast to every workspace on the account and sync progress for the actor.
      * Use when a step is account-scoped (e.g. MCP OAuth).
      *

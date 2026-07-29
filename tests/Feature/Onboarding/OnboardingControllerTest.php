@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Enums\PostHog\OnboardingEvent;
 use App\Enums\SocialAccount\Platform;
 use App\Enums\UserWorkspace\Role;
+use App\Events\OnboardingStatusUpdated;
 use App\Jobs\PostHog\SendEvent;
 use App\Models\AccessToken;
 use App\Models\Post;
@@ -13,6 +14,7 @@ use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\Event;
 
 beforeEach(function () {
     config([
@@ -92,6 +94,7 @@ test('onboarding does not capture viewed during a partial reload', function () {
 
 test('onboarding can be dismissed', function () {
     Carbon::setTestNow('2026-07-24 12:00:00');
+    Event::fake([OnboardingStatusUpdated::class]);
 
     $this->actingAs($this->user)
         ->post(route('app.onboarding.dismiss'))
@@ -100,6 +103,10 @@ test('onboarding can be dismissed', function () {
     expect($this->user->account->fresh()->onboarding_dismissed_at?->equalTo(now()))->toBeTrue();
 
     Bus::assertDispatched(SendEvent::class, fn (SendEvent $event): bool => data_get($event->payload, 'event') === OnboardingEvent::Skipped->value);
+    Event::assertDispatched(
+        OnboardingStatusUpdated::class,
+        fn (OnboardingStatusUpdated $event): bool => $event->workspaceId === $this->workspace->id,
+    );
 });
 
 test('onboarding cannot be completed before every activation step', function () {
@@ -114,6 +121,7 @@ test('onboarding cannot be completed before every activation step', function () 
 
 test('onboarding completes after every activation step', function () {
     Carbon::setTestNow('2026-07-24 12:00:00');
+    Event::fake([OnboardingStatusUpdated::class]);
 
     AccessToken::withoutEvents(fn () => mcpAccessToken($this->user, mcpOauthClient()));
     SocialAccount::withoutEvents(fn () => SocialAccount::factory()->create([
@@ -131,6 +139,10 @@ test('onboarding completes after every activation step', function () {
     expect($this->user->account->fresh()->onboarding_completed_at?->equalTo(now()))->toBeTrue();
 
     Bus::assertDispatched(SendEvent::class, fn (SendEvent $event): bool => data_get($event->payload, 'event') === OnboardingEvent::Completed->value);
+    Event::assertDispatched(
+        OnboardingStatusUpdated::class,
+        fn (OnboardingStatusUpdated $event): bool => $event->workspaceId === $this->workspace->id,
+    );
 });
 
 test('onboarding complete does not re-fire completed when already stamped', function () {
@@ -187,6 +199,7 @@ test('only the account owner can dismiss onboarding', function () {
 
 test('teammates can stamp completion via the complete endpoint', function () {
     Carbon::setTestNow('2026-07-29 12:00:00');
+    Event::fake([OnboardingStatusUpdated::class]);
 
     AccessToken::withoutEvents(fn () => mcpAccessToken($this->user, mcpOauthClient()));
     SocialAccount::withoutEvents(fn () => SocialAccount::factory()->create([
@@ -203,11 +216,25 @@ test('teammates can stamp completion via the complete endpoint', function () {
     ]);
     $member->update(['current_workspace_id' => $this->workspace->id]);
 
+    $otherWorkspace = Workspace::factory()->create([
+        'account_id' => $this->user->account_id,
+        'user_id' => $this->user->id,
+    ]);
+
     $this->actingAs($member->fresh())
         ->post(route('app.onboarding.complete'))
         ->assertRedirect(route('app.calendar'));
 
     expect($this->user->account->fresh()->onboarding_completed_at?->equalTo(now()))->toBeTrue();
+
+    Event::assertDispatched(
+        OnboardingStatusUpdated::class,
+        fn (OnboardingStatusUpdated $event): bool => $event->workspaceId === $this->workspace->id,
+    );
+    Event::assertDispatched(
+        OnboardingStatusUpdated::class,
+        fn (OnboardingStatusUpdated $event): bool => $event->workspaceId === $otherWorkspace->id,
+    );
 });
 
 test('complete after dismiss redirects without stamping completion', function () {

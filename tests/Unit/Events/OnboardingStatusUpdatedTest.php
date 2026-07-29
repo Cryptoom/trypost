@@ -50,6 +50,33 @@ test('dispatchForWorkspace skips blank workspace ids', function () {
     Event::assertNotDispatched(OnboardingStatusUpdated::class);
 });
 
+test('broadcastForAccount notifies every workspace even after completion', function () {
+    Event::fake([OnboardingStatusUpdated::class]);
+
+    $user = User::factory()->create();
+    $workspaceA = Workspace::factory()->create([
+        'account_id' => $user->account_id,
+        'user_id' => $user->id,
+    ]);
+    $workspaceB = Workspace::factory()->create([
+        'account_id' => $user->account_id,
+        'user_id' => $user->id,
+    ]);
+    $user->account->update(['onboarding_completed_at' => now()]);
+
+    OnboardingStatusUpdated::broadcastForAccount($user->account->fresh());
+
+    Event::assertDispatchedTimes(OnboardingStatusUpdated::class, 2);
+    Event::assertDispatched(
+        OnboardingStatusUpdated::class,
+        fn (OnboardingStatusUpdated $event): bool => $event->workspaceId === $workspaceA->id,
+    );
+    Event::assertDispatched(
+        OnboardingStatusUpdated::class,
+        fn (OnboardingStatusUpdated $event): bool => $event->workspaceId === $workspaceB->id,
+    );
+});
+
 test('dispatchForWorkspace stamps completion when actor current workspace differs', function () {
     Carbon::setTestNow('2026-07-29 12:00:00');
     config(['trypost.self_hosted' => false]);

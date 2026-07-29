@@ -7,6 +7,7 @@ namespace App\Http\Controllers\App;
 use App\Actions\Onboarding\ResolveOnboardingStatus;
 use App\Enums\PostHog\OnboardingEvent;
 use App\Enums\SocialAccount\Platform as SocialPlatform;
+use App\Events\OnboardingStatusUpdated;
 use App\Http\Resources\App\SocialAccountResource;
 use App\Services\PostHogService;
 use Illuminate\Http\RedirectResponse;
@@ -79,6 +80,9 @@ class OnboardingController extends Controller
             account: $user->account,
         );
 
+        // Refresh residual banners on other tabs/devices immediately.
+        OnboardingStatusUpdated::broadcastForAccount($user->account);
+
         return redirect()->route('app.calendar');
     }
 
@@ -109,7 +113,11 @@ class OnboardingController extends Controller
             return redirect()->route('app.onboarding');
         }
 
-        $this->resolveOnboardingStatus->markCompleted($user);
+        if ($this->resolveOnboardingStatus->markCompleted($user)) {
+            // Owner residual listens on workspace channels — notify every workspace
+            // so the banner clears without waiting for the residual poll.
+            OnboardingStatusUpdated::broadcastForAccount($user->account->fresh());
+        }
 
         return redirect()->route('app.calendar');
     }
