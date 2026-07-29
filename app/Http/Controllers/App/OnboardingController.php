@@ -9,6 +9,7 @@ use App\Enums\PostHog\OnboardingEvent;
 use App\Enums\SocialAccount\Platform as SocialPlatform;
 use App\Events\OnboardingStatusUpdated;
 use App\Http\Resources\App\SocialAccountResource;
+use App\Models\Account;
 use App\Services\PostHogService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -32,6 +33,11 @@ class OnboardingController extends Controller
         $user = $request->user();
         $workspace = $user->currentWorkspace;
         $status = $this->resolveOnboardingStatus->syncProgress($user);
+
+        // Skip is terminal — don't flash the checklist or re-fire Viewed.
+        if ($status['dismissed_at'] !== null) {
+            return redirect()->route('app.calendar');
+        }
 
         if (! $request->hasHeader('X-Inertia-Partial-Component')) {
             $this->postHog->capture(
@@ -72,16 +78,39 @@ class OnboardingController extends Controller
 
         abort_unless($user->isAccountOwner(), SymfonyResponse::HTTP_FORBIDDEN);
 
-        $user->account->update(['onboarding_dismissed_at' => now()]);
+        $account = $user->account;
+
+        if (
+            $account === null
+            || $account->onboarding_completed_at !== null
+            || $account->onboarding_dismissed_at !== null
+        ) {
+            return redirect()->route('app.calendar');
+        }
+
+        $dismissedAt = now();
+
+        $updated = Account::query()
+            ->whereKey($account->id)
+            ->whereNull('onboarding_completed_at')
+            ->whereNull('onboarding_dismissed_at')
+            ->update(['onboarding_dismissed_at' => $dismissedAt]);
+
+        if ($updated === 0) {
+            return redirect()->route('app.calendar');
+        }
+
+        $account->forceFill(['onboarding_dismissed_at' => $dismissedAt]);
+        $account->syncOriginalAttribute('onboarding_dismissed_at');
 
         $this->postHog->capture(
             $user->id,
             OnboardingEvent::Skipped->value,
-            account: $user->account,
+            account: $account,
         );
 
         // Refresh residual banners on other tabs/devices immediately.
-        OnboardingStatusUpdated::broadcastForAccount($user->account);
+        OnboardingStatusUpdated::broadcastForAccount($account);
 
         return redirect()->route('app.calendar');
     }

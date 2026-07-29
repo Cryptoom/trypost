@@ -51,6 +51,8 @@ test('onboarding renders activation status and connection props', function () {
             ->where('status.first_post_created', false)
             ->where('status.all_complete', false)
             ->where('status.show_residual', true)
+            ->where('status.completed_at', null)
+            ->where('status.dismissed_at', null)
             ->where('mcpUrl', route('mcp.trypost'))
             ->where('canDismiss', true)
             ->where('mcpClients', collect(config('trypost.mcp.clients'))
@@ -107,6 +109,43 @@ test('onboarding can be dismissed', function () {
         OnboardingStatusUpdated::class,
         fn (OnboardingStatusUpdated $event): bool => $event->workspaceId === $this->workspace->id,
     );
+});
+
+test('dismissed accounts are redirected away from onboarding index', function () {
+    Carbon::setTestNow('2026-07-29 12:00:00');
+    $this->user->account->update(['onboarding_dismissed_at' => now()]);
+
+    Bus::fake();
+
+    $this->actingAs($this->user->fresh())
+        ->get(route('app.onboarding'))
+        ->assertRedirect(route('app.calendar'));
+
+    Bus::assertNotDispatched(
+        SendEvent::class,
+        fn (SendEvent $event): bool => data_get($event->payload, 'event') === OnboardingEvent::Viewed->value,
+    );
+});
+
+test('dismiss after completion redirects without rewriting dismissed_at', function () {
+    Carbon::setTestNow('2026-07-29 12:00:00');
+    Event::fake([OnboardingStatusUpdated::class]);
+
+    $this->user->account->update(['onboarding_completed_at' => now()]);
+
+    Bus::fake();
+
+    $this->actingAs($this->user->fresh())
+        ->post(route('app.onboarding.dismiss'))
+        ->assertRedirect(route('app.calendar'));
+
+    expect($this->user->account->fresh()->onboarding_dismissed_at)->toBeNull();
+
+    Bus::assertNotDispatched(
+        SendEvent::class,
+        fn (SendEvent $event): bool => data_get($event->payload, 'event') === OnboardingEvent::Skipped->value,
+    );
+    Event::assertNotDispatched(OnboardingStatusUpdated::class);
 });
 
 test('onboarding cannot be completed before every activation step', function () {

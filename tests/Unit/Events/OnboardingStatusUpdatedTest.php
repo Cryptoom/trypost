@@ -11,6 +11,7 @@ use App\Models\Workspace;
 use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Events\ShouldDispatchAfterCommit;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 
 test('event broadcasts on the workspace channel', function () {
@@ -103,6 +104,40 @@ test('dispatchForWorkspace fans out Echo to sibling workspaces while onboarding 
         OnboardingStatusUpdated::class,
         fn (OnboardingStatusUpdated $event): bool => $event->workspaceId === $workspaceB->id,
     );
+});
+
+test('dispatchForWorkspace does not stamp when the surrounding transaction rolls back', function () {
+    Carbon::setTestNow('2026-07-29 12:00:00');
+    config(['trypost.self_hosted' => false]);
+
+    $user = User::factory()->create();
+    $workspace = Workspace::factory()->create([
+        'account_id' => $user->account_id,
+        'user_id' => $user->id,
+    ]);
+    $user->update(['current_workspace_id' => $workspace->id]);
+    subscribeAccount($user->account);
+
+    AccessToken::withoutEvents(fn () => mcpAccessToken($user, mcpOauthClient()));
+    SocialAccount::withoutEvents(fn () => SocialAccount::factory()->create([
+        'workspace_id' => $workspace->id,
+    ]));
+    Post::withoutEvents(fn () => Post::factory()->create([
+        'workspace_id' => $workspace->id,
+        'user_id' => $user->id,
+    ]));
+
+    try {
+        DB::transaction(function () use ($user, $workspace): void {
+            OnboardingStatusUpdated::dispatchForWorkspace($workspace->id, $user->fresh());
+
+            throw new RuntimeException('force rollback');
+        });
+    } catch (RuntimeException) {
+        // Expected — sync/analytics must stay inside afterCommit.
+    }
+
+    expect($user->account->fresh()->onboarding_completed_at)->toBeNull();
 });
 
 test('dispatchForWorkspace stamps completion when actor current workspace differs', function () {

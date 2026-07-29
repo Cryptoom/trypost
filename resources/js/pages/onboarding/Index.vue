@@ -2,7 +2,7 @@
 import { Head, Link, router, useForm, usePage, usePoll } from '@inertiajs/vue3';
 import { IconCheck, IconCopy, IconLink } from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
-import { computed, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 
 import NetworkConnectGrid, {
     type AvailablePlatform,
@@ -53,6 +53,8 @@ const firstName = computed(() => {
 
 const dismissForm = useForm({});
 const completeForm = useForm({});
+// Local Skip already redirects via the form response — avoid racing Echo reloads.
+const isLocalDismiss = ref(false);
 
 const onboardingReloadOnly = ['status', 'accounts', 'onboardingResidual'];
 
@@ -75,7 +77,10 @@ watch(
         // Remote skip from another tab/device — leave the checklist.
         if (dismissedAt) {
             stopOnboardingPoll();
-            router.visit(calendar.url());
+
+            if (!isLocalDismiss.value) {
+                router.visit(calendar.url());
+            }
 
             return;
         }
@@ -106,6 +111,7 @@ const copySamplePrompt = (): void => {
 
 const skip = (): void => {
     if (!dismissForm.processing) {
+        isLocalDismiss.value = true;
         dismissForm.submit(dismiss());
     }
 };
