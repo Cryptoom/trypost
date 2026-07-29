@@ -109,18 +109,28 @@ class ResolveOnboardingStatus
             $this->captureCompletedStep($user, $account, 'first_post_created', $status['first_post_created']);
         }
 
-        if (! $status['all_complete'] || $account->onboarding_dismissed_at !== null) {
+        if ($account->onboarding_dismissed_at !== null) {
             return $status;
         }
 
-        $this->markCompleted($user);
-        $account->refresh();
+        if ($status['all_complete']) {
+            $this->markCompleted($user);
+            $account->refresh();
 
-        return [
-            ...$status,
-            'show_residual' => false,
-            'completed_at' => $account->onboarding_completed_at?->toIso8601String(),
-        ];
+            return [
+                ...$status,
+                'show_residual' => false,
+                'completed_at' => $account->onboarding_completed_at?->toIso8601String(),
+            ];
+        }
+
+        // Current workspace may still be incomplete while another workspace on
+        // the account already finished social + post with MCP connected.
+        if ($this->tryMarkAccountComplete($account, $user)) {
+            return $this->handle($user->fresh());
+        }
+
+        return $status;
     }
 
     /**
@@ -203,6 +213,10 @@ class ResolveOnboardingStatus
     /**
      * Sidebar residual banner payload, or false when the banner should not show.
      *
+     * When the current workspace looks incomplete but another workspace on the
+     * account already finished activation, stamp completion so the banner does
+     * not stick forever for owners parked on an empty workspace.
+     *
      * @return array{completed: int, total: int}|false
      */
     public function residual(User $user): array|false
@@ -210,6 +224,12 @@ class ResolveOnboardingStatus
         $status = $this->handle($user);
 
         if (! $status['show_residual']) {
+            return false;
+        }
+
+        $account = $user->account;
+
+        if ($account !== null && $this->tryMarkAccountComplete($account, $user)) {
             return false;
         }
 

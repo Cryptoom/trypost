@@ -429,3 +429,50 @@ test('markCompleted refuses to stamp after onboarding was dismissed', function (
     expect(app(ResolveOnboardingStatus::class)->markCompleted($this->user->fresh()))->toBeFalse()
         ->and($this->user->account->fresh()->onboarding_completed_at)->toBeNull();
 });
+
+test('syncProgress stamps when another workspace already finished social and post', function () {
+    Carbon::setTestNow('2026-07-29 12:00:00');
+
+    SocialAccount::withoutEvents(fn () => SocialAccount::factory()->create([
+        'workspace_id' => $this->workspace->id,
+    ]));
+    Post::withoutEvents(fn () => Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+    ]));
+    AccessToken::withoutEvents(fn () => mcpAccessToken($this->user, mcpOauthClient()));
+
+    $emptyWorkspace = Workspace::factory()->create([
+        'account_id' => $this->user->account_id,
+        'user_id' => $this->user->id,
+    ]);
+    $this->user->update(['current_workspace_id' => $emptyWorkspace->id]);
+
+    $status = app(ResolveOnboardingStatus::class)->syncProgress($this->user->fresh());
+
+    expect($status['all_complete'])->toBeTrue()
+        ->and($status['show_residual'])->toBeFalse()
+        ->and($this->user->account->fresh()->onboarding_completed_at?->equalTo(now()))->toBeTrue();
+});
+
+test('residual stamps and hides when another workspace already finished activation', function () {
+    Carbon::setTestNow('2026-07-29 12:00:00');
+
+    SocialAccount::withoutEvents(fn () => SocialAccount::factory()->create([
+        'workspace_id' => $this->workspace->id,
+    ]));
+    Post::withoutEvents(fn () => Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+    ]));
+    AccessToken::withoutEvents(fn () => mcpAccessToken($this->user, mcpOauthClient()));
+
+    $emptyWorkspace = Workspace::factory()->create([
+        'account_id' => $this->user->account_id,
+        'user_id' => $this->user->id,
+    ]);
+    $this->user->update(['current_workspace_id' => $emptyWorkspace->id]);
+
+    expect(app(ResolveOnboardingStatus::class)->residual($this->user->fresh()))->toBeFalse()
+        ->and($this->user->account->fresh()->onboarding_completed_at?->equalTo(now()))->toBeTrue();
+});

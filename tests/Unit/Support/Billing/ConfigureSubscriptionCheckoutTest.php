@@ -16,6 +16,7 @@ beforeEach(function () {
 
     config([
         'cashier.allow_promotion_codes' => true,
+        'trypost.billing.require_card_for_trial' => true,
     ]);
 });
 
@@ -36,7 +37,7 @@ test('applies trial days and promotion codes when CASHIER_TRIAL_DAYS is set', fu
 
     $subscription = checkoutSubscription($this->account);
 
-    ConfigureSubscriptionCheckout::apply($subscription);
+    ConfigureSubscriptionCheckout::apply($subscription, $this->account);
 
     expect(trialExpires($subscription)->toDateString())
         ->toBe(now()->addDays(8)->toDateString())
@@ -49,7 +50,7 @@ test('clamps a one-day trial to Stripe Checkout minimum of two days', function (
 
     $subscription = checkoutSubscription($this->account);
 
-    ConfigureSubscriptionCheckout::apply($subscription);
+    ConfigureSubscriptionCheckout::apply($subscription, $this->account);
 
     expect(trialExpires($subscription)->toDateString())
         ->toBe(now()->addDays(ConfigureSubscriptionCheckout::MIN_CHECKOUT_TRIAL_DAYS)->toDateString());
@@ -63,7 +64,7 @@ test('skips promotion codes when disabled by env', function () {
 
     $subscription = checkoutSubscription($this->account);
 
-    ConfigureSubscriptionCheckout::apply($subscription);
+    ConfigureSubscriptionCheckout::apply($subscription, $this->account);
 
     expect(trialExpires($subscription))->not->toBeNull()
         ->and($subscription->allowPromotionCodes)->toBeFalse()
@@ -75,7 +76,7 @@ test('skips trial when CASHIER_TRIAL_DAYS is zero but still allows promotion cod
 
     $subscription = checkoutSubscription($this->account);
 
-    ConfigureSubscriptionCheckout::apply($subscription);
+    ConfigureSubscriptionCheckout::apply($subscription, $this->account);
 
     expect(trialExpires($subscription))->toBeNull()
         ->and($subscription->couponId)->toBeNull()
@@ -90,9 +91,63 @@ test('honors CASHIER_ALLOW_PROMOTION_CODES=false without a trial', function () {
 
     $subscription = checkoutSubscription($this->account);
 
-    ConfigureSubscriptionCheckout::apply($subscription);
+    ConfigureSubscriptionCheckout::apply($subscription, $this->account);
 
     expect(trialExpires($subscription))->toBeNull()
         ->and($subscription->couponId)->toBeNull()
         ->and($subscription->allowPromotionCodes)->toBeFalse();
+});
+
+test('skips checkout trial for accounts with a prior canceled subscription', function () {
+    config(['cashier.trial_days' => 8]);
+
+    $this->account->subscriptions()->create([
+        'type' => Account::SUBSCRIPTION_NAME,
+        'stripe_id' => 'sub_'.fake()->uuid(),
+        'stripe_status' => 'canceled',
+        'stripe_price' => 'price_123',
+        'ends_at' => now()->subDay(),
+    ]);
+
+    $subscription = checkoutSubscription($this->account);
+
+    ConfigureSubscriptionCheckout::apply($subscription, $this->account);
+
+    expect(trialExpires($subscription))->toBeNull()
+        ->and($subscription->allowPromotionCodes)->toBeTrue()
+        ->and(ConfigureSubscriptionCheckout::qualifiesForCheckoutTrial($this->account))->toBeFalse();
+});
+
+test('still grants a trial after an incomplete checkout attempt', function () {
+    config(['cashier.trial_days' => 8]);
+
+    $this->account->subscriptions()->create([
+        'type' => Account::SUBSCRIPTION_NAME,
+        'stripe_id' => 'sub_'.fake()->uuid(),
+        'stripe_status' => 'incomplete',
+        'stripe_price' => 'price_123',
+    ]);
+
+    $subscription = checkoutSubscription($this->account);
+
+    ConfigureSubscriptionCheckout::apply($subscription, $this->account);
+
+    expect(trialExpires($subscription)->toDateString())
+        ->toBe(now()->addDays(8)->toDateString())
+        ->and(ConfigureSubscriptionCheckout::qualifiesForCheckoutTrial($this->account))->toBeTrue();
+});
+
+test('skips checkout trial when REQUIRE_CARD_FOR_TRIAL is false', function () {
+    config([
+        'cashier.trial_days' => 8,
+        'trypost.billing.require_card_for_trial' => false,
+    ]);
+
+    $subscription = checkoutSubscription($this->account);
+
+    ConfigureSubscriptionCheckout::apply($subscription, $this->account);
+
+    expect(trialExpires($subscription))->toBeNull()
+        ->and($subscription->allowPromotionCodes)->toBeTrue()
+        ->and(ConfigureSubscriptionCheckout::qualifiesForCheckoutTrial($this->account))->toBeFalse();
 });
