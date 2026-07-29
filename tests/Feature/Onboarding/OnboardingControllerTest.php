@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Actions\Onboarding\ResolveOnboardingStatus;
 use App\Enums\PostHog\OnboardingEvent;
 use App\Enums\SocialAccount\Platform;
 use App\Enums\UserWorkspace\Role;
@@ -136,6 +137,42 @@ test('completed accounts are redirected away from onboarding on full visits', fu
     $this->actingAs($this->user->fresh())
         ->get(route('app.onboarding'))
         ->assertRedirect(route('app.calendar'));
+
+    Bus::assertNotDispatched(
+        SendEvent::class,
+        fn (SendEvent $event): bool => data_get($event->payload, 'event') === OnboardingEvent::Viewed->value,
+    );
+});
+
+test('completed accounts still see celebration after just-completed session flash', function () {
+    Carbon::setTestNow('2026-07-29 12:00:00');
+
+    AccessToken::withoutEvents(fn () => mcpAccessToken($this->user, mcpOauthClient()));
+    SocialAccount::withoutEvents(fn () => SocialAccount::factory()->create([
+        'workspace_id' => $this->workspace->id,
+    ]));
+    Post::withoutEvents(fn () => Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+    ]));
+
+    // Stamp during an authenticated request (OAuth/observer path) so the flash is set.
+    $this->actingAs($this->user->fresh())
+        ->get(route('app.calendar'))
+        ->assertOk();
+
+    expect(app(ResolveOnboardingStatus::class)->markCompleted($this->user->fresh()))->toBeTrue();
+
+    Bus::fake();
+
+    $this->actingAs($this->user->fresh())
+        ->get(route('app.onboarding'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('onboarding/Index', false)
+            ->where('status.all_complete', true)
+            ->where('status.completed_at', now()->toIso8601String())
+        );
 
     Bus::assertNotDispatched(
         SendEvent::class,

@@ -201,6 +201,12 @@ class ResolveOnboardingStatus
         // banners account-wide — not only the explicit complete() action.
         OnboardingStatusUpdated::broadcastForAccount($account);
 
+        // Lets the next full Inertia visit (e.g. OAuth popup → router.reload)
+        // show celebration instead of bouncing straight to calendar.
+        if (request()->hasSession()) {
+            request()->session()->flash('onboarding_just_completed', true);
+        }
+
         return true;
     }
 

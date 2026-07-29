@@ -41,16 +41,22 @@ class OnboardingController extends Controller
             return redirect()->route('app.calendar');
         }
 
-        // Completed revisits leave — but Echo/poll partials after auto-stamp still
-        // render the celebration so Continue can finish the funnel.
+        // Completed revisits leave — keep celebration for Echo/poll partials and
+        // for the immediate full reload after OAuth stamps completion.
+        $justCompleted = (bool) $request->session()->pull('onboarding_just_completed');
+
         if (
             $wasAlreadyComplete
+            && ! $justCompleted
             && ! $request->hasHeader('X-Inertia-Partial-Component')
         ) {
             return redirect()->route('app.calendar');
         }
 
-        if (! $request->hasHeader('X-Inertia-Partial-Component')) {
+        if (
+            ! $request->hasHeader('X-Inertia-Partial-Component')
+            && ! $wasAlreadyComplete
+        ) {
             $this->postHog->capture(
                 $user->id,
                 OnboardingEvent::Viewed->value,
