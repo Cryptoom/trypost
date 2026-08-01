@@ -6,10 +6,6 @@ import { computed, ref } from 'vue';
 
 import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.vue';
 import HeadingSmall from '@/components/HeadingSmall.vue';
-import ClaudeIcon from '@/components/mcp/icons/ClaudeIcon.vue';
-import CursorIcon from '@/components/mcp/icons/CursorIcon.vue';
-import OtherClientsIcon from '@/components/mcp/icons/OtherClientsIcon.vue';
-import VscodeIcon from '@/components/mcp/icons/VscodeIcon.vue';
 import PageHeader from '@/components/PageHeader.vue';
 import SettingsTabsNav from '@/components/settings/SettingsTabsNav.vue';
 import {
@@ -35,16 +31,8 @@ interface ConnectedClient {
     last_used_at: string | null;
 }
 
-interface McpClient {
-    id: string;
-    label: string;
-    logo: string;
-    settings_url: string;
-}
-
 const props = defineProps<{
     mcpUrl: string;
-    mcpClients: McpClient[];
     connectedClients: ConnectedClient[];
 }>();
 
@@ -62,41 +50,51 @@ const configSnippet = computed(() =>
     ),
 );
 
-const mcpClientTheme: Record<string, { bg: string; rotate: string }> = {
-    claude: { bg: 'bg-orange-100', rotate: '-rotate-2' },
-    chatgpt: { bg: 'bg-black', rotate: 'rotate-1' },
-};
-
-const themeFor = (clientId: string): { bg: string; rotate: string } =>
-    mcpClientTheme[clientId] ?? { bg: 'bg-violet-100', rotate: '' };
+const mcpClients = [
+    {
+        id: 'claude',
+        label: 'Claude',
+        logo: '/images/ai/claude.svg',
+        settings_url: 'https://claude.ai/customize/connectors',
+        theme: { bg: 'bg-orange-100', rotate: '-rotate-2' },
+    },
+    {
+        id: 'chatgpt',
+        label: 'ChatGPT',
+        logo: '/images/ai/chatgpt-white.svg',
+        settings_url:
+            'https://chatgpt.com/plugins#settings/Connectors?create-connector=true&redirectAfter=%2Fplugins',
+        theme: { bg: 'bg-black', rotate: 'rotate-1' },
+    },
+] as const;
 
 const advancedClients = [
     {
         key: 'cursor',
         name: 'mcp.clients.cursor_name',
         description: 'mcp.clients.cursor',
-        icon: CursorIcon,
+        logo: '/images/ai/cursor.svg',
         tileClass: 'bg-white -rotate-1',
     },
     {
         key: 'vscode',
         name: 'mcp.clients.vscode_name',
         description: 'mcp.clients.vscode',
-        icon: VscodeIcon,
+        logo: '/images/ai/vscode.svg',
         tileClass: 'bg-sky-100 rotate-2',
     },
     {
         key: 'claude_code',
         name: 'mcp.clients.claude_code_name',
         description: 'mcp.clients.claude_code',
-        icon: ClaudeIcon,
+        logo: '/images/ai/claude.svg',
         tileClass: 'bg-orange-100 rotate-1',
     },
     {
         key: 'other',
         name: 'mcp.clients.other_name',
         description: 'mcp.clients.other',
-        icon: OtherClientsIcon,
+        logo: '/images/ai/other-clients.svg',
         tileClass: 'bg-amber-100 -rotate-2',
     },
 ];
@@ -200,8 +198,8 @@ const confirmDisconnect = (client: ConnectedClient): void => {
                                 <div class="flex items-start gap-4">
                                     <span
                                         :class="[
-                                            themeFor(client.id).bg,
-                                            themeFor(client.id).rotate,
+                                            client.theme.bg,
+                                            client.theme.rotate,
                                             'inline-flex size-12 shrink-0 items-center justify-center rounded-xl border-2 border-foreground shadow-sm',
                                         ]"
                                     >
@@ -274,9 +272,10 @@ const confirmDisconnect = (client: ConnectedClient): void => {
                                             class="inline-flex size-12 shrink-0 items-center justify-center rounded-xl border-2 border-foreground shadow-sm"
                                             :class="client.tileClass"
                                         >
-                                            <component
-                                                :is="client.icon"
-                                                class="size-6"
+                                            <img
+                                                :src="client.logo"
+                                                :alt="$t(client.name)"
+                                                class="size-6 object-contain"
                                             />
                                         </div>
                                         <div class="min-w-0">

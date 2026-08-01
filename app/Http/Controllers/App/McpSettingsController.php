@@ -27,15 +27,6 @@ class McpSettingsController extends Controller
 
         return Inertia::render('settings/workspace/Mcp', [
             'mcpUrl' => route('mcp.trypost'),
-            'mcpClients' => collect(config('trypost.mcp.clients', []))
-                ->map(fn (array $client, string $id): array => [
-                    'id' => $id,
-                    'label' => (string) data_get($client, 'label'),
-                    'logo' => (string) data_get($client, 'logo'),
-                    'settings_url' => (string) data_get($client, 'settings_url'),
-                ])
-                ->values()
-                ->all(),
             'connectedClients' => $this->connectedClients($workspace->account_id, $request->user()),
         ]);
     }

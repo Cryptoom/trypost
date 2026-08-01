@@ -56,15 +56,7 @@ test('onboarding renders activation status and connection props', function () {
             ->where('status.dismissed_at', null)
             ->where('mcpUrl', route('mcp.trypost'))
             ->where('canDismiss', true)
-            ->where('mcpClients', collect(config('trypost.mcp.clients'))
-                ->map(fn (array $client, string $id): array => [
-                    'id' => $id,
-                    'label' => data_get($client, 'label'),
-                    'logo' => data_get($client, 'logo'),
-                    'settings_url' => data_get($client, 'settings_url'),
-                ])
-                ->values()
-                ->all())
+            ->missing('mcpClients')
             ->where('samplePrompt', __('onboarding.first_post.sample_prompt'))
             ->has('platforms', collect(Platform::cases())->filter->isConnectable()->count())
             ->where('accounts.0.id', $socialAccount->id)

@@ -27,18 +27,10 @@ interface OnboardingStatus {
     dismissed_at: string | null;
 }
 
-interface McpClient {
-    id: string;
-    label: string;
-    logo: string;
-    settings_url: string;
-}
-
 const props = defineProps<{
     status: OnboardingStatus;
     canDismiss: boolean;
     mcpUrl: string;
-    mcpClients: McpClient[];
     samplePrompt: string;
     platforms: AvailablePlatform[];
     accounts: ConnectedAccount[];
@@ -66,6 +58,24 @@ const { start: startOnboardingPoll, stop: stopOnboardingPoll } = usePoll(
     { only: onboardingReloadOnly },
     { autoStart: false },
 );
+
+const mcpClients = [
+    {
+        id: 'claude',
+        label: 'Claude',
+        logo: '/images/ai/claude.svg',
+        settings_url: 'https://claude.ai/customize/connectors',
+        theme: { bg: 'bg-orange-100', rotate: '-rotate-2' },
+    },
+    {
+        id: 'chatgpt',
+        label: 'ChatGPT',
+        logo: '/images/ai/chatgpt-white.svg',
+        settings_url:
+            'https://chatgpt.com/plugins#settings/Connectors?create-connector=true&redirectAfter=%2Fplugins',
+        theme: { bg: 'bg-black', rotate: 'rotate-1' },
+    },
+] as const;
 
 watch(
     () => ({
@@ -96,11 +106,6 @@ watch(
     { immediate: true },
 );
 
-const mcpClientTheme: Record<string, { bg: string; rotate: string }> = {
-    claude: { bg: 'bg-orange-100', rotate: '-rotate-2' },
-    chatgpt: { bg: 'bg-black', rotate: 'rotate-1' },
-};
-
 const copyMcpUrl = (): void => {
     copyToClipboard(props.mcpUrl, trans('onboarding.mcp.copied'));
 };
@@ -121,11 +126,6 @@ const continueToTryPost = (): void => {
         completeForm.submit(complete());
     }
 };
-
-const themeFor = (
-    clientId: string,
-): { bg: string; rotate: string } =>
-    mcpClientTheme[clientId] ?? { bg: 'bg-violet-100', rotate: '' };
 </script>
 
 <template>
@@ -256,8 +256,8 @@ const themeFor = (
                                     <div class="flex items-start gap-4">
                                         <span
                                             :class="[
-                                                themeFor(client.id).bg,
-                                                themeFor(client.id).rotate,
+                                                client.theme.bg,
+                                                client.theme.rotate,
                                                 'inline-flex size-12 shrink-0 items-center justify-center rounded-xl border-2 border-foreground shadow-sm',
                                             ]"
                                         >

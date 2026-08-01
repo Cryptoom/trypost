@@ -219,32 +219,4 @@ return [
         ],
     ],
 
-    /*
-    |--------------------------------------------------------------------------
-    | Onboarding MCP Clients
-    |--------------------------------------------------------------------------
-    |
-    | AI assistants shown on the post-subscription onboarding page. Hosts are
-    | env-overridable so self-hosted installs can point at alternate consoles.
-    |
-    */
-
-    'mcp' => [
-        'clients' => [
-            'claude' => [
-                'label' => 'Claude',
-                'logo' => '/images/ai/claude.svg',
-                'settings_url' => env('MCP_CLAUDE_SETTINGS_URL', 'https://claude.ai/customize/connectors'),
-            ],
-            'chatgpt' => [
-                'label' => 'ChatGPT',
-                'logo' => '/images/ai/chatgpt-white.svg',
-                'settings_url' => env(
-                    'MCP_CHATGPT_SETTINGS_URL',
-                    'https://chatgpt.com/plugins#settings/Connectors?create-connector=true&redirectAfter=%2Fplugins',
-                ),
-            ],
-        ],
-    ],
-
 ];

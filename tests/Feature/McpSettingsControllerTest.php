@@ -29,9 +29,7 @@ it('shows the mcp settings page', function (): void {
             ->component('settings/workspace/Mcp')
             ->where('mcpUrl', route('mcp.trypost'))
             ->missing('docsUrl')
-            ->has('mcpClients', 2)
-            ->where('mcpClients.0.id', 'claude')
-            ->where('mcpClients.1.id', 'chatgpt')
+            ->missing('mcpClients')
             ->has('connectedClients'));
 });
 

@@ -65,15 +65,6 @@ class OnboardingController extends Controller
             'status' => $status,
             'canDismiss' => $user->isAccountOwner(),
             'mcpUrl' => route('mcp.trypost'),
-            'mcpClients' => collect(config('trypost.mcp.clients', []))
-                ->map(fn (array $client, string $id): array => [
-                    'id' => $id,
-                    'label' => (string) data_get($client, 'label'),
-                    'logo' => (string) data_get($client, 'logo'),
-                    'settings_url' => (string) data_get($client, 'settings_url'),
-                ])
-                ->values()
-                ->all(),
             'samplePrompt' => __('onboarding.first_post.sample_prompt'),
             'platforms' => SocialPlatform::connectableOptions(),
             'accounts' => SocialAccountResource::collection(
