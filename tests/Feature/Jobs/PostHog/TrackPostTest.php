@@ -67,7 +67,8 @@ test('handle falls back to account owner when post has no user', function () {
 
     Queue::assertPushed(
         SendEvent::class,
-        fn ($job) => $job->payload['distinctId'] === (string) $this->user->id
+        fn ($job) => $job->payload['event'] === PostEvent::Created->value
+            && $job->payload['distinctId'] === (string) $this->user->id
             && $job->payload['properties']['created_via'] === CreatedVia::Mcp->value,
     );
 });
