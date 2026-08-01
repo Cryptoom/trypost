@@ -159,12 +159,10 @@ test('partial reloads do not consume the just-completed celebration flash', func
 
     $this->actingAs($this->user->fresh())
         ->withSession(['onboarding_just_completed' => true])
-        ->withHeaders([
-            'X-Inertia' => 'true',
-            'X-Requested-With' => 'XMLHttpRequest',
-            'X-Inertia-Partial-Component' => 'onboarding/Index',
-            'X-Inertia-Partial-Data' => 'status,accounts,onboardingResidual',
-        ])
+        ->withHeaders(inertiaPartialHeaders(
+            component: 'onboarding/Index',
+            only: 'status,accounts,onboardingResidual',
+        ))
         ->get(route('app.onboarding'))
         ->assertOk();
 
@@ -233,12 +231,10 @@ test('completed accounts still see celebration on onboarding partial reloads', f
     $this->user->account->update(['onboarding_completed_at' => now()]);
 
     $this->actingAs($this->user->fresh())
-        ->withHeaders([
-            'X-Inertia' => 'true',
-            'X-Requested-With' => 'XMLHttpRequest',
-            'X-Inertia-Partial-Component' => 'onboarding/Index',
-            'X-Inertia-Partial-Data' => 'status,accounts,onboardingResidual',
-        ])
+        ->withHeaders(inertiaPartialHeaders(
+            component: 'onboarding/Index',
+            only: 'status,accounts,onboardingResidual',
+        ))
         ->get(route('app.onboarding'))
         ->assertOk()
         ->assertJsonPath('component', 'onboarding/Index')

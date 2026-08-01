@@ -164,6 +164,31 @@ function subscribeAccount(Account $account): void
 }
 
 /**
+ * Headers for an Inertia partial reload. Includes the asset version so local
+ * runs with a built Vite manifest don't get a 409 from the version check.
+ *
+ * @return array<string, string>
+ */
+function inertiaPartialHeaders(string $component, string $only): array
+{
+    $version = '';
+
+    if (file_exists($manifest = public_path('build/manifest.json'))) {
+        $version = hash_file('xxh128', $manifest);
+    } elseif (file_exists($manifest = public_path('mix-manifest.json'))) {
+        $version = hash_file('xxh128', $manifest);
+    }
+
+    return [
+        'X-Inertia' => 'true',
+        'X-Requested-With' => 'XMLHttpRequest',
+        'X-Inertia-Version' => $version,
+        'X-Inertia-Partial-Component' => $component,
+        'X-Inertia-Partial-Data' => $only,
+    ];
+}
+
+/**
  * Insert an OAuth client suitable for MCP connection tests.
  */
 function mcpOauthClient(string $name = 'My Agent'): string
@@ -202,4 +227,65 @@ function mcpAccessToken(User $user, string $clientId): AccessToken
     ])->save();
 
     return $token->refresh();
+}
+
+/**
+ * Move a member onto a shared account (stranded-member / invitee fixture).
+ *
+ * @return array{
+ *     owner: User,
+ *     member: User,
+ *     shared_workspaces: list<Workspace>
+ * }
+ */
+function strandedMemberOnSharedAccount(
+    int $sharedWorkspaces = 0,
+    bool $attachMember = true,
+    bool $attachMemberToAll = true,
+    bool $setMemberCurrent = false,
+    ?User $owner = null,
+    ?string $memberEmail = null,
+): array {
+    $owner ??= User::factory()->create();
+    $member = User::factory()->create(array_filter([
+        'email' => $memberEmail,
+    ]));
+
+    // Closed-account model: the member's empty signup shell is gone after
+    // accepting the invite, so drop it here to match the real state.
+    $member->account?->delete();
+
+    $shared = [];
+
+    for ($i = 0; $i < $sharedWorkspaces; $i++) {
+        $workspace = Workspace::factory()->create([
+            'account_id' => $owner->account_id,
+            'user_id' => $owner->id,
+        ]);
+
+        $workspace->members()->syncWithoutDetaching([
+            $owner->id => ['role' => Role::Admin->value],
+        ]);
+
+        if ($attachMember && ($attachMemberToAll || $i === 0)) {
+            $workspace->members()->attach($member->id, [
+                'role' => Role::Member->value,
+            ]);
+        }
+
+        $shared[] = $workspace;
+    }
+
+    $member->update([
+        'account_id' => $owner->account_id,
+        'current_workspace_id' => ($setMemberCurrent && $shared !== [])
+            ? $shared[0]->id
+            : null,
+    ]);
+
+    return [
+        'owner' => $owner->fresh(),
+        'member' => $member->fresh(),
+        'shared_workspaces' => $shared,
+    ];
 }
