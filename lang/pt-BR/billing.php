@@ -72,5 +72,7 @@ return [
         'cancelled_title' => 'Pagamento cancelado',
         'cancelled_description' => 'Seu pagamento foi cancelado. Nenhuma cobrança foi realizada.',
         'retry' => 'Tentar novamente',
+        'taking_long' => 'Isso está demorando mais que o normal — aguarde, ainda estamos configurando tudo.',
+        'live' => 'Ao vivo',
     ],
 ];

@@ -12,6 +12,7 @@ import OnboardingStepCard from '@/components/onboarding/OnboardingStepCard.vue';
 import { Button } from '@/components/ui/button';
 import { useWorkspaceEcho } from '@/composables/echo/useWorkspaceEcho';
 import AppLayout from '@/layouts/AppLayout.vue';
+import { mcpClients } from '@/lib/mcpClients';
 import { copyToClipboard } from '@/lib/utils';
 import { calendar } from '@/routes/app';
 import { complete, dismiss } from '@/routes/app/onboarding';
@@ -61,24 +62,6 @@ const { start: startOnboardingPoll, stop: stopOnboardingPoll } = usePoll(
     { autoStart: false },
 );
 
-const mcpClients = [
-    {
-        id: 'claude',
-        label: 'Claude',
-        logo: '/images/ai/claude.svg',
-        settings_url: 'https://claude.ai/customize/connectors',
-        theme: { bg: 'bg-orange-100', rotate: '-rotate-2' },
-    },
-    {
-        id: 'chatgpt',
-        label: 'ChatGPT',
-        logo: '/images/ai/chatgpt-white.svg',
-        settings_url:
-            'https://chatgpt.com/plugins#settings/Connectors?create-connector=true&redirectAfter=%2Fplugins',
-        theme: { bg: 'bg-black', rotate: 'rotate-1' },
-    },
-] as const;
-
 watch(
     () => ({
         allComplete: props.status.all_complete,
@@ -119,7 +102,11 @@ const copySamplePrompt = (): void => {
 const skip = (): void => {
     if (!dismissForm.processing) {
         isLocalDismiss.value = true;
-        dismissForm.submit(dismiss());
+        dismissForm.submit(dismiss(), {
+            onError: () => {
+                isLocalDismiss.value = false;
+            },
+        });
     }
 };
 
@@ -173,24 +160,8 @@ const continueToTryPost = (): void => {
 
             <div class="grid gap-6">
                 <OnboardingStepCard
-                    :done="status.social_connected"
-                    :step="1"
-                    :title="$t('onboarding.social.title')"
-                    :description="$t('onboarding.social.description')"
-                    accent-class="bg-sky-100"
-                    dusk="onboarding-social"
-                >
-                    <NetworkConnectGrid
-                        :platforms="platforms"
-                        :connected-accounts="accounts"
-                        :reload-only="onboardingReloadOnly"
-                        grid-class="grid-cols-2 sm:grid-cols-3 xl:grid-cols-5"
-                    />
-                </OnboardingStepCard>
-
-                <OnboardingStepCard
                     :done="status.mcp_connected"
-                    :step="2"
+                    :step="1"
                     :title="$t('onboarding.mcp.title')"
                     :description="$t('onboarding.mcp.description')"
                     accent-class="bg-violet-100"
@@ -287,7 +258,7 @@ const continueToTryPost = (): void => {
 
                                     <Button as-child class="w-full">
                                         <a
-                                            :href="client.settings_url"
+                                            :href="client.settingsUrl"
                                             target="_blank"
                                             rel="noopener noreferrer"
                                             :dusk="`mcp-client-${client.id}`"
@@ -303,6 +274,22 @@ const continueToTryPost = (): void => {
                             </div>
                         </div>
                     </div>
+                </OnboardingStepCard>
+
+                <OnboardingStepCard
+                    :done="status.social_connected"
+                    :step="2"
+                    :title="$t('onboarding.social.title')"
+                    :description="$t('onboarding.social.description')"
+                    accent-class="bg-sky-100"
+                    dusk="onboarding-social"
+                >
+                    <NetworkConnectGrid
+                        :platforms="platforms"
+                        :connected-accounts="accounts"
+                        :reload-only="onboardingReloadOnly"
+                        grid-class="grid-cols-2 sm:grid-cols-3 xl:grid-cols-5"
+                    />
                 </OnboardingStepCard>
 
                 <OnboardingStepCard
@@ -349,9 +336,7 @@ const continueToTryPost = (): void => {
                                 :href="createPost.url()"
                                 dusk="create-first-post"
                             >
-                                {{
-                                    $t('onboarding.first_post.create_button')
-                                }}
+                                {{ $t('onboarding.first_post.create_button') }}
                             </Link>
                         </Button>
                     </div>

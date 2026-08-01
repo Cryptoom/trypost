@@ -7,6 +7,8 @@ return [
     'description' => 'Choose the closest match and we\'ll tailor your experience.',
     'continue' => 'Continue',
     'checkout_owner_only' => 'Ask the account owner to finish checkout and start your subscription.',
+    'checkout_trial_note' => ':days-day free trial, then :plan bills monthly. Cancel anytime.',
+    'checkout_plan_note' => 'After checkout, :plan bills monthly.',
     'progress' => 'Welcome progress',
     'go_to_step' => 'Go to step :step',
     'personas' => [

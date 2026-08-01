@@ -7,6 +7,8 @@ return [
     'description' => 'Kies de dichtstbijzijnde optie, dan stemmen we je ervaring af.',
     'continue' => 'Doorgaan',
     'checkout_owner_only' => 'Vraag de accounteigenaar om de checkout af te ronden en het abonnement te starten.',
+    'checkout_trial_note' => ':days dagen gratis proberen, daarna wordt :plan maandelijks gefactureerd. Altijd opzegbaar.',
+    'checkout_plan_note' => 'Na de checkout wordt :plan maandelijks gefactureerd.',
     'progress' => 'Welkomstvoortgang',
     'go_to_step' => 'Ga naar stap :step',
     'personas' => [

@@ -7,6 +7,8 @@ return [
     'description' => 'Escolha a opção mais próxima e a gente personaliza sua experiência.',
     'continue' => 'Continuar',
     'checkout_owner_only' => 'Peça ao dono da conta para concluir o checkout e iniciar a assinatura.',
+    'checkout_trial_note' => 'Teste grátis de :days dias, depois o :plan é cobrado mensalmente. Cancele quando quiser.',
+    'checkout_plan_note' => 'Após o checkout, o :plan é cobrado mensalmente.',
     'progress' => 'Progresso do onboarding',
     'go_to_step' => 'Ir para a etapa :step',
     'personas' => [

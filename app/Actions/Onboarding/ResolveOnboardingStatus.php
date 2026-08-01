@@ -142,7 +142,10 @@ class ResolveOnboardingStatus
             ->whereKey($account->id)
             ->whereNull('onboarding_completed_at')
             ->whereNull('onboarding_dismissed_at')
-            ->update(['onboarding_completed_at' => $completedAt]);
+            ->update([
+                'onboarding_completed_at' => $completedAt,
+                'updated_at' => $completedAt,
+            ]);
 
         if ($updated === 0) {
             return false;
@@ -182,6 +185,21 @@ class ResolveOnboardingStatus
      */
     public function residual(User $user): array|false
     {
+        $account = $user->account;
+
+        // Cheap gates first: this runs on every full Inertia load, so dismissed /
+        // completed accounts, members, and self-hosted must never pay for the
+        // step EXISTS queries in handle().
+        if (config('trypost.self_hosted')
+            || $account === null
+            || ! $user->isAccountOwner()
+            || ! $account->hasAppAccess()
+            || $account->onboarding_completed_at !== null
+            || $account->onboarding_dismissed_at !== null
+        ) {
+            return false;
+        }
+
         $status = $this->handle($user);
 
         if (! $status['show_residual']) {

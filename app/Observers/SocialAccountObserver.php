@@ -48,20 +48,53 @@ class SocialAccountObserver
     {
         $this->syncUsage($socialAccount);
 
-        OnboardingStatusUpdated::dispatchForWorkspace(
-            $socialAccount->workspace_id,
-            $this->actorFor($socialAccount),
-        );
+        $account = $socialAccount->workspace?->account;
+
+        if ($account === null
+            || $account->onboarding_completed_at !== null
+            || $account->onboarding_dismissed_at !== null
+        ) {
+            return;
+        }
+
+        // Only the account's first connection unlocks the onboarding step.
+        $isFirstConnection = SocialAccount::query()
+            ->whereIn('workspace_id', $account->workspaces()->select('id'))
+            ->whereKeyNot($socialAccount->id)
+            ->doesntExist();
+
+        if ($isFirstConnection) {
+            OnboardingStatusUpdated::dispatchForWorkspace(
+                $socialAccount->workspace_id,
+                $this->actorFor($socialAccount),
+            );
+        }
     }
 
     public function deleted(SocialAccount $socialAccount): void
     {
         $this->syncUsage($socialAccount);
 
-        OnboardingStatusUpdated::dispatchForWorkspace(
-            $socialAccount->workspace_id,
-            $this->actorFor($socialAccount),
-        );
+        $account = $socialAccount->workspace?->account;
+
+        if ($account === null
+            || $account->onboarding_completed_at !== null
+            || $account->onboarding_dismissed_at !== null
+        ) {
+            return;
+        }
+
+        // The step only flips when the account's last connection disappears.
+        $accountHasConnections = SocialAccount::query()
+            ->whereIn('workspace_id', $account->workspaces()->select('id'))
+            ->exists();
+
+        if (! $accountHasConnections) {
+            OnboardingStatusUpdated::dispatchForWorkspace(
+                $socialAccount->workspace_id,
+                $this->actorFor($socialAccount),
+            );
+        }
     }
 
     private function actorFor(SocialAccount $socialAccount): ?User

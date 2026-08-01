@@ -7,6 +7,8 @@ return [
     'description' => 'Wybierz najbliższą opcję, a my dopasujemy Twoje doświadczenie.',
     'continue' => 'Kontynuuj',
     'checkout_owner_only' => 'Poproś właściciela konta o dokończenie płatności i rozpoczęcie subskrypcji.',
+    'checkout_trial_note' => ':days dni za darmo, potem :plan rozliczany miesięcznie. Anuluj w każdej chwili.',
+    'checkout_plan_note' => 'Po zakupie :plan jest rozliczany miesięcznie.',
     'progress' => 'Postęp powitalny',
     'go_to_step' => 'Przejdź do kroku :step',
     'personas' => [

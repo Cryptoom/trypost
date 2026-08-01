@@ -28,24 +28,28 @@ class BillingController extends Controller
             return redirect()->route('app.calendar');
         }
 
-        $account = $request->user()->account;
+        $user = $request->user();
+        $account = $user->account;
         $sessionId = $request->query('session_id');
 
-        // Consume the checkout session once: `fromCheckout` is true only the first
-        // time this session_id is seen, so a back-button/refresh to the success URL
-        // can't re-fire `checkout.completed`. `Cache::add` is atomic — it returns
-        // true only when the key didn't exist yet.
-        $fromCheckout = is_string($sessionId) && $sessionId !== ''
-            && Cache::add("checkout_tracked:{$sessionId}", true, now()->addDay());
+        // Consume the checkout session once per account: `fromCheckout` is true
+        // only the first time this account sees the session_id, so a back-button/
+        // refresh can't re-fire `checkout.completed` — and a foreign session_id
+        // can't burn the real buyer's tracking. `Cache::add` is atomic.
+        $fromCheckout = $account !== null
+            && is_string($sessionId)
+            && $sessionId !== ''
+            && Cache::add("checkout_tracked:{$account->id}:{$sessionId}", true, now()->addDay());
 
         return Inertia::render('billing/Processing', [
             'subscriptionActive' => $account && $account->subscribed(Account::SUBSCRIPTION_NAME),
             'fromCheckout' => $fromCheckout,
             'redirectToOnboarding' => $account !== null
+                && $user->isAccountOwner()
                 && $account->onboarding_completed_at === null
                 && $account->onboarding_dismissed_at === null,
-            'persona' => $request->user()->persona?->value,
-            'conversion' => $fromCheckout && $account?->stripe_id
+            'persona' => $user->persona?->value,
+            'conversion' => $fromCheckout && $account->stripe_id
                 ? fn () => $this->buildConversionData($account, $sessionId)
                 : null,
         ]);

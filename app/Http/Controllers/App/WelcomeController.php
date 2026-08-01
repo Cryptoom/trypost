@@ -16,6 +16,7 @@ use App\Http\Requests\App\Welcome\StoreWelcomePersonaRequest;
 use App\Http\Requests\App\Welcome\StoreWelcomeReferralSourceRequest;
 use App\Models\Plan;
 use App\Services\PostHogService;
+use App\Support\Billing\ConfigureSubscriptionCheckout;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -110,6 +111,7 @@ class WelcomeController extends Controller
 
         $user = $request->user();
         $plan = Plan::where('slug', Slug::Workspace)->firstOrFail();
+        $account = $user->account;
 
         return Inertia::render('welcome/ReferralSource', [
             'sources' => array_map(fn (ReferralSource $source): string => $source->value, ReferralSource::cases()),
@@ -119,6 +121,9 @@ class WelcomeController extends Controller
                 'name' => $plan->name,
                 'interval' => 'monthly',
             ],
+            'trialDays' => $account !== null && ConfigureSubscriptionCheckout::qualifiesForCheckoutTrial($account)
+                ? max(ConfigureSubscriptionCheckout::MIN_CHECKOUT_TRIAL_DAYS, (int) config('cashier.trial_days'))
+                : 0,
         ]);
     }
 
@@ -150,10 +155,13 @@ class WelcomeController extends Controller
         );
 
         $plan = Plan::where('slug', Slug::Workspace)->firstOrFail();
+        $priceId = $plan->stripe_monthly_price_id;
+
+        abort_if($priceId === null, SymfonyResponse::HTTP_INTERNAL_SERVER_ERROR, 'Monthly price is not configured.');
 
         $response = $checkout->redirect(
             $user->account,
-            (string) $plan->stripe_monthly_price_id,
+            $priceId,
             route('app.welcome.referral-source'),
         );
 

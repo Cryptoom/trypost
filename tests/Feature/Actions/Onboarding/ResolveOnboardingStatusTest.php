@@ -14,6 +14,7 @@ use App\Models\Workspace;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 
 beforeEach(function () {
@@ -504,4 +505,44 @@ test('residual hides without writing when another workspace already finished act
 
     expect(app(ResolveOnboardingStatus::class)->residual($this->user->fresh()))->toBeFalse()
         ->and($this->user->account->fresh()->onboarding_completed_at)->toBeNull();
+});
+
+test('residual does not query step state for dismissed accounts', function () {
+    $this->user->account->update(['onboarding_dismissed_at' => now()]);
+
+    $queries = [];
+    DB::listen(fn ($query) => $queries[] = $query->sql);
+
+    expect(app(ResolveOnboardingStatus::class)->residual($this->user->fresh()))->toBeFalse();
+
+    expect(collect($queries)->filter(fn (string $sql): bool => str_contains($sql, 'oauth_access_tokens')
+        || str_contains($sql, 'social_accounts')
+        || str_contains($sql, 'posts')))->toBeEmpty();
+});
+
+test('residual does not query step state for members', function () {
+    $member = User::factory()->create(['account_id' => $this->user->account_id]);
+    $member->update(['current_workspace_id' => $this->workspace->id]);
+
+    $queries = [];
+    DB::listen(fn ($query) => $queries[] = $query->sql);
+
+    expect(app(ResolveOnboardingStatus::class)->residual($member->fresh()))->toBeFalse();
+
+    expect(collect($queries)->filter(fn (string $sql): bool => str_contains($sql, 'oauth_access_tokens')
+        || str_contains($sql, 'social_accounts')
+        || str_contains($sql, 'posts')))->toBeEmpty();
+});
+
+test('residual does not query step state in self hosted mode', function () {
+    config(['trypost.self_hosted' => true]);
+
+    $queries = [];
+    DB::listen(fn ($query) => $queries[] = $query->sql);
+
+    expect(app(ResolveOnboardingStatus::class)->residual($this->user->fresh()))->toBeFalse();
+
+    expect(collect($queries)->filter(fn (string $sql): bool => str_contains($sql, 'oauth_access_tokens')
+        || str_contains($sql, 'social_accounts')
+        || str_contains($sql, 'posts')))->toBeEmpty();
 });

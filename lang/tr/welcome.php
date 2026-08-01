@@ -7,6 +7,8 @@ return [
     'description' => 'En yakın seçeneği seçin, deneyiminizi kişiselleştirelim.',
     'continue' => 'Devam et',
     'checkout_owner_only' => 'Hesap sahibinden ödemeyi tamamlayıp aboneliği başlatmasını isteyin.',
+    'checkout_trial_note' => ':days gün ücretsiz deneme, sonra :plan aylık faturalandırılır. İstediğiniz zaman iptal edin.',
+    'checkout_plan_note' => 'Ödeme sonrası :plan aylık faturalandırılır.',
     'progress' => 'Karşılama ilerlemesi',
     'go_to_step' => ':step. adıma git',
     'personas' => [

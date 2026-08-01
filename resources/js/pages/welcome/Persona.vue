@@ -15,6 +15,7 @@ import {
 import { trans } from 'laravel-vue-i18n';
 import type { FunctionalComponent } from 'vue';
 
+import InputError from '@/components/InputError.vue';
 import { Button } from '@/components/ui/button';
 import WelcomeLayout from '@/layouts/WelcomeLayout.vue';
 import { store } from '@/routes/app/welcome/persona';
@@ -114,8 +115,9 @@ const submit = (): void => {
                 v-for="persona in personas"
                 :key="persona"
                 type="button"
+                :aria-pressed="form.persona === persona"
                 :class="[
-                    'inline-flex cursor-pointer items-center gap-3 rounded-full border-2 border-foreground py-2.5 pr-5 pl-2.5 text-left shadow-2xs transition-shadow hover:shadow-md',
+                    'inline-flex cursor-pointer items-center gap-3 rounded-full border-2 border-foreground py-2.5 ps-2.5 pe-5 text-start shadow-2xs transition-shadow hover:shadow-md',
                     form.persona === persona ? 'bg-violet-100' : 'bg-card',
                 ]"
                 @click="select(persona)"
@@ -150,11 +152,13 @@ const submit = (): void => {
         </div>
 
         <div class="mx-auto flex w-full max-w-sm flex-col items-center gap-3">
+            <InputError :message="form.errors.persona" />
             <Button
                 type="button"
                 size="lg"
                 class="w-full rounded-full"
                 :disabled="!form.persona || form.processing"
+                dusk="welcome-persona-continue"
                 @click="submit"
             >
                 {{ $t('welcome.continue') }}

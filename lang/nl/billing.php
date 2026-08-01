@@ -72,5 +72,7 @@ return [
         'cancelled_title' => 'Afrekenen geannuleerd',
         'cancelled_description' => 'Je afrekenen is geannuleerd. Er zijn geen kosten in rekening gebracht.',
         'retry' => 'Opnieuw proberen',
+        'taking_long' => 'Dit duurt langer dan verwacht — even geduld, we zijn nog bezig met de installatie.',
+        'live' => 'Live',
     ],
 ];

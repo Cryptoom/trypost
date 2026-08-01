@@ -205,3 +205,55 @@ test('dispatchForWorkspace stamps when nobody is currently on the workspace', fu
 
     expect($owner->account->fresh()->onboarding_completed_at?->equalTo(now()))->toBeTrue();
 });
+
+test('dispatchForWorkspace stamps completion via the account owner when the actor is null', function () {
+    Carbon::setTestNow('2026-07-29 12:00:00');
+    config(['trypost.self_hosted' => false]);
+
+    $owner = User::factory()->create(['current_workspace_id' => null]);
+    $readyWorkspace = Workspace::factory()->create([
+        'account_id' => $owner->account_id,
+        'user_id' => $owner->id,
+    ]);
+    subscribeAccount($owner->account);
+
+    AccessToken::withoutEvents(fn () => mcpAccessToken($owner, mcpOauthClient()));
+    SocialAccount::withoutEvents(fn () => SocialAccount::factory()->create([
+        'workspace_id' => $readyWorkspace->id,
+    ]));
+    Post::withoutEvents(fn () => Post::factory()->create([
+        'workspace_id' => $readyWorkspace->id,
+        'user_id' => $owner->id,
+    ]));
+
+    // Webhook-style dispatch (e.g. Telegram connect): no authenticated actor.
+    OnboardingStatusUpdated::dispatchForWorkspace($readyWorkspace->id);
+
+    expect($owner->account->fresh()->onboarding_completed_at?->equalTo(now()))->toBeTrue();
+});
+
+test('completion broadcasts exactly once per workspace', function () {
+    Event::fake([OnboardingStatusUpdated::class]);
+    config(['trypost.self_hosted' => false]);
+
+    $user = User::factory()->create();
+    $workspace = Workspace::factory()->create([
+        'account_id' => $user->account_id,
+        'user_id' => $user->id,
+    ]);
+    $user->update(['current_workspace_id' => $workspace->id]);
+    subscribeAccount($user->account);
+
+    AccessToken::withoutEvents(fn () => mcpAccessToken($user, mcpOauthClient()));
+    SocialAccount::withoutEvents(fn () => SocialAccount::factory()->create([
+        'workspace_id' => $workspace->id,
+    ]));
+    Post::withoutEvents(fn () => Post::factory()->create([
+        'workspace_id' => $workspace->id,
+        'user_id' => $user->id,
+    ]));
+
+    OnboardingStatusUpdated::dispatchForWorkspace($workspace->id, $user->fresh());
+
+    Event::assertDispatchedTimes(OnboardingStatusUpdated::class, 1);
+});

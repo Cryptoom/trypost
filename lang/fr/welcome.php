@@ -7,6 +7,8 @@ return [
     'description' => 'Choisissez l\'option la plus proche et nous personnaliserons votre expérience.',
     'continue' => 'Continuer',
     'checkout_owner_only' => 'Demandez au propriétaire du compte de finaliser le paiement et de démarrer l\'abonnement.',
+    'checkout_trial_note' => 'Essai gratuit de :days jours, puis :plan est facturé mensuellement. Annulez à tout moment.',
+    'checkout_plan_note' => 'Après le paiement, :plan est facturé mensuellement.',
     'progress' => 'Progression d’accueil',
     'go_to_step' => 'Aller à l’étape :step',
     'personas' => [

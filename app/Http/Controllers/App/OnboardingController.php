@@ -99,7 +99,10 @@ class OnboardingController extends Controller
             ->whereKey($account->id)
             ->whereNull('onboarding_completed_at')
             ->whereNull('onboarding_dismissed_at')
-            ->update(['onboarding_dismissed_at' => $dismissedAt]);
+            ->update([
+                'onboarding_dismissed_at' => $dismissedAt,
+                'updated_at' => $dismissedAt,
+            ]);
 
         if ($updated === 0) {
             return redirect()->route('app.calendar');
@@ -116,6 +119,12 @@ class OnboardingController extends Controller
 
         // Refresh residual banners on other tabs/devices immediately.
         OnboardingStatusUpdated::broadcastForAccount($account);
+
+        // Sidebar residual dismiss stays on the current page; the onboarding
+        // page Skip leaves for the calendar.
+        if ($request->boolean('stay')) {
+            return redirect()->back();
+        }
 
         return redirect()->route('app.calendar');
     }

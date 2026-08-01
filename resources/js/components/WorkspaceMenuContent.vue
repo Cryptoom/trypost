@@ -6,6 +6,7 @@ import {
     IconLanguage,
     IconLogout,
     IconPlus,
+    IconSettings,
     IconUser,
 } from '@tabler/icons-vue';
 import { computed } from 'vue';
@@ -25,9 +26,13 @@ import {
 import { useWorkspaceRole } from '@/composables/useWorkspaceRole';
 import posthog from '@/posthog';
 import { logout } from '@/routes';
+import { settings as settingsHub } from '@/routes/app';
 import { edit as accountEdit } from '@/routes/app/account';
 import { edit as profileEdit } from '@/routes/app/profile';
-import { create as createWorkspaceRoute, switchMethod } from '@/routes/app/workspaces';
+import {
+    create as createWorkspaceRoute,
+    switchMethod,
+} from '@/routes/app/workspaces';
 import type { User } from '@/types';
 
 interface Workspace {
@@ -97,7 +102,7 @@ const handleLogout = (): void => {
 
 <template>
     <DropdownMenuLabel
-        class="px-2 py-1.5 text-xs font-medium normal-case tracking-normal text-muted-foreground"
+        class="px-2 py-1.5 text-xs font-medium tracking-normal text-muted-foreground normal-case"
     >
         {{ user.name }}
     </DropdownMenuLabel>
@@ -121,6 +126,16 @@ const handleLogout = (): void => {
             >
                 <IconCreditCard class="size-4" />
                 {{ $t('sidebar.account_settings') }}
+            </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem :as-child="true">
+            <Link
+                class="block w-full cursor-pointer"
+                :href="settingsHub.url()"
+                prefetch
+            >
+                <IconSettings class="size-4" />
+                {{ $t('sidebar.settings') }}
             </Link>
         </DropdownMenuItem>
     </DropdownMenuGroup>
@@ -159,7 +174,7 @@ const handleLogout = (): void => {
     <DropdownMenuSeparator />
 
     <DropdownMenuLabel
-        class="px-2 py-1.5 text-xs font-medium normal-case tracking-normal text-muted-foreground"
+        class="px-2 py-1.5 text-xs font-medium tracking-normal text-muted-foreground normal-case"
     >
         {{ $t('sidebar.workspaces') }}
     </DropdownMenuLabel>

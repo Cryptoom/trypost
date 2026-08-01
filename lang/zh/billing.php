@@ -72,5 +72,7 @@ return [
         'cancelled_title' => '结账已取消',
         'cancelled_description' => '你的结账已取消，未产生任何费用。',
         'retry' => '重试',
+        'taking_long' => '耗时比预期更长 — 请稍候，我们仍在为您设置。',
+        'live' => '实时',
     ],
 ];

@@ -71,7 +71,9 @@ Route::middleware(['auth'])->group(function () {
     Route::redirect('onboarding/goals', '/welcome/goals')->name('app.legacy-onboarding.goals');
     Route::redirect('onboarding/referral-source', '/welcome/referral-source')->name('app.legacy-onboarding.referral-source');
     Route::redirect('onboarding/connect', '/welcome/referral-source')->name('app.legacy-onboarding.connect');
-    Route::get('billing/processing', [BillingController::class, 'processing'])->name('app.billing.processing');
+    Route::get('billing/processing', [BillingController::class, 'processing'])
+        ->middleware('throttle:60,1')
+        ->name('app.billing.processing');
 
     Route::get('workspaces/create', [WorkspaceController::class, 'create'])->name('app.workspaces.create');
     Route::post('workspaces', [WorkspaceController::class, 'store'])->name('app.workspaces.store');

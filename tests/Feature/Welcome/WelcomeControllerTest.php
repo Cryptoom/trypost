@@ -304,3 +304,59 @@ test('members cannot start Stripe checkout from welcome', function () {
 
     expect($member->fresh()->referral_source)->toBeNull();
 });
+
+test('welcome sends members with app access to the calendar', function () {
+    ['owner' => $owner, 'member' => $member] = strandedMemberOnSharedAccount();
+    subscribeAccount($owner->account);
+
+    $this->actingAs($member)
+        ->get(route('app.welcome.persona'))
+        ->assertRedirect(route('app.calendar'));
+});
+
+test('referral source exposes the checkout trial length to first-time accounts', function () {
+    config(['trypost.billing.require_card_for_trial' => true]);
+    $this->user->update([
+        'persona' => Persona::Agency->value,
+        'goals' => [Goal::SaveTime->value],
+    ]);
+
+    $this->actingAs($this->user->fresh())
+        ->get(route('app.welcome.referral-source'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page->where('trialDays', max(2, (int) config('cashier.trial_days'))));
+});
+
+test('referral source exposes zero trial days to returning accounts', function () {
+    config(['trypost.billing.require_card_for_trial' => true]);
+    $this->user->update([
+        'persona' => Persona::Agency->value,
+        'goals' => [Goal::SaveTime->value],
+    ]);
+    subscribeAccount($this->user->account);
+    $this->user->account->subscriptions()->update([
+        'stripe_status' => 'canceled',
+        'ends_at' => now()->subDay(),
+    ]);
+
+    $this->actingAs($this->user->fresh())
+        ->get(route('app.welcome.referral-source'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page->where('trialDays', 0));
+});
+
+test('referral source store fails loudly when the monthly price is not configured', function () {
+    $this->user->update([
+        'persona' => Persona::Agency->value,
+        'goals' => [Goal::SaveTime->value],
+    ]);
+    Plan::where('slug', Slug::Workspace)->update(['stripe_monthly_price_id' => null]);
+
+    $this->mock(StartSubscriptionCheckout::class)->shouldNotReceive('redirect');
+
+    $this->actingAs($this->user->fresh())
+        ->post(route('app.welcome.referral-source.store'), [
+            'referral_source' => ReferralSource::Google->value,
+        ])
+        ->assertServerError();
+});

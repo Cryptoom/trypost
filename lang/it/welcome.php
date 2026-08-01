@@ -7,6 +7,8 @@ return [
     'description' => 'Scegli l\'opzione più vicina e personalizzeremo la tua esperienza.',
     'continue' => 'Continua',
     'checkout_owner_only' => 'Chiedi al proprietario dell\'account di completare il checkout e avviare l\'abbonamento.',
+    'checkout_trial_note' => 'Prova gratuita di :days giorni, poi :plan viene addebitato mensilmente. Annulla quando vuoi.',
+    'checkout_plan_note' => 'Dopo il checkout, :plan viene addebitato mensilmente.',
     'progress' => 'Progresso di benvenuto',
     'go_to_step' => 'Vai al passaggio :step',
     'personas' => [

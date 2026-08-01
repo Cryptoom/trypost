@@ -72,5 +72,7 @@ return [
         'cancelled_title' => 'Paiement annulé',
         'cancelled_description' => 'Votre paiement a été annulé. Aucun montant n\'a été débité.',
         'retry' => 'Réessayer',
+        'taking_long' => 'Cela prend plus de temps que prévu — patientez, la configuration est toujours en cours.',
+        'live' => 'En direct',
     ],
 ];

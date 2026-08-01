@@ -66,4 +66,10 @@ return new class extends Migration
             'updated_at' => $now,
         ]);
     }
+
+    public function down(): void
+    {
+        // Data backfill — rows stamped here are indistinguishable from a real
+        // user skip, so a rollback intentionally keeps them.
+    }
 };

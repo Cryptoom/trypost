@@ -67,29 +67,14 @@ class OnboardingStatusUpdated implements ShouldBroadcast, ShouldDispatchAfterCom
                 return;
             }
 
-            $workspaceIds = $account->workspaces()->pluck('id');
-
-            foreach ($workspaceIds as $workspaceId) {
-                static::dispatch((string) $workspaceId);
-            }
-
-            $resolver = app(ResolveOnboardingStatus::class);
-            $actor = $actorId !== null
-                ? User::query()->with(['account', 'currentWorkspace'])->find($actorId)
-                : null;
-
-            if ($actor !== null) {
-                // Steps are account-scoped — syncProgress stamps when MCP + social
-                // + post exist anywhere on the account.
-                $resolver->syncProgress($actor);
-            }
+            static::syncAndBroadcast($account, $actorId);
         });
     }
 
     /**
      * Broadcast only while the workspace account still has active onboarding.
-     * Sync the actor first (correct PostHog attribution), then any other users
-     * currently on this workspace so completion can stamp if they are ready.
+     * Steps are account-scoped, so syncing the actor (or the account owner when
+     * there is no actor, e.g. webhook-driven connects) is enough to stamp.
      *
      * Sync/analytics run afterCommit so Cache/PostHog never outlive a rolled-back
      * CreatePost (or similar) transaction.
@@ -109,10 +94,11 @@ class OnboardingStatusUpdated implements ShouldBroadcast, ShouldDispatchAfterCom
             return;
         }
 
+        $accountId = $account->id;
         $actorId = $actor?->id;
 
-        DB::afterCommit(function () use ($workspaceId, $actorId): void {
-            $account = Workspace::query()->find($workspaceId)?->account;
+        DB::afterCommit(function () use ($accountId, $actorId): void {
+            $account = Account::query()->find($accountId);
 
             if ($account === null
                 || $account->onboarding_completed_at !== null
@@ -121,67 +107,36 @@ class OnboardingStatusUpdated implements ShouldBroadcast, ShouldDispatchAfterCom
                 return;
             }
 
-            static::dispatch($workspaceId);
-
-            $resolver = app(ResolveOnboardingStatus::class);
-            $syncedActor = false;
-            $actor = $actorId !== null
-                ? User::query()->with(['account', 'currentWorkspace'])->find($actorId)
-                : null;
-
-            if ($actor !== null) {
-                // API/MCP tokens often mutate the request user's workspace in memory
-                // only — align the actor to this workspace for checklist resolution.
-                if ((string) $actor->current_workspace_id !== (string) $workspaceId) {
-                    $workspace = Workspace::query()->find($workspaceId);
-
-                    if ($workspace !== null) {
-                        $actor->setRelation('currentWorkspace', $workspace);
-                        $actor->current_workspace_id = $workspace->id;
-                    }
-                }
-
-                if ((string) $actor->current_workspace_id === (string) $workspaceId) {
-                    $resolver->syncProgress($actor);
-                    $account->refresh();
-                    $syncedActor = true;
-
-                    if ($account->onboarding_completed_at !== null) {
-                        return;
-                    }
-                }
-            }
-
-            User::query()
-                ->with(['account', 'currentWorkspace'])
-                ->where('current_workspace_id', $workspaceId)
-                ->where('account_id', $account->id)
-                ->when(
-                    $syncedActor && $actor !== null,
-                    fn ($query) => $query->whereKeyNot($actor->id),
-                )
-                ->each(function (User $user) use ($resolver, $account): void {
-                    if ($account->onboarding_completed_at !== null) {
-                        return;
-                    }
-
-                    $resolver->syncProgress($user);
-                    $account->refresh();
-                });
-
-            // Fan out Echo to sibling workspaces so residual progress updates
-            // everywhere (sync already ran for users on this workspace).
-            $account->refresh();
-
-            if ($account->onboarding_completed_at === null
-                && $account->onboarding_dismissed_at === null
-            ) {
-                $account->workspaces()
-                    ->whereKeyNot($workspaceId)
-                    ->pluck('id')
-                    ->each(fn ($siblingId) => static::dispatch((string) $siblingId));
-            }
+            static::syncAndBroadcast($account, $actorId);
         });
+    }
+
+    /**
+     * Stamp completion for the actor — falling back to the account owner so
+     * actor-less flows (Telegram webhook, jobs) still complete — then notify
+     * every workspace channel exactly once. markCompleted already broadcasts
+     * when it stamps, so an un-stamped sync is the only case that fans out here.
+     */
+    private static function syncAndBroadcast(Account $account, ?string $actorId): void
+    {
+        $actor = $actorId !== null
+            ? User::query()->with('account')->find($actorId)
+            : null;
+
+        $syncTarget = $actor !== null && (string) $actor->account_id === (string) $account->id
+            ? $actor
+            : $account->owner;
+
+        if ($syncTarget !== null) {
+            app(ResolveOnboardingStatus::class)->syncProgress($syncTarget);
+            $account->refresh();
+        }
+
+        if ($account->onboarding_completed_at === null
+            && $account->onboarding_dismissed_at === null
+        ) {
+            static::broadcastForAccount($account);
+        }
     }
 
     public function broadcastAs(): string

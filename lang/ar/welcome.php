@@ -7,6 +7,8 @@ return [
     'description' => 'اختر الخيار الأقرب وسنخصص تجربتك.',
     'continue' => 'متابعة',
     'checkout_owner_only' => 'اطلب من مالك الحساب إكمال الدفع وبدء الاشتراك.',
+    'checkout_trial_note' => 'تجربة مجانية لمدة :days أيام، ثم تُحاسَب على :plan شهريًا. ألغِ في أي وقت.',
+    'checkout_plan_note' => 'بعد إتمام الدفع، تُحاسَب على :plan شهريًا.',
     'progress' => 'تقدم الترحيب',
     'go_to_step' => 'الانتقال إلى الخطوة :step',
     'personas' => [

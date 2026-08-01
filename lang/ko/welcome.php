@@ -7,6 +7,8 @@ return [
     'description' => '가장 가까운 항목을 선택하면 맞춤 경험을 제공해 드립니다.',
     'continue' => '계속',
     'checkout_owner_only' => '계정 소유자에게 결제와 구독 시작을 요청하세요.',
+    'checkout_trial_note' => ':days일 무료 체험 후 :plan 요금이 매월 청구됩니다. 언제든 취소하세요.',
+    'checkout_plan_note' => '결제 후 :plan 요금이 매월 청구됩니다.',
     'progress' => '환영 진행률',
     'go_to_step' => ':step단계로 이동',
     'personas' => [

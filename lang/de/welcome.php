@@ -7,6 +7,8 @@ return [
     'description' => 'Wähle die passende Option, und wir passen dein Erlebnis an.',
     'continue' => 'Weiter',
     'checkout_owner_only' => 'Bitte den Kontoinhaber, den Checkout abzuschließen und das Abo zu starten.',
+    'checkout_trial_note' => ':days Tage kostenlos testen, danach wird :plan monatlich abgerechnet. Jederzeit kündbar.',
+    'checkout_plan_note' => 'Nach dem Checkout wird :plan monatlich abgerechnet.',
     'progress' => 'Willkommensfortschritt',
     'go_to_step' => 'Zu Schritt :step gehen',
     'personas' => [

@@ -242,3 +242,115 @@ test('does not broadcast when onboarding is dismissed', function () {
 
     Event::assertNotDispatched(OnboardingStatusUpdated::class);
 });
+
+test('creating another post on the same account does not rebroadcast the step', function () {
+    $user = User::factory()->create();
+    $workspaceA = Workspace::factory()->create([
+        'account_id' => $user->account_id,
+        'user_id' => $user->id,
+    ]);
+    $workspaceB = Workspace::factory()->create([
+        'account_id' => $user->account_id,
+        'user_id' => $user->id,
+    ]);
+
+    Post::withoutEvents(fn () => Post::factory()->create([
+        'workspace_id' => $workspaceA->id,
+        'user_id' => $user->id,
+    ]));
+
+    Event::fake([OnboardingStatusUpdated::class]);
+
+    Post::factory()->create([
+        'workspace_id' => $workspaceB->id,
+        'user_id' => $user->id,
+    ]);
+
+    Event::assertNotDispatched(OnboardingStatusUpdated::class);
+});
+
+test('deleting a post does not broadcast while the account still has posts', function () {
+    $user = User::factory()->create();
+    $workspace = Workspace::factory()->create([
+        'account_id' => $user->account_id,
+        'user_id' => $user->id,
+    ]);
+
+    $posts = Post::withoutEvents(fn () => Post::factory()->count(2)->create([
+        'workspace_id' => $workspace->id,
+        'user_id' => $user->id,
+    ]));
+
+    Event::fake([OnboardingStatusUpdated::class]);
+
+    $posts->first()->delete();
+
+    Event::assertNotDispatched(OnboardingStatusUpdated::class);
+});
+
+test('deleting a post does not broadcast when onboarding is completed', function () {
+    $user = User::factory()->create();
+    $workspace = Workspace::factory()->create([
+        'account_id' => $user->account_id,
+        'user_id' => $user->id,
+    ]);
+    $user->account->update(['onboarding_completed_at' => now()]);
+
+    $post = Post::withoutEvents(fn () => Post::factory()->create([
+        'workspace_id' => $workspace->id,
+        'user_id' => $user->id,
+    ]));
+
+    Event::fake([OnboardingStatusUpdated::class]);
+
+    $post->delete();
+
+    Event::assertNotDispatched(OnboardingStatusUpdated::class);
+});
+
+test('connecting a second social account on the account does not rebroadcast the step', function () {
+    $user = User::factory()->create();
+    $workspaceA = Workspace::factory()->create([
+        'account_id' => $user->account_id,
+        'user_id' => $user->id,
+    ]);
+    $workspaceB = Workspace::factory()->create([
+        'account_id' => $user->account_id,
+        'user_id' => $user->id,
+    ]);
+
+    SocialAccount::withoutEvents(fn () => SocialAccount::factory()->create([
+        'workspace_id' => $workspaceA->id,
+    ]));
+
+    Event::fake([OnboardingStatusUpdated::class]);
+
+    SocialAccount::factory()->create([
+        'workspace_id' => $workspaceB->id,
+    ]);
+
+    Event::assertNotDispatched(OnboardingStatusUpdated::class);
+});
+
+test('deleting a social account does not broadcast while the account still has connections', function () {
+    $user = User::factory()->create();
+    $workspaceA = Workspace::factory()->create([
+        'account_id' => $user->account_id,
+        'user_id' => $user->id,
+    ]);
+    $workspaceB = Workspace::factory()->create([
+        'account_id' => $user->account_id,
+        'user_id' => $user->id,
+    ]);
+
+    $socialAccounts = SocialAccount::withoutEvents(fn () => collect([
+        SocialAccount::factory()->create(['workspace_id' => $workspaceA->id]),
+        SocialAccount::factory()->create(['workspace_id' => $workspaceB->id]),
+    ]));
+
+    Event::fake([OnboardingStatusUpdated::class]);
+
+    $socialAccounts->first()->delete();
+
+    Event::assertNotDispatched(OnboardingStatusUpdated::class);
+});

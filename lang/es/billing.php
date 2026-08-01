@@ -72,5 +72,7 @@ return [
         'cancelled_title' => 'Pago cancelado',
         'cancelled_description' => 'Tu pago fue cancelado. No se realizaron cargos.',
         'retry' => 'Intentar de nuevo',
+        'taking_long' => 'Esto está tardando más de lo previsto: espera, seguimos configurando tu cuenta.',
+        'live' => 'En vivo',
     ],
 ];

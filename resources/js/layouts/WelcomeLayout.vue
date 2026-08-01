@@ -3,7 +3,6 @@ import { Link } from '@inertiajs/vue3';
 import { computed } from 'vue';
 
 import { logout } from '@/routes';
-import { home } from '@/routes/app';
 import {
     goals as goalsRoute,
     persona as personaRoute,
@@ -43,7 +42,7 @@ const canNavigateTo = (stepNumber: number): boolean => stepNumber < props.step;
             <div class="flex flex-col gap-8">
                 <div class="flex flex-col items-center gap-4">
                     <Link
-                        :href="home()"
+                        :href="personaRoute()"
                         class="flex flex-col items-center gap-2 font-medium"
                     >
                         <img

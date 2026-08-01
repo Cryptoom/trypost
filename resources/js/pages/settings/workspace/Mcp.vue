@@ -19,6 +19,7 @@ import { Label } from '@/components/ui/label';
 import { useWorkspaceSettingsTabs } from '@/composables/useWorkspaceSettingsTabs';
 import date from '@/date';
 import AppLayout from '@/layouts/AppLayout.vue';
+import { mcpClients } from '@/lib/mcpClients';
 import { copyToClipboard } from '@/lib/utils';
 import { disconnect as mcpDisconnect } from '@/routes/app/mcp';
 
@@ -49,24 +50,6 @@ const configSnippet = computed(() =>
         2,
     ),
 );
-
-const mcpClients = [
-    {
-        id: 'claude',
-        label: 'Claude',
-        logo: '/images/ai/claude.svg',
-        settings_url: 'https://claude.ai/customize/connectors',
-        theme: { bg: 'bg-orange-100', rotate: '-rotate-2' },
-    },
-    {
-        id: 'chatgpt',
-        label: 'ChatGPT',
-        logo: '/images/ai/chatgpt-white.svg',
-        settings_url:
-            'https://chatgpt.com/plugins#settings/Connectors?create-connector=true&redirectAfter=%2Fplugins',
-        theme: { bg: 'bg-black', rotate: 'rotate-1' },
-    },
-] as const;
 
 const advancedClients = [
     {
@@ -227,7 +210,7 @@ const confirmDisconnect = (client: ConnectedClient): void => {
 
                                 <Button as-child class="w-full">
                                     <a
-                                        :href="client.settings_url"
+                                        :href="client.settingsUrl"
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         :dusk="`mcp-client-${client.id}`"
@@ -292,7 +275,9 @@ const confirmDisconnect = (client: ConnectedClient): void => {
                                 </AccordionTrigger>
                                 <AccordionContent class="px-5 pt-1 pb-5">
                                     <div class="space-y-5">
-                                        <p class="text-sm font-medium text-foreground/70">
+                                        <p
+                                            class="text-sm font-medium text-foreground/70"
+                                        >
                                             {{ $t('mcp.step_add') }}
                                         </p>
 

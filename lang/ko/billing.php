@@ -72,5 +72,7 @@ return [
         'cancelled_title' => '결제 취소됨',
         'cancelled_description' => '결제가 취소되었습니다. 요금이 청구되지 않았습니다.',
         'retry' => '다시 시도',
+        'taking_long' => '예상보다 오래 걸리고 있습니다. 잠시만 기다려 주세요 — 계속 설정 중입니다.',
+        'live' => '라이브',
     ],
 ];

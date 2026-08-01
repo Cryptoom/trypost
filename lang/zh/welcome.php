@@ -7,6 +7,8 @@ return [
     'description' => '选择最接近的一项，我们会为你定制体验。',
     'continue' => '继续',
     'checkout_owner_only' => '请让账户所有者完成结账并开始订阅。',
+    'checkout_trial_note' => '免费试用 :days 天，之后 :plan 按月计费。可随时取消。',
+    'checkout_plan_note' => '结账后 :plan 将按月计费。',
     'progress' => '欢迎进度',
     'go_to_step' => '前往第 :step 步',
     'personas' => [

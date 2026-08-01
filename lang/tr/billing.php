@@ -74,5 +74,7 @@ return [
         'cancelled_title' => 'Ödeme iptal edildi',
         'cancelled_description' => 'Ödemeniz iptal edildi. Herhangi bir ücret alınmadı.',
         'retry' => 'Tekrar dene',
+        'taking_long' => 'Bu beklenenden uzun sürüyor — bekleyin, kurulum hâlâ devam ediyor.',
+        'live' => 'Canlı',
     ],
 ];

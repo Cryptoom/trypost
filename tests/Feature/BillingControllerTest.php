@@ -237,6 +237,34 @@ test('billing processing redirects to calendar in self hosted mode', function ()
     $response->assertRedirect(route('app.calendar'));
 });
 
+test('billing processing does not let another account burn the buyers checkout session', function () {
+    config(['trypost.self_hosted' => false]);
+
+    $sessionId = 'cs_test_'.fake()->uuid();
+    $otherUser = User::factory()->create();
+
+    $this->actingAs($otherUser)
+        ->get(route('app.billing.processing', ['session_id' => $sessionId]))
+        ->assertOk();
+
+    // The real buyer's first visit still counts as their checkout arrival.
+    $this->actingAs($this->user)
+        ->get(route('app.billing.processing', ['session_id' => $sessionId]))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page->where('fromCheckout', true));
+});
+
+test('billing processing does not send members to onboarding', function () {
+    config(['trypost.self_hosted' => false]);
+
+    ['member' => $member] = strandedMemberOnSharedAccount();
+
+    $this->actingAs($member)
+        ->get(route('app.billing.processing'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page->where('redirectToOnboarding', false));
+});
+
 // Checkout tests
 // Portal tests
 test('portal requires authentication', function () {

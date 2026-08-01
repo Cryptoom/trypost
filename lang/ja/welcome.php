@@ -7,6 +7,8 @@ return [
     'description' => '近いものを選ぶと、体験を最適化します。',
     'continue' => '続ける',
     'checkout_owner_only' => 'アカウントのオーナーにチェックアウトを完了してサブスクリプションを開始するよう依頼してください。',
+    'checkout_trial_note' => ':days日間の無料トライアル後、:planが月額課金されます。いつでもキャンセルできます。',
+    'checkout_plan_note' => 'チェックアウト後、:planが月額課金されます。',
     'progress' => 'ようこそ進捗',
     'go_to_step' => 'ステップ :step へ',
     'personas' => [

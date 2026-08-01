@@ -17,6 +17,7 @@ import {
 import { trans } from 'laravel-vue-i18n';
 import type { FunctionalComponent } from 'vue';
 
+import InputError from '@/components/InputError.vue';
 import { Button } from '@/components/ui/button';
 import { useTracking } from '@/composables/useTracking';
 import WelcomeLayout from '@/layouts/WelcomeLayout.vue';
@@ -27,6 +28,7 @@ const props = defineProps<{
     selected?: string | null;
     canCheckout: boolean;
     plan: { name: string; interval: string };
+    trialDays: number;
 }>();
 
 const form = useForm<{ referral_source: string }>({
@@ -126,7 +128,10 @@ const submit = (): void => {
         return;
     }
 
-    trackBeginCheckout({ name: props.plan.name, interval: props.plan.interval });
+    trackBeginCheckout({
+        name: props.plan.name,
+        interval: props.plan.interval,
+    });
 
     form.submit(store());
 };
@@ -146,8 +151,9 @@ const submit = (): void => {
                 v-for="source in sources"
                 :key="source"
                 type="button"
+                :aria-pressed="isSelected(source)"
                 :class="[
-                    'inline-flex cursor-pointer items-center gap-3 rounded-full border-2 border-foreground py-2.5 pr-5 pl-2.5 text-left shadow-2xs transition-shadow hover:shadow-md',
+                    'inline-flex cursor-pointer items-center gap-3 rounded-full border-2 border-foreground py-2.5 ps-2.5 pe-5 text-start shadow-2xs transition-shadow hover:shadow-md',
                     isSelected(source) ? 'bg-violet-100' : 'bg-card',
                 ]"
                 @click="select(source)"
@@ -196,17 +202,34 @@ const submit = (): void => {
             >
                 {{ $t('welcome.checkout_owner_only') }}
             </p>
-            <Button
-                v-else
-                type="button"
-                size="lg"
-                class="w-full rounded-full"
-                :disabled="form.referral_source === '' || form.processing"
-                dusk="welcome-start-checkout"
-                @click="submit"
-            >
-                {{ $t('welcome.continue') }}
-            </Button>
+            <template v-else>
+                <InputError :message="form.errors.referral_source" />
+                <p
+                    class="text-center text-sm text-muted-foreground"
+                    dusk="welcome-checkout-plan-note"
+                >
+                    {{
+                        trialDays > 0
+                            ? $t('welcome.checkout_trial_note', {
+                                  days: trialDays,
+                                  plan: plan.name,
+                              })
+                            : $t('welcome.checkout_plan_note', {
+                                  plan: plan.name,
+                              })
+                    }}
+                </p>
+                <Button
+                    type="button"
+                    size="lg"
+                    class="w-full rounded-full"
+                    :disabled="form.referral_source === '' || form.processing"
+                    dusk="welcome-start-checkout"
+                    @click="submit"
+                >
+                    {{ $t('welcome.continue') }}
+                </Button>
+            </template>
         </div>
     </WelcomeLayout>
 </template>

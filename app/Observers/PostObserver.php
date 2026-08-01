@@ -22,16 +22,17 @@ class PostObserver
 
         $account = $post->workspace?->account;
 
-        if ($account?->onboarding_completed_at !== null
-            || $account?->onboarding_dismissed_at !== null
+        if ($account === null
+            || $account->onboarding_completed_at !== null
+            || $account->onboarding_dismissed_at !== null
         ) {
             return;
         }
 
-        // Only the first post unlocks the onboarding step — later creates would
-        // just spam Echo reloads while activation is still open.
+        // Only the account's first post unlocks the onboarding step — later
+        // creates would just spam Echo reloads while activation is still open.
         $isFirstPost = Post::query()
-            ->where('workspace_id', $post->workspace_id)
+            ->whereIn('workspace_id', $account->workspaces()->select('id'))
             ->whereKeyNot($post->id)
             ->doesntExist();
 
@@ -45,10 +46,26 @@ class PostObserver
 
     public function deleted(Post $post): void
     {
-        OnboardingStatusUpdated::dispatchForWorkspace(
-            $post->workspace_id,
-            $this->actorFor($post),
-        );
+        $account = $post->workspace?->account;
+
+        if ($account === null
+            || $account->onboarding_completed_at !== null
+            || $account->onboarding_dismissed_at !== null
+        ) {
+            return;
+        }
+
+        // The step only flips when the account's last post disappears.
+        $accountHasPosts = Post::query()
+            ->whereIn('workspace_id', $account->workspaces()->select('id'))
+            ->exists();
+
+        if (! $accountHasPosts) {
+            OnboardingStatusUpdated::dispatchForWorkspace(
+                $post->workspace_id,
+                $this->actorFor($post),
+            );
+        }
     }
 
     /**
