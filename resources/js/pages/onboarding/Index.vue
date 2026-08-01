@@ -130,7 +130,7 @@ const continueToTryPost = (): void => {
                 <div class="min-w-0 space-y-1.5">
                     <h1
                         class="text-xl font-bold text-foreground sm:text-2xl"
-                        dusk="onboarding-welcome"
+                        data-testid="onboarding-welcome"
                     >
                         <template v-if="firstName">
                             {{ $t('onboarding.welcome', { name: firstName }) }}
@@ -151,7 +151,7 @@ const continueToTryPost = (): void => {
                     size="sm"
                     class="shrink-0 self-start text-muted-foreground sm:self-center"
                     :disabled="dismissForm.processing"
-                    dusk="onboarding-skip"
+                    data-testid="onboarding-skip"
                     @click="skip"
                 >
                     {{ $t('onboarding.skip') }}
@@ -165,7 +165,7 @@ const continueToTryPost = (): void => {
                     :title="$t('onboarding.mcp.title')"
                     :description="$t('onboarding.mcp.description')"
                     accent-class="bg-violet-100"
-                    dusk="onboarding-mcp"
+                    data-testid="onboarding-mcp"
                 >
                     <div class="space-y-6">
                         <div>
@@ -199,7 +199,7 @@ const continueToTryPost = (): void => {
                                     variant="outline"
                                     size="sm"
                                     class="shrink-0"
-                                    dusk="copy-mcp-url"
+                                    data-testid="copy-mcp-url"
                                     @click="copyMcpUrl"
                                 >
                                     <IconCopy class="size-4" />
@@ -261,7 +261,7 @@ const continueToTryPost = (): void => {
                                             :href="client.settingsUrl"
                                             target="_blank"
                                             rel="noopener noreferrer"
-                                            :dusk="`mcp-client-${client.id}`"
+                                            :data-testid="`mcp-client-${client.id}`"
                                         >
                                             {{
                                                 $t('onboarding.mcp.connect', {
@@ -282,7 +282,7 @@ const continueToTryPost = (): void => {
                     :title="$t('onboarding.social.title')"
                     :description="$t('onboarding.social.description')"
                     accent-class="bg-sky-100"
-                    dusk="onboarding-social"
+                    data-testid="onboarding-social"
                 >
                     <NetworkConnectGrid
                         :platforms="platforms"
@@ -298,7 +298,7 @@ const continueToTryPost = (): void => {
                     :title="$t('onboarding.first_post.title')"
                     :description="$t('onboarding.first_post.description')"
                     accent-class="bg-amber-100"
-                    dusk="onboarding-first-post"
+                    data-testid="onboarding-first-post"
                 >
                     <div
                         class="rounded-xl border-2 border-foreground bg-amber-50 p-5 shadow-2xs"
@@ -320,7 +320,7 @@ const continueToTryPost = (): void => {
                     >
                         <Button
                             type="button"
-                            dusk="copy-sample-prompt"
+                            data-testid="copy-sample-prompt"
                             @click="copySamplePrompt"
                         >
                             <IconCopy class="size-4" />
@@ -334,7 +334,7 @@ const continueToTryPost = (): void => {
                         <Button as-child variant="outline">
                             <Link
                                 :href="createPost.url()"
-                                dusk="create-first-post"
+                                data-testid="create-first-post"
                             >
                                 {{ $t('onboarding.first_post.create_button') }}
                             </Link>
@@ -365,7 +365,7 @@ const continueToTryPost = (): void => {
                     type="button"
                     size="lg"
                     :disabled="completeForm.processing"
-                    dusk="onboarding-continue"
+                    data-testid="onboarding-continue"
                     @click="continueToTryPost"
                 >
                     {{ $t('onboarding.continue') }}

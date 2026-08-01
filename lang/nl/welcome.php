@@ -9,6 +9,9 @@ return [
     'checkout_owner_only' => 'Vraag de accounteigenaar om de checkout af te ronden en het abonnement te starten.',
     'checkout_trial_note' => ':days dagen gratis proberen, daarna wordt :plan maandelijks gefactureerd. Altijd opzegbaar.',
     'checkout_plan_note' => 'Na de checkout wordt :plan maandelijks gefactureerd.',
+    'subscription_required_title' => 'Wachten op de accounteigenaar',
+    'subscription_required_description' => 'Dit account heeft nog geen actief abonnement. Vraag de eigenaar om de checkout af te ronden — je krijgt volledige toegang zodra het actief is.',
+    'subscription_required_owner' => 'De accounteigenaar is :name.',
     'progress' => 'Welkomstvoortgang',
     'go_to_step' => 'Ga naar stap :step',
     'personas' => [

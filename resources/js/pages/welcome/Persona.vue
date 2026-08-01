@@ -116,6 +116,7 @@ const submit = (): void => {
                 :key="persona"
                 type="button"
                 :aria-pressed="form.persona === persona"
+                :data-testid="`welcome-persona-${persona}`"
                 :class="[
                     'inline-flex cursor-pointer items-center gap-3 rounded-full border-2 border-foreground py-2.5 ps-2.5 pe-5 text-start shadow-2xs transition-shadow hover:shadow-md',
                     form.persona === persona ? 'bg-violet-100' : 'bg-card',
@@ -158,7 +159,7 @@ const submit = (): void => {
                 size="lg"
                 class="w-full rounded-full"
                 :disabled="!form.persona || form.processing"
-                dusk="welcome-persona-continue"
+                data-testid="welcome-persona-continue"
                 @click="submit"
             >
                 {{ $t('welcome.continue') }}

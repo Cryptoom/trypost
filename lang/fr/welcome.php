@@ -9,6 +9,9 @@ return [
     'checkout_owner_only' => 'Demandez au propriétaire du compte de finaliser le paiement et de démarrer l\'abonnement.',
     'checkout_trial_note' => 'Essai gratuit de :days jours, puis :plan est facturé mensuellement. Annulez à tout moment.',
     'checkout_plan_note' => 'Après le paiement, :plan est facturé mensuellement.',
+    'subscription_required_title' => 'En attente du propriétaire du compte',
+    'subscription_required_description' => 'Ce compte n\'a pas encore d\'abonnement actif. Demandez au propriétaire de finaliser le paiement — vous aurez un accès complet dès qu\'il sera actif.',
+    'subscription_required_owner' => 'Le propriétaire de votre compte est :name.',
     'progress' => 'Progression d’accueil',
     'go_to_step' => 'Aller à l’étape :step',
     'personas' => [

@@ -86,7 +86,7 @@ const dismissResidual = (): void => {
             <div class="flex items-start justify-between gap-2">
                 <Link
                     :href="onboarding.url()"
-                    dusk="sidebar-onboarding"
+                    data-testid="sidebar-onboarding"
                     class="flex min-w-0 flex-1 items-center gap-2"
                 >
                     <span
@@ -119,7 +119,7 @@ const dismissResidual = (): void => {
                         class="inline-flex size-5 items-center justify-center rounded-full border-2 border-foreground bg-card text-foreground/70 transition-colors hover:text-foreground"
                         :aria-label="$t('onboarding.skip')"
                         :disabled="dismissForm.processing"
-                        dusk="sidebar-onboarding-dismiss"
+                        data-testid="sidebar-onboarding-dismiss"
                         @click="dismissResidual"
                     >
                         <IconX class="size-3" stroke-width="2.5" />

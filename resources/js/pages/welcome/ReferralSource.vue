@@ -152,6 +152,7 @@ const submit = (): void => {
                 :key="source"
                 type="button"
                 :aria-pressed="isSelected(source)"
+                :data-testid="`welcome-source-${source}`"
                 :class="[
                     'inline-flex cursor-pointer items-center gap-3 rounded-full border-2 border-foreground py-2.5 ps-2.5 pe-5 text-start shadow-2xs transition-shadow hover:shadow-md',
                     isSelected(source) ? 'bg-violet-100' : 'bg-card',
@@ -198,7 +199,7 @@ const submit = (): void => {
             <p
                 v-if="!canCheckout"
                 class="text-center text-sm text-muted-foreground"
-                dusk="welcome-checkout-owner-only"
+                data-testid="welcome-checkout-owner-only"
             >
                 {{ $t('welcome.checkout_owner_only') }}
             </p>
@@ -206,7 +207,7 @@ const submit = (): void => {
                 <InputError :message="form.errors.referral_source" />
                 <p
                     class="text-center text-sm text-muted-foreground"
-                    dusk="welcome-checkout-plan-note"
+                    data-testid="welcome-checkout-plan-note"
                 >
                     {{
                         trialDays > 0
@@ -224,7 +225,7 @@ const submit = (): void => {
                     size="lg"
                     class="w-full rounded-full"
                     :disabled="form.referral_source === '' || form.processing"
-                    dusk="welcome-start-checkout"
+                    data-testid="welcome-start-checkout"
                     @click="submit"
                 >
                     {{ $t('welcome.continue') }}

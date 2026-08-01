@@ -135,6 +135,7 @@ const submit = (): void => {
                 :key="goal"
                 type="button"
                 :aria-pressed="isSelected(goal)"
+                :data-testid="`welcome-goal-${goal}`"
                 :class="[
                     'inline-flex cursor-pointer items-center gap-3 rounded-full border-2 border-foreground py-2.5 ps-2.5 pe-5 text-start shadow-2xs transition-shadow hover:shadow-md',
                     isSelected(goal) ? 'bg-violet-100' : 'bg-card',
@@ -177,7 +178,7 @@ const submit = (): void => {
                 size="lg"
                 class="w-full rounded-full"
                 :disabled="form.goals.length === 0 || form.processing"
-                dusk="welcome-goals-continue"
+                data-testid="welcome-goals-continue"
                 @click="submit"
             >
                 {{ $t('welcome.continue') }}

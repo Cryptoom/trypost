@@ -16,7 +16,7 @@ defineProps<{
 <template>
     <section
         class="overflow-hidden rounded-2xl border-2 border-foreground bg-card shadow-2xs"
-        :dusk="dusk"
+        :data-testid="dusk"
     >
         <header
             :class="[
@@ -31,11 +31,7 @@ defineProps<{
                         done ? 'bg-emerald-300' : 'bg-card',
                     ]"
                 >
-                    <IconCheck
-                        v-if="done"
-                        class="size-4"
-                        stroke-width="3"
-                    />
+                    <IconCheck v-if="done" class="size-4" stroke-width="3" />
                     <template v-else>{{ step }}</template>
                 </span>
                 <div class="min-w-0">
@@ -47,10 +43,7 @@ defineProps<{
                     </p>
                 </div>
             </div>
-            <Badge
-                class="shrink-0"
-                :variant="done ? 'success' : 'outline'"
-            >
+            <Badge class="shrink-0" :variant="done ? 'success' : 'outline'">
                 {{
                     done
                         ? $t('onboarding.status.complete')

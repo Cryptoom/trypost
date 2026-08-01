@@ -291,18 +291,75 @@ test('members cannot start Stripe checkout from welcome', function () {
 
     $this->mock(StartSubscriptionCheckout::class)->shouldNotReceive('redirect');
 
+    // Members never reach the referral step — they are held on the
+    // subscription-required screen before any checkout attempt.
     $this->actingAs($member->fresh())
         ->get(route('app.welcome.referral-source'))
-        ->assertOk()
-        ->assertInertia(fn ($page) => $page->where('canCheckout', false));
+        ->assertRedirect(route('app.welcome.subscription-required'));
 
     $this->actingAs($member->fresh())
         ->post(route('app.welcome.referral-source.store'), [
             'referral_source' => ReferralSource::Google->value,
         ])
-        ->assertForbidden();
+        ->assertRedirect(route('app.welcome.subscription-required'));
 
     expect($member->fresh()->referral_source)->toBeNull();
+});
+
+test('members without app access are held on the subscription required screen', function (string $routeName, string $method, array $payload = []) {
+    $member = User::factory()->create(['account_id' => $this->user->account_id]);
+
+    $this->actingAs($member->fresh());
+
+    $response = $method === 'get'
+        ? $this->get(route($routeName))
+        : $this->post(route($routeName), $payload);
+
+    $response->assertRedirect(route('app.welcome.subscription-required'));
+})->with([
+    'persona' => ['app.welcome.persona', 'get'],
+    'persona store' => ['app.welcome.persona.store', 'post', ['persona' => Persona::Agency->value]],
+    'goals' => ['app.welcome.goals', 'get'],
+    'goals store' => ['app.welcome.goals.store', 'post', ['goals' => [Goal::SaveTime->value]]],
+    'referral source' => ['app.welcome.referral-source', 'get'],
+    'referral source store' => ['app.welcome.referral-source.store', 'post', ['referral_source' => ReferralSource::Google->value]],
+]);
+
+test('subscription required screen renders for members without app access', function () {
+    $member = User::factory()->create(['account_id' => $this->user->account_id]);
+
+    $this->actingAs($member->fresh())
+        ->get(route('app.welcome.subscription-required'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('welcome/SubscriptionRequired', false)
+            ->where('ownerName', $this->user->name)
+        );
+});
+
+test('subscription required screen sends owners back to the welcome flow', function () {
+    $this->actingAs($this->user)
+        ->get(route('app.welcome.subscription-required'))
+        ->assertRedirect(route('app.welcome.persona'));
+});
+
+test('subscription required screen sends members with app access to the calendar', function () {
+    ['owner' => $owner, 'member' => $member] = strandedMemberOnSharedAccount();
+    subscribeAccount($owner->account);
+
+    $this->actingAs($member)
+        ->get(route('app.welcome.subscription-required'))
+        ->assertRedirect(route('app.calendar'));
+});
+
+test('subscription required screen redirects to calendar in self hosted mode', function () {
+    config(['trypost.self_hosted' => true]);
+
+    $member = User::factory()->create(['account_id' => $this->user->account_id]);
+
+    $this->actingAs($member->fresh())
+        ->get(route('app.welcome.subscription-required'))
+        ->assertRedirect(route('app.calendar'));
 });
 
 test('welcome sends members with app access to the calendar', function () {

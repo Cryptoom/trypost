@@ -9,6 +9,9 @@ return [
     'checkout_owner_only' => 'Pide al propietario de la cuenta que complete el checkout e inicie la suscripción.',
     'checkout_trial_note' => 'Prueba gratis de :days días; después, :plan se factura mensualmente. Cancela cuando quieras.',
     'checkout_plan_note' => 'Después del checkout, :plan se factura mensualmente.',
+    'subscription_required_title' => 'Esperando al propietario de la cuenta',
+    'subscription_required_description' => 'Esta cuenta aún no tiene una suscripción activa. Pide al propietario que complete el checkout: tendrás acceso total en cuanto esté activa.',
+    'subscription_required_owner' => 'El propietario de tu cuenta es :name.',
     'progress' => 'Progreso de bienvenida',
     'go_to_step' => 'Ir al paso :step',
     'personas' => [

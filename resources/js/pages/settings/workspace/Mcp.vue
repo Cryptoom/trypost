@@ -151,7 +151,7 @@ const confirmDisconnect = (client: ConnectedClient): void => {
                                 variant="outline"
                                 size="sm"
                                 class="shrink-0"
-                                dusk="copy-mcp-url"
+                                data-testid="copy-mcp-url"
                                 @click="copyMcpUrl"
                             >
                                 <IconCopy class="size-4" />
@@ -213,7 +213,7 @@ const confirmDisconnect = (client: ConnectedClient): void => {
                                         :href="client.settingsUrl"
                                         target="_blank"
                                         rel="noopener noreferrer"
-                                        :dusk="`mcp-client-${client.id}`"
+                                        :data-testid="`mcp-client-${client.id}`"
                                     >
                                         {{
                                             $t('onboarding.mcp.connect', {

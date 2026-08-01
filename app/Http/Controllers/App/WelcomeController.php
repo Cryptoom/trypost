@@ -178,6 +178,29 @@ class WelcomeController extends Controller
         return $response;
     }
 
+    public function subscriptionRequired(Request $request): Response|RedirectResponse
+    {
+        if (config('trypost.self_hosted')) {
+            return redirect()->route('app.calendar');
+        }
+
+        $user = $request->user();
+
+        if ($user->account?->hasAppAccess()) {
+            $status = $this->resolveOnboardingStatus->handle($user);
+
+            return redirect()->route($status['show_residual'] ? 'app.onboarding' : 'app.calendar');
+        }
+
+        if ($user->isAccountOwner()) {
+            return redirect()->route('app.welcome.persona');
+        }
+
+        return Inertia::render('welcome/SubscriptionRequired', [
+            'ownerName' => $user->account?->owner?->name,
+        ]);
+    }
+
     private function redirectIfStepIncomplete(Request $request, bool $requireGoals = false): ?RedirectResponse
     {
         if ($redirect = $this->redirectIfUnavailable($request)) {
@@ -211,6 +234,12 @@ class WelcomeController extends Controller
             $status = $this->resolveOnboardingStatus->handle($user);
 
             return redirect()->route($status['show_residual'] ? 'app.onboarding' : 'app.calendar');
+        }
+
+        // Members can't check out — hold them on a dedicated screen instead of
+        // walking an ICP flow they can never finish.
+        if (! $user->isAccountOwner()) {
+            return redirect()->route('app.welcome.subscription-required');
         }
 
         return null;

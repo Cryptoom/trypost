@@ -13,13 +13,14 @@ const props = withDefaults(
     defineProps<{
         title?: string;
         description?: string;
-        step: number;
+        step?: number;
         totalSteps?: number;
         wide?: boolean;
     }>(),
     {
         title: undefined,
         description: undefined,
+        step: undefined,
         totalSteps: 3,
         wide: false,
     },
@@ -31,7 +32,8 @@ const stepRoutes = computed(() => [
     referralSourceRoute(),
 ]);
 
-const canNavigateTo = (stepNumber: number): boolean => stepNumber < props.step;
+const canNavigateTo = (stepNumber: number): boolean =>
+    props.step !== undefined && stepNumber < props.step;
 </script>
 
 <template>
@@ -58,6 +60,7 @@ const canNavigateTo = (stepNumber: number): boolean => stepNumber < props.step;
                     </Link>
 
                     <nav
+                        v-if="step !== undefined"
                         class="flex items-center gap-2"
                         :aria-label="$t('welcome.progress')"
                     >
@@ -76,7 +79,7 @@ const canNavigateTo = (stepNumber: number): boolean => stepNumber < props.step;
                                         step: stepNumber,
                                     })
                                 "
-                                :dusk="`welcome-step-${stepNumber}`"
+                                :data-testid="`welcome-step-${stepNumber}`"
                             />
                             <div
                                 v-else
@@ -107,7 +110,7 @@ const canNavigateTo = (stepNumber: number): boolean => stepNumber < props.step;
                         :href="logout()"
                         as="button"
                         class="text-sm text-muted-foreground underline-offset-4 transition-colors hover:text-foreground hover:underline"
-                        dusk="welcome-log-out"
+                        data-testid="welcome-log-out"
                     >
                         {{ $t('auth.verify_email.log_out') }}
                     </Link>

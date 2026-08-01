@@ -9,6 +9,9 @@ return [
     'checkout_owner_only' => 'اطلب من مالك الحساب إكمال الدفع وبدء الاشتراك.',
     'checkout_trial_note' => 'تجربة مجانية لمدة :days أيام، ثم تُحاسَب على :plan شهريًا. ألغِ في أي وقت.',
     'checkout_plan_note' => 'بعد إتمام الدفع، تُحاسَب على :plan شهريًا.',
+    'subscription_required_title' => 'في انتظار مالك الحساب',
+    'subscription_required_description' => 'هذا الحساب لا يملك اشتراكًا نشطًا بعد. اطلب من مالك الحساب إكمال الدفع — ستحصل على وصول كامل فور تفعيل الاشتراك.',
+    'subscription_required_owner' => 'مالك حسابك هو :name.',
     'progress' => 'تقدم الترحيب',
     'go_to_step' => 'الانتقال إلى الخطوة :step',
     'personas' => [

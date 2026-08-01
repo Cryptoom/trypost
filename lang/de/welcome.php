@@ -9,6 +9,9 @@ return [
     'checkout_owner_only' => 'Bitte den Kontoinhaber, den Checkout abzuschließen und das Abo zu starten.',
     'checkout_trial_note' => ':days Tage kostenlos testen, danach wird :plan monatlich abgerechnet. Jederzeit kündbar.',
     'checkout_plan_note' => 'Nach dem Checkout wird :plan monatlich abgerechnet.',
+    'subscription_required_title' => 'Warten auf den Kontoinhaber',
+    'subscription_required_description' => 'Dieses Konto hat noch kein aktives Abo. Bitte den Kontoinhaber, den Checkout abzuschließen — du erhältst vollen Zugriff, sobald es aktiv ist.',
+    'subscription_required_owner' => 'Der Kontoinhaber ist :name.',
     'progress' => 'Willkommensfortschritt',
     'go_to_step' => 'Zu Schritt :step gehen',
     'personas' => [
