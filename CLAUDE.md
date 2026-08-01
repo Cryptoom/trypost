@@ -306,13 +306,16 @@ Vue components must have a single root element.
     - Example: `$this->postJson(route('app.posts.store'))` instead of `$this->postJson('/posts')`.
     - With params: `route('app.posts.ai.create.finalize', $creationId)`.
 
-## Dusk (Browser Tests)
+## Browser Tests
 
-- In Dusk tests, ALWAYS use named routes via `route()` helper. NEVER hardcode URLs like `'https://trypost.test/login'`.
-    - Example: `$browser->visit(route('login'))` instead of `$browser->visit('https://trypost.test/login')`.
-- ALWAYS use `dusk` selectors (`@selector-name`) for interacting with and asserting elements. NEVER use CSS classes (`.text-red-600`), tag names, or text strings.
-    - Add `dusk="my-element"` attributes to Vue components and use `$browser->click('@my-element')`, `$browser->waitFor('@my-element')`, etc.
-    - Example: `$browser->waitFor('@input-error')` instead of `$browser->waitFor('.text-red-600')`.
+- In browser tests, ALWAYS use named routes via `route()` helper. NEVER hardcode URLs like `'https://trypost.test/login'`.
+    - Example: `visit(route('login'))` instead of `visit('https://trypost.test/login')`.
+- ALWAYS use `data-testid` selectors (`@selector-name`) for interacting with and asserting elements. NEVER use CSS classes (`.text-red-600`), tag names, or text strings.
+    - The Pest browser plugin resolves `@selector` against `[data-testid]` / `[data-test]` only — `dusk="..."` attributes are NOT matched.
+    - Add `data-testid="my-element"` attributes to Vue components and use `$page->click('@my-element')`, `$page->assertVisible('@my-element')`, etc.
+    - Example: `$page->assertVisible('@input-error')` instead of `$page->assertVisible('.text-red-600')`.
+- Assertions do not auto-wait — poll browser-side (see `waitForTestId`/`waitForDusk` helpers in `tests/Browser`) before asserting on async UI.
+- Use `->fresh()` when acting as a factory-created user: the in-process server keeps the guard user across requests, and factory instances lack nullable columns (strict mode throws `MissingAttributeException`).
 
 ## Array Data Access
 

@@ -1,10 +1,10 @@
 ---
-description: Laravel Dusk browser tests — named routes, dusk selectors, no CSS/text-based assertions
+description: Browser tests (Pest + Playwright) — named routes, data-testid selectors, no CSS/text-based assertions
 globs: tests/Browser/**/*.php
 alwaysApply: false
 ---
 
-# Dusk Browser Tests
+# Browser Tests
 
 ## Named routes (IMPORTANT)
 
@@ -12,32 +12,40 @@ ALWAYS use named routes via the `route()` helper. NEVER hardcode URLs like `'htt
 
 ```php
 // BAD
-$browser->visit('https://trypost.test/login');
+visit('https://trypost.test/login');
 
 // GOOD
-$browser->visit(route('login'));
+visit(route('login'));
 ```
 
-## Dusk selectors
+## Selectors (IMPORTANT)
 
-ALWAYS use `dusk` selectors (`@selector-name`) for interactions and assertions. NEVER use CSS classes (`.text-red-600`), tag names, or text strings.
+ALWAYS use `data-testid` attributes and target them with `@selector-name`. NEVER use CSS classes (`.text-red-600`), tag names, or text strings.
 
-Add `dusk="my-element"` attributes to Vue components and target them with `$browser->click('@my-element')`, `$browser->waitFor('@my-element')`, etc.
+The Pest browser plugin resolves `@selector` against `[data-testid]` / `[data-test]` only — `dusk="..."` attributes are NOT matched (legacy from Laravel Dusk).
+
+Add `data-testid="my-element"` attributes to Vue components and target them with `$page->click('@my-element')`, `$page->assertVisible('@my-element')`, etc.
 
 ```php
 // BAD
-$browser->waitFor('.text-red-600');
-$browser->click('button.primary');
-$browser->assertSee('Welcome');
+$page->assertVisible('.text-red-600');
+$page->click('button.primary');
 
 // GOOD
-$browser->waitFor('@input-error');
-$browser->click('@submit-button');
-$browser->assertVisible('@welcome-message');
+$page->assertVisible('@input-error');
+$page->click('@submit-button');
 ```
 
 ```vue
 <!-- Vue component -->
-<button dusk="submit-button" @click="handleSubmit">Submit</button>
-<span dusk="input-error" v-if="error">{{ error }}</span>
+<button data-testid="submit-button" @click="handleSubmit">Submit</button>
+<span data-testid="input-error" v-if="error">{{ error }}</span>
 ```
+
+## No auto-wait
+
+Browser assertions do not auto-wait. Poll browser-side (see `waitForTestId` / `waitForDusk` helpers in existing tests) before asserting on async UI.
+
+## Strict models
+
+Use `->fresh()` when acting as a factory-created user — the in-process server keeps the guard user across requests, and factory instances lack nullable columns (strict mode throws `MissingAttributeException`).
