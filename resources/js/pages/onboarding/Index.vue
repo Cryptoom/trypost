@@ -10,7 +10,7 @@ import NetworkConnectGrid, {
 } from '@/components/accounts/NetworkConnectGrid.vue';
 import OnboardingStepCard from '@/components/onboarding/OnboardingStepCard.vue';
 import { Button } from '@/components/ui/button';
-import { useOnboardingStatusEcho } from '@/composables/echo/useOnboardingStatusEcho';
+import { useWorkspaceEcho } from '@/composables/echo/useWorkspaceEcho';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { copyToClipboard } from '@/lib/utils';
 import { calendar } from '@/routes/app';
@@ -51,7 +51,9 @@ const isLocalDismiss = ref(false);
 const onboardingReloadOnly = ['status', 'accounts', 'onboardingResidual'];
 
 // Echo is the fast path; slow poll covers MCP clients when Reverb is down.
-useOnboardingStatusEcho(onboardingReloadOnly);
+useWorkspaceEcho('.onboarding.status.updated', () => {
+    router.reload({ only: onboardingReloadOnly });
+});
 
 const { start: startOnboardingPoll, stop: stopOnboardingPoll } = usePoll(
     5000,

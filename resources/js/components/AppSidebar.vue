@@ -14,7 +14,6 @@ import {
     IconGift,
     IconHash,
     IconLifebuoy,
-    IconListCheck,
     IconPencil,
     IconPhoto,
     IconPlugConnected,
@@ -32,6 +31,7 @@ import {
 import NavMain from '@/components/NavMain.vue';
 import NavSupport from '@/components/NavSupport.vue';
 import NotificationBell from '@/components/NotificationBell.vue';
+import SidebarOnboarding from '@/components/onboarding/SidebarOnboarding.vue';
 import { Avatar } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import {
@@ -50,10 +50,8 @@ import {
     useSidebar,
 } from '@/components/ui/sidebar';
 import WorkspaceMenuContent from '@/components/WorkspaceMenuContent.vue';
-import { useOnboardingResidualEcho } from '@/composables/echo/useOnboardingStatusEcho';
-import { useActiveUrl } from '@/composables/useActiveUrl';
 import { useWorkspaceRole } from '@/composables/useWorkspaceRole';
-import { accounts, analytics, calendar, onboarding } from '@/routes/app';
+import { accounts, analytics, calendar } from '@/routes/app';
 import { index as assets } from '@/routes/app/assets';
 import { index as automations } from '@/routes/app/automations';
 import { portal } from '@/routes/app/billing';
@@ -61,7 +59,7 @@ import { index as labels } from '@/routes/app/labels';
 import { index as mcp } from '@/routes/app/mcp';
 import { index as signatures } from '@/routes/app/signatures';
 import { settings as workspaceSettings } from '@/routes/app/workspace';
-import type { NavItem, OnboardingResidual, User } from '@/types';
+import type { NavItem, User } from '@/types';
 
 interface Workspace {
     id: string;
@@ -80,21 +78,6 @@ const workspaces = computed<Workspace[]>(
 const subscriptionPastDue = computed<boolean>(() =>
     Boolean(page.props.auth.subscriptionPastDue),
 );
-const onboardingResidual = computed<OnboardingResidual | false>(
-    () => page.props.onboardingResidual,
-);
-const showOnboardingNav = computed(() => onboardingResidual.value !== false);
-const onboardingProgress = computed(() => {
-    if (onboardingResidual.value === false) {
-        return 0;
-    }
-
-    const { completed, total } = onboardingResidual.value;
-
-    return total > 0 ? Math.round((completed / total) * 100) : 0;
-});
-
-useOnboardingResidualEcho();
 
 const {
     canCreatePost,
@@ -103,7 +86,6 @@ const {
     canManageWorkspace,
     canCreateWorkspace,
 } = useWorkspaceRole();
-const { urlIsActive } = useActiveUrl();
 const { isMobile } = useSidebar();
 
 const mainNavItems = computed<NavItem[]>(() => [
@@ -313,69 +295,7 @@ const bottomNavItems = computed(() => [
             </div>
         </SidebarContent>
         <SidebarFooter>
-            <div
-                v-if="
-                    currentWorkspace &&
-                    showOnboardingNav &&
-                    onboardingResidual !== false
-                "
-                class="px-1 pb-1 group-data-[collapsible=icon]:hidden"
-            >
-                <Link
-                    :href="onboarding.url()"
-                    dusk="sidebar-onboarding"
-                    :class="[
-                        'block rounded-lg border-2 border-foreground p-3 shadow-2xs transition-colors',
-                        urlIsActive(onboarding.url())
-                            ? 'bg-amber-200'
-                            : 'bg-amber-100 hover:bg-amber-200',
-                    ]"
-                >
-                    <div class="flex items-start justify-between gap-2">
-                        <div class="flex min-w-0 items-center gap-2">
-                            <span
-                                class="inline-flex size-7 shrink-0 items-center justify-center rounded-md border-2 border-foreground bg-card shadow-2xs"
-                            >
-                                <IconListCheck
-                                    class="size-4 text-amber-800"
-                                    stroke-width="2.5"
-                                />
-                            </span>
-                            <div class="min-w-0">
-                                <p
-                                    class="truncate text-sm font-bold text-foreground"
-                                >
-                                    {{ $t('sidebar.onboarding') }}
-                                </p>
-                                <p
-                                    class="truncate text-xs text-foreground/70"
-                                >
-                                    {{ $t('sidebar.onboarding_hint') }}
-                                </p>
-                            </div>
-                        </div>
-                        <span
-                            class="shrink-0 rounded-full border-2 border-foreground bg-card px-1.5 py-0.5 text-[10px] font-bold tabular-nums"
-                        >
-                            {{ onboardingResidual.completed }}/{{
-                                onboardingResidual.total
-                            }}
-                        </span>
-                    </div>
-                    <div
-                        class="mt-2.5 h-1.5 overflow-hidden rounded-full border border-foreground bg-card"
-                        role="progressbar"
-                        :aria-valuenow="onboardingResidual.completed"
-                        :aria-valuemin="0"
-                        :aria-valuemax="onboardingResidual.total"
-                    >
-                        <div
-                            class="h-full bg-foreground transition-[width]"
-                            :style="{ width: `${onboardingProgress}%` }"
-                        />
-                    </div>
-                </Link>
-            </div>
+            <SidebarOnboarding v-if="currentWorkspace" />
 
             <div
                 v-if="subscriptionPastDue"
