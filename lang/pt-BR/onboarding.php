@@ -29,6 +29,7 @@ return [
     'social' => [
         'title' => 'Conecte uma rede social',
         'description' => 'Escolha pelo menos uma rede onde o TryPost possa publicar seu conteúdo.',
+        'connected_elsewhere' => 'Você já conectou uma conta em outro workspace, então este passo está pronto.',
     ],
     'first_post' => [
         'title' => 'Crie seu primeiro post',

@@ -61,15 +61,20 @@ class OnboardingController extends Controller
             );
         }
 
+        $accounts = SocialAccountResource::collection(
+            $workspace->socialAccounts()->orderBy('id')->get(),
+        )->resolve();
+
         return Inertia::render('onboarding/Index', [
             'status' => $status,
             'canDismiss' => $user->isAccountOwner(),
             'mcpUrl' => route('mcp.trypost'),
             'samplePrompt' => __('onboarding.first_post.sample_prompt'),
             'platforms' => SocialPlatform::connectableOptions(),
-            'accounts' => SocialAccountResource::collection(
-                $workspace->socialAccounts()->orderBy('id')->get(),
-            )->resolve(),
+            'accounts' => $accounts,
+            // The step is account-scoped but the grid is workspace-local — tell
+            // the user when the check comes from a sibling workspace.
+            'socialConnectedElsewhere' => $status['social_connected'] && $accounts === [],
         ]);
     }
 

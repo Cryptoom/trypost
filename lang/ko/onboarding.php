@@ -29,6 +29,7 @@ return [
     'social' => [
         'title' => '소셜 계정 연결',
         'description' => 'TryPost가 콘텐츠를 발행할 네트워크를 하나 이상 선택하세요.',
+        'connected_elsewhere' => '다른 워크스페이스에서 이미 계정을 연결했으므로 이 단계는 완료되었습니다.',
     ],
     'first_post' => [
         'title' => '첫 게시물 만들기',

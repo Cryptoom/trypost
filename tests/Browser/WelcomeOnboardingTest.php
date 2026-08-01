@@ -6,16 +6,32 @@ use App\Models\User;
 use App\Models\Workspace;
 
 /**
- * Poll browser-side until the dusk element exists. These Pest browser
+ * Poll browser-side until the data-testid element exists. These Pest browser
  * assertions do not auto-wait, and Inertia visits settle asynchronously.
  */
 function waitForDusk(mixed $page, string $selector): void
 {
     $page->script(<<<JS
         (async () => {
-            const sel = '[dusk="{$selector}"]';
+            const sel = '[data-testid="{$selector}"]';
             for (let i = 0; i < 100; i++) {
                 if (document.querySelector(sel)) return;
+                await new Promise((r) => setTimeout(r, 50));
+            }
+        })();
+    JS);
+}
+
+/**
+ * Poll browser-side until the data-testid element is gone.
+ */
+function waitForDuskGone(mixed $page, string $selector): void
+{
+    $page->script(<<<JS
+        (async () => {
+            const sel = '[data-testid="{$selector}"]';
+            for (let i = 0; i < 100; i++) {
+                if (! document.querySelector(sel)) return;
                 await new Promise((r) => setTimeout(r, 50));
             }
         })();
@@ -108,4 +124,30 @@ test('member without app access lands on the subscription required screen', func
 
     waitForDusk($page, 'welcome-subscription-required');
     $page->assertVisible('@welcome-subscription-required');
+});
+
+test('owner sees the residual banner on mobile and can dismiss it in place', function () {
+    config(['trypost.self_hosted' => false]);
+
+    $user = User::factory()->create();
+    $workspace = Workspace::factory()->create([
+        'account_id' => $user->account_id,
+        'user_id' => $user->id,
+    ]);
+    $user->update(['current_workspace_id' => $workspace->id]);
+    subscribeAccount($user->account);
+
+    test()->actingAs($user->fresh());
+
+    $page = visit(route('app.calendar'))->resize(375, 812);
+
+    waitForDusk($page, 'sidebar-onboarding-mobile');
+    $page->assertVisible('@sidebar-onboarding-mobile')
+        ->click('@sidebar-onboarding-mobile-dismiss');
+
+    // Dismiss with `stay` keeps the user on the calendar and clears the banner.
+    waitForDuskGone($page, 'sidebar-onboarding-mobile');
+    $page->assertMissing('@sidebar-onboarding-mobile');
+
+    expect($user->account->fresh()->onboarding_dismissed_at)->not->toBeNull();
 });

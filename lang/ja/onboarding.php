@@ -29,6 +29,7 @@ return [
     'social' => [
         'title' => 'SNSアカウントを接続',
         'description' => 'TryPostが投稿できるネットワークを少なくとも1つ選びます。',
+        'connected_elsewhere' => '別のワークスペースでアカウントを接続済みなので、このステップは完了しています。',
     ],
     'first_post' => [
         'title' => '最初の投稿を作成',

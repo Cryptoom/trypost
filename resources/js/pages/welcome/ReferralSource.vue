@@ -128,12 +128,16 @@ const submit = (): void => {
         return;
     }
 
-    trackBeginCheckout({
-        name: props.plan.name,
-        interval: props.plan.interval,
+    // Fire the pixel only once the request actually starts — clicks blocked by
+    // validation or the route throttle must not inflate begin_checkout.
+    form.submit(store(), {
+        onStart: () => {
+            trackBeginCheckout({
+                name: props.plan.name,
+                interval: props.plan.interval,
+            });
+        },
     });
-
-    form.submit(store());
 };
 </script>
 

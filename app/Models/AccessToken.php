@@ -68,7 +68,13 @@ class AccessToken extends Token
             );
     }
 
-    public function isMcpOAuthClient(): bool
+    /**
+     * Whether this token belongs to an MCP OAuth client (not a personal access
+     * API key) and is unexpired. Intentionally ignores `revoked`: the observer
+     * needs a stable answer while a revoke is mid-flight so it can broadcast
+     * the disconnect. Use the `activeMcpOAuth` scope for "currently usable".
+     */
+    public function isMcpOAuthGrant(): bool
     {
         $this->loadMissing('client');
 

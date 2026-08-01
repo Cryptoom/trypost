@@ -67,6 +67,35 @@ test('onboarding renders activation status and connection props', function () {
         && data_get($event->payload, 'event') === OnboardingEvent::Viewed->value);
 });
 
+test('onboarding flags the social step when only a sibling workspace is connected', function () {
+    $otherWorkspace = Workspace::factory()->create([
+        'account_id' => $this->user->account_id,
+        'user_id' => $this->user->id,
+    ]);
+    SocialAccount::factory()->create(['workspace_id' => $otherWorkspace->id]);
+
+    $this->actingAs($this->user)
+        ->get(route('app.onboarding'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('status.social_connected', true)
+            ->where('accounts', [])
+            ->where('socialConnectedElsewhere', true)
+        );
+});
+
+test('onboarding does not flag social elsewhere when the current workspace is connected', function () {
+    SocialAccount::factory()->create(['workspace_id' => $this->workspace->id]);
+
+    $this->actingAs($this->user)
+        ->get(route('app.onboarding'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('status.social_connected', true)
+            ->where('socialConnectedElsewhere', false)
+        );
+});
+
 test('onboarding does not capture viewed during a partial reload', function () {
     $response = $this->actingAs($this->user)
         ->get(route('app.onboarding'))

@@ -35,6 +35,7 @@ const props = defineProps<{
     samplePrompt: string;
     platforms: AvailablePlatform[];
     accounts: ConnectedAccount[];
+    socialConnectedElsewhere: boolean;
 }>();
 
 const page = usePage();
@@ -284,7 +285,15 @@ const continueToTryPost = (): void => {
                     accent-class="bg-sky-100"
                     data-testid="onboarding-social"
                 >
+                    <p
+                        v-if="socialConnectedElsewhere"
+                        class="text-sm text-muted-foreground"
+                        data-testid="onboarding-social-elsewhere"
+                    >
+                        {{ $t('onboarding.social.connected_elsewhere') }}
+                    </p>
                     <NetworkConnectGrid
+                        v-else
                         :platforms="platforms"
                         :connected-accounts="accounts"
                         :reload-only="onboardingReloadOnly"

@@ -29,6 +29,7 @@ return [
     'social' => [
         'title' => 'Collega un account social',
         'description' => 'Scegli almeno una rete dove TryPost possa pubblicare i tuoi contenuti.',
+        'connected_elsewhere' => 'Hai già collegato un account in un altro workspace, quindi questo passaggio è completato.',
     ],
     'first_post' => [
         'title' => 'Crea il tuo primo post',

@@ -29,6 +29,7 @@ return [
     'social' => [
         'title' => 'Koppel een social account',
         'description' => 'Kies minstens één netwerk waar TryPost je content kan publiceren.',
+        'connected_elsewhere' => 'Je hebt al een account gekoppeld in een andere workspace, dus deze stap is klaar.',
     ],
     'first_post' => [
         'title' => 'Maak je eerste post',

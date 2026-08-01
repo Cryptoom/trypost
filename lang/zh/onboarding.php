@@ -29,6 +29,7 @@ return [
     'social' => [
         'title' => '连接社交账号',
         'description' => '至少选择一个网络，让 TryPost 可以发布你的内容。',
+        'connected_elsewhere' => '你已在其他工作空间连接了账户，因此这一步已完成。',
     ],
     'first_post' => [
         'title' => '创建第一条内容',

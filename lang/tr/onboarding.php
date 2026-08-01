@@ -29,6 +29,7 @@ return [
     'social' => [
         'title' => 'Bir sosyal hesap bağla',
         'description' => 'TryPost’un içeriğini yayınlayabileceği en az bir ağ seç.',
+        'connected_elsewhere' => 'Başka bir çalışma alanında zaten bir hesap bağladın, bu adım tamam.',
     ],
     'first_post' => [
         'title' => 'İlk gönderini oluştur',

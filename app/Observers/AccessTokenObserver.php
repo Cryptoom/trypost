@@ -34,7 +34,7 @@ class AccessTokenObserver
 
     private function broadcastIfMcpOAuth(AccessToken $accessToken): void
     {
-        if (! $accessToken->isMcpOAuthClient()) {
+        if (! $accessToken->isMcpOAuthGrant()) {
             return;
         }
 

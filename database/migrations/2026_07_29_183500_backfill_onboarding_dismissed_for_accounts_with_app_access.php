@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Carbon\CarbonInterface;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\DB;
@@ -19,13 +20,12 @@ return new class extends Migration
         $now = now();
 
         if (config('trypost.self_hosted')) {
-            DB::table('accounts')
-                ->whereNull('onboarding_dismissed_at')
-                ->whereNull('onboarding_completed_at')
-                ->update([
-                    'onboarding_dismissed_at' => $now,
-                    'updated_at' => $now,
-                ]);
+            $this->stampInChunks(
+                DB::table('accounts')
+                    ->whereNull('onboarding_dismissed_at')
+                    ->whereNull('onboarding_completed_at'),
+                $now,
+            );
 
             return;
         }
@@ -61,10 +61,24 @@ return new class extends Migration
                 }
             });
 
-        $query->update([
-            'onboarding_dismissed_at' => $now,
-            'updated_at' => $now,
-        ]);
+        $this->stampInChunks($query, $now);
+    }
+
+    /**
+     * Update in id-ordered chunks so a large accounts table is not locked by a
+     * single statement. chunkById paginates on the id column, so rows stamped
+     * by earlier chunks falling out of the WHERE is harmless.
+     */
+    private function stampInChunks(Builder $query, CarbonInterface $now): void
+    {
+        $query->chunkById(500, function ($accounts) use ($now): void {
+            DB::table('accounts')
+                ->whereIn('id', $accounts->pluck('id'))
+                ->update([
+                    'onboarding_dismissed_at' => $now,
+                    'updated_at' => $now,
+                ]);
+        });
     }
 
     public function down(): void
