@@ -5,9 +5,12 @@ declare(strict_types=1);
 use App\Models\Account;
 use App\Models\User;
 use App\Support\Onboarding\DismissAccountsWithAppAccess;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;
 
 beforeEach(function () {
+    Model::preventLazyLoading();
+
     config([
         'trypost.self_hosted' => false,
         'trypost.billing.require_card_for_trial' => true,

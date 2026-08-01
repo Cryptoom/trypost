@@ -18,6 +18,7 @@ final class DismissAccountsWithAppAccess
         $dismissedAt = now();
 
         Account::query()
+            ->with('subscriptions')
             ->whereNull('onboarding_dismissed_at')
             ->whereNull('onboarding_completed_at')
             ->orderBy('id')
