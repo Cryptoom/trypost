@@ -65,9 +65,12 @@ const dismissResidual = (): void => {
 </script>
 
 <template>
-    <div v-if="visible && residual !== false" class="px-4 pt-3 md:hidden">
+    <div
+        v-if="visible && residual !== false"
+        class="shrink-0 px-4 pt-3 md:hidden"
+    >
         <div
-            class="flex items-center gap-2 rounded-lg border-2 border-foreground bg-amber-100 p-2.5 shadow-2xs"
+            class="flex items-center gap-2 rounded-lg border-2 border-foreground bg-amber-100 p-2.5 ps-12 shadow-2xs"
         >
             <Link
                 :href="onboarding.url()"

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useHttp, usePage } from '@inertiajs/vue3';
-import { onBeforeUnmount, onMounted } from 'vue';
+import { computed, onBeforeUnmount, onMounted } from 'vue';
 
 import AppHeader from '@/components/AppHeader.vue';
 import AppSidebar from '@/components/AppSidebar.vue';
@@ -15,6 +15,14 @@ import { heartbeat as heartbeatRoute } from '@/routes/app/presence';
 
 const page = usePage();
 const isOpen = page.props.sidebarOpen;
+
+// The mobile residual strip sits at the top of the content and clears the
+// floating sidebar trigger — pages then skip the trigger's pt-14 spacer.
+const showMobileResidual = computed(
+    () =>
+        page.props.onboardingResidual !== false &&
+        page.component !== 'onboarding/Index',
+);
 
 type Props = {
     fullWidth?: boolean;
@@ -59,7 +67,6 @@ onBeforeUnmount(() => {
                 v-else
                 class="absolute top-3 left-4 z-30 size-10 rounded-md border-2 border-foreground bg-card text-foreground shadow-2xs md:hidden"
             />
-            <OnboardingResidualMobile v-if="page.props.auth.currentWorkspace" />
             <div
                 :class="
                     fullWidth
@@ -67,6 +74,9 @@ onBeforeUnmount(() => {
                         : 'flex-1 overflow-y-auto'
                 "
             >
+                <OnboardingResidualMobile
+                    v-if="page.props.auth.currentWorkspace"
+                />
                 <div
                     :class="[
                         fullWidth
@@ -74,7 +84,8 @@ onBeforeUnmount(() => {
                             : 'mx-auto w-full max-w-7xl',
                         !fullWidth &&
                         !$slots['header'] &&
-                        !$slots['header-actions']
+                        !$slots['header-actions'] &&
+                        !showMobileResidual
                             ? 'pt-14 md:pt-0'
                             : '',
                     ]"

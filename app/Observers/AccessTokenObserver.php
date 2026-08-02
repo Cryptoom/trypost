@@ -39,7 +39,7 @@ class AccessTokenObserver
         }
 
         $user = User::query()
-            ->with(['account', 'currentWorkspace'])
+            ->with('account')
             ->find($accessToken->user_id);
 
         OnboardingStatusUpdated::dispatchForAccount($user?->account, $user);

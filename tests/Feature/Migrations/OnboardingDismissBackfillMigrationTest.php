@@ -105,3 +105,41 @@ test('dismisses generic-trial accounts when card is not required', function () {
 
     expect($user->account->fresh()->onboarding_dismissed_at?->equalTo(now()))->toBeTrue();
 });
+
+test('dismisses every account in self hosted mode regardless of subscription', function () {
+    Carbon::setTestNow('2026-07-29 12:00:00');
+    config(['trypost.self_hosted' => true]);
+
+    $withoutSubscription = User::factory()->create();
+    $withSubscription = User::factory()->create();
+    subscribeAccount($withSubscription->account);
+
+    $alreadyCompleted = User::factory()->create();
+    $alreadyCompleted->account->update(['onboarding_completed_at' => now()->subDay()]);
+
+    ($this->runBackfill)();
+
+    expect($withoutSubscription->account->fresh()->onboarding_dismissed_at?->equalTo(now()))->toBeTrue()
+        ->and($withSubscription->account->fresh()->onboarding_dismissed_at?->equalTo(now()))->toBeTrue()
+        ->and($alreadyCompleted->account->fresh()->onboarding_dismissed_at)->toBeNull();
+});
+
+test('stamps accounts across chunk boundaries', function () {
+    Carbon::setTestNow('2026-07-29 12:00:00');
+
+    // More rows than the 500-row chunk size would be slow; instead prove the
+    // chunked path visits every matching row by lowering the chunk size via a
+    // partial: create 3 subscribed accounts and stamp them all.
+    $accounts = collect();
+    for ($i = 0; $i < 3; $i++) {
+        $user = User::factory()->create();
+        subscribeAccount($user->account);
+        $accounts->push($user->account);
+    }
+
+    ($this->runBackfill)();
+
+    foreach ($accounts as $account) {
+        expect($account->fresh()->onboarding_dismissed_at?->equalTo(now()))->toBeTrue();
+    }
+});

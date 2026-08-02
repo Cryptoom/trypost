@@ -130,6 +130,19 @@ test('creating a personal access token does not broadcast onboarding status', fu
     Event::assertNotDispatched(OnboardingStatusUpdated::class);
 });
 
+test('creating an oauth mcp token does not broadcast when onboarding is over', function (string $column) {
+    $user = User::factory()->create();
+    Workspace::factory()->create([
+        'account_id' => $user->account_id,
+        'user_id' => $user->id,
+    ]);
+    $user->account->update([$column => now()]);
+
+    mcpAccessToken($user, mcpOauthClient());
+
+    Event::assertNotDispatched(OnboardingStatusUpdated::class);
+})->with(['onboarding_completed_at', 'onboarding_dismissed_at']);
+
 test('revoking an oauth mcp token broadcasts onboarding status', function () {
     $user = User::factory()->create();
     $workspace = Workspace::factory()->create([

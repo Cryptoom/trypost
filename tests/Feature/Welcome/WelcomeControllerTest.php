@@ -343,6 +343,27 @@ test('subscription required screen sends owners back to the welcome flow', funct
         ->assertRedirect(route('app.welcome.persona'));
 });
 
+test('subscription required screen sends owners with residual onboarding to activation', function () {
+    subscribeAccount($this->user->account);
+
+    $this->actingAs($this->user->fresh())
+        ->get(route('app.welcome.subscription-required'))
+        ->assertRedirect(route('app.onboarding'));
+});
+
+test('referral source exposes zero trial days when checkout trials are disabled', function () {
+    config(['trypost.billing.require_card_for_trial' => true, 'cashier.trial_days' => 0]);
+    $this->user->update([
+        'persona' => Persona::Agency->value,
+        'goals' => [Goal::SaveTime->value],
+    ]);
+
+    $this->actingAs($this->user->fresh())
+        ->get(route('app.welcome.referral-source'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page->where('trialDays', 0));
+});
+
 test('subscription required screen sends members with app access to the calendar', function () {
     ['owner' => $owner, 'member' => $member] = strandedMemberOnSharedAccount();
     subscribeAccount($owner->account);

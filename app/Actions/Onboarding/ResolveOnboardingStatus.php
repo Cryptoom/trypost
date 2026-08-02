@@ -158,8 +158,12 @@ class ResolveOnboardingStatus
             return false;
         }
 
-        $account->forceFill(['onboarding_completed_at' => $completedAt]);
+        $account->forceFill([
+            'onboarding_completed_at' => $completedAt,
+            'updated_at' => $completedAt,
+        ]);
         $account->syncOriginalAttribute('onboarding_completed_at');
+        $account->syncOriginalAttribute('updated_at');
 
         if (PostHogService::isEnabled()) {
             $this->postHog->capture(
@@ -196,13 +200,13 @@ class ResolveOnboardingStatus
 
         // Cheap gates first: this runs on every full Inertia load, so dismissed /
         // completed accounts, members, and self-hosted must never pay for the
-        // step EXISTS queries in handle().
+        // step EXISTS queries in handle() — or even for a subscription lookup.
         if (config('trypost.self_hosted')
             || $account === null
-            || ! $user->isAccountOwner()
-            || ! $account->hasAppAccess()
             || $account->onboarding_completed_at !== null
             || $account->onboarding_dismissed_at !== null
+            || ! $user->isAccountOwner()
+            || ! $account->hasAppAccess()
         ) {
             return false;
         }

@@ -121,8 +121,8 @@ class WelcomeController extends Controller
                 'name' => $plan->name,
                 'interval' => 'monthly',
             ],
-            'trialDays' => $account !== null && ConfigureSubscriptionCheckout::qualifiesForCheckoutTrial($account)
-                ? max(ConfigureSubscriptionCheckout::MIN_CHECKOUT_TRIAL_DAYS, (int) config('cashier.trial_days'))
+            'trialDays' => $account !== null
+                ? ConfigureSubscriptionCheckout::checkoutTrialDays($account)
                 : 0,
         ]);
     }

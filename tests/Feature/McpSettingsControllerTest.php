@@ -11,6 +11,8 @@ use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Str;
 
 beforeEach(function (): void {
+    config(['trypost.self_hosted' => false]);
+
     $this->user = User::factory()->create();
     $this->workspace = Workspace::factory()->create([
         'account_id' => $this->user->account_id,
@@ -19,6 +21,9 @@ beforeEach(function (): void {
     $this->workspace->members()->attach($this->user->id, ['role' => Role::Admin->value]);
     $this->user->update(['current_workspace_id' => $this->workspace->id]);
     $this->user->refresh();
+
+    // SaaS mode: the MCP settings live behind EnsureAccountReady.
+    subscribeAccount($this->user->account);
 });
 
 it('shows the mcp settings page', function (): void {
@@ -168,9 +173,18 @@ it('requires authentication', function (): void {
 
 it('forbids users without workspace access', function (): void {
     $outsider = User::factory()->create();
+    subscribeAccount($outsider->account);
     $outsider->update(['current_workspace_id' => $this->workspace->id]);
 
     $this->actingAs($outsider->fresh())
         ->get(route('app.mcp.index'))
         ->assertForbidden();
+});
+
+it('redirects to welcome when the account has no app access', function (): void {
+    $this->user->account->subscriptions()->delete();
+
+    $this->actingAs($this->user->fresh())
+        ->get(route('app.mcp.index'))
+        ->assertRedirect(route('app.welcome.persona'));
 });

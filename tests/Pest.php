@@ -11,6 +11,8 @@ use App\Models\Workspace;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Stripe\ApiRequestor;
+use Stripe\HttpClient\ClientInterface;
 use Tests\BrowserTestCase;
 use Tests\TestCase;
 
@@ -288,4 +290,37 @@ function strandedMemberOnSharedAccount(
         'member' => $member->fresh(),
         'shared_workspaces' => $shared,
     ];
+}
+
+/**
+ * Fake the Stripe HTTP layer: the SDK's checkout session retrieval responds
+ * with the given payloads (error statuses throw the usual SDK exceptions).
+ * Returns the fake client so tests can assert how many calls were made.
+ * Reset with ApiRequestor::setHttpClient(new CurlClient()) in an afterEach.
+ *
+ * @param  list<array{body: array<string, mixed>, status: int}>  $responses
+ */
+function fakeStripeHttp(array $responses): object
+{
+    // The SDK refuses to boot without an API key, and the testing env has none.
+    config(['cashier.secret' => 'sk_test_fake']);
+
+    $client = new class($responses) implements ClientInterface
+    {
+        public int $calls = 0;
+
+        public function __construct(private readonly array $responses) {}
+
+        public function request($method, $absUrl, $headers, $params, $hasFile, $apiMode = 'v1', $maxNetworkRetries = null): array
+        {
+            $this->calls++;
+            $response = $this->responses[min($this->calls - 1, count($this->responses) - 1)];
+
+            return [json_encode($response['body']), $response['status'], []];
+        }
+    };
+
+    ApiRequestor::setHttpClient($client);
+
+    return $client;
 }

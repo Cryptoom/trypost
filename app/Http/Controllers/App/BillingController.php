@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Gate;
 use Inertia\Inertia;
 use Inertia\Response;
+use Stripe\Exception\InvalidRequestException;
 use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 use Throwable;
 
@@ -32,14 +33,34 @@ class BillingController extends Controller
         $account = $user->account;
         $sessionId = $request->query('session_id');
 
-        // Consume the checkout session once per account: `fromCheckout` is true
-        // only the first time this account sees the session_id, so a back-button/
-        // refresh can't re-fire `checkout.completed` — and a foreign session_id
-        // can't burn the real buyer's tracking. `Cache::add` is atomic.
-        $fromCheckout = $account !== null
+        // Verify-then-flag: `fromCheckout` is true only when the session belongs
+        // to this account's Stripe customer, so a foreign or invented session_id
+        // can never fire the purchase tracking. The per-account cache key makes
+        // the check once-only; invalid sessions are consumed (no Stripe hammering
+        // from the poll loop) while transient failures stay unconsumed so the
+        // next poll retries.
+        $fromCheckout = false;
+        $conversion = null;
+
+        if ($account !== null
+            && $account->stripe_id
             && is_string($sessionId)
             && $sessionId !== ''
-            && Cache::add("checkout_tracked:{$account->id}:{$sessionId}", true, now()->addDay());
+            && ! Cache::has($cacheKey = "checkout_tracked:{$account->id}:{$sessionId}")
+        ) {
+            try {
+                $session = $account->stripe()->checkout->sessions->retrieve($sessionId);
+
+                $conversion = CheckoutConversionData::fromSession($session, (string) $account->stripe_id);
+                $fromCheckout = $conversion !== null;
+
+                Cache::put($cacheKey, true, now()->addDay());
+            } catch (InvalidRequestException) {
+                Cache::put($cacheKey, true, now()->addDay());
+            } catch (Throwable) {
+                // Transient — next poll retries the verification.
+            }
+        }
 
         return Inertia::render('billing/Processing', [
             'subscriptionActive' => $account && $account->subscribed(Account::SUBSCRIPTION_NAME),
@@ -49,26 +70,8 @@ class BillingController extends Controller
                 && $account->onboarding_completed_at === null
                 && $account->onboarding_dismissed_at === null,
             'persona' => $user->persona?->value,
-            'conversion' => $fromCheckout && $account->stripe_id
-                ? fn () => $this->buildConversionData($account, $sessionId)
-                : null,
+            'conversion' => $conversion,
         ]);
-    }
-
-    /**
-     * @return array{value: float, currency: string, transaction_id: string}|null
-     */
-    private function buildConversionData(Account $account, string $sessionId): ?array
-    {
-        try {
-            $session = $account->stripe()->checkout->sessions->retrieve(
-                $sessionId,
-            );
-        } catch (Throwable) {
-            return null;
-        }
-
-        return CheckoutConversionData::fromSession($session, (string) $account->stripe_id);
     }
 
     public function index(Request $request): Response|RedirectResponse

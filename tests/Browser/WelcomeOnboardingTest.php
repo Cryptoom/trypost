@@ -6,36 +6,43 @@ use App\Models\User;
 use App\Models\Workspace;
 
 /**
- * Poll browser-side until the data-testid element exists. These Pest browser
- * assertions do not auto-wait, and Inertia visits settle asynchronously.
+ * Poll browser-side until the data-testid element exists — and fail loudly
+ * when it never shows up.
  */
 function waitForDusk(mixed $page, string $selector): void
 {
-    $page->script(<<<JS
+    $found = $page->script(<<<JS
         (async () => {
             const sel = '[data-testid="{$selector}"]';
             for (let i = 0; i < 100; i++) {
-                if (document.querySelector(sel)) return;
+                if (document.querySelector(sel)) return true;
                 await new Promise((r) => setTimeout(r, 50));
             }
+            return false;
         })();
     JS);
+
+    expect($found)->toBeTrue("Timed out waiting for [data-testid=\"{$selector}\"] to appear.");
 }
 
 /**
- * Poll browser-side until the data-testid element is gone.
+ * Poll browser-side until the data-testid element is gone — and fail loudly
+ * when it never disappears.
  */
 function waitForDuskGone(mixed $page, string $selector): void
 {
-    $page->script(<<<JS
+    $gone = $page->script(<<<JS
         (async () => {
             const sel = '[data-testid="{$selector}"]';
             for (let i = 0; i < 100; i++) {
-                if (! document.querySelector(sel)) return;
+                if (! document.querySelector(sel)) return true;
                 await new Promise((r) => setTimeout(r, 50));
             }
+            return false;
         })();
     JS);
+
+    expect($gone)->toBeTrue("Timed out waiting for [data-testid=\"{$selector}\"] to disappear.");
 }
 
 /**
@@ -44,15 +51,18 @@ function waitForDuskGone(mixed $page, string $selector): void
  */
 function waitForPath(mixed $page, string $path): void
 {
-    $page->script(<<<JS
+    $reached = $page->script(<<<JS
         (async () => {
             for (let i = 0; i < 100; i++) {
                 if (window.location.pathname === '{$path}') break;
                 await new Promise((r) => setTimeout(r, 50));
             }
             await new Promise((r) => setTimeout(r, 500));
+            return window.location.pathname === '{$path}';
         })();
     JS);
+
+    expect($reached)->toBeTrue("Timed out waiting for path {$path}.");
 }
 
 test('owner walks the welcome steps up to the checkout CTA', function () {
@@ -76,11 +86,16 @@ test('owner walks the welcome steps up to the checkout CTA', function () {
         ->click('@welcome-goal-save_time')
         ->click('@welcome-goals-continue');
 
-    // The CTA shows the plan/trial context. Clicking through to Stripe is
-    // covered by feature tests — the browser must not hit the Stripe API.
+    // The CTA shows the plan/trial context and stays disabled until a source
+    // is picked. Clicking through to Stripe is covered by feature tests — the
+    // browser must not hit the Stripe API.
     waitForDusk($page, 'welcome-start-checkout');
     $page->assertVisible('@welcome-checkout-plan-note')
-        ->assertVisible('@welcome-start-checkout');
+        ->click('@welcome-source-google');
+
+    $checkoutEnabled = $page->script('(() => { const b = document.querySelector(\'[data-testid="welcome-start-checkout"]\'); return b !== null && ! b.disabled; })()');
+
+    expect($checkoutEnabled)->toBeTrue();
 
     expect($user->fresh()->persona?->value)->toBe('creator')
         ->and($user->fresh()->goals)->toBe(['save_time']);
@@ -107,7 +122,8 @@ test('owner skips the onboarding checklist and the residual banner disappears', 
         ->assertVisible('@onboarding-first-post')
         ->click('@onboarding-skip');
 
-    waitForPath($page, '/calendar');
+    // Skip lands on the calendar and the sidebar residual is gone for good.
+    waitForPath($page, parse_url(route('app.calendar'), PHP_URL_PATH));
     $page->assertMissing('@sidebar-onboarding');
 
     expect($user->account->fresh()->onboarding_dismissed_at)->not->toBeNull();

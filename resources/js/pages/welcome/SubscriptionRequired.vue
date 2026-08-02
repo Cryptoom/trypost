@@ -9,8 +9,10 @@ defineProps<{
 }>();
 
 // The owner may be checking out in another tab — once the subscription is
-// active, the next reload redirects into the app.
-usePoll(10000);
+// active, the next reload redirects into the app. Only `auth` is reloaded:
+// the redirect decision is server-side and the rest of the props are dead
+// weight on a holding screen.
+usePoll(10000, { only: ['auth'] });
 </script>
 
 <template>

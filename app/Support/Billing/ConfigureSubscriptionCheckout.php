@@ -24,11 +24,10 @@ final class ConfigureSubscriptionCheckout
      */
     public static function apply(SubscriptionBuilder $subscription, Account $account): SubscriptionBuilder
     {
-        $trialDays = (int) config('cashier.trial_days');
+        $trialDays = self::checkoutTrialDays($account);
 
-        if ($trialDays > 0 && self::qualifiesForCheckoutTrial($account)) {
-            // Stripe Checkout's minimum trial is 48 hours; clamp misconfigured 1-day values.
-            $subscription->trialDays(max(self::MIN_CHECKOUT_TRIAL_DAYS, $trialDays));
+        if ($trialDays > 0) {
+            $subscription->trialDays($trialDays);
         }
 
         if (CashierCheckoutEnv::allowPromotionCodes(config('cashier.allow_promotion_codes'))) {
@@ -39,9 +38,26 @@ final class ConfigureSubscriptionCheckout
     }
 
     /**
-     * Checkout trials are for genuinely new card-required signups. Returning
-     * accounts (any prior subscription that left incomplete) and no-card
-     * generic-trial installs should charge immediately / use promo codes.
+     * Trial length the checkout will actually apply — the single source of truth
+     * for both the builder and any UI that advertises the trial. 0 disables the
+     * trial (immediate charge); 1 is clamped to Stripe's 48-hour minimum.
+     */
+    public static function checkoutTrialDays(Account $account): int
+    {
+        $trialDays = (int) config('cashier.trial_days');
+
+        if ($trialDays <= 0 || ! self::qualifiesForCheckoutTrial($account)) {
+            return 0;
+        }
+
+        return max(self::MIN_CHECKOUT_TRIAL_DAYS, $trialDays);
+    }
+
+    /**
+     * Checkout trials are for genuinely new card-required signups. Accounts whose
+     * only prior subscriptions died incomplete (never paid) still qualify; any
+     * subscription that made it past incomplete, and no-card generic-trial
+     * installs, skip the trial and keep promotion codes.
      */
     public static function qualifiesForCheckoutTrial(Account $account): bool
     {

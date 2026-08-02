@@ -62,6 +62,12 @@ const completePurchase = () => {
     finishing.value = true;
     stop();
 
+    if (slowNoticeTimer) {
+        clearTimeout(slowNoticeTimer);
+        slowNoticeTimer = null;
+    }
+    takingLong.value = false;
+
     const plan = (page.props.auth as Auth | undefined)?.plan;
 
     if (props.fromCheckout && plan) {
