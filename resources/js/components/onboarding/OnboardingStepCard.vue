@@ -9,14 +9,12 @@ defineProps<{
     title: string;
     description: string;
     accentClass: string;
-    dusk?: string;
 }>();
 </script>
 
 <template>
     <section
         class="overflow-hidden rounded-2xl border-2 border-foreground bg-card shadow-2xs"
-        :data-testid="dusk"
     >
         <header
             :class="[

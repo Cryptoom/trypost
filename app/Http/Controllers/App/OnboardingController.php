@@ -143,6 +143,11 @@ class OnboardingController extends Controller
         $user = $request->user();
         $account = $user->account;
 
+        // The explicit Continue leaves for good — kill any stale celebration
+        // flag, whichever path stamped completion (observer, syncProgress, or
+        // the markCompleted below).
+        $request->session()->forget(ResolveOnboardingStatus::JUST_COMPLETED_SESSION_KEY);
+
         // Already stamped (e.g. observer / syncProgress auto-complete) — just leave.
         if ($account?->onboarding_completed_at !== null) {
             return redirect()->route('app.calendar');

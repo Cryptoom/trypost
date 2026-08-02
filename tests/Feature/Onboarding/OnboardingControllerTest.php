@@ -133,6 +133,20 @@ test('onboarding can be dismissed', function () {
     );
 });
 
+test('complete forgets a stale celebration flag when already stamped', function () {
+    Carbon::setTestNow('2026-07-29 12:00:00');
+    $this->user->account->update(['onboarding_completed_at' => now()]);
+
+    // Observer-style stamp left the flag behind; the explicit Continue must
+    // clear it so a later /onboarding visit redirects instead of celebrating.
+    $this->actingAs($this->user->fresh())
+        ->withSession([ResolveOnboardingStatus::JUST_COMPLETED_SESSION_KEY => true])
+        ->post(route('app.onboarding.complete'))
+        ->assertRedirect(route('app.calendar'));
+
+    expect(session()->get(ResolveOnboardingStatus::JUST_COMPLETED_SESSION_KEY))->toBeNull();
+});
+
 test('onboarding dismiss with stay redirects back instead of to the calendar', function () {
     Carbon::setTestNow('2026-07-24 12:00:00');
     Event::fake([OnboardingStatusUpdated::class]);
