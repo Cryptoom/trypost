@@ -27,10 +27,10 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
+import { useWorkspaceSettingsTabs } from '@/composables/useWorkspaceSettingsTabs';
 import date from '@/date';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { copyToClipboard } from '@/lib/utils';
-import { useWorkspaceSettingsTabs } from '@/composables/useWorkspaceSettingsTabs';
 
 interface ApiToken {
     id: string;
@@ -92,7 +92,7 @@ const tabs = useWorkspaceSettingsTabs();
                     <Button
                         variant="outline"
                         class="shrink-0"
-                        @click="copyToClipboard(newToken!, trans('settings.api_keys.copy_success'))"
+                        @click="copyToClipboard(newToken!)"
                     >
                         <IconCopy class="size-4" />
                         {{ $t('settings.api_keys.copy') }}
