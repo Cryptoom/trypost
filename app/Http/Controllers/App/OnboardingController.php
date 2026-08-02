@@ -164,6 +164,10 @@ class OnboardingController extends Controller
         // markCompleted broadcasts account-wide so residual banners clear immediately.
         $this->resolveOnboardingStatus->markCompleted($user);
 
+        // The explicit Continue already showed the ready state — the celebration
+        // flag must not linger and resurface on a later visit.
+        $request->session()->forget(ResolveOnboardingStatus::JUST_COMPLETED_SESSION_KEY);
+
         return redirect()->route('app.calendar');
     }
 

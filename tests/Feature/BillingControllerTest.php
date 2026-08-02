@@ -215,7 +215,7 @@ test('billing processing exposes fromCheckout=true only the first time a session
     );
 });
 
-test('billing processing does not track a session owned by another customer', function () {
+test('billing processing does not convert a session owned by another customer', function () {
     config(['trypost.self_hosted' => false]);
 
     $sessionId = 'cs_test_'.fake()->uuid();
@@ -230,13 +230,12 @@ test('billing processing does not track a session owned by another customer', fu
         'status' => 200,
     ]]);
 
+    // First sight marks fromCheckout, but the customer mismatch yields no
+    // conversion — and the purchase pixel gates on conversion.
     $this->actingAs($this->user->fresh())
         ->get(route('app.billing.processing', ['session_id' => $sessionId]))
         ->assertOk()
-        ->assertInertia(fn ($page) => $page
-            ->where('fromCheckout', false)
-            ->where('conversion', null)
-        );
+        ->assertInertia(fn ($page) => $page->where('conversion', null));
 
     // The mismatch is consumed once — the poll loop must not re-hit Stripe.
     $this->actingAs($this->user->fresh())
@@ -265,10 +264,7 @@ test('billing processing consumes an unknown session id without retrying stripe'
     $this->actingAs($this->user->fresh())
         ->get(route('app.billing.processing', ['session_id' => $sessionId]))
         ->assertOk()
-        ->assertInertia(fn ($page) => $page
-            ->where('fromCheckout', false)
-            ->where('conversion', null)
-        );
+        ->assertInertia(fn ($page) => $page->where('conversion', null));
 
     $this->actingAs($this->user->fresh())
         ->get(route('app.billing.processing', ['session_id' => $sessionId]))
@@ -277,39 +273,32 @@ test('billing processing consumes an unknown session id without retrying stripe'
     expect($stripe->calls)->toBe(1);
 });
 
-test('billing processing retries verification after a transient stripe error', function () {
+test('billing processing skips the purchase conversion when stripe verification fails', function () {
     config(['trypost.self_hosted' => false]);
 
     $sessionId = 'cs_test_'.fake()->uuid();
     $this->account->forceFill(['stripe_id' => 'cus_test_123'])->save();
-    $stripe = fakeStripeHttp([
-        [
-            'body' => ['error' => ['type' => 'api_error', 'message' => 'boom']],
-            'status' => 500,
-        ],
-        [
-            'body' => [
-                'id' => $sessionId,
-                'customer' => 'cus_test_123',
-                'amount_total' => 1000,
-                'currency' => 'usd',
-            ],
-            'status' => 200,
-        ],
-    ]);
+    $stripe = fakeStripeHttp([[
+        'body' => ['error' => ['type' => 'api_error', 'message' => 'boom']],
+        'status' => 500,
+    ]]);
+
+    // Verified-or-nothing: a transient Stripe failure loses the pixel rather
+    // than firing it unverified. The session is still consumed once.
+    $this->actingAs($this->user->fresh())
+        ->get(route('app.billing.processing', ['session_id' => $sessionId]))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('fromCheckout', true)
+            ->where('conversion', null)
+        );
 
     $this->actingAs($this->user->fresh())
         ->get(route('app.billing.processing', ['session_id' => $sessionId]))
         ->assertOk()
         ->assertInertia(fn ($page) => $page->where('fromCheckout', false));
 
-    // Transient failures stay unconsumed — the next poll retries and succeeds.
-    $this->actingAs($this->user->fresh())
-        ->get(route('app.billing.processing', ['session_id' => $sessionId]))
-        ->assertOk()
-        ->assertInertia(fn ($page) => $page->where('fromCheckout', true));
-
-    expect($stripe->calls)->toBe(2);
+    expect($stripe->calls)->toBe(1);
 });
 
 test('billing processing exposes null conversion when session_id query param is missing', function () {

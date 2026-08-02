@@ -124,12 +124,9 @@ test('dismisses every account in self hosted mode regardless of subscription', f
         ->and($alreadyCompleted->account->fresh()->onboarding_dismissed_at)->toBeNull();
 });
 
-test('stamps accounts across chunk boundaries', function () {
+test('stamps every matching account through the chunked update', function () {
     Carbon::setTestNow('2026-07-29 12:00:00');
 
-    // More rows than the 500-row chunk size would be slow; instead prove the
-    // chunked path visits every matching row by lowering the chunk size via a
-    // partial: create 3 subscribed accounts and stamp them all.
     $accounts = collect();
     for ($i = 0; $i < 3; $i++) {
         $user = User::factory()->create();

@@ -54,7 +54,8 @@ const goNext = () =>
 // webhook lands, so the user frequently reaches this page already active — the
 // false → true poll transition never happens. We therefore complete the purchase
 // from whichever path runs first (immediate active state or poll transition),
-// gated on `fromCheckout` so back-button/refresh visits don't over-count.
+// gated on a verified `conversion` so foreign sessions and back-button/refresh
+// visits never fire the pixel.
 const completePurchase = () => {
     if (finishing.value) {
         return;
@@ -70,10 +71,12 @@ const completePurchase = () => {
 
     const plan = (page.props.auth as Auth | undefined)?.plan;
 
-    if (props.fromCheckout && plan) {
+    // Verified-or-nothing: the purchase pixel only fires when the backend
+    // verified the checkout session against this account's Stripe customer.
+    if (props.conversion && plan) {
         trackPurchase(
             { name: plan.name, interval: plan.interval },
-            props.conversion ?? null,
+            props.conversion,
             props.persona ?? null,
         );
     }

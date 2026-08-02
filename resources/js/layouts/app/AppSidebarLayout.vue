@@ -67,6 +67,9 @@ onBeforeUnmount(() => {
                 v-else
                 class="absolute top-3 left-4 z-30 size-10 rounded-md border-2 border-foreground bg-card text-foreground shadow-2xs md:hidden"
             />
+            <OnboardingResidualMobile
+                v-if="page.props.auth.currentWorkspace"
+            />
             <div
                 :class="
                     fullWidth
@@ -74,9 +77,6 @@ onBeforeUnmount(() => {
                         : 'flex-1 overflow-y-auto'
                 "
             >
-                <OnboardingResidualMobile
-                    v-if="page.props.auth.currentWorkspace"
-                />
                 <div
                     :class="[
                         fullWidth
