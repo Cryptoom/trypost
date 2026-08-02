@@ -17,6 +17,13 @@ class ResolveOnboardingStatus
 {
     public const TOTAL_STEPS = 3;
 
+    /**
+     * Session key set when onboarding is stamped so the next full visit can
+     * show celebration. Uses put (not flash) so Echo/poll partials do not age
+     * it out before a post-OAuth full reload.
+     */
+    public const JUST_COMPLETED_SESSION_KEY = 'onboarding_just_completed';
+
     public function __construct(
         private readonly PostHogService $postHog,
     ) {}
@@ -169,7 +176,7 @@ class ResolveOnboardingStatus
         // Lets the next full Inertia visit (e.g. OAuth popup → router.reload)
         // show celebration instead of bouncing straight to calendar.
         if (request()->hasSession()) {
-            request()->session()->flash('onboarding_just_completed', true);
+            request()->session()->put(self::JUST_COMPLETED_SESSION_KEY, true);
         }
 
         return true;

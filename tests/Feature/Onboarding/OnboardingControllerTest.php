@@ -177,7 +177,7 @@ test('completed accounts are redirected away from onboarding on full visits', fu
     );
 });
 
-test('partial reloads do not consume the just-completed celebration flash', function () {
+test('partial reloads do not consume the just-completed celebration session flag', function () {
     Carbon::setTestNow('2026-07-29 12:00:00');
 
     AccessToken::withoutEvents(fn () => mcpAccessToken($this->user, mcpOauthClient()));
@@ -188,10 +188,17 @@ test('partial reloads do not consume the just-completed celebration flash', func
         'workspace_id' => $this->workspace->id,
         'user_id' => $this->user->id,
     ]));
-    $this->user->account->update(['onboarding_completed_at' => now()]);
+
+    // Stamp during an authenticated request so put() writes the real session key
+    // (not a persistent withSession stub that would mask flash aging).
+    $this->actingAs($this->user->fresh())
+        ->get(route('app.calendar'))
+        ->assertOk();
+
+    expect(app(ResolveOnboardingStatus::class)->markCompleted($this->user->fresh()))->toBeTrue()
+        ->and(session()->get(ResolveOnboardingStatus::JUST_COMPLETED_SESSION_KEY))->toBeTrue();
 
     $this->actingAs($this->user->fresh())
-        ->withSession(['onboarding_just_completed' => true])
         ->withHeaders(inertiaPartialHeaders(
             component: 'onboarding/Index',
             only: 'status,accounts,onboardingResidual',
@@ -199,8 +206,8 @@ test('partial reloads do not consume the just-completed celebration flash', func
         ->get(route('app.onboarding'))
         ->assertOk();
 
-    // Flash must survive the poll/Echo partial so a later full visit can celebrate.
-    expect(session()->get('onboarding_just_completed'))->toBeTrue();
+    // put() survives Echo/poll partials so a later full visit can celebrate.
+    expect(session()->get(ResolveOnboardingStatus::JUST_COMPLETED_SESSION_KEY))->toBeTrue();
 
     // Drop partial headers — withHeaders persists on the test case.
     $this->flushHeaders();
@@ -211,10 +218,13 @@ test('partial reloads do not consume the just-completed celebration flash', func
         ->assertInertia(fn ($page) => $page
             ->component('onboarding/Index', false)
             ->where('status.all_complete', true)
+            ->where('status.completed_at', now()->toIso8601String())
         );
+
+    expect(session()->get(ResolveOnboardingStatus::JUST_COMPLETED_SESSION_KEY))->toBeNull();
 });
 
-test('completed accounts still see celebration after just-completed session flash', function () {
+test('completed accounts still see celebration after just-completed session flag', function () {
     Carbon::setTestNow('2026-07-29 12:00:00');
 
     AccessToken::withoutEvents(fn () => mcpAccessToken($this->user, mcpOauthClient()));
@@ -226,7 +236,7 @@ test('completed accounts still see celebration after just-completed session flas
         'user_id' => $this->user->id,
     ]));
 
-    // Stamp during an authenticated request (OAuth/observer path) so the flash is set.
+    // Stamp during an authenticated request (OAuth/observer path) so the flag is set.
     $this->actingAs($this->user->fresh())
         ->get(route('app.calendar'))
         ->assertOk();
