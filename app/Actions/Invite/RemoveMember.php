@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Actions\Invite;
 
+use App\Actions\AccessToken\RevokeAccessTokens;
 use App\Actions\User\ReassignCurrentWorkspace;
 use App\Actions\User\SettleStrandedMember;
 use App\Actions\User\StrandedSettlement;
@@ -41,7 +42,13 @@ class RemoveMember
             // Workspace-scoped API keys and MCP OAuth grants must not keep
             // working after membership ends (even if the user remains on
             // another workspace of the same account).
-            self::revokeWorkspaceTokens($user, $workspace);
+            RevokeAccessTokens::execute(
+                AccessToken::query()
+                    ->where('user_id', $user->id)
+                    ->where('workspace_id', $workspace->id)
+                    ->where('revoked', false)
+                    ->get(),
+            );
 
             if ($user->current_workspace_id === $workspace->id) {
                 ReassignCurrentWorkspace::forUserAwayFrom($user, $workspace);
@@ -59,28 +66,5 @@ class RemoveMember
         });
 
         $settlement->flush();
-    }
-
-    private static function revokeWorkspaceTokens(User $user, Workspace $workspace): void
-    {
-        $tokens = AccessToken::query()
-            ->where('user_id', $user->id)
-            ->where('workspace_id', $workspace->id)
-            ->where('revoked', false)
-            ->get();
-
-        if ($tokens->isEmpty()) {
-            return;
-        }
-
-        $tokenIds = $tokens->pluck('id');
-
-        DB::table('oauth_refresh_tokens')
-            ->whereIn('access_token_id', $tokenIds)
-            ->update(['revoked' => true]);
-
-        $tokens->each(function (AccessToken $token): void {
-            $token->forceFill(['revoked' => true])->saveQuietly();
-        });
     }
 }

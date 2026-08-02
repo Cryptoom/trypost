@@ -4,13 +4,14 @@ declare(strict_types=1);
 
 namespace App\Listeners;
 
+use App\Actions\AccessToken\RevokeAccessTokens;
 use App\Models\AccessToken;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Passport\AuthCode;
 use App\Passport\OAuthPayloadDecryptor;
-use Illuminate\Support\Facades\DB;
 use Laravel\Passport\Events\AccessTokenCreated;
+use League\OAuth2\Server\Exception\OAuthServerException;
 
 /**
  * Bind MCP OAuth access tokens to a workspace (mirroring personal API keys).
@@ -40,9 +41,11 @@ class BindWorkspaceToAccessToken
         $workspaceId = $this->resolveWorkspaceId($event);
 
         if ($workspaceId === null) {
-            $this->revoke($token);
+            RevokeAccessTokens::execute($token);
 
-            return;
+            throw OAuthServerException::invalidGrant(
+                'Unable to bind this connection to a workspace. Reconnect from a workspace you belong to.',
+            );
         }
 
         $token->forceFill(['workspace_id' => $workspaceId])->saveQuietly();
@@ -128,43 +131,35 @@ class BindWorkspaceToAccessToken
             ? (string) $user->current_workspace_id
             : null;
 
-        if ($candidateId !== null && $this->userBelongsToWorkspace($userId, $candidateId)) {
+        if ($candidateId !== null && $this->userBelongsToWorkspace($user, $candidateId)) {
             return $candidateId;
         }
 
         $fallback = $user->accountWorkspaces()->orderBy('workspaces.created_at')->first();
 
-        if ($fallback === null) {
-            return null;
-        }
-
-        return $this->userBelongsToWorkspace($userId, (string) $fallback->id)
-            ? (string) $fallback->id
-            : null;
+        return $fallback?->id ? (string) $fallback->id : null;
     }
 
-    private function userBelongsToWorkspace(?string $userId, string $workspaceId): bool
+    private function userBelongsToWorkspace(User|string|null $user, string $workspaceId): bool
     {
-        if (! $userId) {
+        if ($user === null) {
             return false;
         }
 
-        $user = User::query()->find($userId);
+        if (is_string($user)) {
+            $user = User::query()->find($user);
+        }
+
+        if (! $user instanceof User) {
+            return false;
+        }
+
         $workspace = Workspace::query()->find($workspaceId);
 
-        if ($user === null || $workspace === null) {
+        if ($workspace === null) {
             return false;
         }
 
         return $user->belongsToWorkspace($workspace);
-    }
-
-    private function revoke(AccessToken $token): void
-    {
-        DB::table('oauth_refresh_tokens')
-            ->where('access_token_id', $token->id)
-            ->update(['revoked' => true]);
-
-        $token->forceFill(['revoked' => true])->saveQuietly();
     }
 }

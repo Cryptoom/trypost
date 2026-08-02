@@ -14,6 +14,7 @@ use Illuminate\Support\Str;
 use Laravel\Passport\Events\AccessTokenCreated;
 use League\OAuth2\Server\Entities\AuthCodeEntityInterface;
 use League\OAuth2\Server\Entities\ClientEntityInterface;
+use League\OAuth2\Server\Exception\OAuthServerException;
 use Mockery;
 
 beforeEach(function () {
@@ -195,7 +196,7 @@ test('auth code repository rejects a current workspace the user no longer belong
     expect($stored->workspace_id)->toBeNull();
 });
 
-test('oauth grant without a resolvable workspace is revoked', function () {
+test('oauth grant without a resolvable workspace fails the grant and revokes the token', function () {
     $this->user->update(['current_workspace_id' => null]);
     $this->workspace->members()->detach($this->user->id);
 
@@ -203,11 +204,11 @@ test('oauth grant without a resolvable workspace is revoked', function () {
 
     request()->merge(['grant_type' => 'authorization_code']);
 
-    app(BindWorkspaceToAccessToken::class)->handle(new AccessTokenCreated(
+    expect(fn () => app(BindWorkspaceToAccessToken::class)->handle(new AccessTokenCreated(
         $token->id,
         (string) $this->user->id,
         $this->clientId,
-    ));
+    )))->toThrow(OAuthServerException::class);
 
     expect($token->refresh()->revoked)->toBeTrue();
     expect($token->refresh()->workspace_id)->toBeNull();

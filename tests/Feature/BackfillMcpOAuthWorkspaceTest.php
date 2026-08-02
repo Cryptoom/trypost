@@ -72,3 +72,25 @@ test('backfill ignores personal access tokens with null workspace', function () 
     expect($token->fresh()->revoked)->toBeFalse();
     expect($token->fresh()->workspace_id)->toBeNull();
 });
+
+test('backfill falls back when current workspace membership was removed', function () {
+    $user = User::factory()->create();
+    $current = Workspace::factory()->create([
+        'account_id' => $user->account_id,
+        'user_id' => $user->id,
+    ]);
+    $fallback = Workspace::factory()->create([
+        'account_id' => $user->account_id,
+        'user_id' => $user->id,
+    ]);
+    $fallback->members()->attach($user->id, ['role' => Role::Admin->value]);
+    $user->update(['current_workspace_id' => $current->id]);
+
+    $clientId = mcpOauthClient();
+    $token = mcpAccessToken($user, $clientId, workspace: null);
+
+    $result = BackfillMcpOAuthWorkspaces::execute();
+
+    expect($result['bound'])->toBe(1);
+    expect($token->refresh()->workspace_id)->toBe($fallback->id);
+});

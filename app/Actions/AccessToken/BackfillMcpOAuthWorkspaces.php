@@ -6,7 +6,8 @@ namespace App\Actions\AccessToken;
 
 use App\Models\AccessToken;
 use App\Models\User;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
 
 /**
  * Assign existing MCP OAuth tokens (workspace_id null) to a workspace, or revoke
@@ -29,18 +30,27 @@ class BackfillMcpOAuthWorkspaces
             ->where('revoked', false)
             ->whereHas(
                 'client',
-                fn ($client) => $client
+                fn (Builder $client): Builder => $client
                     ->where('revoked', false)
                     ->whereJsonDoesntContain('grant_types', 'personal_access'),
             )
             ->orderBy('id')
-            ->chunkById(100, function ($tokens) use (&$bound, &$revoked): void {
+            ->chunkById(100, function (Collection $tokens) use (&$bound, &$revoked): void {
+                $users = User::query()
+                    ->whereIn('id', $tokens->pluck('user_id')->unique()->filter()->all())
+                    ->with('workspaces')
+                    ->get()
+                    ->keyBy('id');
+
+                $toRevoke = collect();
+
                 foreach ($tokens as $token) {
-                    $workspaceId = self::resolveWorkspaceId($token);
+                    $workspaceId = self::resolveWorkspaceId(
+                        $users->get($token->user_id),
+                    );
 
                     if ($workspaceId === null) {
-                        self::revoke($token);
-                        $revoked++;
+                        $toRevoke->push($token);
 
                         continue;
                     }
@@ -48,42 +58,39 @@ class BackfillMcpOAuthWorkspaces
                     $token->forceFill(['workspace_id' => $workspaceId])->saveQuietly();
                     $bound++;
                 }
+
+                if ($toRevoke->isNotEmpty()) {
+                    RevokeAccessTokens::execute($toRevoke);
+                    $revoked += $toRevoke->count();
+                }
             });
 
         return ['bound' => $bound, 'revoked' => $revoked];
     }
 
-    private static function resolveWorkspaceId(AccessToken $token): ?string
+    private static function resolveWorkspaceId(?User $user): ?string
     {
-        $user = User::query()->find($token->user_id);
-
         if ($user === null) {
             return null;
         }
 
+        $accountWorkspaces = $user->workspaces
+            ->where('account_id', $user->account_id)
+            ->sortBy('created_at')
+            ->values();
+
+        if ($accountWorkspaces->isEmpty()) {
+            return null;
+        }
+
         if ($user->current_workspace_id) {
-            $current = $user->accountWorkspaces()
-                ->where('workspaces.id', $user->current_workspace_id)
-                ->first();
+            $current = $accountWorkspaces->firstWhere('id', $user->current_workspace_id);
 
             if ($current) {
                 return (string) $current->id;
             }
         }
 
-        $fallback = $user->accountWorkspaces()
-            ->orderBy('workspaces.created_at')
-            ->first();
-
-        return $fallback?->id ? (string) $fallback->id : null;
-    }
-
-    private static function revoke(AccessToken $token): void
-    {
-        DB::table('oauth_refresh_tokens')
-            ->where('access_token_id', $token->id)
-            ->update(['revoked' => true]);
-
-        $token->forceFill(['revoked' => true])->saveQuietly();
+        return (string) $accountWorkspaces->first()->id;
     }
 }
