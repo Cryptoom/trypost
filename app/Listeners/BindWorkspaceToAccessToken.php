@@ -8,6 +8,7 @@ use App\Models\AccessToken;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Passport\AuthCode;
+use App\Passport\OAuthPayloadDecryptor;
 use Illuminate\Support\Facades\DB;
 use Laravel\Passport\Events\AccessTokenCreated;
 
@@ -15,11 +16,13 @@ use Laravel\Passport\Events\AccessTokenCreated;
  * Bind MCP OAuth access tokens to a workspace (mirroring personal API keys).
  *
  * Authorization-code grants copy workspace_id from the auth code captured at
- * consent. Refresh grants inherit the previous token's workspace so switching
+ * consent. Refresh grants inherit the refreshed token's workspace so switching
  * the user's current workspace cannot silently retarget an existing connection.
  */
 class BindWorkspaceToAccessToken
 {
+    public function __construct(private OAuthPayloadDecryptor $decryptor) {}
+
     public function handle(AccessTokenCreated $event): void
     {
         $token = AccessToken::query()->find($event->tokenId);
@@ -34,7 +37,7 @@ class BindWorkspaceToAccessToken
             return;
         }
 
-        $workspaceId = $this->resolveWorkspaceId($event, $token);
+        $workspaceId = $this->resolveWorkspaceId($event);
 
         if ($workspaceId === null) {
             $this->revoke($token);
@@ -45,12 +48,12 @@ class BindWorkspaceToAccessToken
         $token->forceFill(['workspace_id' => $workspaceId])->saveQuietly();
     }
 
-    private function resolveWorkspaceId(AccessTokenCreated $event, AccessToken $token): ?string
+    private function resolveWorkspaceId(AccessTokenCreated $event): ?string
     {
         $grantType = request()->input('grant_type');
 
         if ($grantType === 'refresh_token') {
-            return $this->workspaceFromPreviousToken($event);
+            return $this->workspaceFromRefreshedToken();
         }
 
         if ($grantType === 'authorization_code') {
@@ -72,22 +75,37 @@ class BindWorkspaceToAccessToken
             return null;
         }
 
-        $authCode = AuthCode::query()->find($code);
+        // League encrypts the redirect `code`; the DB id lives in auth_code_id.
+        $payload = $this->decryptor->decrypt($code);
+        $authCodeId = data_get($payload, 'auth_code_id');
+
+        if (! is_string($authCodeId) || $authCodeId === '') {
+            return null;
+        }
+
+        $authCode = AuthCode::query()->find($authCodeId);
 
         return $authCode?->workspace_id
             ? (string) $authCode->workspace_id
             : null;
     }
 
-    private function workspaceFromPreviousToken(AccessTokenCreated $event): ?string
+    private function workspaceFromRefreshedToken(): ?string
     {
-        $previous = AccessToken::query()
-            ->where('user_id', $event->userId)
-            ->where('client_id', $event->clientId)
-            ->where('id', '!=', $event->tokenId)
-            ->whereNotNull('workspace_id')
-            ->latest('created_at')
-            ->first();
+        $refreshToken = request()->input('refresh_token');
+
+        if (! is_string($refreshToken) || $refreshToken === '') {
+            return null;
+        }
+
+        $payload = $this->decryptor->decrypt($refreshToken);
+        $accessTokenId = data_get($payload, 'access_token_id');
+
+        if (! is_string($accessTokenId) || $accessTokenId === '') {
+            return null;
+        }
+
+        $previous = AccessToken::query()->find($accessTokenId);
 
         return $previous?->workspace_id
             ? (string) $previous->workspace_id
@@ -116,7 +134,13 @@ class BindWorkspaceToAccessToken
 
         $fallback = $user->accountWorkspaces()->orderBy('workspaces.created_at')->first();
 
-        return $fallback?->id ? (string) $fallback->id : null;
+        if ($fallback === null) {
+            return null;
+        }
+
+        return $this->userBelongsToWorkspace($userId, (string) $fallback->id)
+            ? (string) $fallback->id
+            : null;
     }
 
     private function userBelongsToWorkspace(?string $userId, string $workspaceId): bool

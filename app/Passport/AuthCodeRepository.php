@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Passport;
 
 use App\Models\User;
+use App\Models\Workspace;
 use Illuminate\Support\Facades\Auth;
 use Laravel\Passport\Bridge\AuthCodeRepository as PassportAuthCodeRepository;
 use Laravel\Passport\Passport;
@@ -13,6 +14,9 @@ use League\OAuth2\Server\Entities\AuthCodeEntityInterface;
 /**
  * Persists the authorizing user's current workspace on the auth code so the
  * subsequent token exchange (no browser session) can bind the access token.
+ *
+ * Always reads Auth::user() at consent time (including Passport silent
+ * re-consent) — never a stale session value from a prior authorize visit.
  */
 class AuthCodeRepository extends PassportAuthCodeRepository
 {
@@ -31,26 +35,30 @@ class AuthCodeRepository extends PassportAuthCodeRepository
 
     private function resolveWorkspaceId(?string $userId): ?string
     {
-        $fromSession = session('oauth_connecting_workspace_id');
-
-        if (is_string($fromSession) && $fromSession !== '') {
-            return $fromSession;
-        }
-
         $user = Auth::user();
 
-        if ($user instanceof User && $user->current_workspace_id) {
-            return (string) $user->current_workspace_id;
+        if (! $user instanceof User && $userId) {
+            $user = User::query()->find($userId);
         }
 
-        if (! $userId) {
+        if (! $user instanceof User) {
             return null;
         }
 
-        $persisted = User::query()->find($userId);
-
-        return $persisted?->current_workspace_id
-            ? (string) $persisted->current_workspace_id
+        $candidateId = $user->current_workspace_id
+            ? (string) $user->current_workspace_id
             : null;
+
+        if ($candidateId === null) {
+            return null;
+        }
+
+        $workspace = Workspace::query()->find($candidateId);
+
+        if ($workspace === null || ! $user->belongsToWorkspace($workspace)) {
+            return null;
+        }
+
+        return $candidateId;
     }
 }

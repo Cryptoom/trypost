@@ -116,15 +116,10 @@ class AppServiceProvider extends ServiceProvider
 
         Passport::authorizationView(function (array $parameters) {
             $user = data_get($parameters, 'user');
-            $workspace = $user?->currentWorkspace;
-
-            if ($workspace?->id) {
-                session(['oauth_connecting_workspace_id' => $workspace->id]);
-            }
 
             return view('mcp.authorize', [
                 ...$parameters,
-                'workspace' => $workspace,
+                'workspace' => $user?->currentWorkspace,
             ]);
         });
 
