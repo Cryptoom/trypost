@@ -68,7 +68,7 @@ return [
         'title' => 'Processing your subscription',
         'description' => 'Please wait while we set up your account. This will only take a moment.',
         'success_title' => 'You\'re all set!',
-        'success_description' => 'Your subscription is active. Redirecting you to your workspaces...',
+        'success_description' => 'Your subscription is active. Redirecting…',
         'cancelled_title' => 'Checkout cancelled',
         'cancelled_description' => 'Your checkout was cancelled. No charges were made.',
         'retry' => 'Try again',

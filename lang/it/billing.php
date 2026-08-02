@@ -68,7 +68,7 @@ return [
         'title' => 'Elaborazione del tuo abbonamento',
         'description' => 'Attendi mentre configuriamo il tuo account. Ci vorrà solo un momento.',
         'success_title' => 'Tutto pronto!',
-        'success_description' => 'Il tuo abbonamento è attivo. Ti stiamo reindirizzando ai tuoi workspace...',
+        'success_description' => 'Il tuo abbonamento è attivo. Reindirizzamento…',
         'cancelled_title' => 'Pagamento annullato',
         'cancelled_description' => 'Il tuo pagamento è stato annullato. Non è stato effettuato alcun addebito.',
         'retry' => 'Riprova',

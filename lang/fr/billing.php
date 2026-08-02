@@ -68,7 +68,7 @@ return [
         'title' => 'Traitement de votre abonnement',
         'description' => 'Veuillez patienter pendant que nous configurons votre compte. Cela ne prendra qu\'un instant.',
         'success_title' => 'Tout est prêt !',
-        'success_description' => 'Votre abonnement est actif. Redirection vers vos espaces de travail...',
+        'success_description' => 'Votre abonnement est actif. Redirection…',
         'cancelled_title' => 'Paiement annulé',
         'cancelled_description' => 'Votre paiement a été annulé. Aucun montant n\'a été débité.',
         'retry' => 'Réessayer',

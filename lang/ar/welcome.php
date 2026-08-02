@@ -12,7 +12,7 @@ return [
     'subscription_required_title' => 'في انتظار مالك الحساب',
     'subscription_required_description' => 'هذا الحساب لا يملك اشتراكًا نشطًا بعد. اطلب من مالك الحساب إكمال الدفع — ستحصل على وصول كامل فور تفعيل الاشتراك.',
     'subscription_required_owner' => 'مالك حسابك هو :name.',
-    'subscription_required_auto' => 'هذه الصفحة تتحدث تلقائيًا — لا حاجة لإعادة التحميل.',
+    'subscription_required_auto' => 'يتم تحديث هذه الصفحة تلقائيًا — لا حاجة لإعادة التحميل.',
     'progress' => 'تقدم الترحيب',
     'go_to_step' => 'الانتقال إلى الخطوة :step',
     'step_current' => 'الخطوة :step (الحالية)',

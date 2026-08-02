@@ -34,13 +34,31 @@ const page = usePage();
 // dedupe). Persist it here so a mobile tab reload before the webhook lands
 // does not lose the purchase pixel; the `tracked` marker keeps it once-only
 // per browser, while the server key keeps it once-only across devices.
+// All writes are guarded — private-mode Safari throws on setItem.
 type Conversion = NonNullable<typeof props.conversion>;
 
 const sessionId = new URLSearchParams(window.location.search).get('session_id');
 const storageKey = sessionId ? `trypost.checkout.${sessionId}` : null;
 
+const storeSafely = (key: string, value: string): void => {
+    try {
+        localStorage.setItem(key, value);
+    } catch {
+        // Storage unavailable (private mode, quota) — the pixel simply falls
+        // back to first-sight-only behavior.
+    }
+};
+
+const readSafely = (key: string): string | null => {
+    try {
+        return localStorage.getItem(key);
+    } catch {
+        return null;
+    }
+};
+
 if (props.conversion && storageKey) {
-    localStorage.setItem(storageKey, JSON.stringify(props.conversion));
+    storeSafely(storageKey, JSON.stringify(props.conversion));
 }
 
 const cachedConversion = ((): Conversion | null => {
@@ -49,7 +67,7 @@ const cachedConversion = ((): Conversion | null => {
     }
 
     try {
-        const cached = localStorage.getItem(storageKey);
+        const cached = readSafely(storageKey);
 
         return cached ? (JSON.parse(cached) as Conversion) : null;
     } catch {
@@ -105,11 +123,7 @@ const completePurchase = () => {
 
     // Verified-or-nothing: the purchase pixel only fires when the checkout
     // session was verified against this account's Stripe customer.
-    if (
-        conversion.value &&
-        plan &&
-        !(trackedKey && localStorage.getItem(trackedKey))
-    ) {
+    if (conversion.value && plan && !(trackedKey && readSafely(trackedKey))) {
         trackPurchase(
             { name: plan.name, interval: plan.interval },
             conversion.value,
@@ -117,7 +131,7 @@ const completePurchase = () => {
         );
 
         if (trackedKey) {
-            localStorage.setItem(trackedKey, '1');
+            storeSafely(trackedKey, '1');
         }
     }
 

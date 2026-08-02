@@ -70,7 +70,7 @@ return [
         'title' => 'Aboneliğiniz işleniyor',
         'description' => 'Hesabınızı ayarlarken lütfen bekleyin. Bu yalnızca bir an sürecek.',
         'success_title' => 'Her şey hazır!',
-        'success_description' => 'Aboneliğiniz etkin. Çalışma alanlarınıza yönlendiriliyorsunuz...',
+        'success_description' => 'Aboneliğiniz etkin. Yönlendiriliyor…',
         'cancelled_title' => 'Ödeme iptal edildi',
         'cancelled_description' => 'Ödemeniz iptal edildi. Herhangi bir ücret alınmadı.',
         'retry' => 'Tekrar dene',

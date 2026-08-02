@@ -275,6 +275,29 @@ test('billing processing consumes an unknown session id without retrying stripe'
     expect($stripe->calls)->toBe(1);
 });
 
+test('billing processing does not convert an abandoned checkout session', function () {
+    config(['trypost.self_hosted' => false]);
+
+    $sessionId = 'cs_test_'.fake()->uuid();
+    $this->account->forceFill(['stripe_id' => 'cus_test_123'])->save();
+    fakeStripeHttp([[
+        'body' => [
+            'id' => $sessionId,
+            'customer' => 'cus_test_123',
+            'status' => 'open',
+            'amount_total' => 1000,
+            'currency' => 'usd',
+        ],
+        'status' => 200,
+    ]]);
+
+    // An abandoned checkout of the account's own customer is not a purchase.
+    $this->actingAs($this->user->fresh())
+        ->get(route('app.billing.processing', ['session_id' => $sessionId]))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page->where('conversion', null));
+});
+
 test('billing processing skips the purchase conversion when stripe verification fails', function () {
     config(['trypost.self_hosted' => false]);
 

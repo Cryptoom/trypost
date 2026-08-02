@@ -15,7 +15,7 @@ return [
     'subscription_required_auto' => 'Cette page se met à jour automatiquement — inutile de la recharger.',
     'progress' => 'Progression d’accueil',
     'go_to_step' => 'Aller à l’étape :step',
-    'step_current' => 'Étape :step (en cours)',
+    'step_current' => 'Étape :step (actuelle)',
     'personas' => [
         'creator' => 'Créateur de contenu',
         'freelancer' => 'Freelance',

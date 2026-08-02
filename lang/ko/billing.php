@@ -68,7 +68,7 @@ return [
         'title' => '구독을 처리하는 중',
         'description' => '계정을 설정하는 동안 잠시 기다려 주세요. 잠깐이면 됩니다.',
         'success_title' => '모든 준비가 끝났습니다!',
-        'success_description' => '구독이 활성화되었습니다. 워크스페이스로 이동하는 중...',
+        'success_description' => '구독이 활성화되었습니다. 이동 중…',
         'cancelled_title' => '결제 취소됨',
         'cancelled_description' => '결제가 취소되었습니다. 요금이 청구되지 않았습니다.',
         'retry' => '다시 시도',

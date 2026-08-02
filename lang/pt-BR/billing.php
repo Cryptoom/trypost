@@ -68,7 +68,7 @@ return [
         'title' => 'Processando sua assinatura',
         'description' => 'Aguarde enquanto configuramos sua conta. Isso levará apenas um momento.',
         'success_title' => 'Tudo pronto!',
-        'success_description' => 'Sua assinatura está ativa. Redirecionando para seus workspaces...',
+        'success_description' => 'Sua assinatura está ativa. Redirecionando…',
         'cancelled_title' => 'Pagamento cancelado',
         'cancelled_description' => 'Seu pagamento foi cancelado. Nenhuma cobrança foi realizada.',
         'retry' => 'Tentar novamente',

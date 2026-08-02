@@ -68,7 +68,7 @@ return [
         'title' => 'Je abonnement wordt verwerkt',
         'description' => 'Wacht even terwijl we je account instellen. Dit duurt maar een moment.',
         'success_title' => 'Je bent helemaal klaar!',
-        'success_description' => 'Je abonnement is actief. Je wordt doorgestuurd naar je workspaces...',
+        'success_description' => 'Je abonnement is actief. Doorverwijzen…',
         'cancelled_title' => 'Afrekenen geannuleerd',
         'cancelled_description' => 'Je afrekenen is geannuleerd. Er zijn geen kosten in rekening gebracht.',
         'retry' => 'Opnieuw proberen',

@@ -68,7 +68,7 @@ return [
         'title' => 'Przetwarzanie Twojej subskrypcji',
         'description' => 'Poczekaj, aż skonfigurujemy Twoje konto. Zajmie to tylko chwilę.',
         'success_title' => 'Wszystko gotowe!',
-        'success_description' => 'Twoja subskrypcja jest aktywna. Przekierowujemy Cię do Twoich przestrzeni roboczych...',
+        'success_description' => 'Twoja subskrypcja jest aktywna. Przekierowanie…',
         'cancelled_title' => 'Anulowano płatność',
         'cancelled_description' => 'Twoja płatność została anulowana. Nie pobrano żadnych opłat.',
         'retry' => 'Spróbuj ponownie',

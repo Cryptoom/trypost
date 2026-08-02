@@ -68,7 +68,7 @@ return [
         'title' => 'Procesando tu suscripción',
         'description' => 'Espera mientras configuramos tu cuenta. Solo tomará un momento.',
         'success_title' => '¡Todo listo!',
-        'success_description' => 'Tu suscripción está activa. Redirigiendo a tus workspaces...',
+        'success_description' => 'Tu suscripción está activa. Redirigiendo…',
         'cancelled_title' => 'Pago cancelado',
         'cancelled_description' => 'Tu pago fue cancelado. No se realizaron cargos.',
         'retry' => 'Intentar de nuevo',

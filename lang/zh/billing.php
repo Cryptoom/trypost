@@ -68,7 +68,7 @@ return [
         'title' => '正在处理你的订阅',
         'description' => '正在为你设置账户，请稍候。这只需片刻。',
         'success_title' => '一切就绪！',
-        'success_description' => '你的订阅已生效。正在为你跳转到工作区…',
+        'success_description' => '您的订阅已激活。正在跳转…',
         'cancelled_title' => '结账已取消',
         'cancelled_description' => '你的结账已取消，未产生任何费用。',
         'retry' => '重试',

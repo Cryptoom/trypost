@@ -70,7 +70,7 @@ return [
         'title' => 'Dein Abonnement wird verarbeitet',
         'description' => 'Bitte warte, während wir dein Konto einrichten. Das dauert nur einen Moment.',
         'success_title' => 'Alles bereit!',
-        'success_description' => 'Dein Abonnement ist aktiv. Du wirst zu deinen Workspaces weitergeleitet...',
+        'success_description' => 'Dein Abo ist aktiv. Weiterleitung…',
         'cancelled_title' => 'Bezahlvorgang abgebrochen',
         'cancelled_description' => 'Dein Bezahlvorgang wurde abgebrochen. Es wurden keine Kosten berechnet.',
         'retry' => 'Erneut versuchen',
