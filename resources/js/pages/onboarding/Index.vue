@@ -2,7 +2,7 @@
 import { Head, Link, router, useForm, usePage, usePoll } from '@inertiajs/vue3';
 import { IconCheck, IconCopy, IconLink } from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
-import { computed, ref, watch } from 'vue';
+import { computed, nextTick, ref, watch } from 'vue';
 
 import NetworkConnectGrid, {
     type AvailablePlatform,
@@ -14,6 +14,7 @@ import { useWorkspaceEcho } from '@/composables/echo/useWorkspaceEcho';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { mcpClients } from '@/lib/mcpClients';
 import { copyToClipboard } from '@/lib/utils';
+
 import { calendar } from '@/routes/app';
 import { complete, dismiss } from '@/routes/app/onboarding';
 import { create as createPost } from '@/routes/app/posts';
@@ -116,6 +117,25 @@ const continueToTryPost = (): void => {
         completeForm.submit(complete());
     }
 };
+
+// Bring the ready section into view when the last step completes via Echo/poll
+// — it mounts at the bottom of a long page and is easy to miss on mobile.
+const readySection = ref<HTMLElement | null>(null);
+
+watch(
+    () => props.status.all_complete,
+    async (complete) => {
+        if (!complete) {
+            return;
+        }
+
+        await nextTick();
+        readySection.value?.scrollIntoView({
+            behavior: 'smooth',
+            block: 'center',
+        });
+    },
+);
 </script>
 
 <template>
@@ -354,6 +374,7 @@ const continueToTryPost = (): void => {
 
             <section
                 v-if="status.all_complete"
+                ref="readySection"
                 class="flex flex-col items-center gap-4 rounded-2xl border-2 border-foreground bg-violet-100 p-8 text-center shadow-2xs"
             >
                 <span

@@ -12,8 +12,10 @@ return [
     'subscription_required_title' => 'Oczekiwanie na właściciela konta',
     'subscription_required_description' => 'To konto nie ma jeszcze aktywnej subskrypcji. Poproś właściciela o dokończenie płatności — uzyskasz pełny dostęp, gdy tylko będzie aktywna.',
     'subscription_required_owner' => 'Właścicielem Twojego konta jest :name.',
+    'subscription_required_auto' => 'Ta strona odświeża się automatycznie — nie musisz jej przeładowywać.',
     'progress' => 'Postęp powitalny',
     'go_to_step' => 'Przejdź do kroku :step',
+    'step_current' => 'Krok :step (bieżący)',
     'personas' => [
         'creator' => 'Twórca treści',
         'freelancer' => 'Freelancer',

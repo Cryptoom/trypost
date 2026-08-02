@@ -7,7 +7,7 @@ return [
     'welcome' => '欢迎使用 TryPost，:name',
     'welcome_anonymous' => '欢迎使用 TryPost',
     'description' => '按下面的步骤了解 TryPost 的用法，并发布你的第一条内容。',
-    'skip' => '暂时跳过',
+    'skip' => '跳过设置',
     'continue' => '继续前往 TryPost',
     'status' => [
         'complete' => '已完成',

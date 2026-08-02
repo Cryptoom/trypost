@@ -7,7 +7,7 @@ return [
     'welcome' => 'مرحبًا بك في TryPost، :name',
     'welcome_anonymous' => 'مرحبًا بك في TryPost',
     'description' => 'اتبع الخطوات أدناه لمعرفة كيف يعمل TryPost ونشر منشورك الأول.',
-    'skip' => 'تخطِّ الآن',
+    'skip' => 'تخطي الإعداد',
     'continue' => 'المتابعة إلى TryPost',
     'status' => [
         'complete' => 'مكتمل',

@@ -7,7 +7,7 @@ return [
     'welcome' => 'TryPost’a hoş geldin, :name',
     'welcome_anonymous' => 'TryPost’a hoş geldin',
     'description' => 'TryPost’un nasıl çalıştığını görmek ve ilk gönderini yayınlamak için aşağıdaki adımları izle.',
-    'skip' => 'Şimdilik atla',
+    'skip' => 'Kurulumu atla',
     'continue' => 'TryPost’a devam et',
     'status' => [
         'complete' => 'Tamamlandı',

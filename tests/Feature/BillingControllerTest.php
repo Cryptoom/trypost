@@ -190,6 +190,7 @@ test('billing processing exposes fromCheckout=true only the first time a session
         'body' => [
             'id' => $sessionId,
             'customer' => 'cus_test_123',
+            'status' => 'complete',
             'amount_total' => 1000,
             'currency' => 'usd',
         ],
@@ -224,6 +225,7 @@ test('billing processing does not convert a session owned by another customer', 
         'body' => [
             'id' => $sessionId,
             'customer' => 'cus_someone_else',
+            'status' => 'complete',
             'amount_total' => 1000,
             'currency' => 'usd',
         ],
@@ -356,6 +358,7 @@ test('billing processing does not let another account burn the buyers checkout s
         'body' => [
             'id' => $sessionId,
             'customer' => 'cus_test_123',
+            'status' => 'complete',
             'amount_total' => 1000,
             'currency' => 'usd',
         ],

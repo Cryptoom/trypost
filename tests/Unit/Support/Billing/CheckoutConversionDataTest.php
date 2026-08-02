@@ -8,6 +8,7 @@ test('builds conversion from amount_total including a zero trial charge', functi
     $payload = CheckoutConversionData::fromSession([
         'id' => 'cs_test_123',
         'customer' => 'cus_abc',
+        'status' => 'complete',
         'amount_total' => 0,
         'currency' => 'usd',
     ], 'cus_abc');
@@ -21,6 +22,7 @@ test('builds conversion from a discounted first-month total', function () {
     $payload = CheckoutConversionData::fromSession([
         'id' => 'cs_test_456',
         'customer' => 'cus_abc',
+        'status' => 'complete',
         'amount_total' => 100,
         'currency' => 'usd',
     ], 'cus_abc');
@@ -34,10 +36,21 @@ test('rejects sessions for a different stripe customer', function () {
     expect(CheckoutConversionData::fromSession([
         'id' => 'cs_test_123',
         'customer' => 'cus_other',
+        'status' => 'complete',
         'amount_total' => 100,
         'currency' => 'usd',
     ], 'cus_abc'))->toBeNull();
 });
+
+test('rejects sessions that were never completed', function (string $status) {
+    expect(CheckoutConversionData::fromSession([
+        'id' => 'cs_test_123',
+        'customer' => 'cus_abc',
+        'status' => $status,
+        'amount_total' => 100,
+        'currency' => 'usd',
+    ], 'cus_abc'))->toBeNull();
+})->with(['open', 'expired']);
 
 test('rejects incomplete session payloads', function (array $session) {
     expect(CheckoutConversionData::fromSession($session, 'cus_abc'))->toBeNull();
@@ -45,17 +58,20 @@ test('rejects incomplete session payloads', function (array $session) {
     'missing amount' => [[
         'id' => 'cs_test_123',
         'customer' => 'cus_abc',
+        'status' => 'complete',
         'currency' => 'usd',
     ]],
     'empty currency' => [[
         'id' => 'cs_test_123',
         'customer' => 'cus_abc',
+        'status' => 'complete',
         'amount_total' => 0,
         'currency' => '',
     ]],
     'empty id' => [[
         'id' => '',
         'customer' => 'cus_abc',
+        'status' => 'complete',
         'amount_total' => 0,
         'currency' => 'usd',
     ]],

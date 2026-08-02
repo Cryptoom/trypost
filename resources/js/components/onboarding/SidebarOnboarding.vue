@@ -5,9 +5,10 @@ import { computed, watch } from 'vue';
 
 import { useWorkspaceEcho } from '@/composables/echo/useWorkspaceEcho';
 import { useActiveUrl } from '@/composables/useActiveUrl';
+import type { OnboardingResidual } from '@/types';
+
 import { onboarding } from '@/routes/app';
 import { dismiss } from '@/routes/app/onboarding';
-import type { OnboardingResidual } from '@/types';
 
 const page = usePage();
 const { urlIsActive } = useActiveUrl();
@@ -26,8 +27,10 @@ const progress = computed(() => {
     return total > 0 ? Math.round((completed / total) * 100) : 0;
 });
 
-// Echo is the fast path; slow poll covers Reverb outages while the banner shows.
-// Skip on the onboarding page — that page already reloads residual with status.
+// Echo is the fast path; the slow poll covers Reverb outages while the banner
+// shows. Skip on the onboarding page — that page already reloads residual with
+// status. Keep the poll sparse — every tick re-runs the current page's
+// controller server-side, not just the residual prop.
 useWorkspaceEcho('.onboarding.status.updated', () => {
     if (
         page.props.onboardingResidual === false ||
@@ -40,7 +43,7 @@ useWorkspaceEcho('.onboarding.status.updated', () => {
 });
 
 const { start, stop } = usePoll(
-    10000,
+    30000,
     { only: ['onboardingResidual'] },
     { autoStart: false },
 );
@@ -116,13 +119,13 @@ const dismissResidual = (): void => {
                     </span>
                     <button
                         type="button"
-                        class="inline-flex size-5 items-center justify-center rounded-full border-2 border-foreground bg-card text-foreground/70 transition-colors hover:text-foreground"
+                        class="inline-flex size-6 items-center justify-center rounded-full border-2 border-foreground bg-card text-foreground/70 transition-colors hover:text-foreground"
                         :aria-label="$t('onboarding.skip')"
                         :disabled="dismissForm.processing"
                         data-testid="sidebar-onboarding-dismiss"
                         @click="dismissResidual"
                     >
-                        <IconX class="size-3" stroke-width="2.5" />
+                        <IconX class="size-3.5" stroke-width="2.5" />
                     </button>
                 </div>
             </div>

@@ -5,9 +5,10 @@ import { computed, watch } from 'vue';
 
 import { useSidebar } from '@/components/ui/sidebar';
 import { useWorkspaceEcho } from '@/composables/echo/useWorkspaceEcho';
+import type { OnboardingResidual } from '@/types';
+
 import { onboarding } from '@/routes/app';
 import { dismiss } from '@/routes/app/onboarding';
-import type { OnboardingResidual } from '@/types';
 
 // Mobile counterpart of SidebarOnboarding: the sidebar sheet unmounts on
 // phones, so the residual strip lives in the app layout instead. Only active
@@ -36,7 +37,7 @@ useWorkspaceEcho('.onboarding.status.updated', () => {
 });
 
 const { start, stop } = usePoll(
-    10000,
+    30000,
     { only: ['onboardingResidual'] },
     { autoStart: false },
 );

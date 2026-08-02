@@ -18,6 +18,12 @@ final class CheckoutConversionData
             return null;
         }
 
+        // Abandoned (open/expired) sessions of the account's own customer are
+        // not purchases — only a completed checkout may fire the pixel.
+        if (data_get($session, 'status') !== 'complete') {
+            return null;
+        }
+
         $amountTotal = data_get($session, 'amount_total');
         $currency = data_get($session, 'currency');
         $transactionId = data_get($session, 'id');

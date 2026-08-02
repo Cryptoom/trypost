@@ -7,7 +7,7 @@ return [
     'welcome' => 'TryPostへようこそ、:nameさん',
     'welcome_anonymous' => 'TryPostへようこそ',
     'description' => '以下のステップでTryPostの使い方を確認し、最初の投稿を公開しましょう。',
-    'skip' => '今はスキップ',
+    'skip' => 'セットアップをスキップ',
     'continue' => 'TryPostへ進む',
     'status' => [
         'complete' => '完了',

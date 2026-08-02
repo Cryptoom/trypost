@@ -7,7 +7,7 @@ return [
     'welcome' => 'Welkom bij TryPost, :name',
     'welcome_anonymous' => 'Welkom bij TryPost',
     'description' => 'Volg de stappen hieronder om te zien hoe TryPost werkt en je eerste post te publiceren.',
-    'skip' => 'Voor nu overslaan',
+    'skip' => 'Installatie overslaan',
     'continue' => 'Doorgaan naar TryPost',
     'status' => [
         'complete' => 'Voltooid',

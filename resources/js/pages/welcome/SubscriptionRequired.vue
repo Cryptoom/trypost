@@ -41,6 +41,9 @@ usePoll(10000, { only: ['auth'] });
                     })
                 }}
             </p>
+            <p class="text-xs text-muted-foreground/80">
+                {{ $t('welcome.subscription_required_auto') }}
+            </p>
         </div>
     </WelcomeLayout>
 </template>

@@ -92,6 +92,13 @@ const canNavigateTo = (stepNumber: number): boolean =>
                                 :aria-current="
                                     stepNumber === step ? 'step' : undefined
                                 "
+                                :aria-label="
+                                    stepNumber === step
+                                        ? $t('welcome.step_current', {
+                                              step: stepNumber,
+                                          })
+                                        : undefined
+                                "
                             />
                         </template>
                     </nav>

@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { Head, router, usePage, usePoll } from '@inertiajs/vue3';
-import { IconLoader2 } from '@tabler/icons-vue';
-import { onMounted, onUnmounted, ref, watch } from 'vue';
+import { IconCheck, IconLoader2 } from '@tabler/icons-vue';
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 
 import { useTracking } from '@/composables/useTracking';
-import { calendar, onboarding } from '@/routes/app';
 import type { Auth } from '@/types';
+
+import { calendar, onboarding } from '@/routes/app';
 
 const props = defineProps<{
     subscriptionActive: boolean;
@@ -28,6 +29,37 @@ const REDIRECT_DELAY_MS = 5000;
 const SLOW_NOTICE_MS = 60000;
 
 const page = usePage();
+
+// The backend serves the verified conversion only on first sight (server-side
+// dedupe). Persist it here so a mobile tab reload before the webhook lands
+// does not lose the purchase pixel; the `tracked` marker keeps it once-only
+// per browser, while the server key keeps it once-only across devices.
+type Conversion = NonNullable<typeof props.conversion>;
+
+const sessionId = new URLSearchParams(window.location.search).get('session_id');
+const storageKey = sessionId ? `trypost.checkout.${sessionId}` : null;
+
+if (props.conversion && storageKey) {
+    localStorage.setItem(storageKey, JSON.stringify(props.conversion));
+}
+
+const cachedConversion = ((): Conversion | null => {
+    if (!storageKey) {
+        return null;
+    }
+
+    try {
+        const cached = localStorage.getItem(storageKey);
+
+        return cached ? (JSON.parse(cached) as Conversion) : null;
+    } catch {
+        return null;
+    }
+})();
+
+const conversion = computed<Conversion | null>(
+    () => props.conversion ?? cachedConversion,
+);
 
 // Polls `auth` alongside so `auth.plan.interval` is fresh once the Stripe
 // webhook creates the local Subscription row — at /billing/processing's
@@ -54,8 +86,7 @@ const goNext = () =>
 // webhook lands, so the user frequently reaches this page already active — the
 // false → true poll transition never happens. We therefore complete the purchase
 // from whichever path runs first (immediate active state or poll transition),
-// gated on a verified `conversion` so foreign sessions and back-button/refresh
-// visits never fire the pixel.
+// gated on a verified `conversion` so foreign sessions never fire the pixel.
 const completePurchase = () => {
     if (finishing.value) {
         return;
@@ -70,15 +101,24 @@ const completePurchase = () => {
     takingLong.value = false;
 
     const plan = (page.props.auth as Auth | undefined)?.plan;
+    const trackedKey = storageKey ? `${storageKey}.tracked` : null;
 
-    // Verified-or-nothing: the purchase pixel only fires when the backend
-    // verified the checkout session against this account's Stripe customer.
-    if (props.conversion && plan) {
+    // Verified-or-nothing: the purchase pixel only fires when the checkout
+    // session was verified against this account's Stripe customer.
+    if (
+        conversion.value &&
+        plan &&
+        !(trackedKey && localStorage.getItem(trackedKey))
+    ) {
         trackPurchase(
             { name: plan.name, interval: plan.interval },
-            props.conversion,
+            conversion.value,
             props.persona ?? null,
         );
+
+        if (trackedKey) {
+            localStorage.setItem(trackedKey, '1');
+        }
     }
 
     // Always hold for the same window before navigating, so PostHog and the ad
@@ -163,12 +203,12 @@ onUnmounted(() => {
                     />
                 </div>
                 <div
-                    class="ml-2 min-w-0 truncate text-[10px] font-bold tracking-widest text-muted-foreground uppercase"
+                    class="ms-2 min-w-0 truncate text-[10px] font-bold tracking-widest text-muted-foreground uppercase"
                 >
                     trypost.it · checkout
                 </div>
                 <span
-                    class="ml-auto inline-flex items-center gap-1.5 rounded-md border-2 border-foreground bg-foreground px-2 py-0.5 text-[10px] font-black tracking-widest text-background uppercase shadow-2xs"
+                    class="ms-auto inline-flex items-center gap-1.5 rounded-md border-2 border-foreground bg-foreground px-2 py-0.5 text-[10px] font-black tracking-widest text-background uppercase shadow-2xs"
                 >
                     <span class="relative flex size-1.5">
                         <span
@@ -187,9 +227,18 @@ onUnmounted(() => {
                 class="flex flex-col items-center gap-5 px-8 py-12 text-center"
             >
                 <div
-                    class="flex size-16 -rotate-2 items-center justify-center rounded-2xl border-2 border-foreground bg-violet-200 shadow-sm"
+                    :class="[
+                        'flex size-16 -rotate-2 items-center justify-center rounded-2xl border-2 border-foreground shadow-sm',
+                        finishing ? 'bg-emerald-200' : 'bg-violet-200',
+                    ]"
                 >
+                    <IconCheck
+                        v-if="finishing"
+                        class="size-8 text-emerald-800"
+                        stroke-width="3"
+                    />
                     <IconLoader2
+                        v-else
                         class="size-8 animate-spin text-foreground motion-reduce:animate-none"
                     />
                 </div>
@@ -198,13 +247,19 @@ onUnmounted(() => {
                         class="text-2xl font-normal tracking-tight text-foreground"
                         style="font-family: var(--font-display)"
                     >
-                        {{ $t('billing.processing.title') }}
+                        {{
+                            finishing
+                                ? $t('billing.processing.success_title')
+                                : $t('billing.processing.title')
+                        }}
                     </h2>
                     <p class="mt-2 text-sm leading-relaxed text-foreground/70">
                         {{
-                            takingLong
-                                ? $t('billing.processing.taking_long')
-                                : $t('billing.processing.description')
+                            finishing
+                                ? $t('billing.processing.success_description')
+                                : takingLong
+                                  ? $t('billing.processing.taking_long')
+                                  : $t('billing.processing.description')
                         }}
                     </p>
                 </div>

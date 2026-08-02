@@ -21,6 +21,7 @@ import date from '@/date';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { mcpClients } from '@/lib/mcpClients';
 import { copyToClipboard } from '@/lib/utils';
+
 import { disconnect as mcpDisconnect } from '@/routes/app/mcp';
 
 interface ConnectedClient {
@@ -249,7 +250,7 @@ const confirmDisconnect = (client: ConnectedClient): void => {
                                     class="px-5 py-4 hover:no-underline"
                                 >
                                     <div
-                                        class="flex items-center gap-4 text-left"
+                                        class="flex items-center gap-4 text-start"
                                     >
                                         <div
                                             class="inline-flex size-12 shrink-0 items-center justify-center rounded-xl border-2 border-foreground shadow-sm"
@@ -297,6 +298,11 @@ const confirmDisconnect = (client: ConnectedClient): void => {
                                                     variant="outline"
                                                     size="icon"
                                                     class="size-9 shrink-0"
+                                                    :aria-label="
+                                                        $t(
+                                                            'common.actions.copy',
+                                                        )
+                                                    "
                                                     @click="
                                                         copyToClipboard(
                                                             connectorName,
@@ -325,6 +331,11 @@ const confirmDisconnect = (client: ConnectedClient): void => {
                                                     variant="outline"
                                                     size="icon"
                                                     class="size-9 shrink-0"
+                                                    :aria-label="
+                                                        $t(
+                                                            'common.actions.copy',
+                                                        )
+                                                    "
                                                     @click="
                                                         copyToClipboard(
                                                             mcpUrl,
@@ -343,12 +354,17 @@ const confirmDisconnect = (client: ConnectedClient): void => {
                                             }}</Label>
                                             <div class="relative">
                                                 <pre
-                                                    class="overflow-x-auto rounded-xl border-2 border-foreground bg-background p-3 pr-14 font-mono text-xs shadow-2xs"
+                                                    class="overflow-x-auto rounded-xl border-2 border-foreground bg-background p-3 pe-14 font-mono text-xs shadow-2xs"
                                                 ><code>{{ configSnippet }}</code></pre>
                                                 <Button
                                                     variant="outline"
                                                     size="icon"
-                                                    class="absolute top-2 right-2 size-9"
+                                                    class="absolute end-2 top-2 size-9"
+                                                    :aria-label="
+                                                        $t(
+                                                            'common.actions.copy',
+                                                        )
+                                                    "
                                                     @click="
                                                         copyToClipboard(
                                                             configSnippet,

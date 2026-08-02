@@ -12,8 +12,10 @@ return [
     'subscription_required_title' => 'Wachten op de accounteigenaar',
     'subscription_required_description' => 'Dit account heeft nog geen actief abonnement. Vraag de eigenaar om de checkout af te ronden — je krijgt volledige toegang zodra het actief is.',
     'subscription_required_owner' => 'De accounteigenaar is :name.',
+    'subscription_required_auto' => 'Deze pagina vernieuwt automatisch — verversen is niet nodig.',
     'progress' => 'Welkomstvoortgang',
     'go_to_step' => 'Ga naar stap :step',
+    'step_current' => 'Stap :step (huidig)',
     'personas' => [
         'creator' => 'Contentmaker',
         'freelancer' => 'Freelancer',

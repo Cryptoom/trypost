@@ -12,8 +12,10 @@ return [
     'subscription_required_title' => '계정 소유자를 기다리는 중',
     'subscription_required_description' => '이 계정에는 아직 활성 구독이 없습니다. 소유자에게 결제 완료를 요청하세요 — 활성화되는 즉시 모든 기능을 사용할 수 있습니다.',
     'subscription_required_owner' => '계정 소유자는 :name 님입니다.',
+    'subscription_required_auto' => '이 페이지는 자동으로 업데이트됩니다 — 새로고침할 필요가 없습니다.',
     'progress' => '환영 진행률',
     'go_to_step' => ':step단계로 이동',
+    'step_current' => ':step단계 (현재)',
     'personas' => [
         'creator' => '콘텐츠 크리에이터',
         'freelancer' => '프리랜서',

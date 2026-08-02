@@ -12,8 +12,10 @@ return [
     'subscription_required_title' => 'Ожидание владельца аккаунта',
     'subscription_required_description' => 'У этого аккаунта пока нет активной подписки. Попросите владельца завершить оплату — вы получите полный доступ сразу после её активации.',
     'subscription_required_owner' => 'Владелец вашего аккаунта — :name.',
+    'subscription_required_auto' => 'Эта страница обновляется автоматически — перезагружать не нужно.',
     'progress' => 'Прогресс приветствия',
     'go_to_step' => 'Перейти к шагу :step',
+    'step_current' => 'Шаг :step (текущий)',
     'personas' => [
         'creator' => 'Автор контента',
         'freelancer' => 'Фрилансер',

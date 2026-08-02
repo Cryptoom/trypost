@@ -12,8 +12,10 @@ return [
     'subscription_required_title' => 'Warten auf den Kontoinhaber',
     'subscription_required_description' => 'Dieses Konto hat noch kein aktives Abo. Bitte den Kontoinhaber, den Checkout abzuschließen — du erhältst vollen Zugriff, sobald es aktiv ist.',
     'subscription_required_owner' => 'Der Kontoinhaber ist :name.',
+    'subscription_required_auto' => 'Diese Seite aktualisiert sich automatisch — kein Neuladen nötig.',
     'progress' => 'Willkommensfortschritt',
     'go_to_step' => 'Zu Schritt :step gehen',
+    'step_current' => 'Schritt :step (aktuell)',
     'personas' => [
         'creator' => 'Content Creator',
         'freelancer' => 'Freelancer',

@@ -12,8 +12,10 @@ return [
     'subscription_required_title' => 'Esperando al propietario de la cuenta',
     'subscription_required_description' => 'Esta cuenta aún no tiene una suscripción activa. Pide al propietario que complete el checkout: tendrás acceso total en cuanto esté activa.',
     'subscription_required_owner' => 'El propietario de tu cuenta es :name.',
+    'subscription_required_auto' => 'Esta página se actualiza automáticamente, no hace falta recargar.',
     'progress' => 'Progreso de bienvenida',
     'go_to_step' => 'Ir al paso :step',
+    'step_current' => 'Paso :step (actual)',
     'personas' => [
         'creator' => 'Creador de contenido',
         'freelancer' => 'Freelancer',
