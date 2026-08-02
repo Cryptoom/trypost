@@ -21,12 +21,13 @@ class DeleteApiKeyTool extends Tool
     {
         $validated = $request->validate(['api_key_id' => ['required', 'string']]);
 
-        // workspace_id filter excludes OAuth-flow tokens (which have null
-        // workspace_id), so the caller can't accidentally revoke their own
-        // ChatGPT/MCP session token through this tool.
-        $token = AccessToken::where('user_id', $request->user()->id)
+        // personalAccess() excludes MCP OAuth grants so the caller can't
+        // accidentally revoke their own ChatGPT/MCP session through this tool.
+        $token = AccessToken::query()
+            ->where('user_id', $request->user()->id)
             ->where('workspace_id', $request->user()->current_workspace_id)
             ->where('revoked', false)
+            ->personalAccess()
             ->find(data_get($validated, 'api_key_id'));
 
         if (! $token) {

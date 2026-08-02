@@ -51,15 +51,12 @@ test('list api keys returns wrapped api_keys array with ApiKeyResource shape', f
         });
 });
 
-test('list api keys excludes OAuth tokens (workspace_id null)', function () {
+test('list api keys excludes MCP OAuth tokens even when workspace-bound', function () {
     // Personal Access Token (workspace bound)
     attachToken($this->user, $this->workspace);
 
-    // OAuth-flow token (workspace_id null — like ChatGPT MCP session)
-    $oauthResult = $this->user->createToken('OAuth Session');
-    AccessToken::find($oauthResult->token->id)
-        ->forceFill(['workspace_id' => null])
-        ->saveQuietly();
+    // MCP OAuth grant bound to the same workspace — must not appear as an API key
+    mcpAccessToken($this->user, mcpOauthClient(), $this->workspace);
 
     $response = TryPostServer::actingAs($this->user)
         ->tool(ListApiKeysTool::class, []);

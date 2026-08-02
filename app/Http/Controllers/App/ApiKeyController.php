@@ -22,9 +22,11 @@ class ApiKeyController extends Controller
 
         $this->authorize('manageTeam', $workspace);
 
-        $tokens = AccessToken::where('user_id', $request->user()->id)
+        $tokens = AccessToken::query()
+            ->where('user_id', $request->user()->id)
             ->where('workspace_id', $workspace->id)
             ->where('revoked', false)
+            ->personalAccess()
             ->latest()
             ->get()
             ->map(fn (AccessToken $token) => [
@@ -78,9 +80,11 @@ class ApiKeyController extends Controller
 
         $this->authorize('manageTeam', $workspace);
 
-        $token = AccessToken::where('id', $tokenId)
+        $token = AccessToken::query()
+            ->where('id', $tokenId)
             ->where('user_id', $request->user()->id)
             ->where('workspace_id', $workspace->id)
+            ->personalAccess()
             ->first();
 
         if (! $token) {

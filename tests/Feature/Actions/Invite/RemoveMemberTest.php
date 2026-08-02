@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Actions\Invite\RemoveMember;
+use App\Models\AccessToken;
 use App\Models\User;
 
 test('remove member clears current workspace when it was the removed membership', function () {
@@ -55,4 +56,29 @@ test('remove member prefers another workspace on the same account', function () 
 
     expect($member->account_id)->toBe($owner->account_id);
     expect($member->current_workspace_id)->toBe($sharedB->id);
+});
+
+test('remove member revokes workspace-scoped api keys and mcp oauth tokens', function () {
+    [
+        'member' => $member,
+        'shared_workspaces' => [$workspace, $other],
+    ] = strandedMemberOnSharedAccount(
+        sharedWorkspaces: 2,
+        setMemberCurrent: true,
+    );
+
+    $pat = $member->createToken('API Key')->token;
+    $pat->forceFill(['workspace_id' => $workspace->id])->saveQuietly();
+
+    $otherPat = $member->createToken('Other Key')->token;
+    $otherPat->forceFill(['workspace_id' => $other->id])->saveQuietly();
+
+    $mcp = mcpAccessToken($member, mcpOauthClient(), $workspace);
+
+    RemoveMember::execute($workspace, $member->id);
+
+    expect(AccessToken::query()->find($pat->id)->revoked)->toBeTrue();
+    expect(AccessToken::query()->find($mcp->id)->revoked)->toBeTrue();
+    expect(AccessToken::query()->find($otherPat->id)->revoked)->toBeFalse();
+    expect(User::find($member->id))->not->toBeNull();
 });

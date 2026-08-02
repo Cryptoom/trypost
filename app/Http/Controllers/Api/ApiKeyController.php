@@ -16,9 +16,11 @@ class ApiKeyController extends Controller
 {
     public function index(Request $request): AnonymousResourceCollection
     {
-        $tokens = AccessToken::where('user_id', $request->user()->id)
+        $tokens = AccessToken::query()
+            ->where('user_id', $request->user()->id)
             ->where('workspace_id', $request->user()->currentWorkspace->id)
             ->where('revoked', false)
+            ->personalAccess()
             ->latest()
             ->get();
 
@@ -46,9 +48,11 @@ class ApiKeyController extends Controller
 
     public function destroy(Request $request, string $tokenId): JsonResponse
     {
-        $token = AccessToken::where('id', $tokenId)
+        $token = AccessToken::query()
+            ->where('id', $tokenId)
             ->where('user_id', $request->user()->id)
             ->where('workspace_id', $request->user()->currentWorkspace->id)
+            ->personalAccess()
             ->first();
 
         if (! $token) {

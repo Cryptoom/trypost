@@ -19,12 +19,14 @@ class ListApiKeysTool extends Tool
 {
     public function handle(Request $request): ResponseFactory
     {
-        // Filtering by workspace_id excludes OAuth-flow tokens (whose
-        // workspace_id is null and resolved at request time via
-        // LoadWorkspaceFromToken middleware).
-        $tokens = AccessToken::where('user_id', $request->user()->id)
+        // personalAccess() excludes MCP OAuth grants (which are also
+        // workspace-bound after issue #222 — workspace_id alone is no longer
+        // a reliable discriminator).
+        $tokens = AccessToken::query()
+            ->where('user_id', $request->user()->id)
             ->where('workspace_id', $request->user()->current_workspace_id)
             ->where('revoked', false)
+            ->personalAccess()
             ->latest()
             ->get();
 
