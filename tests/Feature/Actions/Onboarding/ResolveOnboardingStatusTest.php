@@ -105,7 +105,7 @@ test('captures each completed step once without re-firing later', function () {
     Carbon::setTestNow('2026-07-24 12:00:00');
     Bus::fake();
 
-    $dedupeKey = "onboarding:step:{$this->user->account_id}:social_connected";
+    $dedupeKey = "onboarding:step:{$this->user->account_id}:social";
     Cache::forget(SendEvent::deliveredKey($dedupeKey));
     SocialAccount::factory()->create(['workspace_id' => $this->workspace->id]);
 
@@ -116,7 +116,7 @@ test('captures each completed step once without re-firing later', function () {
     Bus::assertDispatchedTimes(SendEvent::class, 1);
     Bus::assertDispatched(SendEvent::class, fn (SendEvent $event): bool => $event->method === 'capture'
         && data_get($event->payload, 'event') === OnboardingEvent::StepCompleted->value
-        && data_get($event->payload, 'properties.step') === 'social_connected');
+        && data_get($event->payload, 'properties.step') === 'social');
 
     Carbon::setTestNow(now()->addDays(31));
     app(ResolveOnboardingStatus::class)->syncProgress($this->user);
@@ -440,7 +440,7 @@ test('mcp connection attributes step analytics to the acting teammate', function
         SendEvent::class,
         fn (SendEvent $event): bool => $event->method === 'capture'
             && data_get($event->payload, 'event') === OnboardingEvent::StepCompleted->value
-            && data_get($event->payload, 'properties.step') === 'mcp_connected'
+            && data_get($event->payload, 'properties.step') === 'mcp'
             && data_get($event->payload, 'distinctId') === (string) $member->id,
     );
 });

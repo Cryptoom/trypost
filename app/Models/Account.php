@@ -97,6 +97,12 @@ class Account extends Model
             || (! $requiresCardForTrial && $this->isOnTrial());
     }
 
+    public function hasFinishedOnboarding(): bool
+    {
+        return $this->onboarding_completed_at !== null
+            || $this->onboarding_dismissed_at !== null;
+    }
+
     /**
      * Align the Stripe subscription quantity with the number of workspaces the
      * account owns. Each workspace is a billed unit. No-op in self-hosted mode

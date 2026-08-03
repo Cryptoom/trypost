@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Head, Link, router, useForm, usePage, usePoll } from '@inertiajs/vue3';
-import { IconCheck, IconCopy, IconLink } from '@tabler/icons-vue';
+import { IconCheck } from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
 import { computed, nextTick, ref, watch } from 'vue';
 
@@ -8,11 +8,11 @@ import NetworkConnectGrid, {
     type AvailablePlatform,
     type ConnectedAccount,
 } from '@/components/accounts/NetworkConnectGrid.vue';
+import McpPrimarySetup from '@/components/mcp/McpPrimarySetup.vue';
 import OnboardingStepCard from '@/components/onboarding/OnboardingStepCard.vue';
 import { Button } from '@/components/ui/button';
 import { useWorkspaceEcho } from '@/composables/echo/useWorkspaceEcho';
 import AppLayout from '@/layouts/AppLayout.vue';
-import { mcpClients } from '@/lib/mcpClients';
 import { copyToClipboard } from '@/lib/utils';
 import { calendar } from '@/routes/app';
 import { complete } from '@/routes/app/onboarding';
@@ -88,10 +88,6 @@ watch(
     },
     { immediate: true },
 );
-
-const copyMcpUrl = (): void => {
-    copyToClipboard(props.mcpUrl, trans('onboarding.mcp.copied'));
-};
 
 const copySamplePrompt = (): void => {
     copyToClipboard(props.samplePrompt, trans('onboarding.first_post.copied'));
@@ -171,111 +167,10 @@ watch(
                     data-testid="onboarding-mcp"
                 >
                     <div class="space-y-6">
-                        <div>
-                            <div class="mb-3 flex items-center gap-3">
-                                <span
-                                    class="inline-flex size-6 shrink-0 items-center justify-center rounded-full bg-foreground text-xs font-bold text-background"
-                                >
-                                    1
-                                </span>
-                                <p class="text-sm font-bold">
-                                    {{ $t('onboarding.mcp.copy_step') }}
-                                </p>
-                            </div>
-                            <div
-                                class="flex flex-col gap-2 rounded-xl border-2 border-foreground bg-background p-2 shadow-2xs sm:flex-row sm:items-center"
-                            >
-                                <div
-                                    class="flex min-w-0 flex-1 items-center gap-2 px-2"
-                                >
-                                    <IconLink
-                                        class="size-4 shrink-0 text-muted-foreground"
-                                    />
-                                    <code
-                                        class="min-w-0 flex-1 truncate text-sm"
-                                    >
-                                        {{ mcpUrl }}
-                                    </code>
-                                </div>
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="sm"
-                                    class="shrink-0"
-                                    data-testid="copy-mcp-url"
-                                    @click="copyMcpUrl"
-                                >
-                                    <IconCopy class="size-4" />
-                                    {{ $t('onboarding.mcp.copy') }}
-                                </Button>
-                            </div>
-                        </div>
-
-                        <div>
-                            <div class="mb-3 flex items-center gap-3">
-                                <span
-                                    class="inline-flex size-6 shrink-0 items-center justify-center rounded-full bg-foreground text-xs font-bold text-background"
-                                >
-                                    2
-                                </span>
-                                <p class="text-sm font-bold">
-                                    {{ $t('onboarding.mcp.open_step') }}
-                                </p>
-                            </div>
-
-                            <div class="grid gap-4 md:grid-cols-2">
-                                <article
-                                    v-for="client in mcpClients"
-                                    :key="client.id"
-                                    class="flex flex-col gap-4 rounded-xl border-2 border-foreground bg-card p-4 shadow-2xs"
-                                >
-                                    <div class="flex items-start gap-4">
-                                        <span
-                                            :class="[
-                                                client.theme.bg,
-                                                client.theme.rotate,
-                                                'inline-flex size-12 shrink-0 items-center justify-center rounded-xl border-2 border-foreground shadow-sm',
-                                            ]"
-                                        >
-                                            <img
-                                                :src="client.logo"
-                                                :alt="client.label"
-                                                class="size-7 object-contain"
-                                            />
-                                        </span>
-                                        <div class="min-w-0 flex-1">
-                                            <h3 class="font-bold">
-                                                {{ client.label }}
-                                            </h3>
-                                            <p
-                                                class="mt-1 text-xs leading-relaxed text-muted-foreground"
-                                            >
-                                                {{
-                                                    $t(
-                                                        `onboarding.mcp.clients.${client.id}`,
-                                                    )
-                                                }}
-                                            </p>
-                                        </div>
-                                    </div>
-
-                                    <Button as-child class="w-full">
-                                        <a
-                                            :href="client.settingsUrl"
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            :data-testid="`mcp-client-${client.id}`"
-                                        >
-                                            {{
-                                                $t('onboarding.mcp.connect', {
-                                                    client: client.label,
-                                                })
-                                            }}
-                                        </a>
-                                    </Button>
-                                </article>
-                            </div>
-                        </div>
+                        <McpPrimarySetup
+                            :mcp-url="mcpUrl"
+                            :copied-message="$t('onboarding.mcp.copied')"
+                        />
 
                         <div
                             v-if="

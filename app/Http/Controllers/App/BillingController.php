@@ -59,8 +59,7 @@ class BillingController extends Controller
             && $account->subscribed(Account::SUBSCRIPTION_NAME);
         $redirectToOnboarding = $account !== null
             && $user->isAccountOwner()
-            && $account->onboarding_completed_at === null
-            && $account->onboarding_dismissed_at === null;
+            && ! $account->hasFinishedOnboarding();
 
         if ($subscriptionActive && $redirectToOnboarding) {
             $status = $this->resolveOnboardingStatus->syncProgress($user);

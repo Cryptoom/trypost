@@ -50,10 +50,7 @@ class SocialAccountObserver
 
         $account = $socialAccount->workspace?->account;
 
-        if ($account === null
-            || $account->onboarding_completed_at !== null
-            || $account->onboarding_dismissed_at !== null
-        ) {
+        if ($account === null || $account->hasFinishedOnboarding()) {
             return;
         }
 
@@ -77,10 +74,7 @@ class SocialAccountObserver
 
         $account = $socialAccount->workspace?->account;
 
-        if ($account === null
-            || $account->onboarding_completed_at !== null
-            || $account->onboarding_dismissed_at !== null
-        ) {
+        if ($account === null || $account->hasFinishedOnboarding()) {
             return;
         }
 

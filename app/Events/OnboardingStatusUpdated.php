@@ -47,10 +47,7 @@ class OnboardingStatusUpdated implements ShouldBroadcast, ShouldDispatchAfterCom
      */
     public static function dispatchForAccount(?Account $account, ?User $actor = null): void
     {
-        if ($account === null
-            || $account->onboarding_completed_at !== null
-            || $account->onboarding_dismissed_at !== null
-        ) {
+        if ($account === null || $account->hasFinishedOnboarding()) {
             return;
         }
 
@@ -60,10 +57,7 @@ class OnboardingStatusUpdated implements ShouldBroadcast, ShouldDispatchAfterCom
         DB::afterCommit(function () use ($accountId, $actorId): void {
             $account = Account::query()->find($accountId);
 
-            if ($account === null
-                || $account->onboarding_completed_at !== null
-                || $account->onboarding_dismissed_at !== null
-            ) {
+            if ($account === null || $account->hasFinishedOnboarding()) {
                 return;
             }
 
@@ -87,10 +81,7 @@ class OnboardingStatusUpdated implements ShouldBroadcast, ShouldDispatchAfterCom
 
         $account = Workspace::query()->find($workspaceId)?->account;
 
-        if ($account === null
-            || $account->onboarding_completed_at !== null
-            || $account->onboarding_dismissed_at !== null
-        ) {
+        if ($account === null || $account->hasFinishedOnboarding()) {
             return;
         }
 
@@ -100,10 +91,7 @@ class OnboardingStatusUpdated implements ShouldBroadcast, ShouldDispatchAfterCom
         DB::afterCommit(function () use ($accountId, $actorId): void {
             $account = Account::query()->find($accountId);
 
-            if ($account === null
-                || $account->onboarding_completed_at !== null
-                || $account->onboarding_dismissed_at !== null
-            ) {
+            if ($account === null || $account->hasFinishedOnboarding()) {
                 return;
             }
 
@@ -132,9 +120,7 @@ class OnboardingStatusUpdated implements ShouldBroadcast, ShouldDispatchAfterCom
             $account->refresh();
         }
 
-        if ($account->onboarding_completed_at === null
-            && $account->onboarding_dismissed_at === null
-        ) {
+        if (! $account->hasFinishedOnboarding()) {
             static::broadcastForAccount($account);
         }
     }

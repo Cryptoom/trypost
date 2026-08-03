@@ -14,6 +14,24 @@ beforeEach(function () {
     Carbon::setTestNow('2026-05-14 12:00:00');
 });
 
+test('hasFinishedOnboarding recognizes terminal onboarding states', function (
+    ?string $completedAt,
+    ?string $dismissedAt,
+    bool $expected,
+) {
+    $account = Account::factory()->create([
+        'onboarding_completed_at' => $completedAt,
+        'onboarding_dismissed_at' => $dismissedAt,
+    ]);
+
+    expect($account->hasFinishedOnboarding())->toBe($expected);
+})->with([
+    'active' => [null, null, false],
+    'completed' => ['2026-05-14 11:00:00', null, true],
+    'dismissed' => [null, '2026-05-14 11:00:00', true],
+    'both terminal timestamps' => ['2026-05-14 11:00:00', '2026-05-14 11:00:00', true],
+]);
+
 test('isPastDue returns false without a subscription', function () {
     config(['trypost.self_hosted' => false]);
 

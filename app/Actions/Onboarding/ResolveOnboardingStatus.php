@@ -134,9 +134,9 @@ class ResolveOnboardingStatus
         }
 
         if ($account->onboarding_dismissed_at === null) {
-            $this->captureCompletedStep($user, $account, 'mcp_connected', $status['mcp_connected']);
-            $this->captureCompletedStep($user, $account, 'social_connected', $status['social_connected']);
-            $this->captureCompletedStep($user, $account, 'first_post_created', $status['first_post_created']);
+            foreach (self::STEPS as $step => $statusKey) {
+                $this->captureCompletedStep($user, $account, $step, $status[$statusKey]);
+            }
         }
 
         if ($account->onboarding_dismissed_at !== null) {
@@ -166,8 +166,7 @@ class ResolveOnboardingStatus
 
         if (
             $account === null
-            || $account->onboarding_completed_at !== null
-            || $account->onboarding_dismissed_at !== null
+            || $account->hasFinishedOnboarding()
         ) {
             return false;
         }
@@ -226,8 +225,7 @@ class ResolveOnboardingStatus
 
         if ($account === null
             || ! in_array($step, self::SKIPPABLE_STEPS, true)
-            || $account->onboarding_completed_at !== null
-            || $account->onboarding_dismissed_at !== null
+            || $account->hasFinishedOnboarding()
         ) {
             return false;
         }
@@ -293,8 +291,7 @@ class ResolveOnboardingStatus
         // step EXISTS queries in handle() — or even for a subscription lookup.
         if (config('trypost.self_hosted')
             || $account === null
-            || $account->onboarding_completed_at !== null
-            || $account->onboarding_dismissed_at !== null
+            || $account->hasFinishedOnboarding()
             || ! $user->isAccountOwner()
             || ! $account->hasAppAccess()
         ) {

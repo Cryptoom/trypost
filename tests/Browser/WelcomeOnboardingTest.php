@@ -231,5 +231,8 @@ test('owner sees the residual in the mobile sidebar and it links to onboarding',
     $page->assertVisible('@sidebar-onboarding')->click('@sidebar-onboarding');
 
     waitForDusk($page, 'onboarding-mcp');
-    $page->assertVisible('@onboarding-mcp');
+    waitForDusk($page, 'copy-mcp-url');
+    $page->assertVisible('@onboarding-mcp')
+        ->assertVisible('@copy-mcp-url')
+        ->assertVisible('@mcp-client-claude');
 });

@@ -22,10 +22,7 @@ class PostObserver
 
         $account = $post->workspace?->account;
 
-        if ($account === null
-            || $account->onboarding_completed_at !== null
-            || $account->onboarding_dismissed_at !== null
-        ) {
+        if ($account === null || $account->hasFinishedOnboarding()) {
             return;
         }
 
@@ -48,10 +45,7 @@ class PostObserver
     {
         $account = $post->workspace?->account;
 
-        if ($account === null
-            || $account->onboarding_completed_at !== null
-            || $account->onboarding_dismissed_at !== null
-        ) {
+        if ($account === null || $account->hasFinishedOnboarding()) {
             return;
         }
 

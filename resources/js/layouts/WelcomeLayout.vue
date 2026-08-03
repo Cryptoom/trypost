@@ -75,7 +75,7 @@ const canNavigateTo = (stepNumber: number): boolean =>
                                 ]"
                                 :aria-label="
                                     $t('welcome.go_to_step', {
-                                        step: stepNumber,
+                                        step: String(stepNumber),
                                     })
                                 "
                                 :data-testid="`welcome-step-${stepNumber}`"
@@ -94,7 +94,7 @@ const canNavigateTo = (stepNumber: number): boolean =>
                                 :aria-label="
                                     stepNumber === step
                                         ? $t('welcome.step_current', {
-                                              step: stepNumber,
+                                              step: String(stepNumber),
                                           })
                                         : undefined
                                 "
