@@ -68,7 +68,7 @@ test('rejects mcp oauth grants for workspace viewers', function () {
         ->assertForbidden();
 });
 
-test('allows scoped mcp oauth grants for workspace members', function () {
+test('rejects scoped mcp oauth grants on api routes', function () {
     subscribeAccount($this->user->account);
 
     $member = User::factory()->create(['account_id' => $this->user->account_id]);
@@ -82,7 +82,7 @@ test('allows scoped mcp oauth grants for workspace members', function () {
 
     $this->withHeaders(['Authorization' => "Bearer {$result->accessToken}"])
         ->getJson(route('api.workspace.show'))
-        ->assertOk();
+        ->assertForbidden();
 });
 
 test('rejects unscoped mcp oauth grants on api routes', function () {

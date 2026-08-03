@@ -39,6 +39,10 @@ class LoadWorkspaceFromToken
             return response()->json(['message' => 'No workspace selected.'], Response::HTTP_UNAUTHORIZED);
         }
 
+        if ($context !== 'mcp' && $token->isMcpOAuthGrant()) {
+            return response()->json(['message' => 'Personal access token required.'], Response::HTTP_FORBIDDEN);
+        }
+
         if ($token->isMcpOAuthGrant() && ! $authenticatedToken->can('mcp:use')) {
             return response()->json(['message' => 'MCP OAuth authorization required.'], Response::HTTP_FORBIDDEN);
         }
