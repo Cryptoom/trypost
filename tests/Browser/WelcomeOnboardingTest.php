@@ -26,26 +26,6 @@ function waitForDusk(mixed $page, string $selector): void
 }
 
 /**
- * Poll browser-side until the data-testid element is gone — and fail loudly
- * when it never disappears.
- */
-function waitForDuskGone(mixed $page, string $selector): void
-{
-    $gone = $page->script(<<<JS
-        (async () => {
-            const sel = '[data-testid="{$selector}"]';
-            for (let i = 0; i < 100; i++) {
-                if (! document.querySelector(sel)) return true;
-                await new Promise((r) => setTimeout(r, 50));
-            }
-            return false;
-        })();
-    JS);
-
-    expect($gone)->toBeTrue("Timed out waiting for [data-testid=\"{$selector}\"] to disappear.");
-}
-
-/**
  * Poll browser-side until the location path matches, then let the new page
  * mount before asserting.
  */
@@ -141,7 +121,7 @@ test('member without app access lands on the subscription required screen', func
     $page->assertVisible('@welcome-subscription-required');
 });
 
-test('owner sees the residual banner on mobile and can dismiss it in place', function () {
+test('owner sees the residual banner on mobile and it links to onboarding', function () {
     config(['trypost.self_hosted' => false]);
 
     $user = User::factory()->create();
@@ -158,11 +138,8 @@ test('owner sees the residual banner on mobile and can dismiss it in place', fun
 
     waitForDusk($page, 'sidebar-onboarding-mobile');
     $page->assertVisible('@sidebar-onboarding-mobile')
-        ->click('@sidebar-onboarding-mobile-dismiss');
+        ->click('@sidebar-onboarding-mobile');
 
-    // Dismiss with `stay` keeps the user on the calendar and clears the banner.
-    waitForDuskGone($page, 'sidebar-onboarding-mobile');
-    $page->assertMissing('@sidebar-onboarding-mobile');
-
-    expect($user->account->fresh()->onboarding_dismissed_at)->not->toBeNull();
+    waitForDusk($page, 'onboarding-skip');
+    $page->assertVisible('@onboarding-skip');
 });

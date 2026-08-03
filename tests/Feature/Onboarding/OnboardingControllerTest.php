@@ -147,18 +147,6 @@ test('complete forgets a stale celebration flag when already stamped', function 
     expect(session()->get(ResolveOnboardingStatus::JUST_COMPLETED_SESSION_KEY))->toBeNull();
 });
 
-test('onboarding dismiss with stay redirects back instead of to the calendar', function () {
-    Carbon::setTestNow('2026-07-24 12:00:00');
-    Event::fake([OnboardingStatusUpdated::class]);
-
-    $this->actingAs($this->user)
-        ->from(route('app.posts.index'))
-        ->post(route('app.onboarding.dismiss'), ['stay' => true])
-        ->assertRedirect(route('app.posts.index'));
-
-    expect($this->user->account->fresh()->onboarding_dismissed_at?->equalTo(now()))->toBeTrue();
-});
-
 test('dismissed accounts are redirected away from onboarding index', function () {
     Carbon::setTestNow('2026-07-29 12:00:00');
     $this->user->account->update(['onboarding_dismissed_at' => now()]);

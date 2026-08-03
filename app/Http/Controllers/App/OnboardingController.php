@@ -125,12 +125,6 @@ class OnboardingController extends Controller
         // Refresh residual banners on other tabs/devices immediately.
         OnboardingStatusUpdated::broadcastForAccount($account);
 
-        // Sidebar residual dismiss stays on the current page; the onboarding
-        // page Skip leaves for the calendar.
-        if ($request->boolean('stay')) {
-            return redirect()->back();
-        }
-
         return redirect()->route('app.calendar');
     }
 
