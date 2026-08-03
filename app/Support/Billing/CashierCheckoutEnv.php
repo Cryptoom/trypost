@@ -44,6 +44,11 @@ final class CashierCheckoutEnv
             return $default;
         }
 
-        return filter_var($value, FILTER_VALIDATE_BOOLEAN);
+        if (! is_bool($value) && ! is_int($value) && ! is_string($value)) {
+            return $default;
+        }
+
+        return filter_var($value, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE)
+            ?? $default;
     }
 }

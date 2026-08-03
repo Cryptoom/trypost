@@ -47,3 +47,10 @@ test('allow_promotion_codes parses boolean-ish env strings', function (mixed $va
     'bool true' => [true, true],
     'bool false' => [false, false],
 ]);
+
+test('invalid allow_promotion_codes values fall back to the default', function (mixed $value) {
+    expect(CashierCheckoutEnv::allowPromotionCodes($value))->toBeTrue();
+})->with([
+    'typo' => 'tru',
+    'array' => [['true']],
+]);

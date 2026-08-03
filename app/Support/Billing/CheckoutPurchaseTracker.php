@@ -20,7 +20,7 @@ final class CheckoutPurchaseTracker
 
     /**
      * @return array{
-     *     conversion: array{value: float, currency: string, transaction_id: string, verified_at: string}|null,
+     *     conversion: array{kind: 'purchase'|'trial', value: float, currency: string, transaction_id: string, verified_at: string}|null,
      *     conversionResolved: bool
      * }
      */
@@ -52,7 +52,12 @@ final class CheckoutPurchaseTracker
         try {
             $session = $account->stripe()->checkout->sessions->retrieve($sessionId);
             $expectedCustomer = (string) $account->stripe_id;
-            $classification = CheckoutConversionData::classify($session, $expectedCustomer);
+            $classification = CheckoutConversionData::classify(
+                $session,
+                $expectedCustomer,
+                true,
+                $account->plan?->stripe_monthly_price_id,
+            );
 
             if ($classification['outcome'] === CheckoutConversionData::OUTCOME_PENDING) {
                 return [
@@ -135,7 +140,7 @@ final class CheckoutPurchaseTracker
 
     /**
      * @return array{
-     *     conversion: array{value: float, currency: string, transaction_id: string, verified_at: string}|null,
+     *     conversion: array{kind: 'purchase'|'trial', value: float, currency: string, transaction_id: string, verified_at: string}|null,
      *     conversionResolved: bool
      * }
      */
@@ -166,7 +171,7 @@ final class CheckoutPurchaseTracker
             ];
         }
 
-        /** @var array{value: float, currency: string, transaction_id: string} $payload */
+        /** @var array{kind: 'purchase'|'trial', value: float, currency: string, transaction_id: string} $payload */
         return [
             'conversion' => [
                 ...$payload,

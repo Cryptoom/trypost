@@ -6,6 +6,8 @@ namespace App\Support\Billing;
 
 final class CheckoutConversionData
 {
+    public const PURPOSE = 'trypost_subscription';
+
     public const OUTCOME_PENDING = 'pending';
 
     public const OUTCOME_PURCHASE = 'purchase';
@@ -20,12 +22,24 @@ final class CheckoutConversionData
     /**
      * @return array{
      *     outcome: 'pending'|'purchase'|'terminal',
-     *     payload: array{value: float, currency: string, transaction_id: string}|null
+     *     payload: array{kind: 'purchase'|'trial', value: float, currency: string, transaction_id: string}|null
      * }
      */
-    public static function classify(object|array $session, string $expectedCustomerId): array
+    public static function classify(
+        object|array $session,
+        string $expectedCustomerId,
+        bool $requireSubscriptionPurpose = false,
+        ?string $expectedPriceId = null,
+    ): array
     {
         if (self::customerId($session) !== $expectedCustomerId) {
+            return self::result(self::OUTCOME_TERMINAL);
+        }
+
+        if (
+            $requireSubscriptionPurpose
+            && ! self::matchesSubscriptionPurpose($session, $expectedPriceId)
+        ) {
             return self::result(self::OUTCOME_TERMINAL);
         }
 
@@ -59,8 +73,24 @@ final class CheckoutConversionData
         );
     }
 
+    private static function matchesSubscriptionPurpose(
+        object|array $session,
+        ?string $expectedPriceId,
+    ): bool
+    {
+        if (
+            data_get($session, 'mode') !== 'subscription'
+            || data_get($session, 'metadata.trypost_purpose') !== self::PURPOSE
+        ) {
+            return false;
+        }
+
+        return $expectedPriceId === null
+            || data_get($session, 'metadata.trypost_price_id') === $expectedPriceId;
+    }
+
     /**
-     * @return array{value: float, currency: string, transaction_id: string}|null
+     * @return array{kind: 'purchase'|'trial', value: float, currency: string, transaction_id: string}|null
      */
     private static function buildPayload(object|array $session): ?array
     {
@@ -73,10 +103,17 @@ final class CheckoutConversionData
         }
 
         return [
+            'kind' => self::isTrial($session) ? 'trial' : 'purchase',
             'value' => $amountTotal / 100,
             'currency' => strtoupper((string) $currency),
             'transaction_id' => (string) $transactionId,
         ];
+    }
+
+    private static function isTrial(object|array $session): bool
+    {
+        return data_get($session, 'payment_status') === 'no_payment_required'
+            && (int) data_get($session, 'metadata.trypost_trial_days', 0) > 0;
     }
 
     private static function customerId(object|array $session): ?string
@@ -90,10 +127,10 @@ final class CheckoutConversionData
     }
 
     /**
-     * @param  array{value: float, currency: string, transaction_id: string}|null  $payload
+     * @param  array{kind: 'purchase'|'trial', value: float, currency: string, transaction_id: string}|null  $payload
      * @return array{
      *     outcome: 'pending'|'purchase'|'terminal',
-     *     payload: array{value: float, currency: string, transaction_id: string}|null
+     *     payload: array{kind: 'purchase'|'trial', value: float, currency: string, transaction_id: string}|null
      * }
      */
     private static function result(string $outcome, ?array $payload = null): array

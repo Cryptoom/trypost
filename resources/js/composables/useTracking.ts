@@ -33,6 +33,7 @@ export const useTracking = () => ({
     trackPurchase: (
         plan: { name: string; interval: string } | null,
         conversion: {
+            kind: 'purchase' | 'trial';
             value: number;
             currency: string;
             transaction_id: string;
@@ -46,20 +47,24 @@ export const useTracking = () => ({
                   interval: plan.interval,
               }
             : {};
+        const isTrial = conversion.kind === 'trial';
 
-        captureEvent('checkout.completed', {
-            ...planProperties,
-            ...(persona ? { persona } : {}),
-            $insert_id: conversion.transaction_id,
-            event_id: conversion.transaction_id,
-            conversion_value: conversion.value,
-            conversion_currency: conversion.currency,
-            conversion_transaction_id: conversion.transaction_id,
-            conversion_verified_at: conversion.verified_at,
-        });
+        captureEvent(
+            isTrial ? 'checkout.trial_started' : 'checkout.completed',
+            {
+                ...planProperties,
+                ...(persona ? { persona } : {}),
+                $insert_id: conversion.transaction_id,
+                event_id: conversion.transaction_id,
+                conversion_value: conversion.value,
+                conversion_currency: conversion.currency,
+                conversion_transaction_id: conversion.transaction_id,
+                conversion_verified_at: conversion.verified_at,
+            },
+        );
 
         push({
-            event: 'purchase',
+            event: isTrial ? 'start_trial' : 'purchase',
             event_id: conversion.transaction_id,
             transaction_id: conversion.transaction_id,
             value: conversion.value,

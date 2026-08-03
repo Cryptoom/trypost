@@ -359,7 +359,7 @@ test('member without app access lands on the subscription required screen', func
     $page->assertVisible('@welcome-subscription-required');
 });
 
-test('purchase acknowledgement is not sent immediately after analytics is queued', function () {
+test('purchase acknowledgement waits for analytics before navigating', function () {
     config(['trypost.self_hosted' => false]);
 
     $user = User::factory()->create();
@@ -379,6 +379,7 @@ test('purchase acknowledgement is not sent immediately after analytics is queued
     Cache::put("checkout_verified:{$account->id}:{$sessionId}", [
         'kind' => 'purchase',
         'payload' => [
+            'kind' => 'purchase',
             'value' => 10,
             'currency' => 'USD',
             'transaction_id' => $sessionId,
@@ -406,6 +407,11 @@ test('purchase acknowledgement is not sent immediately after analytics is queued
 
     expect($purchaseWasQueued)->toBeTrue()
         ->and(Cache::has("checkout_tracked:{$account->id}:{$sessionId}"))->toBeFalse();
+
+    $page->script('(async () => { await new Promise((resolve) => setTimeout(resolve, 6000)); })()');
+    waitForPath($page, parse_url(route('app.calendar'), PHP_URL_PATH));
+
+    expect(Cache::has("checkout_tracked:{$account->id}:{$sessionId}"))->toBeTrue();
 });
 
 test('owner sees the residual in the mobile sidebar and it links to onboarding', function () {

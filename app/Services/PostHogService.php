@@ -29,11 +29,21 @@ class PostHogService
         ?Account $account = null,
         ?string $dedupeKey = null,
     ): void {
-        if (
-            ! self::isEnabled()
-            || ($dedupeKey !== null && Cache::has(SendEvent::deliveredKey($dedupeKey)))
-        ) {
+        if (! self::isEnabled()) {
             return;
+        }
+
+        if ($dedupeKey !== null) {
+            try {
+                if (Cache::has(SendEvent::deliveredKey($dedupeKey))) {
+                    return;
+                }
+            } catch (Throwable $exception) {
+                Log::warning('PostHog delivery dedupe lookup failed; dispatching event.', [
+                    'dedupe_key' => $dedupeKey,
+                    'exception' => $exception,
+                ]);
+            }
         }
 
         $payload = [

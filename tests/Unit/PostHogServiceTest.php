@@ -8,8 +8,10 @@ use App\Models\Plan;
 use App\Services\PostHogService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
+use RuntimeException;
 
 uses(RefreshDatabase::class);
 
@@ -45,6 +47,21 @@ test('capture carries a delivery dedupe key and skips events already delivered',
     $service->capture('user-123', 'test_event', dedupeKey: 'onboarding:viewed:account-123');
 
     Queue::assertNothingPushed();
+});
+
+test('capture fails open when the delivery dedupe cache is unavailable', function () {
+    Queue::fake();
+    config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test_key']);
+    Cache::shouldReceive('has')->once()->andThrow(new RuntimeException('Redis unavailable'));
+    Log::shouldReceive('warning')->once();
+
+    (new PostHogService)->capture(
+        'user-123',
+        'test_event',
+        dedupeKey: 'onboarding:viewed:account-123',
+    );
+
+    Queue::assertPushed(SendEvent::class);
 });
 
 test('capture serializes a stable PostHog uuid and timestamp into the queued job', function () {

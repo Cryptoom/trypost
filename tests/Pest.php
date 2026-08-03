@@ -8,6 +8,7 @@ use App\Models\Account;
 use App\Models\Plan;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Support\Billing\CheckoutConversionData;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -286,14 +287,30 @@ function fakeStripeHttp(array $responses): object
     {
         public int $calls = 0;
 
+        public array $requests = [];
+
         public function __construct(private readonly array $responses) {}
 
         public function request($method, $absUrl, $headers, $params, $hasFile, $apiMode = 'v1', $maxNetworkRetries = null): array
         {
             $this->calls++;
+            $this->requests[] = compact('method', 'absUrl', 'params');
             $response = $this->responses[min($this->calls - 1, count($this->responses) - 1)];
+            $body = $response['body'];
 
-            return [json_encode($response['body']), $response['status'], []];
+            if (
+                is_array($body)
+                && is_string(data_get($body, 'id'))
+                && str_starts_with((string) data_get($body, 'id'), 'cs_test_')
+                && ! array_key_exists('error', $body)
+            ) {
+                $body['mode'] ??= 'subscription';
+                $body['metadata'] ??= [
+                    'trypost_purpose' => CheckoutConversionData::PURPOSE,
+                ];
+            }
+
+            return [json_encode($body), $response['status'], []];
         }
     };
 

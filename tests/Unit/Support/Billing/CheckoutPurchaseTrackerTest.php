@@ -206,3 +206,29 @@ test('accepts an expanded Stripe customer owned by the account', function () {
     expect($resolved['conversionResolved'])->toBeTrue()
         ->and($resolved['conversion']['transaction_id'])->toBe($sessionId);
 });
+
+test('rejects checkout sessions outside the TryPost subscription flow', function (array $overrides) {
+    $sessionId = 'cs_test_'.fake()->uuid();
+    fakeStripeHttp([[
+        'body' => [
+            'id' => $sessionId,
+            'customer' => 'cus_test_123',
+            'status' => 'complete',
+            'payment_status' => 'paid',
+            'amount_total' => 1000,
+            'currency' => 'usd',
+            ...$overrides,
+        ],
+        'status' => 200,
+    ]]);
+
+    expect($this->tracker->resolve($this->account->fresh(), $sessionId))->toBe([
+        'conversion' => null,
+        'conversionResolved' => true,
+    ]);
+})->with([
+    'payment mode' => [['mode' => 'payment']],
+    'wrong purpose' => [[
+        'metadata' => ['trypost_purpose' => 'different_checkout'],
+    ]],
+]);

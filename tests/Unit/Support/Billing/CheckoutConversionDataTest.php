@@ -54,11 +54,30 @@ test('classifies checkout sessions for purchase tracking', function (
         [],
         'purchase',
     ],
-    'zero-value trial is a purchase' => [
+    'zero-value checkout without trial metadata is a purchase' => [
         ['payment_status' => 'no_payment_required', 'amount_total' => 0],
         'purchase',
     ],
 ]);
+
+test('classifies a no-payment checkout with trial metadata as a trial', function () {
+    $payload = CheckoutConversionData::classify([
+        'id' => 'cs_test_trial',
+        'customer' => 'cus_abc',
+        'mode' => 'subscription',
+        'status' => 'complete',
+        'payment_status' => 'no_payment_required',
+        'amount_total' => 0,
+        'currency' => 'usd',
+        'metadata' => [
+            'trypost_purpose' => CheckoutConversionData::PURPOSE,
+            'trypost_trial_days' => '8',
+        ],
+    ], 'cus_abc', true)['payload'];
+
+    expect($payload['kind'])->toBe('trial')
+        ->and($payload['value'])->toBe(0);
+});
 
 test('builds conversion from amount_total including a zero trial charge', function () {
     $payload = CheckoutConversionData::classify([

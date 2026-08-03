@@ -3,17 +3,19 @@ import { Head, router, useHttp, usePage, usePoll } from '@inertiajs/vue3';
 import { IconCheck, IconLoader2 } from '@tabler/icons-vue';
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 
-import { acknowledgePurchase } from '@/actions/App/Http/Controllers/App/BillingController';
 import { Button } from '@/components/ui/button';
 import { useTracking } from '@/composables/useTracking';
-import { calendar, onboarding } from '@/routes/app';
 import type { Auth } from '@/types';
+
+import { acknowledgePurchase } from '@/actions/App/Http/Controllers/App/BillingController';
+import { calendar, onboarding } from '@/routes/app';
 
 const props = defineProps<{
     subscriptionActive: boolean;
     redirectToOnboarding: boolean;
     persona?: string | null;
     conversion?: {
+        kind: 'purchase' | 'trial';
         value: number;
         currency: string;
         transaction_id: string;
