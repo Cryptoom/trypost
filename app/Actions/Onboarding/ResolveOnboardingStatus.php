@@ -321,15 +321,25 @@ class ResolveOnboardingStatus
             return false;
         }
 
-        return AccessToken::query()
+        $tokens = AccessToken::query()
             ->whereIn(
                 'user_id',
                 User::query()->select('id')->where('account_id', $account->id),
             )
             ->activeMcpOAuth()
-            ->with(['user.currentWorkspace', 'workspace'])
+            ->with('workspace')
+            ->get();
+        $users = User::query()
+            ->with('currentWorkspace')
+            ->whereIn('id', $tokens->pluck('user_id')->filter()->unique())
             ->get()
-            ->contains(fn (AccessToken $token): bool => $token->isUsableMcpGrant());
+            ->keyBy('id');
+
+        return $tokens->contains(
+            fn (AccessToken $token): bool => $token->isUsableMcpGrant(
+                $users->get($token->user_id),
+            ),
+        );
     }
 
     private function accountHasSocialConnection(?Account $account): bool

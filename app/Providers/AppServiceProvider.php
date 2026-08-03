@@ -100,6 +100,10 @@ class AppServiceProvider extends ServiceProvider
 
     protected function configurePassport(): void
     {
+        if (config('trypost.self_hosted')) {
+            Passport::loadKeysFrom(storage_path('passport'));
+        }
+
         Passport::useTokenModel(AccessToken::class);
 
         Passport::tokensCan([

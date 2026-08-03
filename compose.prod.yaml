@@ -109,6 +109,7 @@ services:
       - "8080:8080"   # Reverb WebSocket
     volumes:
       - storage:/var/www/html/storage/app
+      - passport-keys:/var/www/html/storage/passport
     depends_on:
       pgsql:
         condition: service_healthy
@@ -172,5 +173,6 @@ volumes:
   pgdata:
   redisdata:
   storage:
+  passport-keys:
   caddy-data:
   caddy-config:

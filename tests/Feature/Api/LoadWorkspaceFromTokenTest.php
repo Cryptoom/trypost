@@ -36,6 +36,22 @@ test('allows api requests for subscribed accounts', function () {
         ->assertOk();
 });
 
+test('rejects a personal access token after its stored expiration', function () {
+    subscribeAccount($this->user->account);
+
+    AccessToken::query()
+        ->where('user_id', $this->user->id)
+        ->where('workspace_id', $this->workspace->id)
+        ->firstOrFail()
+        ->forceFill(['expires_at' => now()->subMinute()])
+        ->saveQuietly();
+
+    $this->withHeaders(['Authorization' => 'Bearer '.$this->plainToken])
+        ->getJson(route('api.workspace.show'))
+        ->assertUnauthorized()
+        ->assertJson(['message' => 'Token expired.']);
+});
+
 test('allows api requests for generic-trial accounts with app access', function () {
     config(['trypost.billing.require_card_for_trial' => false]);
 

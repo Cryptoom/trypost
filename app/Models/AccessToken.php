@@ -55,12 +55,22 @@ class AccessToken extends Token
     public function scopeActiveMcpOAuth(Builder $query): Builder
     {
         return $query
+            ->mcpOAuth()
             ->where('revoked', false)
-            ->whereJsonContains('scopes', 'mcp:use')
             ->where(function (Builder $expires): void {
                 $expires->whereNull('expires_at')
                     ->orWhere('expires_at', '>', now());
-            })
+            });
+    }
+
+    /**
+     * @param  Builder<static>  $query
+     * @return Builder<static>
+     */
+    public function scopeMcpOAuth(Builder $query): Builder
+    {
+        return $query
+            ->whereJsonContains('scopes', 'mcp:use')
             ->whereHas(
                 'client',
                 fn (Builder $client): Builder => $client
@@ -104,7 +114,9 @@ class AccessToken extends Token
             return false;
         }
 
-        $user ??= $this->user;
+        $user ??= User::query()
+            ->with('currentWorkspace')
+            ->find($this->user_id);
 
         if (! $user instanceof User) {
             return false;

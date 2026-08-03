@@ -58,10 +58,15 @@ class ApiKeyController extends Controller
 
         $result = $request->user()->createToken($validated['name']);
         $accessToken = AccessToken::find($result->token->id);
-        $accessToken->forceFill([
+        $attributes = [
             'workspace_id' => $workspace->id,
-            'expires_at' => $validated['expires_at'] ?? null,
-        ])->saveQuietly();
+        ];
+
+        if ($expiresAt = data_get($validated, 'expires_at')) {
+            $attributes['expires_at'] = $expiresAt;
+        }
+
+        $accessToken->forceFill($attributes)->saveQuietly();
 
         return back()
             ->with('flash.success', __('settings.api_keys.flash.created'))

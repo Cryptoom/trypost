@@ -36,10 +36,15 @@ class ApiKeyController extends Controller
         $result = $request->user()->createToken($validated['name']);
 
         $token = AccessToken::find($result->token->id);
-        $token->forceFill([
+        $attributes = [
             'workspace_id' => $workspace->id,
-            'expires_at' => $validated['expires_at'] ?? null,
-        ])->saveQuietly();
+        ];
+
+        if ($expiresAt = data_get($validated, 'expires_at')) {
+            $attributes['expires_at'] = $expiresAt;
+        }
+
+        $token->forceFill($attributes)->saveQuietly();
 
         return response()->json([
             'token' => new ApiKeyResource($token->refresh()),

@@ -32,10 +32,15 @@ class CreateApiKeyTool extends Tool
         $result = $user->createToken(data_get($validated, 'name'));
 
         $token = AccessToken::find($result->token->id);
-        $token->forceFill([
+        $attributes = [
             'workspace_id' => $user->current_workspace_id,
-            'expires_at' => data_get($validated, 'expires_at'),
-        ])->saveQuietly();
+        ];
+
+        if ($expiresAt = data_get($validated, 'expires_at')) {
+            $attributes['expires_at'] = $expiresAt;
+        }
+
+        $token->forceFill($attributes)->saveQuietly();
 
         return Response::structured(array_merge(
             (new ApiKeyResource($token))->resolve(),

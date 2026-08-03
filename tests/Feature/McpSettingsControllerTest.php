@@ -7,6 +7,7 @@ use App\Events\OnboardingStatusUpdated;
 use App\Models\AccessToken;
 use App\Models\User;
 use App\Models\Workspace;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Str;
 
@@ -111,6 +112,27 @@ it('disconnects a client by revoking its tokens and broadcasting onboarding stat
         OnboardingStatusUpdated::class,
         fn (OnboardingStatusUpdated $event): bool => $event->workspaceId === $this->workspace->id,
     );
+});
+
+it('disconnects a client when its access token expired but its refresh token is live', function (): void {
+    $clientId = mcpOauthClient();
+    $token = AccessToken::withoutEvents(fn () => mcpAccessToken($this->user, $clientId));
+    $token->forceFill(['expires_at' => now()->subMinute()])->saveQuietly();
+    $refreshTokenId = Str::random(80);
+    DB::table('oauth_refresh_tokens')->insert([
+        'id' => $refreshTokenId,
+        'access_token_id' => $token->id,
+        'revoked' => false,
+        'expires_at' => now()->addMonth(),
+    ]);
+
+    $this->actingAs($this->user)
+        ->delete(route('app.mcp.disconnect', ['client' => $clientId]))
+        ->assertRedirect()
+        ->assertSessionHas('flash.success');
+
+    expect($token->fresh()->revoked)->toBeTrue()
+        ->and(DB::table('oauth_refresh_tokens')->where('id', $refreshTokenId)->value('revoked'))->toBeTrue();
 });
 
 it('does not flash success or broadcast when disconnecting an unknown client', function (): void {

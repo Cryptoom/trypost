@@ -28,6 +28,10 @@ class LoadWorkspaceFromToken
             return response()->json(['message' => 'Token not found.'], Response::HTTP_UNAUTHORIZED);
         }
 
+        if ($token->expires_at?->isPast()) {
+            return response()->json(['message' => 'Token expired.'], Response::HTTP_UNAUTHORIZED);
+        }
+
         // Personal API tokens (created from settings) bind to a specific
         // workspace at creation. OAuth tokens (e.g. ChatGPT MCP) don't —
         // they follow the user's current workspace.

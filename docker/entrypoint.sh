@@ -65,7 +65,7 @@ done
 
 # 7) Run migrations (graceful: succeeds even when nothing to migrate).
 echo "[entrypoint] running migrations"
-php artisan migrate --force --graceful || true
+php artisan migrate --force --graceful
 
 # 8) storage:link if missing.
 if [ ! -L public/storage ]; then
@@ -73,10 +73,17 @@ if [ ! -L public/storage ]; then
     php artisan storage:link --force || true
 fi
 
-# 9) Passport keys on first boot.
-if [ ! -f storage/oauth-private.key ]; then
+# 9) Passport keys on first boot. Self-hosted keys live in their own persisted
+# volume; SaaS/custom images retain Passport's default storage path.
+PASSPORT_KEY_DIR="storage"
+if [ "${SELF_HOSTED:-false}" = "true" ]; then
+    PASSPORT_KEY_DIR="storage/passport"
+    mkdir -p "${PASSPORT_KEY_DIR}"
+fi
+
+if [ ! -f "${PASSPORT_KEY_DIR}/oauth-private.key" ] || [ ! -f "${PASSPORT_KEY_DIR}/oauth-public.key" ]; then
     echo "[entrypoint] generating Passport keys"
-    php artisan passport:keys --force || true
+    php artisan passport:keys --force
 fi
 
 # 10) Personal access client for REST API keys. The seeder is idempotent, so

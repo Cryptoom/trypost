@@ -54,6 +54,7 @@ it('creates an api key', function () {
     expect($tokens)->toHaveCount(1);
     expect($tokens->first()->name)->toBe('My API Key');
     expect($tokens->first()->revoked)->toBeFalse();
+    expect($tokens->first()->expires_at)->not->toBeNull();
 });
 
 it('bootstraps the personal access client idempotently', function () {

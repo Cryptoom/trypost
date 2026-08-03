@@ -46,7 +46,8 @@ class McpSettingsController extends Controller
         $tokens = AccessToken::query()
             ->where('user_id', $user->id)
             ->where('client_id', $client)
-            ->activeMcpOAuth()
+            ->mcpOAuth()
+            ->where('revoked', false)
             ->get();
 
         if ($tokens->isEmpty()) {
@@ -79,15 +80,24 @@ class McpSettingsController extends Controller
         $tokens = AccessToken::query()
             ->whereIn('user_id', User::query()->select('id')->where('account_id', $accountId))
             ->activeMcpOAuth()
-            ->with(['client', 'user.currentWorkspace', 'workspace'])
+            ->with(['client', 'workspace'])
+            ->get();
+        $users = User::query()
+            ->with('currentWorkspace')
+            ->whereIn('id', $tokens->pluck('user_id')->filter()->unique())
             ->get()
-            ->filter(fn (AccessToken $token): bool => $token->isUsableMcpGrant());
+            ->keyBy('id');
+        $tokens = $tokens->filter(
+            fn (AccessToken $token): bool => $token->isUsableMcpGrant(
+                $users->get($token->user_id),
+            ),
+        );
 
         return $tokens
             ->groupBy(fn (AccessToken $token): string => "{$token->client_id}:{$token->user_id}")
-            ->map(function ($grouped) use ($currentUser): array {
+            ->map(function ($grouped) use ($currentUser, $users): array {
                 $first = $grouped->first();
-                $owner = $first->user;
+                $owner = $users->get($first->user_id);
 
                 return [
                     'client_id' => $first->client_id,
