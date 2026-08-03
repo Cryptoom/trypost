@@ -155,9 +155,10 @@ test('billing processing shows processing page', function () {
     $response->assertInertia(fn ($page) => $page
         ->component('billing/Processing', false)
         ->has('subscriptionActive')
-        ->where('fromCheckout', false)
         ->where('redirectToOnboarding', true)
         ->where('conversion', null)
+        ->where('conversionResolved', true)
+        ->missing('fromCheckout')
     );
 });
 
@@ -181,7 +182,7 @@ test('billing processing skips onboarding when dismissed', function () {
         ->assertInertia(fn ($page) => $page->where('redirectToOnboarding', false));
 });
 
-test('billing processing exposes fromCheckout=true only the first time a session_id is seen', function () {
+test('billing processing exposes conversion only the first time a session_id is verified', function () {
     config(['trypost.self_hosted' => false]);
 
     $sessionId = 'cs_test_'.fake()->uuid();
@@ -201,9 +202,9 @@ test('billing processing exposes fromCheckout=true only the first time a session
         ->get(route('app.billing.processing', ['session_id' => $sessionId]));
     $first->assertOk();
     $first->assertInertia(fn ($page) => $page
-        ->where('fromCheckout', true)
         ->where('conversion.value', 10)
         ->where('conversion.transaction_id', $sessionId)
+        ->where('conversionResolved', true)
     );
 
     // A back-button / refresh to the same success URL must not re-fire the event.
@@ -211,8 +212,8 @@ test('billing processing exposes fromCheckout=true only the first time a session
         ->get(route('app.billing.processing', ['session_id' => $sessionId]));
     $second->assertOk();
     $second->assertInertia(fn ($page) => $page
-        ->where('fromCheckout', false)
         ->where('conversion', null)
+        ->where('conversionResolved', true)
     );
 });
 
@@ -232,12 +233,14 @@ test('billing processing does not convert a session owned by another customer', 
         'status' => 200,
     ]]);
 
-    // First sight marks fromCheckout, but the customer mismatch yields no
-    // conversion — purchase tracking gates on conversion.
+    // Customer mismatch yields no conversion — purchase tracking gates on conversion.
     $this->actingAs($this->user->fresh())
         ->get(route('app.billing.processing', ['session_id' => $sessionId]))
         ->assertOk()
-        ->assertInertia(fn ($page) => $page->where('conversion', null));
+        ->assertInertia(fn ($page) => $page
+            ->where('conversion', null)
+            ->where('conversionResolved', true)
+        );
 
     // The mismatch is consumed once — the poll loop must not re-hit Stripe.
     $this->actingAs($this->user->fresh())
@@ -266,7 +269,10 @@ test('billing processing consumes an unknown session id without retrying stripe'
     $this->actingAs($this->user->fresh())
         ->get(route('app.billing.processing', ['session_id' => $sessionId]))
         ->assertOk()
-        ->assertInertia(fn ($page) => $page->where('conversion', null));
+        ->assertInertia(fn ($page) => $page
+            ->where('conversion', null)
+            ->where('conversionResolved', true)
+        );
 
     $this->actingAs($this->user->fresh())
         ->get(route('app.billing.processing', ['session_id' => $sessionId]))
@@ -275,30 +281,57 @@ test('billing processing consumes an unknown session id without retrying stripe'
     expect($stripe->calls)->toBe(1);
 });
 
-test('billing processing does not convert an abandoned checkout session', function () {
+test('billing processing retries an open checkout session until it completes', function () {
     config(['trypost.self_hosted' => false]);
 
     $sessionId = 'cs_test_'.fake()->uuid();
     $this->account->forceFill(['stripe_id' => 'cus_test_123'])->save();
-    fakeStripeHttp([[
-        'body' => [
-            'id' => $sessionId,
-            'customer' => 'cus_test_123',
-            'status' => 'open',
-            'amount_total' => 1000,
-            'currency' => 'usd',
+    $stripe = fakeStripeHttp([
+        [
+            'body' => [
+                'id' => $sessionId,
+                'customer' => 'cus_test_123',
+                'status' => 'open',
+                'amount_total' => 1000,
+                'currency' => 'usd',
+            ],
+            'status' => 200,
         ],
-        'status' => 200,
-    ]]);
+        [
+            'body' => [
+                'id' => $sessionId,
+                'customer' => 'cus_test_123',
+                'status' => 'complete',
+                'amount_total' => 1000,
+                'currency' => 'usd',
+            ],
+            'status' => 200,
+        ],
+    ]);
 
-    // An abandoned checkout of the account's own customer is not a purchase.
-    $this->actingAs($this->user->fresh())
+    $response = $this->actingAs($this->user->fresh())
         ->get(route('app.billing.processing', ['session_id' => $sessionId]))
-        ->assertOk()
-        ->assertInertia(fn ($page) => $page->where('conversion', null));
+        ->assertOk();
+
+    // Unresolved while open — Processing.vue must keep polling (not finish).
+    $response->assertInertia(fn ($page) => $page
+        ->where('conversion', null)
+        ->where('conversionResolved', false)
+    );
+
+    // Matches Processing.vue usePoll only list.
+    $response->assertInertia(fn ($page) => $page
+        ->reloadOnly(['subscriptionActive', 'auth', 'conversion', 'conversionResolved'], fn ($reload) => $reload
+            ->where('conversion.value', 10)
+            ->where('conversion.transaction_id', $sessionId)
+            ->where('conversionResolved', true)
+        )
+    );
+
+    expect($stripe->calls)->toBe(2);
 });
 
-test('billing processing retries purchase verification after a transient stripe failure', function () {
+test('billing processing retries purchase verification after a transient stripe failure on partial poll', function () {
     config(['trypost.self_hosted' => false]);
 
     $sessionId = 'cs_test_'.fake()->uuid();
@@ -320,26 +353,88 @@ test('billing processing retries purchase verification after a transient stripe 
         ],
     ]);
 
-    // Transient failure: no conversion yet, session not consumed.
-    $this->actingAs($this->user->fresh())
+    $response = $this->actingAs($this->user->fresh())
         ->get(route('app.billing.processing', ['session_id' => $sessionId]))
-        ->assertOk()
-        ->assertInertia(fn ($page) => $page
-            ->where('fromCheckout', false)
-            ->where('conversion', null)
-        );
+        ->assertOk();
 
-    // Next poll retries Stripe and gets the verified purchase conversion.
-    $this->actingAs($this->user->fresh())
-        ->get(route('app.billing.processing', ['session_id' => $sessionId]))
-        ->assertOk()
-        ->assertInertia(fn ($page) => $page
-            ->where('fromCheckout', true)
+    $response->assertInertia(fn ($page) => $page
+        ->where('conversion', null)
+        ->where('conversionResolved', false)
+    );
+
+    // Partial poll (same contract as Processing.vue) must still receive conversion.
+    $response->assertInertia(fn ($page) => $page
+        ->reloadOnly(['subscriptionActive', 'auth', 'conversion', 'conversionResolved'], fn ($reload) => $reload
             ->where('conversion.value', 10)
             ->where('conversion.transaction_id', $sessionId)
-        );
+            ->where('conversionResolved', true)
+        )
+    );
 
     expect($stripe->calls)->toBe(2);
+});
+
+test('billing processing consumes an expired checkout session without conversion', function () {
+    config(['trypost.self_hosted' => false]);
+
+    $sessionId = 'cs_test_'.fake()->uuid();
+    $this->account->forceFill(['stripe_id' => 'cus_test_123'])->save();
+    $stripe = fakeStripeHttp([[
+        'body' => [
+            'id' => $sessionId,
+            'customer' => 'cus_test_123',
+            'status' => 'expired',
+            'amount_total' => 1000,
+            'currency' => 'usd',
+        ],
+        'status' => 200,
+    ]]);
+
+    $this->actingAs($this->user->fresh())
+        ->get(route('app.billing.processing', ['session_id' => $sessionId]))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('conversion', null)
+            ->where('conversionResolved', true)
+        );
+
+    $this->actingAs($this->user->fresh())
+        ->get(route('app.billing.processing', ['session_id' => $sessionId]))
+        ->assertOk();
+
+    expect($stripe->calls)->toBe(1);
+});
+
+test('billing processing resolves without conversion when complete session payload is unusable', function () {
+    config(['trypost.self_hosted' => false]);
+
+    $sessionId = 'cs_test_'.fake()->uuid();
+    $this->account->forceFill(['stripe_id' => 'cus_test_123'])->save();
+    $stripe = fakeStripeHttp([[
+        'body' => [
+            'id' => $sessionId,
+            'customer' => 'cus_test_123',
+            'status' => 'complete',
+            // Missing amount_total — CheckoutConversionData returns null.
+            'currency' => 'usd',
+        ],
+        'status' => 200,
+    ]]);
+
+    $this->actingAs($this->user->fresh())
+        ->get(route('app.billing.processing', ['session_id' => $sessionId]))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('conversion', null)
+            ->where('conversionResolved', true)
+        );
+
+    // Consumed — do not keep hitting Stripe on polls.
+    $this->actingAs($this->user->fresh())
+        ->get(route('app.billing.processing', ['session_id' => $sessionId]))
+        ->assertOk();
+
+    expect($stripe->calls)->toBe(1);
 });
 
 test('billing processing exposes null conversion when session_id query param is missing', function () {
@@ -411,13 +506,16 @@ test('billing processing does not let another account burn the buyers checkout s
     $this->actingAs($otherUser)
         ->get(route('app.billing.processing', ['session_id' => $sessionId]))
         ->assertOk()
-        ->assertInertia(fn ($page) => $page->where('fromCheckout', false));
+        ->assertInertia(fn ($page) => $page->where('conversion', null));
 
-    // The real buyer's first visit still counts as their checkout arrival.
+    // The real buyer's first visit still receives the conversion payload.
     $this->actingAs($this->user->fresh())
         ->get(route('app.billing.processing', ['session_id' => $sessionId]))
         ->assertOk()
-        ->assertInertia(fn ($page) => $page->where('fromCheckout', true));
+        ->assertInertia(fn ($page) => $page
+            ->where('conversion.value', 10)
+            ->where('conversion.transaction_id', $sessionId)
+        );
 });
 
 test('billing processing does not send members to onboarding', function () {

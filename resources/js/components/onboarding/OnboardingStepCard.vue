@@ -20,7 +20,7 @@ defineProps<{
         <header
             :class="[
                 'flex items-center justify-between gap-4 border-b-2 border-foreground px-5 py-4 sm:px-6',
-                done ? 'bg-emerald-100' : skipped ? 'bg-muted' : accentClass,
+                skipped ? 'bg-muted' : done ? 'bg-emerald-100' : accentClass,
             ]"
         >
             <div class="flex min-w-0 items-center gap-3">
@@ -42,12 +42,15 @@ defineProps<{
                     </p>
                 </div>
             </div>
-            <Badge class="shrink-0" :variant="done ? 'success' : 'outline'">
+            <Badge
+                class="shrink-0"
+                :variant="done && !skipped ? 'success' : 'outline'"
+            >
                 {{
-                    done
-                        ? $t('onboarding.status.complete')
-                        : skipped
-                          ? $t('onboarding.status.skipped')
+                    skipped
+                        ? $t('onboarding.status.skipped')
+                        : done
+                          ? $t('onboarding.status.complete')
                           : $t('onboarding.status.todo')
                 }}
             </Badge>

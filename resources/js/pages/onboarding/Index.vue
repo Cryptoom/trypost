@@ -162,8 +162,8 @@ watch(
 
             <div class="grid gap-6">
                 <OnboardingStepCard
-                    :done="status.mcp_connected"
-                    :skipped="isStepSkipped('mcp')"
+                    :done="status.mcp_connected || isStepSkipped('mcp')"
+                    :skipped="isStepSkipped('mcp') && !status.mcp_connected"
                     :step="1"
                     :title="$t('onboarding.mcp.title')"
                     :description="$t('onboarding.mcp.description')"

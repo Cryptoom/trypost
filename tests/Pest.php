@@ -166,31 +166,6 @@ function subscribeAccount(Account $account): void
 }
 
 /**
- * Headers for an Inertia partial reload. Includes the asset version so local
- * runs with a built Vite manifest don't get a 409 from the version check.
- *
- * @return array<string, string>
- */
-function inertiaPartialHeaders(string $component, string $only): array
-{
-    $version = '';
-
-    if (file_exists($manifest = public_path('build/manifest.json'))) {
-        $version = hash_file('xxh128', $manifest);
-    } elseif (file_exists($manifest = public_path('mix-manifest.json'))) {
-        $version = hash_file('xxh128', $manifest);
-    }
-
-    return [
-        'X-Inertia' => 'true',
-        'X-Requested-With' => 'XMLHttpRequest',
-        'X-Inertia-Version' => $version,
-        'X-Inertia-Partial-Component' => $component,
-        'X-Inertia-Partial-Data' => $only,
-    ];
-}
-
-/**
  * Insert an OAuth client suitable for MCP connection tests.
  */
 function mcpOauthClient(string $name = 'My Agent'): string

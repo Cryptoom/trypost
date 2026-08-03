@@ -10,7 +10,6 @@ import { calendar, onboarding } from '@/routes/app';
 
 const props = defineProps<{
     subscriptionActive: boolean;
-    fromCheckout: boolean;
     redirectToOnboarding: boolean;
     persona?: string | null;
     conversion?: {
@@ -18,6 +17,8 @@ const props = defineProps<{
         currency: string;
         transaction_id: string;
     } | null;
+    /** False while Stripe verification is still retryable (open / transient). */
+    conversionResolved: boolean;
 }>();
 
 // Hold on the processing screen after firing purchase tracking so PostHog and
@@ -58,11 +59,7 @@ const readSafely = (key: string): string | null => {
     }
 };
 
-if (props.conversion && storageKey) {
-    storeSafely(storageKey, JSON.stringify(props.conversion));
-}
-
-const cachedConversion = ((): Conversion | null => {
+const cachedConversion = ref<Conversion | null>(((): Conversion | null => {
     if (!storageKey) {
         return null;
     }
@@ -74,18 +71,35 @@ const cachedConversion = ((): Conversion | null => {
     } catch {
         return null;
     }
-})();
+})());
 
-const conversion = computed<Conversion | null>(
-    () => props.conversion ?? cachedConversion,
+watch(
+    () => props.conversion,
+    (value) => {
+        if (!value || !storageKey) {
+            return;
+        }
+
+        storeSafely(storageKey, JSON.stringify(value));
+        cachedConversion.value = value;
+    },
+    { immediate: true },
 );
 
-// Polls `auth` alongside so `auth.plan.interval` is fresh once the Stripe
-// webhook creates the local Subscription row — at /billing/processing's
-// initial render that row doesn't exist yet, so the interval would default
-// to 'monthly' even for a yearly purchase.
+const conversion = computed<Conversion | null>(
+    () => props.conversion ?? cachedConversion.value,
+);
+
+// Poll subscription + auth.plan + conversion(+resolved). Conversion props must
+// be in `only` so a Stripe retry that succeeds on a partial poll still reaches
+// purchase tracking before we stop polling.
 const { stop } = usePoll(2000, {
-    only: ['subscriptionActive', 'auth'],
+    only: [
+        'subscriptionActive',
+        'auth',
+        'conversion',
+        'conversionResolved',
+    ],
 });
 
 const { trackPurchase } = useTracking();
@@ -100,6 +114,10 @@ const goNext = () =>
         props.redirectToOnboarding ? onboarding.url() : calendar.url(),
     );
 
+const authPlan = computed(
+    () => (page.props.auth as Auth | undefined)?.plan ?? null,
+);
+
 // Fires purchase tracking exactly once for a real checkout. A trial-with-card
 // subscription is already `subscribed()` (status `trialing`) by the time the
 // webhook lands, so the user frequently reaches this page already active — the
@@ -107,10 +125,26 @@ const goNext = () =>
 // tracking from whichever path runs first (immediate active state or poll
 // transition), gated on a verified `conversion` so foreign sessions never fire
 // PostHog/Meta/Google purchase events. Stripe is only the verification source.
+// Wait for auth.plan AND conversionResolved before locking finishing so a race
+// where the sub flips while Stripe verification is still open/transient does
+// not stop polling and permanently drop purchase events.
 const completePurchase = () => {
-    if (finishing.value) {
+    if (finishing.value || !props.subscriptionActive) {
         return;
     }
+
+    const plan = authPlan.value;
+
+    if (!plan) {
+        return;
+    }
+
+    // No session_id → backend sets conversionResolved true immediately.
+    // With a session_id, keep polling until verification is conclusive.
+    if (!props.conversionResolved) {
+        return;
+    }
+
     finishing.value = true;
     stop();
 
@@ -120,12 +154,11 @@ const completePurchase = () => {
     }
     takingLong.value = false;
 
-    const plan = (page.props.auth as Auth | undefined)?.plan;
     const trackedKey = storageKey ? `${storageKey}.tracked` : null;
 
     // Verified-or-nothing: purchase tracking only fires when the Checkout
     // Session was verified against this account's Stripe customer.
-    if (conversion.value && plan && !(trackedKey && readSafely(trackedKey))) {
+    if (conversion.value && !(trackedKey && readSafely(trackedKey))) {
         trackPurchase(
             { name: plan.name, interval: plan.interval },
             conversion.value,
@@ -143,11 +176,14 @@ const completePurchase = () => {
 };
 
 watch(
-    () => props.subscriptionActive,
-    (active) => {
-        if (active) {
-            completePurchase();
-        }
+    [
+        () => props.subscriptionActive,
+        authPlan,
+        () => props.conversionResolved,
+        conversion,
+    ],
+    () => {
+        completePurchase();
     },
 );
 
@@ -171,7 +207,6 @@ onUnmounted(() => {
     }
 });
 </script>
-
 <template>
     <Head :title="$t('billing.processing.page_title')" />
 

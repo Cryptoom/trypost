@@ -243,6 +243,12 @@ test('completed accounts are redirected away from onboarding on full visits', fu
 test('partial reloads do not consume the just-completed session flag', function () {
     Carbon::setTestNow('2026-07-29 12:00:00');
 
+    // Incomplete visit first so reloadOnly has an Inertia page to follow up from
+    // without syncProgress auto-stamping (and pulling) the just-completed flag.
+    $response = $this->actingAs($this->user->fresh())
+        ->get(route('app.onboarding'))
+        ->assertOk();
+
     AccessToken::withoutEvents(fn () => mcpAccessToken($this->user, mcpOauthClient()));
     SocialAccount::withoutEvents(fn () => SocialAccount::factory()->create([
         'workspace_id' => $this->workspace->id,
@@ -252,28 +258,18 @@ test('partial reloads do not consume the just-completed session flag', function 
         'user_id' => $this->user->id,
     ]));
 
-    // Stamp during an authenticated request so put() writes the real session key
-    // (not a persistent withSession stub that would mask flash aging).
-    $this->actingAs($this->user->fresh())
-        ->get(route('app.calendar'))
-        ->assertOk();
-
     expect(app(ResolveOnboardingStatus::class)->markCompleted($this->user->fresh()))->toBeTrue()
         ->and(session()->get(ResolveOnboardingStatus::JUST_COMPLETED_SESSION_KEY))->toBeTrue();
 
-    $this->actingAs($this->user->fresh())
-        ->withHeaders(inertiaPartialHeaders(
-            component: 'onboarding/Index',
-            only: 'status,accounts,onboardingResidual',
-        ))
-        ->get(route('app.onboarding'))
-        ->assertOk();
+    $response->assertInertia(fn ($page) => $page
+        ->reloadOnly(['status', 'accounts', 'onboardingResidual'], fn ($reload) => $reload
+            ->where('status.all_complete', true)
+            ->where('status.completed_at', now()->toIso8601String())
+        )
+    );
 
     // put() survives Echo/poll partials so a later full visit can show ready state.
     expect(session()->get(ResolveOnboardingStatus::JUST_COMPLETED_SESSION_KEY))->toBeTrue();
-
-    // Drop partial headers — withHeaders persists on the test case.
-    $this->flushHeaders();
 
     $this->actingAs($this->user->fresh())
         ->get(route('app.onboarding'))
@@ -334,18 +330,19 @@ test('completed accounts stay on onboarding during partial reloads', function ()
         'workspace_id' => $this->workspace->id,
         'user_id' => $this->user->id,
     ]));
+
+    $response = $this->actingAs($this->user->fresh())
+        ->get(route('app.onboarding'))
+        ->assertOk();
+
     $this->user->account->forceFill(['onboarding_completed_at' => now()])->save();
 
-    $this->actingAs($this->user->fresh())
-        ->withHeaders(inertiaPartialHeaders(
-            component: 'onboarding/Index',
-            only: 'status,accounts,onboardingResidual',
-        ))
-        ->get(route('app.onboarding'))
-        ->assertOk()
-        ->assertJsonPath('component', 'onboarding/Index')
-        ->assertJsonPath('props.status.all_complete', true)
-        ->assertJsonPath('props.status.completed_at', now()->toIso8601String());
+    $response->assertInertia(fn ($page) => $page
+        ->reloadOnly(['status', 'accounts', 'onboardingResidual'], fn ($reload) => $reload
+            ->where('status.all_complete', true)
+            ->where('status.completed_at', now()->toIso8601String())
+        )
+    );
 });
 
 test('skip step after completion is a no-op', function () {

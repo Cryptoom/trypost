@@ -577,6 +577,13 @@ test('skipStep completes the checklist when the skipped step was the last open o
     expect(app(ResolveOnboardingStatus::class)->skipStep($this->user, 'mcp'))->toBeTrue();
 
     expect($this->user->account->fresh()->onboarding_completed_at?->equalTo(now()))->toBeTrue();
+
+    // Ready UI must keep the Skipped badge — do not force mcp_connected=true.
+    $status = app(ResolveOnboardingStatus::class)->handle($this->user->fresh());
+
+    expect($status['mcp_connected'])->toBeFalse()
+        ->and($status['skipped_steps'])->toBe(['mcp'])
+        ->and($status['all_complete'])->toBeTrue();
 });
 
 test('skipStep refuses required steps and steps already done', function () {
@@ -602,7 +609,7 @@ test('residual counts a skipped step as done', function () {
     ]);
 });
 
-test('connecting the mcp step after skipping it shows the real state', function () {
+test('connecting the mcp step after skipping it prefers Complete over Skipped', function () {
     app(ResolveOnboardingStatus::class)->skipStep($this->user, 'mcp');
 
     mcpAccessToken($this->user, mcpOauthClient());
@@ -611,4 +618,10 @@ test('connecting the mcp step after skipping it shows the real state', function 
 
     expect($status['mcp_connected'])->toBeTrue()
         ->and($status['skipped_steps'])->toBe(['mcp']);
+
+    // Mirrors Index.vue: skipped prop is only true when not actually connected.
+    $showSkippedBadge = in_array('mcp', $status['skipped_steps'], true)
+        && ! $status['mcp_connected'];
+
+    expect($showSkippedBadge)->toBeFalse();
 });

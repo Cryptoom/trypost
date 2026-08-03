@@ -7,13 +7,13 @@ namespace App\Http\Controllers\App;
 use App\Actions\Onboarding\ResolveOnboardingStatus;
 use App\Enums\PostHog\OnboardingEvent;
 use App\Enums\SocialAccount\Platform as SocialPlatform;
+use App\Http\Requests\App\Onboarding\SkipOnboardingStepRequest;
 use App\Http\Resources\App\SocialAccountResource;
 use App\Services\PostHogService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
-use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 
 class OnboardingController extends Controller
 {
@@ -76,21 +76,13 @@ class OnboardingController extends Controller
         ]);
     }
 
-    public function skipStep(Request $request, string $step): RedirectResponse
+    public function skipStep(SkipOnboardingStepRequest $request, string $step): RedirectResponse
     {
         if ($redirect = $this->redirectIfSelfHosted()) {
             return $redirect;
         }
 
-        $user = $request->user();
-
-        abort_unless($user->isAccountOwner(), SymfonyResponse::HTTP_FORBIDDEN);
-        abort_unless(
-            in_array($step, ResolveOnboardingStatus::SKIPPABLE_STEPS, true),
-            SymfonyResponse::HTTP_NOT_FOUND,
-        );
-
-        $this->resolveOnboardingStatus->skipStep($user, $step);
+        $this->resolveOnboardingStatus->skipStep($request->user(), $step);
 
         return back();
     }

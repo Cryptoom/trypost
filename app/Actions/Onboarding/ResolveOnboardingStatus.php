@@ -63,7 +63,9 @@ class ResolveOnboardingStatus
 
         if ($account?->onboarding_completed_at !== null) {
             return [
-                'mcp_connected' => true,
+                // Keep skipped optional steps honest in the ready UI — forcing
+                // mcp_connected=true would overwrite the Skipped badge.
+                'mcp_connected' => ! in_array('mcp', $skippedSteps, true),
                 'social_connected' => true,
                 'first_post_created' => true,
                 'skipped_steps' => $skippedSteps,
@@ -236,7 +238,7 @@ class ResolveOnboardingStatus
 
         $skippedSteps = [...$status['skipped_steps'], $step];
 
-        Account::query()
+        $updated = Account::query()
             ->whereKey($account->id)
             ->whereNull('onboarding_completed_at')
             ->whereNull('onboarding_dismissed_at')
@@ -244,6 +246,10 @@ class ResolveOnboardingStatus
                 'onboarding_skipped_steps' => $skippedSteps,
                 'updated_at' => now(),
             ]);
+
+        if ($updated === 0) {
+            return false;
+        }
 
         $account->forceFill(['onboarding_skipped_steps' => $skippedSteps]);
         $account->syncOriginalAttribute('onboarding_skipped_steps');
