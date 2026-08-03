@@ -16,6 +16,7 @@ return new class extends Migration
         Schema::table('accounts', function (Blueprint $table) {
             $table->timestamp('onboarding_completed_at')->nullable()->after('trial_ends_at');
             $table->timestamp('onboarding_dismissed_at')->nullable()->after('onboarding_completed_at');
+            $table->json('onboarding_skipped_steps')->nullable()->after('onboarding_dismissed_at');
         });
     }
 
@@ -25,7 +26,7 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('accounts', function (Blueprint $table) {
-            $table->dropColumn(['onboarding_completed_at', 'onboarding_dismissed_at']);
+            $table->dropColumn(['onboarding_completed_at', 'onboarding_dismissed_at', 'onboarding_skipped_steps']);
         });
     }
 };
