@@ -16,7 +16,6 @@ use App\Http\Requests\App\Welcome\StoreWelcomePersonaRequest;
 use App\Http\Requests\App\Welcome\StoreWelcomeReferralSourceRequest;
 use App\Models\Plan;
 use App\Services\PostHogService;
-use App\Support\Billing\ConfigureSubscriptionCheckout;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -111,7 +110,6 @@ class WelcomeController extends Controller
 
         $user = $request->user();
         $plan = Plan::where('slug', Slug::Workspace)->firstOrFail();
-        $account = $user->account;
 
         return Inertia::render('welcome/ReferralSource', [
             'sources' => array_map(fn (ReferralSource $source): string => $source->value, ReferralSource::cases()),
@@ -121,9 +119,6 @@ class WelcomeController extends Controller
                 'name' => $plan->name,
                 'interval' => 'monthly',
             ],
-            'trialDays' => $account !== null
-                ? ConfigureSubscriptionCheckout::checkoutTrialDays($account)
-                : 0,
         ]);
     }
 

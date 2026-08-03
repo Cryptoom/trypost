@@ -7,8 +7,6 @@ return [
     'description' => 'Choose the closest match and we\'ll tailor your experience.',
     'continue' => 'Continue',
     'checkout_owner_only' => 'Ask the account owner to finish checkout and start your subscription.',
-    'checkout_trial_note' => ':days-day free trial, then :plan bills monthly. Cancel anytime.',
-    'checkout_plan_note' => 'After checkout, :plan bills monthly.',
     'subscription_required_title' => 'Waiting for the account owner',
     'subscription_required_description' => 'This account doesn\'t have an active subscription yet. Ask the account owner to finish checkout — you\'ll get full access as soon as it is active.',
     'subscription_required_owner' => 'Your account owner is :name.',

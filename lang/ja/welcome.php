@@ -7,8 +7,6 @@ return [
     'description' => '近いものを選ぶと、体験を最適化します。',
     'continue' => '続ける',
     'checkout_owner_only' => 'アカウントのオーナーにチェックアウトを完了してサブスクリプションを開始するよう依頼してください。',
-    'checkout_trial_note' => ':days日間の無料トライアル後、:planが月額課金されます。いつでもキャンセルできます。',
-    'checkout_plan_note' => 'チェックアウト後、:planが月額課金されます。',
     'subscription_required_title' => 'アカウントのオーナーを待っています',
     'subscription_required_description' => 'このアカウントにはまだ有効なサブスクリプションがありません。オーナーにチェックアウトの完了を依頼してください — 有効になり次第、フルアクセスできます。',
     'subscription_required_owner' => 'アカウントのオーナーは :name です。',

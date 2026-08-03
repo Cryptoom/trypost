@@ -86,12 +86,11 @@ test('owner walks the welcome steps up to the checkout CTA', function () {
         ->click('@welcome-goal-save_time')
         ->click('@welcome-goals-continue');
 
-    // The CTA shows the plan/trial context and stays disabled until a source
-    // is picked. Clicking through to Stripe is covered by feature tests — the
-    // browser must not hit the Stripe API.
+    // The CTA stays disabled until a source is picked. Clicking through to
+    // Stripe is covered by feature tests — the browser must not hit the
+    // Stripe API.
     waitForDusk($page, 'welcome-start-checkout');
-    $page->assertVisible('@welcome-checkout-plan-note')
-        ->click('@welcome-source-google');
+    $page->click('@welcome-source-google');
 
     $checkoutEnabled = $page->script('(() => { const b = document.querySelector(\'[data-testid="welcome-start-checkout"]\'); return b !== null && ! b.disabled; })()');
 

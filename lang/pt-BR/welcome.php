@@ -7,8 +7,6 @@ return [
     'description' => 'Escolha a opção mais próxima e a gente personaliza sua experiência.',
     'continue' => 'Continuar',
     'checkout_owner_only' => 'Peça ao dono da conta para concluir o checkout e iniciar a assinatura.',
-    'checkout_trial_note' => 'Teste grátis de :days dias, depois o :plan é cobrado mensalmente. Cancele quando quiser.',
-    'checkout_plan_note' => 'Após o checkout, o :plan é cobrado mensalmente.',
     'subscription_required_title' => 'Aguardando o dono da conta',
     'subscription_required_description' => 'Esta conta ainda não tem uma assinatura ativa. Peça ao dono da conta para concluir o checkout — você terá acesso total assim que ela estiver ativa.',
     'subscription_required_owner' => 'O dono da sua conta é :name.',

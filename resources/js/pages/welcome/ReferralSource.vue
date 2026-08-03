@@ -28,7 +28,6 @@ const props = defineProps<{
     selected?: string | null;
     canCheckout: boolean;
     plan: { name: string; interval: string };
-    trialDays: number;
 }>();
 
 const form = useForm<{ referral_source: string }>({
@@ -209,21 +208,6 @@ const submit = (): void => {
             </p>
             <template v-else>
                 <InputError :message="form.errors.referral_source" />
-                <p
-                    class="text-center text-sm text-muted-foreground"
-                    data-testid="welcome-checkout-plan-note"
-                >
-                    {{
-                        trialDays > 0
-                            ? $t('welcome.checkout_trial_note', {
-                                  days: trialDays,
-                                  plan: plan.name,
-                              })
-                            : $t('welcome.checkout_plan_note', {
-                                  plan: plan.name,
-                              })
-                    }}
-                </p>
                 <Button
                     type="button"
                     size="lg"

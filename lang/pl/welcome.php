@@ -7,8 +7,6 @@ return [
     'description' => 'Wybierz najbliższą opcję, a my dopasujemy Twoje doświadczenie.',
     'continue' => 'Kontynuuj',
     'checkout_owner_only' => 'Poproś właściciela konta o dokończenie płatności i rozpoczęcie subskrypcji.',
-    'checkout_trial_note' => ':days dni za darmo, potem :plan rozliczany miesięcznie. Anuluj w każdej chwili.',
-    'checkout_plan_note' => 'Po zakupie :plan jest rozliczany miesięcznie.',
     'subscription_required_title' => 'Oczekiwanie na właściciela konta',
     'subscription_required_description' => 'To konto nie ma jeszcze aktywnej subskrypcji. Poproś właściciela o dokończenie płatności — uzyskasz pełny dostęp, gdy tylko będzie aktywna.',
     'subscription_required_owner' => 'Właścicielem Twojego konta jest :name.',
