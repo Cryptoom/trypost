@@ -210,7 +210,7 @@ test('purchase acknowledgement is not sent immediately after analytics is queued
         ->and(Cache::has("checkout_tracked:{$account->id}:{$sessionId}"))->toBeFalse();
 });
 
-test('owner sees the residual banner on mobile and it links to onboarding', function () {
+test('owner sees the residual in the mobile sidebar and it links to onboarding', function () {
     config(['trypost.self_hosted' => false]);
 
     $user = User::factory()->create();
@@ -225,9 +225,10 @@ test('owner sees the residual banner on mobile and it links to onboarding', func
 
     $page = visit(route('app.calendar'))->resize(375, 812);
 
-    waitForDusk($page, 'sidebar-onboarding-mobile');
-    $page->assertVisible('@sidebar-onboarding-mobile')
-        ->click('@sidebar-onboarding-mobile');
+    $page->click('@sidebar-trigger');
+
+    waitForDusk($page, 'sidebar-onboarding');
+    $page->assertVisible('@sidebar-onboarding')->click('@sidebar-onboarding');
 
     waitForDusk($page, 'onboarding-mcp');
     $page->assertVisible('@onboarding-mcp');
