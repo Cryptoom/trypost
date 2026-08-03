@@ -6,37 +6,64 @@ namespace App\Support\Billing;
 
 final class CheckoutConversionData
 {
+    public const OUTCOME_PENDING = 'pending';
+
+    public const OUTCOME_PURCHASE = 'purchase';
+
+    public const OUTCOME_TERMINAL = 'terminal';
+
     private const SETTLED_PAYMENT_STATUSES = [
         'paid',
         'no_payment_required',
     ];
 
     /**
-     * Build purchase conversion payload from a Stripe Checkout Session.
-     * Uses amount_total (amount collected) so trials report $0 instead of list price.
-     *
+     * @return array{
+     *     outcome: 'pending'|'purchase'|'terminal',
+     *     payload: array{value: float, currency: string, transaction_id: string}|null
+     * }
+     */
+    public static function classify(object|array $session, string $expectedCustomerId): array
+    {
+        if (self::customerId($session) !== $expectedCustomerId) {
+            return self::result(self::OUTCOME_TERMINAL);
+        }
+
+        $status = data_get($session, 'status');
+
+        if ($status === 'open') {
+            return self::result(self::OUTCOME_PENDING);
+        }
+
+        if ($status === 'complete' && ! self::hasSettledPayment($session)) {
+            return self::result(self::OUTCOME_PENDING);
+        }
+
+        if ($status !== 'complete') {
+            return self::result(self::OUTCOME_TERMINAL);
+        }
+
+        $payload = self::buildPayload($session);
+
+        return $payload === null
+            ? self::result(self::OUTCOME_TERMINAL)
+            : self::result(self::OUTCOME_PURCHASE, $payload);
+    }
+
+    private static function hasSettledPayment(object|array $session): bool
+    {
+        return in_array(
+            data_get($session, 'payment_status'),
+            self::SETTLED_PAYMENT_STATUSES,
+            true,
+        );
+    }
+
+    /**
      * @return array{value: float, currency: string, transaction_id: string}|null
      */
-    public static function fromSession(object|array $session, string $expectedCustomerId): ?array
+    private static function buildPayload(object|array $session): ?array
     {
-        $customer = data_get($session, 'customer');
-        $customerId = is_string($customer)
-            ? $customer
-            : data_get($customer, 'id');
-
-        if ($customerId !== $expectedCustomerId) {
-            return null;
-        }
-
-        // Abandoned (open/expired) sessions of the account's own customer are
-        // not purchases — only a completed checkout may fire purchase tracking.
-        if (
-            data_get($session, 'status') !== 'complete'
-            || ! self::hasSettledPayment($session)
-        ) {
-            return null;
-        }
-
         $amountTotal = data_get($session, 'amount_total');
         $currency = data_get($session, 'currency');
         $transactionId = data_get($session, 'id');
@@ -52,12 +79,28 @@ final class CheckoutConversionData
         ];
     }
 
-    public static function hasSettledPayment(object|array $session): bool
+    private static function customerId(object|array $session): ?string
     {
-        return in_array(
-            data_get($session, 'payment_status'),
-            self::SETTLED_PAYMENT_STATUSES,
-            true,
-        );
+        $customer = data_get($session, 'customer');
+        $customerId = is_string($customer)
+            ? $customer
+            : data_get($customer, 'id');
+
+        return is_string($customerId) ? $customerId : null;
+    }
+
+    /**
+     * @param  array{value: float, currency: string, transaction_id: string}|null  $payload
+     * @return array{
+     *     outcome: 'pending'|'purchase'|'terminal',
+     *     payload: array{value: float, currency: string, transaction_id: string}|null
+     * }
+     */
+    private static function result(string $outcome, ?array $payload = null): array
+    {
+        return [
+            'outcome' => $outcome,
+            'payload' => $payload,
+        ];
     }
 }

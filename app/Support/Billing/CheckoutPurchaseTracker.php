@@ -52,22 +52,9 @@ final class CheckoutPurchaseTracker
         try {
             $session = $account->stripe()->checkout->sessions->retrieve($sessionId);
             $expectedCustomer = (string) $account->stripe_id;
-            $customer = data_get($session, 'customer');
-            $customerId = is_string($customer)
-                ? $customer
-                : data_get($customer, 'id');
-            $status = data_get($session, 'status');
+            $classification = CheckoutConversionData::classify($session, $expectedCustomer);
 
-            if ($customerId !== $expectedCustomer) {
-                $this->markEmpty($verifiedKey);
-
-                return [
-                    'conversion' => null,
-                    'conversionResolved' => true,
-                ];
-            }
-
-            if ($status === 'open') {
+            if ($classification['outcome'] === CheckoutConversionData::OUTCOME_PENDING) {
                 return [
                     'conversion' => null,
                     'conversionResolved' => false,
@@ -75,16 +62,8 @@ final class CheckoutPurchaseTracker
             }
 
             if (
-                $status === 'complete'
-                && ! CheckoutConversionData::hasSettledPayment($session)
+                $classification['outcome'] === CheckoutConversionData::OUTCOME_TERMINAL
             ) {
-                return [
-                    'conversion' => null,
-                    'conversionResolved' => false,
-                ];
-            }
-
-            if ($status !== 'complete') {
                 $this->markEmpty($verifiedKey);
 
                 return [
@@ -93,7 +72,7 @@ final class CheckoutPurchaseTracker
                 ];
             }
 
-            $payload = CheckoutConversionData::fromSession($session, $expectedCustomer);
+            $payload = $classification['payload'];
 
             if ($payload === null) {
                 $this->markEmpty($verifiedKey);
