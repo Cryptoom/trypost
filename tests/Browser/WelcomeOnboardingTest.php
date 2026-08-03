@@ -3,12 +3,12 @@
 declare(strict_types=1);
 
 use App\Enums\Plan\Slug;
-use App\Models\CheckoutPurchaseTracking;
 use App\Models\Plan;
 use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
+use Illuminate\Support\Facades\Cache;
 
 /**
  * Poll browser-side until the data-testid element exists — and fail loudly
@@ -178,17 +178,15 @@ test('purchase acknowledgement is not sent immediately after analytics is queued
     subscribeAccount($account);
 
     $sessionId = 'cs_test_'.fake()->uuid();
-    CheckoutPurchaseTracking::query()->create([
-        'account_id' => $account->id,
-        'session_id' => $sessionId,
+    Cache::put("checkout_verified:{$account->id}:{$sessionId}", [
         'kind' => 'purchase',
         'payload' => [
             'value' => 10,
             'currency' => 'USD',
             'transaction_id' => $sessionId,
         ],
-        'verified_at' => now(),
-    ]);
+        'verified_at' => now()->toIso8601String(),
+    ], now()->addDay());
 
     test()->actingAs($user->fresh());
 
@@ -209,7 +207,7 @@ test('purchase acknowledgement is not sent immediately after analytics is queued
     );
 
     expect($purchaseWasQueued)->toBeTrue()
-        ->and(CheckoutPurchaseTracking::query()->where('session_id', $sessionId)->value('acknowledged_at'))->toBeNull();
+        ->and(Cache::has("checkout_tracked:{$account->id}:{$sessionId}"))->toBeFalse();
 });
 
 test('owner sees the residual banner on mobile and it links to onboarding', function () {

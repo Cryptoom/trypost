@@ -13,7 +13,6 @@ use App\Models\AutomationNodeRun;
 use App\Models\AutomationNodeState;
 use App\Models\AutomationRun;
 use App\Models\AutomationTriggerItem;
-use App\Models\CheckoutPurchaseTracking;
 use App\Models\Invite;
 use App\Models\Media;
 use App\Models\Notification;
@@ -121,7 +120,6 @@ class AppServiceProvider extends ServiceProvider
             'automationNodeState' => AutomationNodeState::class,
             'automationRun' => AutomationRun::class,
             'automationTriggerItem' => AutomationTriggerItem::class,
-            'checkoutPurchaseTracking' => CheckoutPurchaseTracking::class,
             'invite' => Invite::class,
             'media' => Media::class,
             'notification' => Notification::class,

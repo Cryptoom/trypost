@@ -45,30 +45,38 @@ test('re-delivers purchase conversion until acknowledge', function () {
     ]);
 });
 
-test('keeps re-delivering after an extended webhook delay until ack', function () {
+test('forgets a verified purchase after twenty four hours', function () {
     Carbon::setTestNow('2026-08-03 12:00:00');
 
     $sessionId = 'cs_test_'.fake()->uuid();
-    fakeStripeHttp([[
-        'body' => [
+    fakeStripeHttp([
+        ['body' => [
             'id' => $sessionId,
             'customer' => 'cus_test_123',
             'status' => 'complete',
             'payment_status' => 'paid',
             'amount_total' => 1000,
             'currency' => 'usd',
-        ],
-        'status' => 200,
-    ]]);
+        ], 'status' => 200],
+        ['body' => [
+            'id' => $sessionId,
+            'customer' => 'cus_test_123',
+            'status' => 'complete',
+            'payment_status' => 'paid',
+            'amount_total' => 2000,
+            'currency' => 'usd',
+        ], 'status' => 200],
+    ]);
 
-    expect($this->tracker->resolve($this->account->fresh(), $sessionId)['conversion'])->not->toBeNull();
+    expect($this->tracker->resolve($this->account->fresh(), $sessionId)['conversion']['value'])->toEqual(10);
 
-    Carbon::setTestNow(now()->addDay());
+    Carbon::setTestNow(now()->addHours(23));
 
-    $redelivered = $this->tracker->resolve($this->account->fresh(), $sessionId);
+    expect($this->tracker->resolve($this->account->fresh(), $sessionId)['conversion']['value'])->toEqual(10);
 
-    expect($redelivered['conversionResolved'])->toBeTrue()
-        ->and($redelivered['conversion']['transaction_id'])->toBe($sessionId);
+    Carbon::setTestNow(now()->addHours(2));
+
+    expect($this->tracker->resolve($this->account->fresh(), $sessionId)['conversion']['value'])->toEqual(20);
 });
 
 test('does not acknowledge a session before its purchase is verified', function () {
@@ -78,7 +86,9 @@ test('does not acknowledge a session before its purchase is verified', function 
         ->and(Cache::has("checkout_tracked:{$this->account->id}:{$sessionId}"))->toBeFalse();
 });
 
-test('keeps an acknowledged purchase suppressed after the cache is cleared', function () {
+test('keeps an acknowledged purchase suppressed for twenty four hours', function () {
+    Carbon::setTestNow('2026-08-03 12:00:00');
+
     $sessionId = 'cs_test_'.fake()->uuid();
     $session = [
         'id' => $sessionId,
@@ -96,15 +106,19 @@ test('keeps an acknowledged purchase suppressed after the cache is cleared', fun
     expect($this->tracker->resolve($this->account->fresh(), $sessionId)['conversion'])->not->toBeNull()
         ->and($this->tracker->acknowledge($this->account->fresh(), $sessionId))->toBeTrue();
 
-    Cache::flush();
+    Carbon::setTestNow(now()->addHours(23));
 
     expect($this->tracker->resolve($this->account->fresh(), $sessionId))->toBe([
         'conversion' => null,
         'conversionResolved' => true,
     ]);
+
+    Carbon::setTestNow(now()->addHours(2));
+
+    expect($this->tracker->resolve($this->account->fresh(), $sessionId)['conversion']['transaction_id'])->toBe($sessionId);
 });
 
-test('acknowledges a verified purchase after the cache is cleared', function () {
+test('does not acknowledge a verified purchase after the cache is cleared', function () {
     $sessionId = 'cs_test_'.fake()->uuid();
     fakeStripeHttp([[
         'body' => [
@@ -122,7 +136,7 @@ test('acknowledges a verified purchase after the cache is cleared', function () 
 
     Cache::flush();
 
-    expect($this->tracker->acknowledge($this->account->fresh(), $sessionId))->toBeTrue();
+    expect($this->tracker->acknowledge($this->account->fresh(), $sessionId))->toBeFalse();
 });
 
 test('leaves open sessions unresolved without caching a tracked key', function () {
