@@ -3,6 +3,8 @@ import { Head, router, usePage, usePoll } from '@inertiajs/vue3';
 import { IconCheck, IconLoader2 } from '@tabler/icons-vue';
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 
+import { acknowledgePurchase } from '@/actions/App/Http/Controllers/App/BillingController';
+import { Button } from '@/components/ui/button';
 import { useTracking } from '@/composables/useTracking';
 import type { Auth } from '@/types';
 
@@ -28,15 +30,12 @@ const REDIRECT_DELAY_MS = 5000;
 // After this long without an active subscription, tell the user we are still
 // working instead of letting the spinner run silently forever.
 const SLOW_NOTICE_MS = 60000;
+// Escape hatch when conversion/plan never settles (Stripe outage, stuck open
+// session, delayed plan_id) — fire what we have and leave.
+const FORCE_CONTINUE_MS = 180000;
 
 const page = usePage();
 
-// The backend serves a verified conversion only on first conclusive sight
-// (server-side dedupe after Stripe Checkout Session verification). Persist it
-// here so a mobile tab reload before the webhook lands does not lose purchase
-// tracking; the `tracked` marker keeps it once-only per browser, while the
-// server key keeps it once-only across devices.
-// All writes are guarded — private-mode Safari throws on setItem.
 type Conversion = NonNullable<typeof props.conversion>;
 
 const sessionId = new URLSearchParams(window.location.search).get('session_id');
@@ -47,7 +46,7 @@ const storeSafely = (key: string, value: string): void => {
         localStorage.setItem(key, value);
     } catch {
         // Storage unavailable (private mode, quota) — purchase tracking simply
-        // falls back to first-sight-only behavior from the server prop.
+        // falls back to server re-delivery until acknowledge/grace.
     }
 };
 
@@ -59,8 +58,11 @@ const readSafely = (key: string): string | null => {
     }
 };
 
+// Persist conversion while verification is still open so a mid-poll reload can
+// recover. Once the server says resolved+null, ignore LS for firing — the
+// server re-delivers until ack, and LS must not double-fire after tracked.
 const cachedConversion = ref<Conversion | null>(((): Conversion | null => {
-    if (!storageKey) {
+    if (!storageKey || readSafely(`${storageKey}.tracked`)) {
         return null;
     }
 
@@ -86,13 +88,19 @@ watch(
     { immediate: true },
 );
 
-const conversion = computed<Conversion | null>(
-    () => props.conversion ?? cachedConversion.value,
-);
+const conversion = computed<Conversion | null>(() => {
+    if (props.conversion) {
+        return props.conversion;
+    }
 
-// Poll subscription + auth.plan + conversion(+resolved). Conversion props must
-// be in `only` so a Stripe retry that succeeds on a partial poll still reaches
-// purchase tracking before we stop polling.
+    // Server still retrying — allow LS recovery. Resolved+null means stop.
+    if (!props.conversionResolved) {
+        return cachedConversion.value;
+    }
+
+    return null;
+});
+
 const { stop } = usePoll(2000, {
     only: [
         'subscriptionActive',
@@ -106,8 +114,10 @@ const { trackPurchase } = useTracking();
 
 const finishing = ref(false);
 const takingLong = ref(false);
+const forceContinue = ref(false);
 let redirectTimer: ReturnType<typeof setTimeout> | null = null;
 let slowNoticeTimer: ReturnType<typeof setTimeout> | null = null;
+let forceContinueTimer: ReturnType<typeof setTimeout> | null = null;
 
 const goNext = () =>
     router.visit(
@@ -118,31 +128,61 @@ const authPlan = computed(
     () => (page.props.auth as Auth | undefined)?.plan ?? null,
 );
 
-// Fires purchase tracking exactly once for a real checkout. A trial-with-card
-// subscription is already `subscribed()` (status `trialing`) by the time the
-// webhook lands, so the user frequently reaches this page already active — the
-// false → true poll transition never happens. We therefore complete purchase
-// tracking from whichever path runs first (immediate active state or poll
-// transition), gated on a verified `conversion` so foreign sessions never fire
-// PostHog/Meta/Google purchase events. Stripe is only the verification source.
-// Wait for auth.plan AND conversionResolved before locking finishing so a race
-// where the sub flips while Stripe verification is still open/transient does
-// not stop polling and permanently drop purchase events.
-const completePurchase = () => {
+const acknowledgeIfNeeded = (): void => {
+    if (!sessionId) {
+        return;
+    }
+
+    router.post(
+        acknowledgePurchase.url(),
+        { session_id: sessionId },
+        {
+            preserveState: true,
+            preserveScroll: true,
+        },
+    );
+};
+
+const firePurchaseTracking = (plan: {
+    name: string;
+    interval: string;
+}): void => {
+    const trackedKey = storageKey ? `${storageKey}.tracked` : null;
+
+    if (!conversion.value || (trackedKey && readSafely(trackedKey))) {
+        acknowledgeIfNeeded();
+
+        return;
+    }
+
+    // Mark tracked before side effects so a reload/second tab cannot double-fire.
+    if (trackedKey) {
+        storeSafely(trackedKey, '1');
+    }
+
+    trackPurchase(plan, conversion.value, props.persona ?? null);
+    acknowledgeIfNeeded();
+};
+
+// Fires purchase tracking exactly once for a real checkout. Gated on verified
+// conversion (server re-delivers until ack). Wait for auth.plan AND
+// conversionResolved unless the force-continue escape is active.
+const completePurchase = (options: { force?: boolean } = {}) => {
     if (finishing.value || !props.subscriptionActive) {
         return;
     }
 
+    const force = options.force === true || forceContinue.value;
     const plan = authPlan.value;
 
-    if (!plan) {
-        return;
-    }
+    if (!force) {
+        if (!plan) {
+            return;
+        }
 
-    // No session_id → backend sets conversionResolved true immediately.
-    // With a session_id, keep polling until verification is conclusive.
-    if (!props.conversionResolved) {
-        return;
+        if (!props.conversionResolved) {
+            return;
+        }
     }
 
     finishing.value = true;
@@ -152,26 +192,47 @@ const completePurchase = () => {
         clearTimeout(slowNoticeTimer);
         slowNoticeTimer = null;
     }
-    takingLong.value = false;
 
-    const trackedKey = storageKey ? `${storageKey}.tracked` : null;
-
-    // Verified-or-nothing: purchase tracking only fires when the Checkout
-    // Session was verified against this account's Stripe customer.
-    if (conversion.value && !(trackedKey && readSafely(trackedKey))) {
-        trackPurchase(
-            { name: plan.name, interval: plan.interval },
-            conversion.value,
-            props.persona ?? null,
-        );
-
-        if (trackedKey) {
-            storeSafely(trackedKey, '1');
-        }
+    if (forceContinueTimer) {
+        clearTimeout(forceContinueTimer);
+        forceContinueTimer = null;
     }
 
-    // Always hold for the same window before navigating, so PostHog and the ad
-    // pixels (Google/Meta via dataLayer → GTM) reliably flush.
+    takingLong.value = false;
+
+    firePurchaseTracking(
+        plan ?? {
+            name: 'Subscription',
+            interval: 'monthly',
+        },
+    );
+
+    redirectTimer = setTimeout(goNext, REDIRECT_DELAY_MS);
+};
+
+const continueNow = () => {
+    forceContinue.value = true;
+
+    if (props.subscriptionActive) {
+        completePurchase({ force: true });
+
+        return;
+    }
+
+    // Webhook never flipped the sub — still let the user leave.
+    finishing.value = true;
+    stop();
+
+    if (slowNoticeTimer) {
+        clearTimeout(slowNoticeTimer);
+        slowNoticeTimer = null;
+    }
+
+    if (forceContinueTimer) {
+        clearTimeout(forceContinueTimer);
+        forceContinueTimer = null;
+    }
+
     redirectTimer = setTimeout(goNext, REDIRECT_DELAY_MS);
 };
 
@@ -181,6 +242,7 @@ watch(
         authPlan,
         () => props.conversionResolved,
         conversion,
+        forceContinue,
     ],
     () => {
         completePurchase();
@@ -190,11 +252,24 @@ watch(
 onMounted(() => {
     if (props.subscriptionActive) {
         completePurchase();
-    } else {
-        slowNoticeTimer = setTimeout(() => {
-            takingLong.value = true;
-        }, SLOW_NOTICE_MS);
     }
+
+    slowNoticeTimer = setTimeout(() => {
+        if (!finishing.value) {
+            takingLong.value = true;
+        }
+    }, SLOW_NOTICE_MS);
+
+    forceContinueTimer = setTimeout(() => {
+        if (!finishing.value && props.subscriptionActive) {
+            forceContinue.value = true;
+            completePurchase({ force: true });
+        } else if (!finishing.value) {
+            // Sub never flipped — still offer the button via takingLong UI.
+            forceContinue.value = true;
+            takingLong.value = true;
+        }
+    }, FORCE_CONTINUE_MS);
 });
 
 onUnmounted(() => {
@@ -205,8 +280,13 @@ onUnmounted(() => {
     if (slowNoticeTimer) {
         clearTimeout(slowNoticeTimer);
     }
+
+    if (forceContinueTimer) {
+        clearTimeout(forceContinueTimer);
+    }
 });
 </script>
+
 <template>
     <Head :title="$t('billing.processing.page_title')" />
 
@@ -314,6 +394,15 @@ onUnmounted(() => {
                         }}
                     </p>
                 </div>
+
+                <Button
+                    v-if="takingLong && !finishing"
+                    type="button"
+                    data-testid="billing-processing-continue"
+                    @click="continueNow"
+                >
+                    {{ $t('billing.processing.continue') }}
+                </Button>
             </div>
         </div>
     </section>

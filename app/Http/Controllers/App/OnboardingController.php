@@ -12,6 +12,7 @@ use App\Http\Resources\App\SocialAccountResource;
 use App\Services\PostHogService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -51,7 +52,19 @@ class OnboardingController extends Controller
             return redirect()->route('app.calendar');
         }
 
-        if (! $isPartial && ! $wasAlreadyComplete) {
+        // Once-per-account, and only while still incomplete after syncProgress —
+        // auto-stamp on this request must not also fire viewed.
+        if (
+            ! $isPartial
+            && $status['completed_at'] === null
+            && $status['dismissed_at'] === null
+            && $user->account !== null
+            && Cache::add(
+                "onboarding_viewed:{$user->account->id}",
+                true,
+                now()->addYears(100),
+            )
+        ) {
             $this->postHog->capture(
                 $user->id,
                 OnboardingEvent::Viewed->value,

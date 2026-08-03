@@ -75,6 +75,7 @@ return [
         'cancelled_description' => 'Dein Bezahlvorgang wurde abgebrochen. Es wurden keine Kosten berechnet.',
         'retry' => 'Erneut versuchen',
         'taking_long' => 'Das dauert länger als erwartet — bitte warten, die Einrichtung läuft noch.',
+        'continue' => 'Weiter zur App',
         'live' => 'Live',
     ],
 ];

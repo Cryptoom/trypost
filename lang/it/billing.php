@@ -73,6 +73,7 @@ return [
         'cancelled_description' => 'Il tuo pagamento è stato annullato. Non è stato effettuato alcun addebito.',
         'retry' => 'Riprova',
         'taking_long' => 'Sta richiedendo più tempo del previsto: attendi, stiamo ancora configurando tutto.',
+        'continue' => 'Continua all’app',
         'live' => 'Dal vivo',
     ],
 ];

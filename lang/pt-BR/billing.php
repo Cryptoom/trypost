@@ -73,6 +73,7 @@ return [
         'cancelled_description' => 'Seu pagamento foi cancelado. Nenhuma cobrança foi realizada.',
         'retry' => 'Tentar novamente',
         'taking_long' => 'Isso está demorando mais que o normal — aguarde, ainda estamos configurando tudo.',
+        'continue' => 'Continuar para o app',
         'live' => 'Ao vivo',
     ],
 ];

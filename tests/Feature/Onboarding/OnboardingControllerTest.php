@@ -116,6 +116,49 @@ test('onboarding does not capture viewed during a partial reload', function () {
     );
 });
 
+test('onboarding viewed is captured once per account', function () {
+    $this->actingAs($this->user)
+        ->get(route('app.onboarding'))
+        ->assertOk();
+
+    Bus::fake();
+
+    $this->actingAs($this->user->fresh())
+        ->get(route('app.onboarding'))
+        ->assertOk();
+
+    Bus::assertNotDispatched(
+        SendEvent::class,
+        fn (SendEvent $event): bool => data_get($event->payload, 'event') === OnboardingEvent::Viewed->value,
+    );
+});
+
+test('onboarding does not capture viewed when syncProgress stamps completion', function () {
+    AccessToken::withoutEvents(fn () => mcpAccessToken($this->user, mcpOauthClient()));
+    SocialAccount::withoutEvents(fn () => SocialAccount::factory()->create([
+        'workspace_id' => $this->workspace->id,
+    ]));
+    Post::withoutEvents(fn () => Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+    ]));
+
+    Bus::fake();
+
+    $this->actingAs($this->user->fresh())
+        ->get(route('app.onboarding'))
+        ->assertOk();
+
+    Bus::assertNotDispatched(
+        SendEvent::class,
+        fn (SendEvent $event): bool => data_get($event->payload, 'event') === OnboardingEvent::Viewed->value,
+    );
+    Bus::assertDispatched(
+        SendEvent::class,
+        fn (SendEvent $event): bool => data_get($event->payload, 'event') === OnboardingEvent::Completed->value,
+    );
+});
+
 test('owner can skip the mcp step', function () {
     Carbon::setTestNow('2026-07-24 12:00:00');
     Event::fake([OnboardingStatusUpdated::class]);

@@ -4,22 +4,21 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\App;
 
+use App\Http\Requests\App\Billing\AcknowledgeCheckoutPurchaseRequest;
 use App\Models\Account;
-use App\Support\Billing\CheckoutConversionData;
+use App\Support\Billing\CheckoutPurchaseTracker;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Gate;
 use Inertia\Inertia;
 use Inertia\Response;
-use Stripe\Exception\InvalidRequestException;
 use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
-use Throwable;
 
 class BillingController extends Controller
 {
-    /** Durable dedupe for checkout purchase tracking (matches onboarding step cache). */
-    private const CHECKOUT_TRACKED_TTL_YEARS = 100;
+    public function __construct(
+        private readonly CheckoutPurchaseTracker $checkoutPurchaseTracker,
+    ) {}
 
     public function subscribe(): RedirectResponse
     {
@@ -38,77 +37,19 @@ class BillingController extends Controller
 
         // Verified purchase conversion for ad/analytics purchase events
         // (PostHog + Meta/Google via GTM) — not a Stripe pixel. Stripe only
-        // proves the Checkout Session belongs to this account.
+        // proves the Checkout Session belongs to this account. Payload is
+        // re-delivered until the client acknowledges (or grace expires).
         $conversion = null;
-        // True when verification is conclusive (or there is nothing to verify).
-        // Processing.vue must not stop polling until this is true when a
-        // session_id is present — otherwise active-sub races drop purchase events.
         $conversionResolved = true;
 
         if (
             $account !== null
-            && $account->stripe_id
             && is_string($sessionId)
             && $sessionId !== ''
         ) {
-            $cacheKey = "checkout_tracked:{$account->id}:{$sessionId}";
-            $trackedTtl = now()->addYears(self::CHECKOUT_TRACKED_TTL_YEARS);
-
-            if (Cache::has($cacheKey)) {
-                // Already consumed — conclusive, no (re)payload.
-                $conversionResolved = true;
-            } else {
-                $conversionResolved = false;
-
-                try {
-                    $session = $account->stripe()->checkout->sessions->retrieve($sessionId);
-                    $expectedCustomer = (string) $account->stripe_id;
-                    $customer = data_get($session, 'customer');
-                    $status = data_get($session, 'status');
-
-                    if ($customer !== $expectedCustomer) {
-                        // Wrong customer — conclusive; consume once, no purchase.
-                        Cache::add($cacheKey, true, $trackedTtl);
-                        $conversionResolved = true;
-                    } elseif ($status === 'open') {
-                        // Still completing — leave unset so a later poll can pick up
-                        // completion without permanently losing purchase tracking.
-                        $conversionResolved = false;
-                    } elseif ($status !== 'complete') {
-                        // expired / unknown terminal — conclusive; stop retrying Stripe.
-                        Cache::add($cacheKey, true, $trackedTtl);
-                        $conversionResolved = true;
-                    } else {
-                        $payload = CheckoutConversionData::fromSession($session, $expectedCustomer);
-
-                        if ($payload === null) {
-                            // Complete + matching customer but unusable payload —
-                            // resolve without conversion so the UI does not hang,
-                            // without treating a transient malformed retrieve as a
-                            // successful purchase claim for analytics.
-                            Cache::add($cacheKey, true, $trackedTtl);
-                            $conversionResolved = true;
-                        } elseif (Cache::add($cacheKey, true, $trackedTtl)) {
-                            // Claim first sight atomically so concurrent polls cannot
-                            // double-fire purchase tracking.
-                            $conversion = $payload;
-                            $conversionResolved = true;
-                        } else {
-                            // Lost the race to another poll — already claimed.
-                            $conversionResolved = true;
-                        }
-                    }
-                } catch (InvalidRequestException) {
-                    // Missing/invalid session_id — conclusive; consume so the poll
-                    // loop does not hammer Stripe. No purchase event.
-                    Cache::add($cacheKey, true, $trackedTtl);
-                    $conversionResolved = true;
-                } catch (Throwable) {
-                    // Transient Stripe/network failure — leave the key unset so the
-                    // next processing poll can retry verification.
-                    $conversionResolved = false;
-                }
-            }
+            $resolved = $this->checkoutPurchaseTracker->resolve($account, $sessionId);
+            $conversion = data_get($resolved, 'conversion');
+            $conversionResolved = (bool) data_get($resolved, 'conversionResolved', true);
         }
 
         return Inertia::render('billing/Processing', [
@@ -121,6 +62,22 @@ class BillingController extends Controller
             'conversion' => $conversion,
             'conversionResolved' => $conversionResolved,
         ]);
+    }
+
+    public function acknowledgePurchase(AcknowledgeCheckoutPurchaseRequest $request): SymfonyResponse
+    {
+        if (! config('trypost.self_hosted')) {
+            $account = $request->user()->account;
+
+            if ($account !== null) {
+                $this->checkoutPurchaseTracker->acknowledge(
+                    $account,
+                    (string) data_get($request->validated(), 'session_id'),
+                );
+            }
+        }
+
+        return response()->noContent();
     }
 
     public function index(Request $request): Response|RedirectResponse

@@ -72,6 +72,28 @@ test('does not dismiss accounts without app access', function () {
     expect($user->account->fresh()->onboarding_dismissed_at)->toBeNull();
 });
 
+test('does not dismiss accounts with unpaid or incomplete subscription statuses', function (string $status) {
+    $user = User::factory()->create();
+    $account = $user->account;
+
+    $account->subscriptions()->create([
+        'type' => Account::SUBSCRIPTION_NAME,
+        'stripe_id' => 'sub_'.fake()->uuid(),
+        'stripe_status' => $status,
+        'stripe_price' => 'price_123',
+    ]);
+
+    expect($account->fresh()->hasAppAccess())->toBeFalse();
+
+    ($this->runBackfill)();
+
+    expect($account->fresh()->onboarding_dismissed_at)->toBeNull();
+})->with([
+    'unpaid',
+    'incomplete',
+    'incomplete_expired',
+]);
+
 test('does not overwrite already completed or dismissed accounts', function () {
     Carbon::setTestNow('2026-07-29 12:00:00');
 

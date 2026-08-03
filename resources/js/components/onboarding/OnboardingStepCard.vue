@@ -30,7 +30,11 @@ defineProps<{
                         done ? 'bg-emerald-300' : 'bg-card',
                     ]"
                 >
-                    <IconCheck v-if="done" class="size-4" stroke-width="3" />
+                    <IconCheck
+                        v-if="done && !skipped"
+                        class="size-4"
+                        stroke-width="3"
+                    />
                     <template v-else>{{ step }}</template>
                 </span>
                 <div class="min-w-0">

@@ -75,6 +75,7 @@ return [
         'cancelled_description' => 'Ödemeniz iptal edildi. Herhangi bir ücret alınmadı.',
         'retry' => 'Tekrar dene',
         'taking_long' => 'Bu beklenenden uzun sürüyor — bekleyin, kurulum hâlâ devam ediyor.',
+        'continue' => 'Uygulamaya devam et',
         'live' => 'Canlı',
     ],
 ];

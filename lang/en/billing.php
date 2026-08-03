@@ -73,6 +73,7 @@ return [
         'cancelled_description' => 'Your checkout was cancelled. No charges were made.',
         'retry' => 'Try again',
         'taking_long' => 'This is taking longer than expected — hang tight, we are still setting things up.',
+        'continue' => 'Continue to app',
         'live' => 'Live',
     ],
 ];

@@ -182,12 +182,12 @@ test('billing processing skips onboarding when dismissed', function () {
         ->assertInertia(fn ($page) => $page->where('redirectToOnboarding', false));
 });
 
-test('billing processing exposes conversion only the first time a session_id is verified', function () {
+test('billing processing re-delivers conversion until the client acknowledges', function () {
     config(['trypost.self_hosted' => false]);
 
     $sessionId = 'cs_test_'.fake()->uuid();
     $this->account->forceFill(['stripe_id' => 'cus_test_123'])->save();
-    fakeStripeHttp([[
+    $stripe = fakeStripeHttp([[
         'body' => [
             'id' => $sessionId,
             'customer' => 'cus_test_123',
@@ -207,14 +207,29 @@ test('billing processing exposes conversion only the first time a session_id is 
         ->where('conversionResolved', true)
     );
 
-    // A back-button / refresh to the same success URL must not re-fire the event.
+    // Refresh before JS ack still re-delivers — crash-before-pixel recovery.
     $second = $this->actingAs($this->user->fresh())
         ->get(route('app.billing.processing', ['session_id' => $sessionId]));
     $second->assertOk();
     $second->assertInertia(fn ($page) => $page
-        ->where('conversion', null)
+        ->where('conversion.value', 10)
         ->where('conversionResolved', true)
     );
+
+    // Stripe is only hit once — verified payload is cached.
+    expect($stripe->calls)->toBe(1);
+
+    $this->actingAs($this->user->fresh())
+        ->post(route('app.billing.processing.acknowledge'), ['session_id' => $sessionId])
+        ->assertNoContent();
+
+    $this->actingAs($this->user->fresh())
+        ->get(route('app.billing.processing', ['session_id' => $sessionId]))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('conversion', null)
+            ->where('conversionResolved', true)
+        );
 });
 
 test('billing processing does not convert a session owned by another customer', function () {
@@ -444,7 +459,10 @@ test('billing processing exposes null conversion when session_id query param is 
         ->get(route('app.billing.processing', ['session_id' => '']));
 
     $response->assertOk();
-    $response->assertInertia(fn ($page) => $page->where('conversion', null));
+    $response->assertInertia(fn ($page) => $page
+        ->where('conversion', null)
+        ->where('conversionResolved', true)
+    );
 });
 
 test('billing processing exposes null conversion when account has no stripe_id', function () {
@@ -456,7 +474,10 @@ test('billing processing exposes null conversion when account has no stripe_id',
         ->get(route('app.billing.processing', ['session_id' => 'cs_test_123']));
 
     $response->assertOk();
-    $response->assertInertia(fn ($page) => $page->where('conversion', null));
+    $response->assertInertia(fn ($page) => $page
+        ->where('conversion', null)
+        ->where('conversionResolved', true)
+    );
 });
 
 test('shared auth.plan exposes name slug and interval via AuthPlanResource', function () {

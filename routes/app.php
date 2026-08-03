@@ -78,6 +78,9 @@ Route::middleware(['auth'])->group(function () {
     Route::get('billing/processing', [BillingController::class, 'processing'])
         ->middleware('throttle:60,1')
         ->name('app.billing.processing');
+    Route::post('billing/processing/acknowledge', [BillingController::class, 'acknowledgePurchase'])
+        ->middleware('throttle:60,1')
+        ->name('app.billing.processing.acknowledge');
 
     Route::get('workspaces/create', [WorkspaceController::class, 'create'])->name('app.workspaces.create');
     Route::post('workspaces', [WorkspaceController::class, 'store'])->name('app.workspaces.store');

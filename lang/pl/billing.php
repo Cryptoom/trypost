@@ -73,6 +73,7 @@ return [
         'cancelled_description' => 'Twoja płatność została anulowana. Nie pobrano żadnych opłat.',
         'retry' => 'Spróbuj ponownie',
         'taking_long' => 'To trwa dłużej niż oczekiwano — poczekaj, wciąż wszystko konfigurujemy.',
+        'continue' => 'Przejdź do aplikacji',
         'live' => 'Na żywo',
     ],
 ];
