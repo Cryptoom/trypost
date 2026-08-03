@@ -104,8 +104,7 @@ class AccessToken extends Token
         ?User $user = null,
         ?Workspace $workspace = null,
         bool $ignoreRevocation = false,
-    ): bool
-    {
+    ): bool {
         if (
             ! $this->isMcpOAuthGrant()
             || (! $ignoreRevocation && $this->revoked)

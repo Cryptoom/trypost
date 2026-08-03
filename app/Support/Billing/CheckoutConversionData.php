@@ -30,8 +30,7 @@ final class CheckoutConversionData
         string $expectedCustomerId,
         bool $requireSubscriptionPurpose = false,
         ?string $expectedPriceId = null,
-    ): array
-    {
+    ): array {
         if (self::customerId($session) !== $expectedCustomerId) {
             return self::result(self::OUTCOME_TERMINAL);
         }
@@ -76,8 +75,7 @@ final class CheckoutConversionData
     private static function matchesSubscriptionPurpose(
         object|array $session,
         ?string $expectedPriceId,
-    ): bool
-    {
+    ): bool {
         if (
             data_get($session, 'mode') !== 'subscription'
             || data_get($session, 'metadata.trypost_purpose') !== self::PURPOSE

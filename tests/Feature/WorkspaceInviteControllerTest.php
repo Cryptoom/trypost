@@ -3,8 +3,8 @@
 declare(strict_types=1);
 
 use App\Enums\UserWorkspace\Role as WorkspaceRole;
-use App\Models\AccessToken;
 use App\Mail\WorkspaceInvite as WorkspaceInviteMail;
+use App\Models\AccessToken;
 use App\Models\Account;
 use App\Models\Invite;
 use App\Models\User;

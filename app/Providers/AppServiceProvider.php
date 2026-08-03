@@ -46,6 +46,7 @@ use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
@@ -101,6 +102,7 @@ class AppServiceProvider extends ServiceProvider
     protected function configurePassport(): void
     {
         if (config('trypost.self_hosted')) {
+            File::ensureDirectoryExists(storage_path('passport'));
             Passport::loadKeysFrom(storage_path('passport'));
         }
 
