@@ -9,8 +9,9 @@ import TelegramConnectDialog from '@/components/accounts/TelegramConnectDialog.v
 import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.vue';
 import { Button } from '@/components/ui/button';
 import { useOAuthPopup } from '@/composables/useOAuthPopup';
-import { disconnect } from '@/routes/app/accounts';
 import { Platform } from '@/types/platform';
+
+import { disconnect } from '@/routes/app/accounts';
 
 export interface AvailablePlatform {
     value: string;
@@ -252,7 +253,9 @@ const cardState = computed((): Record<string, CardStateValue> => {
                     <IconCheck class="size-3.5" stroke-width="3" />
                 </span>
                 <span
-                    v-else-if="cardState[platform.value] === CardState.Reconnect"
+                    v-else-if="
+                        cardState[platform.value] === CardState.Reconnect
+                    "
                     class="absolute -top-2 -right-2 inline-flex size-6 items-center justify-center rounded-full border-2 border-foreground bg-amber-200 text-amber-700 shadow-2xs"
                     aria-hidden="true"
                 >
@@ -297,7 +300,9 @@ const cardState = computed((): Record<string, CardStateValue> => {
                         {{ getPlatformDescription(platform.value) }}
                     </p>
                     <p
-                        v-else-if="cardState[platform.value] === CardState.Reconnect"
+                        v-else-if="
+                            cardState[platform.value] === CardState.Reconnect
+                        "
                         class="mt-0.5 truncate text-xs leading-tight font-medium text-amber-700"
                     >
                         {{ $t('accounts.connection_lost') }}
@@ -322,7 +327,9 @@ const cardState = computed((): Record<string, CardStateValue> => {
                     {{ $t('accounts.reconnect') }}
                 </Button>
                 <Button
-                    v-else-if="cardState[platform.value] === CardState.Connected"
+                    v-else-if="
+                        cardState[platform.value] === CardState.Connected
+                    "
                     variant="destructive"
                     size="sm"
                     class="mt-auto w-full"
@@ -341,7 +348,10 @@ const cardState = computed((): Record<string, CardStateValue> => {
             </div>
         </div>
 
-        <TelegramConnectDialog v-model:open="telegramOpen" />
+        <TelegramConnectDialog
+            v-model:open="telegramOpen"
+            :reload-only="reloadOnly"
+        />
 
         <ConfirmDeleteModal
             ref="disconnectModal"

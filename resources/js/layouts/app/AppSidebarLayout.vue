@@ -10,6 +10,7 @@ import {
     SidebarProvider,
     SidebarTrigger,
 } from '@/components/ui/sidebar';
+
 import { heartbeat as heartbeatRoute } from '@/routes/app/presence';
 
 const page = usePage();

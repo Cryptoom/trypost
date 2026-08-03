@@ -22,9 +22,13 @@ import {
 import { useWorkspaceEcho } from '@/composables/echo/useWorkspaceEcho';
 import dayjs from '@/dayjs';
 import { copyToClipboard } from '@/lib/utils';
+
 import { connect as connectTelegram } from '@/routes/app/social/telegram';
 
 const open = defineModel<boolean>('open', { required: true });
+const props = defineProps<{
+    reloadOnly?: string[];
+}>();
 
 type Phase = 'loading' | 'ready' | 'connected' | 'expired' | 'error';
 
@@ -67,7 +71,12 @@ useWorkspaceEcho<{ nonce: string }>(
         toast.success(trans('accounts.telegram.connected_toast'));
         setTimeout(() => {
             open.value = false;
-            router.reload();
+
+            if (props.reloadOnly) {
+                router.reload({ only: props.reloadOnly });
+            } else {
+                router.reload();
+            }
         }, SUCCESS_CLOSE_DELAY_MS);
     },
 );

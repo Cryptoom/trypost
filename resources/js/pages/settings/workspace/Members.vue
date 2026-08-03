@@ -49,11 +49,15 @@ const tabs = useWorkspaceSettingsTabs();
             <PageHeader
                 :title="$t('settings.hub.title')"
                 :description="$t('settings.hub.description')"
-                />
+            />
 
             <SettingsTabsNav :tabs="tabs" active="members" />
 
-            <UsersTab :members="members" :invitations="invites" :roles="roles" />
+            <UsersTab
+                :members="members"
+                :invitations="invites"
+                :roles="roles"
+            />
         </div>
     </AppLayout>
 </template>

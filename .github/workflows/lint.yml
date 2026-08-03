@@ -18,6 +18,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
 
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
@@ -27,19 +29,27 @@ jobs:
       - name: Install Dependencies
         run: |
           composer install -q --no-ansi --no-interaction --no-scripts --no-progress --prefer-dist
-          npm install
+          npm ci
 
       - name: Run Pint
-        run: composer lint
+        run: composer test:lint
 
-      - name: Format Frontend
-        run: npm run format
+      - name: Resolve diff base
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "DIFF_BASE=${{ github.event.pull_request.base.sha }}" >> "$GITHUB_ENV"
+          else
+            echo "DIFF_BASE=${{ github.event.before }}" >> "$GITHUB_ENV"
+          fi
 
-      - name: Lint Frontend
-        run: npm run lint
+      - name: Check changed frontend files
+        run: |
+          mapfile -t resources < <(git diff --name-only --diff-filter=ACM "$DIFF_BASE"...HEAD | rg '^resources/' || true)
+          if [ "${#resources[@]}" -gt 0 ]; then
+            npx prettier --check "${resources[@]}"
+          fi
 
-      # - name: Commit Changes
-      #   uses: stefanzweifel/git-auto-commit-action@v5
-      #   with:
-      #     commit_message: fix code style
-      #     commit_options: '--no-verify'
+          mapfile -t code < <(printf '%s\n' "${resources[@]}" | rg '\.(ts|vue)$' || true)
+          if [ "${#code[@]}" -gt 0 ]; then
+            npx eslint "${code[@]}"
+          fi

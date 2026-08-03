@@ -24,10 +24,6 @@ import {
 import { trans } from 'laravel-vue-i18n';
 import { computed } from 'vue';
 
-import {
-    create as createPost,
-    index as postsIndex,
-} from '@/actions/App/Http/Controllers/App/PostController';
 import NavMain from '@/components/NavMain.vue';
 import NavSupport from '@/components/NavSupport.vue';
 import NotificationBell from '@/components/NotificationBell.vue';
@@ -51,6 +47,12 @@ import {
 } from '@/components/ui/sidebar';
 import WorkspaceMenuContent from '@/components/WorkspaceMenuContent.vue';
 import { useWorkspaceRole } from '@/composables/useWorkspaceRole';
+import type { NavItem, User } from '@/types';
+
+import {
+    create as createPost,
+    index as postsIndex,
+} from '@/actions/App/Http/Controllers/App/PostController';
 import { accounts, analytics, calendar } from '@/routes/app';
 import { index as assets } from '@/routes/app/assets';
 import { index as automations } from '@/routes/app/automations';
@@ -59,7 +61,6 @@ import { index as labels } from '@/routes/app/labels';
 import { index as mcp } from '@/routes/app/mcp';
 import { index as signatures } from '@/routes/app/signatures';
 import { settings as workspaceSettings } from '@/routes/app/workspace';
-import type { NavItem, User } from '@/types';
 
 interface Workspace {
     id: string;

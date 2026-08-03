@@ -35,7 +35,7 @@ const tabs = useWorkspaceSettingsTabs();
             <PageHeader
                 :title="$t('settings.hub.title')"
                 :description="$t('settings.hub.description')"
-                />
+            />
 
             <SettingsTabsNav :tabs="tabs" active="workspace" />
 

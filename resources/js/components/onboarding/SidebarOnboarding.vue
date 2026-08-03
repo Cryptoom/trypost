@@ -5,9 +5,9 @@ import { computed, watch } from 'vue';
 
 import { useWorkspaceEcho } from '@/composables/echo/useWorkspaceEcho';
 import { useActiveUrl } from '@/composables/useActiveUrl';
-import { onboarding } from '@/routes/app';
 import type { OnboardingResidual } from '@/types';
 
+import { onboarding } from '@/routes/app';
 
 const page = usePage();
 const { urlIsActive } = useActiveUrl();

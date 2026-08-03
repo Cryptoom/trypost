@@ -19,10 +19,11 @@ import {
     TooltipTrigger,
 } from '@/components/ui/tooltip';
 import dayjs from '@/dayjs';
+import type { SharedData } from '@/types';
+
 import { accounts } from '@/routes/app';
 import { archiveAll, index, read, readAll } from '@/routes/app/notifications';
 import { edit as editPost } from '@/routes/app/posts';
-import type { SharedData } from '@/types';
 
 interface Notification {
     id: string;
