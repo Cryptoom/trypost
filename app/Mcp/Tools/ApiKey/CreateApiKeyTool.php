@@ -16,14 +16,18 @@ use Laravel\Mcp\Server\Tool;
 #[Description('Create a new Personal Access Token (API key) for the current workspace. The plain token value is returned ONCE — store it immediately, it cannot be retrieved later.')]
 class CreateApiKeyTool extends Tool
 {
-    public function handle(Request $request): ResponseFactory
+    public function handle(Request $request): Response|ResponseFactory
     {
+        $user = $request->user();
+
+        if ($user->cannot('manageTeam', $user->currentWorkspace)) {
+            return Response::error('Not authorized to manage API keys.');
+        }
+
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'expires_at' => ['nullable', 'date', 'after:now'],
         ]);
-
-        $user = $request->user();
 
         $result = $user->createToken(data_get($validated, 'name'));
 

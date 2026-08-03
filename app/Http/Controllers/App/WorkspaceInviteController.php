@@ -9,6 +9,7 @@ use App\Actions\Invite\DeleteInvite;
 use App\Actions\Invite\RemoveMember;
 use App\Enums\UserWorkspace\Role as WorkspaceRole;
 use App\Http\Requests\App\Invite\StoreWorkspaceInviteRequest;
+use App\Models\AccessToken;
 use App\Models\Invite;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
@@ -165,10 +166,19 @@ class WorkspaceInviteController extends Controller
         $validated = $request->validate([
             'role' => ['required', Rule::in(array_column(WorkspaceRole::cases(), 'value'))],
         ]);
+        $role = WorkspaceRole::from((string) data_get($validated, 'role'));
 
         $workspace->members()->updateExistingPivot($userId, [
-            'role' => data_get($validated, 'role'),
+            'role' => $role->value,
         ]);
+
+        if ($role !== WorkspaceRole::Admin) {
+            AccessToken::query()
+                ->where('user_id', $userId)
+                ->where('workspace_id', $workspace->id)
+                ->where('revoked', false)
+                ->update(['revoked' => true]);
+        }
 
         session()->flash('flash.banner', __('settings.members.flash.role_updated'));
         session()->flash('flash.bannerStyle', 'success');

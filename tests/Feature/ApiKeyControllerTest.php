@@ -6,6 +6,9 @@ use App\Enums\UserWorkspace\Role;
 use App\Models\AccessToken;
 use App\Models\User;
 use App\Models\Workspace;
+use Database\Seeders\PassportSeeder;
+use Illuminate\Support\Facades\DB;
+use Laravel\Passport\ClientRepository;
 
 beforeEach(function () {
     $this->user = User::factory()->create();
@@ -53,6 +56,24 @@ it('creates an api key', function () {
     expect($tokens->first()->revoked)->toBeFalse();
 });
 
+it('bootstraps the personal access client idempotently', function () {
+    DB::table('oauth_clients')
+        ->whereJsonContains('grant_types', 'personal_access')
+        ->delete();
+
+    $seeder = app(PassportSeeder::class);
+    $clients = app(ClientRepository::class);
+
+    $seeder->run($clients);
+    $seeder->run($clients);
+
+    expect(DB::table('oauth_clients')
+        ->whereJsonContains('grant_types', 'personal_access')
+        ->count())->toBe(1);
+
+    expect($this->user->createToken('Self-hosted API Key')->accessToken)->toBeString();
+});
+
 it('creates an api key with expiration', function () {
     $this->actingAs($this->user)
         ->post(route('app.api-keys.store'), [
@@ -98,7 +119,7 @@ it('cannot delete api key from another workspace', function () {
 });
 
 it('member cannot create api key', function () {
-    $member = User::factory()->create();
+    $member = User::factory()->create(['account_id' => $this->user->account_id]);
     $this->workspace->members()->attach($member->id, ['role' => Role::Member->value]);
     $member->update(['current_workspace_id' => $this->workspace->id]);
 
@@ -108,7 +129,7 @@ it('member cannot create api key', function () {
 });
 
 it('member cannot delete api key', function () {
-    $member = User::factory()->create();
+    $member = User::factory()->create(['account_id' => $this->user->account_id]);
     $this->workspace->members()->attach($member->id, ['role' => Role::Member->value]);
     $member->update(['current_workspace_id' => $this->workspace->id]);
 

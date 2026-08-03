@@ -16,6 +16,8 @@ class ApiKeyController extends Controller
 {
     public function index(Request $request): AnonymousResourceCollection
     {
+        $this->authorize('manageTeam', $request->user()->currentWorkspace);
+
         $tokens = AccessToken::where('user_id', $request->user()->id)
             ->where('workspace_id', $request->user()->currentWorkspace->id)
             ->where('revoked', false)
@@ -28,6 +30,7 @@ class ApiKeyController extends Controller
     public function store(StoreApiKeyRequest $request): JsonResponse
     {
         $workspace = $request->user()->currentWorkspace;
+        $this->authorize('manageTeam', $workspace);
         $validated = $request->validated();
 
         $result = $request->user()->createToken($validated['name']);
@@ -46,6 +49,8 @@ class ApiKeyController extends Controller
 
     public function destroy(Request $request, string $tokenId): JsonResponse
     {
+        $this->authorize('manageTeam', $request->user()->currentWorkspace);
+
         $token = AccessToken::where('id', $tokenId)
             ->where('user_id', $request->user()->id)
             ->where('workspace_id', $request->user()->currentWorkspace->id)

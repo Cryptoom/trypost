@@ -38,6 +38,18 @@ it('shows the mcp settings page', function (): void {
             ->has('connectedClients'));
 });
 
+it('shows the mcp settings page without a subscription in self-hosted mode', function (): void {
+    config(['trypost.self_hosted' => true]);
+    $this->user->account->subscriptions()->delete();
+
+    $this->actingAs($this->user->fresh())
+        ->get(route('app.mcp.index'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('settings/workspace/Mcp')
+            ->where('mcpUrl', route('mcp.trypost')));
+});
+
 it('lists oauth clients as connected across the account, excluding personal access tokens', function (): void {
     $member = User::factory()->create(['account_id' => $this->user->account_id]);
     $this->workspace->members()->attach($member->id, ['role' => Role::Member->value]);

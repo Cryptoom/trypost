@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Enums\UserWorkspace\Role as WorkspaceRole;
+use App\Models\AccessToken;
 use App\Mail\WorkspaceInvite as WorkspaceInviteMail;
 use App\Models\Account;
 use App\Models\Invite;
@@ -303,6 +304,9 @@ test('update role changes admin to member', function () {
         'account_id' => $this->account->id,
     ]);
     $this->workspace->members()->attach($member->id, ['role' => WorkspaceRole::Admin->value]);
+    $result = $member->createToken('Admin Key');
+    $token = AccessToken::query()->findOrFail($result->token->id);
+    $token->forceFill(['workspace_id' => $this->workspace->id])->saveQuietly();
 
     $response = $this->actingAs($this->user)->put(route('app.members.update-role', $member), [
         'role' => WorkspaceRole::Member->value,
@@ -310,6 +314,7 @@ test('update role changes admin to member', function () {
 
     $response->assertRedirect();
     expect($this->workspace->members()->where('user_id', $member->id)->first()->pivot->role)->toBe(WorkspaceRole::Member->value);
+    expect($token->fresh()->revoked)->toBeTrue();
 });
 
 test('update role fails for workspace owner', function () {

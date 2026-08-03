@@ -39,8 +39,18 @@ class LoadWorkspaceFromToken
             return response()->json(['message' => 'No workspace selected.'], Response::HTTP_UNAUTHORIZED);
         }
 
-        if ($context !== 'mcp' && $token->isMcpOAuthGrant()) {
-            return response()->json(['message' => 'Personal access token required.'], Response::HTTP_FORBIDDEN);
+        if (! $user->can('view', $workspace)) {
+            return response()->json(['message' => 'Workspace access denied.'], Response::HTTP_FORBIDDEN);
+        }
+
+        if ($context !== 'mcp') {
+            if ($token->isMcpOAuthGrant()) {
+                return response()->json(['message' => 'Personal access token required.'], Response::HTTP_FORBIDDEN);
+            }
+
+            if (! $user->can('manageTeam', $workspace)) {
+                return response()->json(['message' => 'Insufficient workspace permissions.'], Response::HTTP_FORBIDDEN);
+            }
         }
 
         if ($token->isMcpOAuthGrant() && ! $authenticatedToken->can('mcp:use')) {

@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Enums\UserWorkspace\Role;
 use App\Models\AccessToken;
 use App\Models\User;
 use App\Models\Workspace;
@@ -51,6 +52,22 @@ test('create api key returns plain token', function () {
     ]);
 
     expect($response->json('plain_token'))->toBeString();
+});
+
+test('workspace members cannot manage api keys through the api', function () {
+    $result = createApiKeyApiToken();
+    $member = User::factory()->create(['account_id' => $result['user']->account_id]);
+    $result['workspace']->members()->attach($member->id, ['role' => Role::Member->value]);
+    $member->update(['current_workspace_id' => $result['workspace']->id]);
+    $plainToken = passportToken($member, $result['workspace']);
+
+    $this->withHeaders(['Authorization' => "Bearer {$plainToken}"])
+        ->getJson(route('api.api-keys.index'))
+        ->assertForbidden();
+
+    $this->withHeaders(['Authorization' => "Bearer {$plainToken}"])
+        ->postJson(route('api.api-keys.store'), ['name' => 'Escalation Key'])
+        ->assertForbidden();
 });
 
 test('create api key validation errors', function () {

@@ -87,6 +87,28 @@ test('create api key returns plain token only at creation', function () {
         ->count())->toBe(1);
 });
 
+test('workspace members cannot manage api keys through mcp', function () {
+    $member = User::factory()->create(['account_id' => $this->user->account_id]);
+    $this->workspace->members()->attach($member->id, ['role' => Role::Member->value]);
+    $member->update(['current_workspace_id' => $this->workspace->id]);
+    $token = attachToken($member, $this->workspace);
+
+    TryPostServer::actingAs($member)
+        ->tool(ListApiKeysTool::class, [])
+        ->assertHasErrors();
+
+    TryPostServer::actingAs($member)
+        ->tool(CreateApiKeyTool::class, ['name' => 'Escalation Key'])
+        ->assertHasErrors();
+
+    TryPostServer::actingAs($member)
+        ->tool(DeleteApiKeyTool::class, ['api_key_id' => $token->id])
+        ->assertHasErrors();
+
+    expect($token->fresh()->revoked)->toBeFalse()
+        ->and(AccessToken::where('user_id', $member->id)->count())->toBe(1);
+});
+
 test('create api key validates name required', function () {
     $response = TryPostServer::actingAs($this->user)
         ->tool(CreateApiKeyTool::class, []);

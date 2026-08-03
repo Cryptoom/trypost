@@ -51,6 +51,72 @@ test('allows api requests for generic-trial accounts with app access', function 
         ->assertOk();
 });
 
+test('allows personal access tokens without a subscription in self-hosted mode', function () {
+    config(['trypost.self_hosted' => true]);
+
+    expect($this->user->account->subscribed(Account::SUBSCRIPTION_NAME))->toBeFalse();
+
+    $this->withHeaders(['Authorization' => 'Bearer '.$this->plainToken])
+        ->getJson(route('api.workspace.show'))
+        ->assertOk();
+});
+
+test('allows scoped mcp oauth without a subscription in self-hosted mode', function () {
+    config(['trypost.self_hosted' => true]);
+
+    $result = $this->user->createToken('MCP', ['mcp:use']);
+    $token = AccessToken::query()->findOrFail($result->token->id);
+    DB::table('oauth_clients')
+        ->where('id', $token->client_id)
+        ->update(['grant_types' => json_encode(['authorization_code'])]);
+
+    $this->withHeaders([
+        'Authorization' => "Bearer {$result->accessToken}",
+        'Accept' => 'application/json, text/event-stream',
+    ])->postJson(route('mcp.trypost'), [
+        'jsonrpc' => '2.0',
+        'id' => 1,
+        'method' => 'initialize',
+        'params' => [
+            'protocolVersion' => '2025-03-26',
+            'capabilities' => (object) [],
+            'clientInfo' => ['name' => 'Pest', 'version' => '1.0'],
+        ],
+    ])->assertSuccessful();
+});
+
+test('rejects a personal token after its owner is demoted from admin', function () {
+    subscribeAccount($this->user->account);
+
+    $admin = User::factory()->create(['account_id' => $this->user->account_id]);
+    $this->workspace->members()->attach($admin->id, ['role' => Role::Admin->value]);
+    $admin->update(['current_workspace_id' => $this->workspace->id]);
+    $plainToken = passportToken($admin, $this->workspace);
+
+    $this->workspace->members()->updateExistingPivot($admin->id, [
+        'role' => Role::Viewer->value,
+    ]);
+
+    $this->withHeaders(['Authorization' => "Bearer {$plainToken}"])
+        ->getJson(route('api.workspace.show'))
+        ->assertForbidden();
+});
+
+test('rejects a personal token after its owner is removed from the workspace', function () {
+    subscribeAccount($this->user->account);
+
+    $admin = User::factory()->create(['account_id' => $this->user->account_id]);
+    $this->workspace->members()->attach($admin->id, ['role' => Role::Admin->value]);
+    $admin->update(['current_workspace_id' => $this->workspace->id]);
+    $plainToken = passportToken($admin, $this->workspace);
+
+    $this->workspace->members()->detach($admin->id);
+
+    $this->withHeaders(['Authorization' => "Bearer {$plainToken}"])
+        ->getJson(route('api.workspace.show'))
+        ->assertForbidden();
+});
+
 test('rejects mcp oauth grants for workspace viewers', function () {
     subscribeAccount($this->user->account);
 

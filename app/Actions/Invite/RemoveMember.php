@@ -7,6 +7,7 @@ namespace App\Actions\Invite;
 use App\Actions\User\ReassignCurrentWorkspace;
 use App\Actions\User\SettleStrandedMember;
 use App\Actions\User\StrandedSettlement;
+use App\Models\AccessToken;
 use App\Models\Account;
 use App\Models\User;
 use App\Models\Workspace;
@@ -30,6 +31,11 @@ class RemoveMember
             $user = User::query()->find($userId);
 
             $workspace->members()->detach($userId);
+            AccessToken::query()
+                ->where('user_id', $userId)
+                ->where('workspace_id', $workspace->id)
+                ->where('revoked', false)
+                ->update(['revoked' => true]);
 
             if (! $user) {
                 return;
