@@ -7,9 +7,7 @@ namespace App\Http\Controllers\App;
 use App\Actions\Onboarding\ResolveOnboardingStatus;
 use App\Enums\PostHog\OnboardingEvent;
 use App\Enums\SocialAccount\Platform as SocialPlatform;
-use App\Events\OnboardingStatusUpdated;
 use App\Http\Resources\App\SocialAccountResource;
-use App\Models\Account;
 use App\Services\PostHogService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -67,7 +65,7 @@ class OnboardingController extends Controller
 
         return Inertia::render('onboarding/Index', [
             'status' => $status,
-            'canDismiss' => $user->isAccountOwner(),
+            'canSkipSteps' => $user->isAccountOwner(),
             'mcpUrl' => route('mcp.trypost'),
             'samplePrompt' => __('onboarding.first_post.sample_prompt'),
             'platforms' => SocialPlatform::connectableOptions(),
@@ -78,7 +76,7 @@ class OnboardingController extends Controller
         ]);
     }
 
-    public function dismiss(Request $request): RedirectResponse
+    public function skipStep(Request $request, string $step): RedirectResponse
     {
         if ($redirect = $this->redirectIfSelfHosted()) {
             return $redirect;
@@ -87,45 +85,14 @@ class OnboardingController extends Controller
         $user = $request->user();
 
         abort_unless($user->isAccountOwner(), SymfonyResponse::HTTP_FORBIDDEN);
-
-        $account = $user->account;
-
-        if (
-            $account === null
-            || $account->onboarding_completed_at !== null
-            || $account->onboarding_dismissed_at !== null
-        ) {
-            return redirect()->route('app.calendar');
-        }
-
-        $dismissedAt = now();
-
-        $updated = Account::query()
-            ->whereKey($account->id)
-            ->whereNull('onboarding_completed_at')
-            ->whereNull('onboarding_dismissed_at')
-            ->update([
-                'onboarding_dismissed_at' => $dismissedAt,
-                'updated_at' => $dismissedAt,
-            ]);
-
-        if ($updated === 0) {
-            return redirect()->route('app.calendar');
-        }
-
-        $account->forceFill(['onboarding_dismissed_at' => $dismissedAt]);
-        $account->syncOriginalAttribute('onboarding_dismissed_at');
-
-        $this->postHog->capture(
-            $user->id,
-            OnboardingEvent::Skipped->value,
-            account: $account,
+        abort_unless(
+            in_array($step, ResolveOnboardingStatus::SKIPPABLE_STEPS, true),
+            SymfonyResponse::HTTP_NOT_FOUND,
         );
 
-        // Refresh residual banners on other tabs/devices immediately.
-        OnboardingStatusUpdated::broadcastForAccount($account);
+        $this->resolveOnboardingStatus->skipStep($user, $step);
 
-        return redirect()->route('app.calendar');
+        return back();
     }
 
     public function complete(Request $request): RedirectResponse

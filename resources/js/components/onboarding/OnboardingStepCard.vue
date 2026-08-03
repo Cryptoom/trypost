@@ -9,6 +9,7 @@ defineProps<{
     title: string;
     description: string;
     accentClass: string;
+    skipped?: boolean;
 }>();
 </script>
 
@@ -19,7 +20,7 @@ defineProps<{
         <header
             :class="[
                 'flex items-center justify-between gap-4 border-b-2 border-foreground px-5 py-4 sm:px-6',
-                done ? 'bg-emerald-100' : accentClass,
+                done ? 'bg-emerald-100' : skipped ? 'bg-muted' : accentClass,
             ]"
         >
             <div class="flex min-w-0 items-center gap-3">
@@ -45,7 +46,9 @@ defineProps<{
                 {{
                     done
                         ? $t('onboarding.status.complete')
-                        : $t('onboarding.status.todo')
+                        : skipped
+                          ? $t('onboarding.status.skipped')
+                          : $t('onboarding.status.todo')
                 }}
             </Badge>
         </header>

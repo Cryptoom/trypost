@@ -7,11 +7,12 @@ return [
     'welcome' => 'TryPostへようこそ、:nameさん',
     'welcome_anonymous' => 'TryPostへようこそ',
     'description' => '以下のステップでTryPostの使い方を確認し、最初の投稿を公開しましょう。',
-    'skip' => 'セットアップをスキップ',
+    'skip_step' => 'このステップをスキップ',
     'continue' => 'TryPostへ進む',
     'status' => [
         'complete' => '完了',
         'todo' => '未完了',
+        'skipped' => 'スキップ済み',
     ],
     'mcp' => [
         'title' => 'AIアシスタントを接続',

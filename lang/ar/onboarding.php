@@ -7,11 +7,12 @@ return [
     'welcome' => 'مرحبًا بك في TryPost، :name',
     'welcome_anonymous' => 'مرحبًا بك في TryPost',
     'description' => 'اتبع الخطوات أدناه لمعرفة كيف يعمل TryPost ونشر منشورك الأول.',
-    'skip' => 'تخطي الإعداد',
+    'skip_step' => 'تخطي هذه الخطوة',
     'continue' => 'المتابعة إلى TryPost',
     'status' => [
         'complete' => 'مكتمل',
         'todo' => 'مطلوب',
+        'skipped' => 'تم تخطيه',
     ],
     'mcp' => [
         'title' => 'اربط مساعد الذكاء الاصطناعي',

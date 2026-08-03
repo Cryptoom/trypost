@@ -160,7 +160,7 @@ Route::middleware(['auth'])->group(function () {
 // Routes that require account access and a current workspace
 Route::middleware(['auth', EnsureAccountReady::class, EnsureHasWorkspace::class])->group(function () {
     Route::get('onboarding', [OnboardingController::class, 'index'])->name('app.onboarding');
-    Route::post('onboarding/dismiss', [OnboardingController::class, 'dismiss'])->name('app.onboarding.dismiss');
+    Route::post('onboarding/steps/{step}/skip', [OnboardingController::class, 'skipStep'])->name('app.onboarding.steps.skip');
     Route::post('onboarding/complete', [OnboardingController::class, 'complete'])->name('app.onboarding.complete');
 
     // Discord — live lookups for the composer (channel picker + mention autocomplete).

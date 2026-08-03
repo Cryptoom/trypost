@@ -18,6 +18,19 @@ class ResolveOnboardingStatus
     public const TOTAL_STEPS = 3;
 
     /**
+     * Checklist step identifiers mapped to their status keys. Steps are derived
+     * from real state; optional steps may additionally be skipped.
+     */
+    public const STEPS = [
+        'mcp' => 'mcp_connected',
+        'social' => 'social_connected',
+        'first_post' => 'first_post_created',
+    ];
+
+    /** Steps the owner may skip — required steps must be completed for real. */
+    public const SKIPPABLE_STEPS = ['mcp'];
+
+    /**
      * Session key set when onboarding is stamped so the next full visit can
      * show celebration. Uses put (not flash) so Echo/poll partials do not age
      * it out before a post-OAuth full reload.
@@ -35,6 +48,7 @@ class ResolveOnboardingStatus
      *     mcp_connected: bool,
      *     social_connected: bool,
      *     first_post_created: bool,
+     *     skipped_steps: list<string>,
      *     all_complete: bool,
      *     show_residual: bool,
      *     completed_at: ?string,
@@ -44,12 +58,14 @@ class ResolveOnboardingStatus
     public function handle(User $user): array
     {
         $account = $user->account;
+        $skippedSteps = $account?->onboarding_skipped_steps ?? [];
 
         if ($account?->onboarding_completed_at !== null) {
             return [
                 'mcp_connected' => true,
                 'social_connected' => true,
                 'first_post_created' => true,
+                'skipped_steps' => $skippedSteps,
                 'all_complete' => true,
                 'show_residual' => false,
                 'completed_at' => $account->onboarding_completed_at->toIso8601String(),
@@ -59,10 +75,15 @@ class ResolveOnboardingStatus
 
         // All three steps are account-scoped so checklist checkmarks, residual
         // progress, and cross-workspace completion stay aligned.
-        $mcpConnected = $this->accountHasMcpConnection($account);
-        $socialConnected = $this->accountHasSocialConnection($account);
-        $firstPostCreated = $this->accountHasPost($account);
-        $allComplete = $mcpConnected && $socialConnected && $firstPostCreated;
+        $stepStates = [
+            'mcp' => $this->accountHasMcpConnection($account),
+            'social' => $this->accountHasSocialConnection($account),
+            'first_post' => $this->accountHasPost($account),
+        ];
+
+        // A skipped optional step counts as done for completion purposes.
+        $allComplete = collect($stepStates)
+            ->every(fn (bool $done, string $step): bool => $done || in_array($step, $skippedSteps, true));
 
         $showResidual = ! config('trypost.self_hosted')
             && $user->isAccountOwner()
@@ -71,9 +92,10 @@ class ResolveOnboardingStatus
             && ! $allComplete;
 
         return [
-            'mcp_connected' => $mcpConnected,
-            'social_connected' => $socialConnected,
-            'first_post_created' => $firstPostCreated,
+            'mcp_connected' => $stepStates['mcp'],
+            'social_connected' => $stepStates['social'],
+            'first_post_created' => $stepStates['first_post'],
+            'skipped_steps' => $skippedSteps,
             'all_complete' => $allComplete,
             'show_residual' => $showResidual,
             'completed_at' => null,
@@ -187,6 +209,63 @@ class ResolveOnboardingStatus
     }
 
     /**
+     * Mark an optional step as skipped, then stamp completion when that was
+     * the last open step. Returns false when the step cannot be skipped
+     * (unknown, required, already done, already skipped, or onboarding over).
+     */
+    public function skipStep(User $user, string $step): bool
+    {
+        $account = $user->account;
+
+        if ($account === null
+            || ! in_array($step, self::SKIPPABLE_STEPS, true)
+            || $account->onboarding_completed_at !== null
+            || $account->onboarding_dismissed_at !== null
+        ) {
+            return false;
+        }
+
+        $status = $this->handle($user);
+        $statusKey = self::STEPS[$step];
+
+        if ($status[$statusKey] || in_array($step, $status['skipped_steps'], true)) {
+            return false;
+        }
+
+        $skippedSteps = [...$status['skipped_steps'], $step];
+
+        Account::query()
+            ->whereKey($account->id)
+            ->whereNull('onboarding_completed_at')
+            ->whereNull('onboarding_dismissed_at')
+            ->update([
+                'onboarding_skipped_steps' => $skippedSteps,
+                'updated_at' => now(),
+            ]);
+
+        $account->forceFill(['onboarding_skipped_steps' => $skippedSteps]);
+        $account->syncOriginalAttribute('onboarding_skipped_steps');
+
+        if (PostHogService::isEnabled()) {
+            $this->postHog->capture(
+                $user->id,
+                OnboardingEvent::StepSkipped->value,
+                ['step' => $step],
+                $account,
+            );
+        }
+
+        // markCompleted already broadcasts account-wide when it stamps.
+        $completed = $this->handle($user)['all_complete'] && $this->markCompleted($user);
+
+        if (! $completed) {
+            OnboardingStatusUpdated::broadcastForAccount($account);
+        }
+
+        return true;
+    }
+
+    /**
      * Sidebar residual banner payload, or false when the banner should not show.
      *
      * Pure read — safe for Inertia shared props and prefetch. Cross-workspace
@@ -218,11 +297,10 @@ class ResolveOnboardingStatus
         }
 
         return [
-            'completed' => collect([
-                $status['mcp_connected'],
-                $status['social_connected'],
-                $status['first_post_created'],
-            ])->filter()->count(),
+            'completed' => collect(self::STEPS)
+                ->filter(fn (string $statusKey, string $step): bool => $status[$statusKey]
+                    || in_array($step, $status['skipped_steps'], true))
+                ->count(),
             'total' => self::TOTAL_STEPS,
         ];
     }

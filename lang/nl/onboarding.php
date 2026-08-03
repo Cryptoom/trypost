@@ -7,11 +7,12 @@ return [
     'welcome' => 'Welkom bij TryPost, :name',
     'welcome_anonymous' => 'Welkom bij TryPost',
     'description' => 'Volg de stappen hieronder om te zien hoe TryPost werkt en je eerste post te publiceren.',
-    'skip' => 'Configuratie overslaan',
+    'skip_step' => 'Deze stap overslaan',
     'continue' => 'Doorgaan naar TryPost',
     'status' => [
         'complete' => 'Voltooid',
         'todo' => 'Te doen',
+        'skipped' => 'Overgeslagen',
     ],
     'mcp' => [
         'title' => 'Koppel je AI-assistent',

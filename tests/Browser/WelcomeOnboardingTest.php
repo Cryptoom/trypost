@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use App\Models\Post;
+use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
 
@@ -23,6 +25,26 @@ function waitForDusk(mixed $page, string $selector): void
     JS);
 
     expect($found)->toBeTrue("Timed out waiting for [data-testid=\"{$selector}\"] to appear.");
+}
+
+/**
+ * Poll browser-side until the data-testid element is gone — and fail loudly
+ * when it never disappears.
+ */
+function waitForDuskGone(mixed $page, string $selector): void
+{
+    $gone = $page->script(<<<JS
+        (async () => {
+            const sel = '[data-testid="{$selector}"]';
+            for (let i = 0; i < 100; i++) {
+                if (! document.querySelector(sel)) return true;
+                await new Promise((r) => setTimeout(r, 50));
+            }
+            return false;
+        })();
+    JS);
+
+    expect($gone)->toBeTrue("Timed out waiting for [data-testid=\"{$selector}\"] to disappear.");
 }
 
 /**
@@ -80,7 +102,7 @@ test('owner walks the welcome steps up to the checkout CTA', function () {
         ->and($user->fresh()->goals)->toBe(['save_time']);
 });
 
-test('owner skips the onboarding checklist and the residual banner disappears', function () {
+test('owner skips the mcp step and completes onboarding once the required steps are done', function () {
     config(['trypost.self_hosted' => false]);
 
     $user = User::factory()->create();
@@ -95,17 +117,32 @@ test('owner skips the onboarding checklist and the residual banner disappears', 
 
     $page = visit(route('app.onboarding'));
 
-    waitForDusk($page, 'onboarding-skip');
+    waitForDusk($page, 'onboarding-mcp-skip');
     $page->assertVisible('@onboarding-mcp')
         ->assertVisible('@onboarding-social')
         ->assertVisible('@onboarding-first-post')
-        ->click('@onboarding-skip');
+        ->click('@onboarding-mcp-skip');
 
-    // Skip lands on the calendar and the sidebar residual is gone for good.
+    // Skipping the optional step keeps the checklist open — the required steps
+    // are still pending.
+    waitForDuskGone($page, 'onboarding-mcp-skip');
+    expect($user->account->fresh()->onboarding_skipped_steps)->toBe(['mcp'])
+        ->and($user->account->fresh()->onboarding_completed_at)->toBeNull();
+
+    // Finish the required steps server-side; the poll picks them up.
+    SocialAccount::factory()->create(['workspace_id' => $workspace->id]);
+    Post::factory()->create([
+        'workspace_id' => $workspace->id,
+        'user_id' => $user->id,
+    ]);
+
+    waitForDusk($page, 'onboarding-continue');
+    $page->click('@onboarding-continue');
+
     waitForPath($page, parse_url(route('app.calendar'), PHP_URL_PATH));
     $page->assertMissing('@sidebar-onboarding');
 
-    expect($user->account->fresh()->onboarding_dismissed_at)->not->toBeNull();
+    expect($user->account->fresh()->onboarding_completed_at)->not->toBeNull();
 });
 
 test('member without app access lands on the subscription required screen', function () {
@@ -140,6 +177,6 @@ test('owner sees the residual banner on mobile and it links to onboarding', func
     $page->assertVisible('@sidebar-onboarding-mobile')
         ->click('@sidebar-onboarding-mobile');
 
-    waitForDusk($page, 'onboarding-skip');
-    $page->assertVisible('@onboarding-skip');
+    waitForDusk($page, 'onboarding-mcp');
+    $page->assertVisible('@onboarding-mcp');
 });

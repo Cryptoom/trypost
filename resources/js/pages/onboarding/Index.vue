@@ -14,15 +14,16 @@ import { useWorkspaceEcho } from '@/composables/echo/useWorkspaceEcho';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { mcpClients } from '@/lib/mcpClients';
 import { copyToClipboard } from '@/lib/utils';
-
 import { calendar } from '@/routes/app';
-import { complete, dismiss } from '@/routes/app/onboarding';
+import { complete } from '@/routes/app/onboarding';
+import { skip as skipStepRoute } from '@/routes/app/onboarding/steps';
 import { create as createPost } from '@/routes/app/posts';
 
 interface OnboardingStatus {
     mcp_connected: boolean;
     social_connected: boolean;
     first_post_created: boolean;
+    skipped_steps: string[];
     all_complete: boolean;
     show_residual: boolean;
     completed_at: string | null;
@@ -31,7 +32,7 @@ interface OnboardingStatus {
 
 const props = defineProps<{
     status: OnboardingStatus;
-    canDismiss: boolean;
+    canSkipSteps: boolean;
     mcpUrl: string;
     samplePrompt: string;
     platforms: AvailablePlatform[];
@@ -46,10 +47,8 @@ const firstName = computed(() => {
     return name === '' ? '' : (name.split(/\s+/)[0] ?? '');
 });
 
-const dismissForm = useForm({});
+const skipStepForm = useForm({});
 const completeForm = useForm({});
-// Local Skip already redirects via the form response — avoid racing Echo reloads.
-const isLocalDismiss = ref(false);
 
 const onboardingReloadOnly = ['status', 'accounts', 'onboardingResidual'];
 
@@ -71,13 +70,10 @@ watch(
         dismissedAt: props.status.dismissed_at,
     }),
     ({ allComplete, completedAt, dismissedAt }) => {
-        // Remote skip from another tab/device — leave the checklist.
+        // Dismissed (legacy backfill) — leave the checklist.
         if (dismissedAt) {
             stopOnboardingPoll();
-
-            if (!isLocalDismiss.value) {
-                router.visit(calendar.url());
-            }
+            router.visit(calendar.url());
 
             return;
         }
@@ -101,14 +97,12 @@ const copySamplePrompt = (): void => {
     copyToClipboard(props.samplePrompt, trans('onboarding.first_post.copied'));
 };
 
-const skip = (): void => {
-    if (!dismissForm.processing) {
-        isLocalDismiss.value = true;
-        dismissForm.submit(dismiss(), {
-            onError: () => {
-                isLocalDismiss.value = false;
-            },
-        });
+const isStepSkipped = (step: string): boolean =>
+    props.status.skipped_steps.includes(step);
+
+const skipStep = (step: string): void => {
+    if (!skipStepForm.processing) {
+        skipStepForm.submit(skipStepRoute(step));
     }
 };
 
@@ -164,24 +158,12 @@ watch(
                         {{ $t('onboarding.description') }}
                     </p>
                 </div>
-
-                <Button
-                    v-if="canDismiss && !status.all_complete"
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    class="shrink-0 self-start text-muted-foreground sm:self-center"
-                    :disabled="dismissForm.processing"
-                    data-testid="onboarding-skip"
-                    @click="skip"
-                >
-                    {{ $t('onboarding.skip') }}
-                </Button>
             </div>
 
             <div class="grid gap-6">
                 <OnboardingStepCard
                     :done="status.mcp_connected"
+                    :skipped="isStepSkipped('mcp')"
                     :step="1"
                     :title="$t('onboarding.mcp.title')"
                     :description="$t('onboarding.mcp.description')"
@@ -293,6 +275,25 @@ watch(
                                     </Button>
                                 </article>
                             </div>
+                        </div>
+
+                        <div
+                            v-if="
+                                canSkipSteps &&
+                                !status.mcp_connected &&
+                                !isStepSkipped('mcp')
+                            "
+                            class="flex justify-end"
+                        >
+                            <button
+                                type="button"
+                                class="text-sm font-semibold text-muted-foreground underline-offset-4 transition-colors hover:text-foreground hover:underline"
+                                :disabled="skipStepForm.processing"
+                                data-testid="onboarding-mcp-skip"
+                                @click="skipStep('mcp')"
+                            >
+                                {{ $t('onboarding.skip_step') }}
+                            </button>
                         </div>
                     </div>
                 </OnboardingStepCard>

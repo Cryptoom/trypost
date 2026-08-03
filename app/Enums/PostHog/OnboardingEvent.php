@@ -8,6 +8,6 @@ enum OnboardingEvent: string
 {
     case Viewed = 'onboarding.viewed';
     case StepCompleted = 'onboarding.step_completed';
-    case Skipped = 'onboarding.skipped';
+    case StepSkipped = 'onboarding.step_skipped';
     case Completed = 'onboarding.completed';
 }

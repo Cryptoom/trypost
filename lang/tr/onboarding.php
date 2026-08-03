@@ -7,11 +7,12 @@ return [
     'welcome' => 'TryPost’a hoş geldin, :name',
     'welcome_anonymous' => 'TryPost’a hoş geldin',
     'description' => 'TryPost’un nasıl çalıştığını görmek ve ilk gönderini yayınlamak için aşağıdaki adımları izle.',
-    'skip' => 'Kurulumu atla',
+    'skip_step' => 'Bu adımı atla',
     'continue' => 'TryPost’a devam et',
     'status' => [
         'complete' => 'Tamamlandı',
         'todo' => 'Yapılacak',
+        'skipped' => 'Atlandı',
     ],
     'mcp' => [
         'title' => 'AI asistanını bağla',

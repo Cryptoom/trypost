@@ -7,11 +7,12 @@ return [
     'welcome' => 'Benvenuto su TryPost, :name',
     'welcome_anonymous' => 'Benvenuto su TryPost',
     'description' => 'Segui i passaggi qui sotto per vedere come funziona TryPost e pubblicare il tuo primo post.',
-    'skip' => 'Salta configurazione',
+    'skip_step' => 'Salta questo passaggio',
     'continue' => 'Continua su TryPost',
     'status' => [
         'complete' => 'Completato',
         'todo' => 'Da fare',
+        'skipped' => 'Saltato',
     ],
     'mcp' => [
         'title' => 'Collega il tuo assistente IA',

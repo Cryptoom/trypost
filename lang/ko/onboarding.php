@@ -7,11 +7,12 @@ return [
     'welcome' => 'TryPost에 오신 걸 환영해요, :name',
     'welcome_anonymous' => 'TryPost에 오신 걸 환영해요',
     'description' => '아래 단계를 따라 TryPost 사용법을 확인하고 첫 게시물을 발행하세요.',
-    'skip' => '설정 건너뛰기',
+    'skip_step' => '이 단계 건너뛰기',
     'continue' => 'TryPost로 계속',
     'status' => [
         'complete' => '완료',
         'todo' => '할 일',
+        'skipped' => '건너뜀',
     ],
     'mcp' => [
         'title' => 'AI 어시스턴트 연결',

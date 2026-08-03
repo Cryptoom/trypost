@@ -55,7 +55,7 @@ test('onboarding renders activation status and connection props', function () {
             ->where('status.completed_at', null)
             ->where('status.dismissed_at', null)
             ->where('mcpUrl', route('mcp.trypost'))
-            ->where('canDismiss', true)
+            ->where('canSkipSteps', true)
             ->missing('mcpClients')
             ->where('samplePrompt', __('onboarding.first_post.sample_prompt'))
             ->has('platforms', collect(Platform::cases())->filter->isConnectable()->count())
@@ -116,20 +116,81 @@ test('onboarding does not capture viewed during a partial reload', function () {
     );
 });
 
-test('onboarding can be dismissed', function () {
+test('owner can skip the mcp step', function () {
     Carbon::setTestNow('2026-07-24 12:00:00');
     Event::fake([OnboardingStatusUpdated::class]);
 
     $this->actingAs($this->user)
-        ->post(route('app.onboarding.dismiss'))
-        ->assertRedirect(route('app.calendar'));
+        ->post(route('app.onboarding.steps.skip', 'mcp'))
+        ->assertRedirect();
 
-    expect($this->user->account->fresh()->onboarding_dismissed_at?->equalTo(now()))->toBeTrue();
+    expect($this->user->account->fresh()->onboarding_skipped_steps)->toBe(['mcp']);
 
-    Bus::assertDispatched(SendEvent::class, fn (SendEvent $event): bool => data_get($event->payload, 'event') === OnboardingEvent::Skipped->value);
+    Bus::assertDispatched(SendEvent::class, fn (SendEvent $event): bool => data_get($event->payload, 'event') === OnboardingEvent::StepSkipped->value
+        && data_get($event->payload, 'properties.step') === 'mcp');
     Event::assertDispatched(
         OnboardingStatusUpdated::class,
         fn (OnboardingStatusUpdated $event): bool => $event->workspaceId === $this->workspace->id,
+    );
+});
+
+test('skipping the last open step completes the onboarding', function () {
+    Carbon::setTestNow('2026-07-24 12:00:00');
+
+    SocialAccount::withoutEvents(fn () => SocialAccount::factory()->create([
+        'workspace_id' => $this->workspace->id,
+    ]));
+    Post::withoutEvents(fn () => Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+    ]));
+
+    $this->actingAs($this->user)
+        ->post(route('app.onboarding.steps.skip', 'mcp'))
+        ->assertRedirect();
+
+    expect($this->user->account->fresh()->onboarding_completed_at?->equalTo(now()))->toBeTrue();
+
+    Bus::assertDispatched(SendEvent::class, fn (SendEvent $event): bool => data_get($event->payload, 'event') === OnboardingEvent::Completed->value);
+});
+
+test('required steps cannot be skipped', function () {
+    $this->actingAs($this->user)
+        ->post(route('app.onboarding.steps.skip', 'social'))
+        ->assertNotFound();
+
+    $this->actingAs($this->user->fresh())
+        ->post(route('app.onboarding.steps.skip', 'first_post'))
+        ->assertNotFound();
+
+    expect($this->user->account->fresh()->onboarding_skipped_steps)->toBeNull();
+});
+
+test('skipping an already connected step is a no-op', function () {
+    AccessToken::withoutEvents(fn () => mcpAccessToken($this->user, mcpOauthClient()));
+
+    $this->actingAs($this->user->fresh())
+        ->post(route('app.onboarding.steps.skip', 'mcp'))
+        ->assertRedirect();
+
+    expect($this->user->account->fresh()->onboarding_skipped_steps)->toBeNull();
+});
+
+test('skipping the same step twice is a no-op', function () {
+    $this->actingAs($this->user)
+        ->post(route('app.onboarding.steps.skip', 'mcp'));
+
+    Bus::fake();
+
+    $this->actingAs($this->user->fresh())
+        ->post(route('app.onboarding.steps.skip', 'mcp'))
+        ->assertRedirect();
+
+    expect($this->user->account->fresh()->onboarding_skipped_steps)->toBe(['mcp']);
+
+    Bus::assertNotDispatched(
+        SendEvent::class,
+        fn (SendEvent $event): bool => data_get($event->payload, 'event') === OnboardingEvent::StepSkipped->value,
     );
 });
 
@@ -287,7 +348,7 @@ test('completed accounts still see celebration on onboarding partial reloads', f
         ->assertJsonPath('props.status.completed_at', now()->toIso8601String());
 });
 
-test('dismiss after completion redirects without rewriting dismissed_at', function () {
+test('skip step after completion is a no-op', function () {
     Carbon::setTestNow('2026-07-29 12:00:00');
     Event::fake([OnboardingStatusUpdated::class]);
 
@@ -296,14 +357,14 @@ test('dismiss after completion redirects without rewriting dismissed_at', functi
     Bus::fake();
 
     $this->actingAs($this->user->fresh())
-        ->post(route('app.onboarding.dismiss'))
-        ->assertRedirect(route('app.calendar'));
+        ->post(route('app.onboarding.steps.skip', 'mcp'))
+        ->assertRedirect();
 
-    expect($this->user->account->fresh()->onboarding_dismissed_at)->toBeNull();
+    expect($this->user->account->fresh()->onboarding_skipped_steps)->toBeNull();
 
     Bus::assertNotDispatched(
         SendEvent::class,
-        fn (SendEvent $event): bool => data_get($event->payload, 'event') === OnboardingEvent::Skipped->value,
+        fn (SendEvent $event): bool => data_get($event->payload, 'event') === OnboardingEvent::StepSkipped->value,
     );
     Event::assertNotDispatched(OnboardingStatusUpdated::class);
 });
@@ -379,10 +440,10 @@ test('members do not see the skip control', function () {
     $this->actingAs($member->fresh())
         ->get(route('app.onboarding'))
         ->assertOk()
-        ->assertInertia(fn ($page) => $page->where('canDismiss', false));
+        ->assertInertia(fn ($page) => $page->where('canSkipSteps', false));
 });
 
-test('only the account owner can dismiss onboarding', function () {
+test('only the account owner can skip onboarding steps', function () {
     $member = User::factory()->create(['account_id' => $this->user->account_id]);
     $this->workspace->members()->attach($member->id, [
         'role' => Role::Member->value,
@@ -390,10 +451,10 @@ test('only the account owner can dismiss onboarding', function () {
     $member->update(['current_workspace_id' => $this->workspace->id]);
 
     $this->actingAs($member->fresh())
-        ->post(route('app.onboarding.dismiss'))
+        ->post(route('app.onboarding.steps.skip', 'mcp'))
         ->assertForbidden();
 
-    expect($this->user->account->fresh()->onboarding_dismissed_at)->toBeNull();
+    expect($this->user->account->fresh()->onboarding_skipped_steps)->toBeNull();
 });
 
 test('teammates can stamp completion via the complete endpoint', function () {
@@ -489,32 +550,32 @@ test('complete after dismiss redirects without stamping completion', function ()
     );
 });
 
-test('unsubscribed accounts are redirected to welcome by middleware', function (string $routeName, string $method) {
+test('unsubscribed accounts are redirected to welcome by middleware', function (string $routeName, string $method, array|string $params = []) {
     $this->user->account->subscriptions()->delete();
     $this->actingAs($this->user->fresh());
 
     $response = $method === 'get'
-        ? $this->get(route($routeName))
-        : $this->post(route($routeName));
+        ? $this->get(route($routeName, $params))
+        : $this->post(route($routeName, $params));
 
     $response->assertRedirect(route('app.welcome.persona'));
 })->with([
     'index' => ['app.onboarding', 'get'],
-    'dismiss' => ['app.onboarding.dismiss', 'post'],
+    'skip step' => ['app.onboarding.steps.skip', 'post', 'mcp'],
     'complete' => ['app.onboarding.complete', 'post'],
 ]);
 
-test('self hosted activation endpoints redirect to calendar', function (string $routeName, string $method) {
+test('self hosted activation endpoints redirect to calendar', function (string $routeName, string $method, array|string $params = []) {
     config(['trypost.self_hosted' => true]);
     $this->actingAs($this->user);
 
     $response = $method === 'get'
-        ? $this->get(route($routeName))
-        : $this->post(route($routeName));
+        ? $this->get(route($routeName, $params))
+        : $this->post(route($routeName, $params));
 
     $response->assertRedirect(route('app.calendar'));
 })->with([
     'index' => ['app.onboarding', 'get'],
-    'dismiss' => ['app.onboarding.dismiss', 'post'],
+    'skip step' => ['app.onboarding.steps.skip', 'post', 'mcp'],
     'complete' => ['app.onboarding.complete', 'post'],
 ]);

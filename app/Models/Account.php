@@ -46,6 +46,7 @@ class Account extends Model
         'trial_ends_at' => 'datetime',
         'onboarding_completed_at' => 'datetime',
         'onboarding_dismissed_at' => 'datetime',
+        'onboarding_skipped_steps' => 'array',
     ];
 
     public function owner(): BelongsTo

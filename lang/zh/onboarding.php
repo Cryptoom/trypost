@@ -7,11 +7,12 @@ return [
     'welcome' => '欢迎使用 TryPost，:name',
     'welcome_anonymous' => '欢迎使用 TryPost',
     'description' => '按下面的步骤了解 TryPost 的用法，并发布你的第一条内容。',
-    'skip' => '跳过设置',
+    'skip_step' => '跳过此步骤',
     'continue' => '继续前往 TryPost',
     'status' => [
         'complete' => '已完成',
         'todo' => '待完成',
+        'skipped' => '已跳过',
     ],
     'mcp' => [
         'title' => '连接你的 AI 助手',
