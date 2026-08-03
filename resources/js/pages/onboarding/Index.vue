@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Head, Link, router, useForm, usePage, usePoll } from '@inertiajs/vue3';
-import { IconCheck } from '@tabler/icons-vue';
+import { IconCheck, IconCopy } from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
 import { computed, nextTick, ref, watch } from 'vue';
 
@@ -33,6 +33,8 @@ interface OnboardingStatus {
 const props = defineProps<{
     status: OnboardingStatus;
     canSkipSteps: boolean;
+    canManageAccounts: boolean;
+    canCreatePost: boolean;
     mcpUrl: string;
     samplePrompt: string;
     platforms: AvailablePlatform[];
@@ -120,11 +122,22 @@ watch(
         }
 
         await nextTick();
-        readySection.value?.scrollIntoView({
-            behavior: 'smooth',
+        const section = readySection.value;
+
+        if (!section) {
+            return;
+        }
+
+        section.focus({ preventScroll: true });
+        section.scrollIntoView({
+            behavior: window.matchMedia('(prefers-reduced-motion: reduce)')
+                .matches
+                ? 'auto'
+                : 'smooth',
             block: 'center',
         });
     },
+    { immediate: true },
 );
 </script>
 
@@ -168,6 +181,7 @@ watch(
                 >
                     <div class="space-y-6">
                         <McpPrimarySetup
+                            v-if="canCreatePost"
                             :mcp-url="mcpUrl"
                             :copied-message="$t('onboarding.mcp.copied')"
                         />
@@ -209,11 +223,12 @@ watch(
                         {{ $t('onboarding.social.connected_elsewhere') }}
                     </p>
                     <NetworkConnectGrid
-                        v-else
+                        v-else-if="canManageAccounts"
                         :platforms="platforms"
                         :connected-accounts="accounts"
                         :reload-only="onboardingReloadOnly"
                         grid-class="grid-cols-2 sm:grid-cols-3 xl:grid-cols-5"
+                        data-testid="onboarding-social-controls"
                     />
                 </OnboardingStepCard>
 
@@ -252,11 +267,12 @@ watch(
                             {{ $t('onboarding.first_post.copy_prompt') }}
                         </Button>
                         <span
+                            v-if="canCreatePost"
                             class="text-xs font-semibold text-muted-foreground"
                         >
                             {{ $t('onboarding.first_post.or') }}
                         </span>
-                        <Button as-child variant="outline">
+                        <Button v-if="canCreatePost" as-child variant="outline">
                             <Link
                                 :href="createPost.url()"
                                 data-testid="create-first-post"
@@ -271,7 +287,9 @@ watch(
             <section
                 v-if="status.all_complete"
                 ref="readySection"
+                tabindex="-1"
                 class="flex flex-col items-center gap-4 rounded-2xl border-2 border-foreground bg-violet-100 p-8 text-center shadow-2xs"
+                data-testid="onboarding-ready"
             >
                 <span
                     class="inline-flex size-12 items-center justify-center rounded-full border-2 border-foreground bg-emerald-200 text-emerald-800 shadow-2xs"

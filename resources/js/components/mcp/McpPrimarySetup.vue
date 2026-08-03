@@ -33,7 +33,10 @@ const copyMcpUrl = (): void => {
             >
                 <div class="flex min-w-0 flex-1 items-center gap-2 px-2">
                     <IconLink class="size-4 shrink-0 text-muted-foreground" />
-                    <code class="min-w-0 flex-1 truncate text-sm">
+                    <code
+                        dir="ltr"
+                        class="min-w-0 flex-1 truncate text-left text-sm"
+                    >
                         {{ mcpUrl }}
                     </code>
                 </div>

@@ -3,6 +3,8 @@
 declare(strict_types=1);
 
 use App\Enums\Plan\Slug;
+use App\Enums\UserWorkspace\Role;
+use App\Models\AccessToken;
 use App\Models\Plan;
 use App\Models\Post;
 use App\Models\SocialAccount;
@@ -146,6 +148,111 @@ test('owner skips the mcp step and completes onboarding once the required steps 
     $page->assertMissing('@sidebar-onboarding');
 
     expect($user->account->fresh()->onboarding_completed_at)->not->toBeNull();
+});
+
+test('onboarding focuses the ready section when it is complete on first render', function () {
+    config(['trypost.self_hosted' => false]);
+
+    $user = User::factory()->create();
+    $workspace = Workspace::factory()->create([
+        'account_id' => $user->account_id,
+        'user_id' => $user->id,
+    ]);
+    $user->update(['current_workspace_id' => $workspace->id]);
+    $user->account->forceFill(['onboarding_skipped_steps' => ['mcp']])->save();
+    subscribeAccount($user->account);
+
+    SocialAccount::withoutEvents(fn () => SocialAccount::factory()->create([
+        'workspace_id' => $workspace->id,
+    ]));
+    Post::withoutEvents(fn () => Post::factory()->create([
+        'workspace_id' => $workspace->id,
+        'user_id' => $user->id,
+    ]));
+
+    test()->actingAs($user->fresh());
+
+    $page = visit(route('app.onboarding'));
+
+    waitForDusk($page, 'onboarding-ready');
+    $page->assertVisible('@onboarding-ready');
+
+    expect($page->script('document.activeElement?.dataset?.testid ?? null'))
+        ->toBe('onboarding-ready');
+});
+
+test('viewer onboarding hides actions they cannot perform', function () {
+    config(['trypost.self_hosted' => false]);
+
+    $owner = User::factory()->create();
+    $workspace = Workspace::factory()->create([
+        'account_id' => $owner->account_id,
+        'user_id' => $owner->id,
+    ]);
+    $viewer = User::factory()->create(['account_id' => $owner->account_id]);
+    $workspace->members()->attach($viewer->id, ['role' => Role::Viewer->value]);
+    $viewer->update(['current_workspace_id' => $workspace->id]);
+    subscribeAccount($owner->account);
+
+    test()->actingAs($viewer->fresh());
+
+    $page = visit(route('app.onboarding'));
+
+    waitForDusk($page, 'onboarding-first-post');
+    $page->assertMissing('@copy-mcp-url')
+        ->assertMissing('@onboarding-social-controls')
+        ->assertMissing('@create-first-post');
+});
+
+test('member mcp settings only show tabs they can access', function () {
+    config(['trypost.self_hosted' => false]);
+
+    $owner = User::factory()->create();
+    $workspace = Workspace::factory()->create([
+        'account_id' => $owner->account_id,
+        'user_id' => $owner->id,
+    ]);
+    $member = User::factory()->create(['account_id' => $owner->account_id]);
+    $workspace->members()->attach($member->id, ['role' => Role::Member->value]);
+    $member->update(['current_workspace_id' => $workspace->id]);
+    subscribeAccount($owner->account);
+
+    test()->actingAs($member->fresh());
+
+    $page = visit(route('app.mcp.index'));
+
+    waitForDusk($page, 'settings-tab-mcp');
+    $page->assertVisible('@settings-tab-mcp')
+        ->assertMissing('@settings-tab-workspace')
+        ->assertMissing('@settings-tab-brand')
+        ->assertMissing('@settings-tab-members')
+        ->assertMissing('@settings-tab-api-keys');
+});
+
+test('mcp settings refresh connected clients when the browser regains focus', function () {
+    config(['trypost.self_hosted' => false]);
+
+    $user = User::factory()->create();
+    $workspace = Workspace::factory()->create([
+        'account_id' => $user->account_id,
+        'user_id' => $user->id,
+    ]);
+    $workspace->members()->attach($user->id, ['role' => Role::Admin->value]);
+    $user->update(['current_workspace_id' => $workspace->id]);
+    subscribeAccount($user->account);
+
+    test()->actingAs($user->fresh());
+
+    $page = visit(route('app.mcp.index'));
+    $page->assertVisible('@mcp-connected-empty');
+
+    $clientId = mcpOauthClient('New Agent');
+    AccessToken::withoutEvents(fn () => mcpAccessToken($user, $clientId));
+
+    $page->script('window.dispatchEvent(new Event("focus"))');
+
+    waitForDusk($page, "mcp-connected-client-{$clientId}");
+    $page->assertVisible("@mcp-connected-client-{$clientId}");
 });
 
 test('member without app access lands on the subscription required screen', function () {

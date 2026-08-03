@@ -2,7 +2,11 @@
 
 declare(strict_types=1);
 
+use App\Enums\UserWorkspace\Role;
+use App\Models\AccessToken;
 use App\Models\Account;
+use App\Models\User;
+use Illuminate\Support\Facades\DB;
 use Symfony\Component\HttpFoundation\Response;
 
 beforeEach(function () {
@@ -43,6 +47,40 @@ test('allows api requests for generic-trial accounts with app access', function 
         ->and($this->user->account->fresh()->subscribed(Account::SUBSCRIPTION_NAME))->toBeFalse();
 
     $this->withHeaders(['Authorization' => 'Bearer '.$this->plainToken])
+        ->getJson(route('api.workspace.show'))
+        ->assertOk();
+});
+
+test('rejects mcp oauth grants for workspace viewers', function () {
+    subscribeAccount($this->user->account);
+
+    $viewer = User::factory()->create(['account_id' => $this->user->account_id]);
+    $this->workspace->members()->attach($viewer->id, ['role' => Role::Viewer->value]);
+    $viewer->update(['current_workspace_id' => $this->workspace->id]);
+    $result = $viewer->createToken('MCP');
+    $token = AccessToken::query()->findOrFail($result->token->id);
+    DB::table('oauth_clients')
+        ->where('id', $token->client_id)
+        ->update(['grant_types' => json_encode(['authorization_code'])]);
+
+    $this->withHeaders(['Authorization' => "Bearer {$result->accessToken}"])
+        ->getJson(route('api.workspace.show'))
+        ->assertForbidden();
+});
+
+test('allows mcp oauth grants for workspace members', function () {
+    subscribeAccount($this->user->account);
+
+    $member = User::factory()->create(['account_id' => $this->user->account_id]);
+    $this->workspace->members()->attach($member->id, ['role' => Role::Member->value]);
+    $member->update(['current_workspace_id' => $this->workspace->id]);
+    $result = $member->createToken('MCP');
+    $token = AccessToken::query()->findOrFail($result->token->id);
+    DB::table('oauth_clients')
+        ->where('id', $token->client_id)
+        ->update(['grant_types' => json_encode(['authorization_code'])]);
+
+    $this->withHeaders(['Authorization' => "Bearer {$result->accessToken}"])
         ->getJson(route('api.workspace.show'))
         ->assertOk();
 });

@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { Head } from '@inertiajs/vue3';
+import { Head, router } from '@inertiajs/vue3';
 import { IconExternalLink } from '@tabler/icons-vue';
-import { ref } from 'vue';
+import { onMounted, onUnmounted, ref } from 'vue';
 
 import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.vue';
 import HeadingSmall from '@/components/HeadingSmall.vue';
@@ -38,6 +38,22 @@ const confirmDisconnect = (client: ConnectedClient): void => {
         url: mcpDisconnect.url({ client: client.client_id }),
     });
 };
+
+const refreshConnectedClients = (): void => {
+    if (document.visibilityState === 'visible') {
+        router.reload({ only: ['connectedClients'] });
+    }
+};
+
+onMounted(() => {
+    window.addEventListener('focus', refreshConnectedClients);
+    document.addEventListener('visibilitychange', refreshConnectedClients);
+});
+
+onUnmounted(() => {
+    window.removeEventListener('focus', refreshConnectedClients);
+    document.removeEventListener('visibilitychange', refreshConnectedClients);
+});
 </script>
 
 <template>
@@ -75,6 +91,7 @@ const confirmDisconnect = (client: ConnectedClient): void => {
                     <div
                         v-if="connectedClients.length === 0"
                         class="rounded-xl border-2 border-dashed border-foreground/25 bg-card/40 px-4 py-6 text-center text-sm font-medium text-foreground/60"
+                        data-testid="mcp-connected-empty"
                     >
                         {{ $t('mcp.connected_empty') }}
                     </div>
@@ -84,6 +101,7 @@ const confirmDisconnect = (client: ConnectedClient): void => {
                             v-for="client in connectedClients"
                             :key="`${client.client_id}:${client.user_id}`"
                             class="flex items-center justify-between gap-4 rounded-xl border-2 border-foreground bg-card px-4 py-3 shadow-2xs"
+                            :data-testid="`mcp-connected-client-${client.client_id}`"
                         >
                             <div class="min-w-0">
                                 <p class="truncate text-sm font-bold">

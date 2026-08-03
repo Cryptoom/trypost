@@ -138,6 +138,16 @@ it('allows workspace members to view and disconnect their own mcp clients', func
     expect($token->fresh()->revoked)->toBeTrue();
 });
 
+it('forbids workspace viewers from configuring mcp clients', function (): void {
+    $viewer = User::factory()->create(['account_id' => $this->user->account_id]);
+    $this->workspace->members()->attach($viewer->id, ['role' => Role::Viewer->value]);
+    $viewer->update(['current_workspace_id' => $this->workspace->id]);
+
+    $this->actingAs($viewer->fresh())
+        ->get(route('app.mcp.index'))
+        ->assertForbidden();
+});
+
 it('does not revoke another users mcp client tokens', function (): void {
     $member = User::factory()->create(['account_id' => $this->user->account_id]);
     $this->workspace->members()->attach($member->id, ['role' => Role::Member->value]);

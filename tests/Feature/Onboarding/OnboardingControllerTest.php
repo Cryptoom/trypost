@@ -56,6 +56,8 @@ test('onboarding renders activation status and connection props', function () {
             ->where('status.dismissed_at', null)
             ->where('mcpUrl', route('mcp.trypost'))
             ->where('canSkipSteps', true)
+            ->where('canManageAccounts', true)
+            ->where('canCreatePost', true)
             ->missing('mcpClients')
             ->where('samplePrompt', __('onboarding.first_post.sample_prompt'))
             ->has('platforms', collect(Platform::cases())->filter->isConnectable()->count())
@@ -527,7 +529,25 @@ test('members do not see the skip control', function () {
     $this->actingAs($member->fresh())
         ->get(route('app.onboarding'))
         ->assertOk()
-        ->assertInertia(fn ($page) => $page->where('canSkipSteps', false));
+        ->assertInertia(fn ($page) => $page
+            ->where('canSkipSteps', false)
+            ->where('canManageAccounts', false)
+            ->where('canCreatePost', true));
+});
+
+test('viewers cannot manage social accounts or create posts from onboarding', function () {
+    $viewer = User::factory()->create(['account_id' => $this->user->account_id]);
+    $this->workspace->members()->attach($viewer->id, [
+        'role' => Role::Viewer->value,
+    ]);
+    $viewer->update(['current_workspace_id' => $this->workspace->id]);
+
+    $this->actingAs($viewer->fresh())
+        ->get(route('app.onboarding'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('canManageAccounts', false)
+            ->where('canCreatePost', false));
 });
 
 test('only the account owner can skip onboarding steps', function () {

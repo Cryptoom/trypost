@@ -76,6 +76,8 @@ class OnboardingController extends Controller
         return Inertia::render('onboarding/Index', [
             'status' => $status,
             'canSkipSteps' => $user->isAccountOwner(),
+            'canManageAccounts' => $user->can('manageAccounts', $workspace),
+            'canCreatePost' => $user->can('createPost', $workspace),
             'mcpUrl' => route('mcp.trypost'),
             'samplePrompt' => __('onboarding.first_post.sample_prompt'),
             'platforms' => SocialPlatform::connectableOptions(),

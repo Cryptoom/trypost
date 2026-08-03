@@ -129,7 +129,8 @@ const copy = (value: string): void => {
                                 class="flex items-center gap-2 rounded-xl border-2 border-foreground bg-background p-2 shadow-2xs"
                             >
                                 <code
-                                    class="min-w-0 flex-1 truncate px-2 font-mono text-sm"
+                                    dir="ltr"
+                                    class="min-w-0 flex-1 truncate px-2 text-left font-mono text-sm"
                                 >
                                     {{ connectorName }}
                                 </code>
@@ -154,7 +155,8 @@ const copy = (value: string): void => {
                                 class="flex items-center gap-2 rounded-xl border-2 border-foreground bg-background p-2 shadow-2xs"
                             >
                                 <code
-                                    class="min-w-0 flex-1 truncate px-2 font-mono text-sm"
+                                    dir="ltr"
+                                    class="min-w-0 flex-1 truncate px-2 text-left font-mono text-sm"
                                 >
                                     {{ mcpUrl }}
                                 </code>
@@ -177,13 +179,14 @@ const copy = (value: string): void => {
                             </p>
                             <div class="relative">
                                 <pre
-                                    class="overflow-x-auto rounded-xl border-2 border-foreground bg-background p-3 pe-14 font-mono text-xs shadow-2xs"
+                                    dir="ltr"
+                                    class="overflow-x-auto rounded-xl border-2 border-foreground bg-background p-3 pe-14 text-left font-mono text-xs shadow-2xs"
                                 ><code>{{ configSnippet }}</code></pre>
                                 <Button
                                     type="button"
                                     variant="outline"
                                     size="icon"
-                                    class="absolute end-2 top-2 size-9"
+                                    class="absolute inset-e-2 top-2 size-9"
                                     :aria-label="`${$t('common.actions.copy')} ${$t('mcp.config_label')}`"
                                     @click="copy(configSnippet)"
                                 >
