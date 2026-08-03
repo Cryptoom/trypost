@@ -69,22 +69,6 @@ Route::middleware(['auth'])->group(function () {
     Route::post('welcome/referral-source', [WelcomeController::class, 'storeReferralSource'])
         ->middleware('throttle:6,1')
         ->name('app.welcome.referral-source.store');
-    Route::get('onboarding/goals', fn () => redirect()->route('app.welcome.goals'))
-        ->name('app.legacy-onboarding.goals');
-    Route::get('onboarding/referral-source', fn () => redirect()->route('app.welcome.referral-source'))
-        ->name('app.legacy-onboarding.referral-source');
-    Route::get('onboarding/connect', fn () => redirect()->route('app.welcome.referral-source'))
-        ->name('app.legacy-onboarding.connect');
-    Route::post('onboarding', [WelcomeController::class, 'storePersona'])
-        ->name('app.legacy-onboarding.store');
-    Route::post('onboarding/goals', [WelcomeController::class, 'storeGoals'])
-        ->name('app.legacy-onboarding.goals.store');
-    Route::post('onboarding/referral-source', [WelcomeController::class, 'storeReferralSource'])
-        ->middleware('throttle:6,1')
-        ->name('app.legacy-onboarding.referral-source.store');
-    Route::post('onboarding/connect', [WelcomeController::class, 'legacyCheckout'])
-        ->middleware('throttle:6,1')
-        ->name('app.legacy-onboarding.checkout');
     Route::get('billing/processing', [BillingController::class, 'processing'])
         ->middleware('throttle:60,1')
         ->name('app.billing.processing');
