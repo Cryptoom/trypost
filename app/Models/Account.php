@@ -38,8 +38,6 @@ class Account extends Model
         'billing_email',
         'plan_id',
         'trial_ends_at',
-        'onboarding_completed_at',
-        'onboarding_dismissed_at',
     ];
 
     protected $casts = [

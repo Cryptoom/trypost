@@ -63,7 +63,7 @@ test('broadcastForAccount notifies every workspace even after completion', funct
         'account_id' => $user->account_id,
         'user_id' => $user->id,
     ]);
-    $user->account->update(['onboarding_completed_at' => now()]);
+    $user->account->forceFill(['onboarding_completed_at' => now()])->save();
 
     OnboardingStatusUpdated::broadcastForAccount($user->account->fresh());
 

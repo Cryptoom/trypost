@@ -127,8 +127,8 @@ const submit = (): void => {
         return;
     }
 
-    // Fire the pixel only once the request actually starts — clicks blocked by
-    // validation or the route throttle must not inflate begin_checkout.
+    // Fire begin_checkout only once the request actually starts — clicks blocked
+    // by validation or the route throttle must not inflate the analytics event.
     form.submit(store(), {
         onStart: () => {
             trackBeginCheckout({

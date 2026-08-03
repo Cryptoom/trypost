@@ -32,8 +32,9 @@ class ResolveOnboardingStatus
 
     /**
      * Session key set when onboarding is stamped so the next full visit can
-     * show celebration. Uses put (not flash) so Echo/poll partials do not age
-     * it out before a post-OAuth full reload.
+     * show the ready state instead of redirecting to the calendar. Uses put
+     * (not flash) so Echo/poll partials do not age it out before a post-OAuth
+     * full reload.
      */
     public const JUST_COMPLETED_SESSION_KEY = 'onboarding_just_completed';
 
@@ -111,6 +112,7 @@ class ResolveOnboardingStatus
      *     mcp_connected: bool,
      *     social_connected: bool,
      *     first_post_created: bool,
+     *     skipped_steps: list<string>,
      *     all_complete: bool,
      *     show_residual: bool,
      *     completed_at: ?string,
@@ -200,7 +202,7 @@ class ResolveOnboardingStatus
         OnboardingStatusUpdated::broadcastForAccount($account);
 
         // Lets the next full Inertia visit (e.g. OAuth popup → router.reload)
-        // show celebration instead of bouncing straight to calendar.
+        // show the ready state instead of bouncing straight to calendar.
         if (request()->hasSession()) {
             request()->session()->put(self::JUST_COMPLETED_SESSION_KEY, true);
         }

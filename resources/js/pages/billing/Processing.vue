@@ -20,7 +20,7 @@ const props = defineProps<{
     } | null;
 }>();
 
-// Hold on the processing screen after firing the purchase event so PostHog and
+// Hold on the processing screen after firing purchase tracking so PostHog and
 // the ad pixels (Google/Meta via dataLayer → GTM) have time to send before we
 // navigate away — an immediate redirect can cut those requests off.
 const REDIRECT_DELAY_MS = 5000;
@@ -30,10 +30,11 @@ const SLOW_NOTICE_MS = 60000;
 
 const page = usePage();
 
-// The backend serves the verified conversion only on first sight (server-side
-// dedupe). Persist it here so a mobile tab reload before the webhook lands
-// does not lose the purchase pixel; the `tracked` marker keeps it once-only
-// per browser, while the server key keeps it once-only across devices.
+// The backend serves a verified conversion only on first conclusive sight
+// (server-side dedupe after Stripe Checkout Session verification). Persist it
+// here so a mobile tab reload before the webhook lands does not lose purchase
+// tracking; the `tracked` marker keeps it once-only per browser, while the
+// server key keeps it once-only across devices.
 // All writes are guarded — private-mode Safari throws on setItem.
 type Conversion = NonNullable<typeof props.conversion>;
 
@@ -44,8 +45,8 @@ const storeSafely = (key: string, value: string): void => {
     try {
         localStorage.setItem(key, value);
     } catch {
-        // Storage unavailable (private mode, quota) — the pixel simply falls
-        // back to first-sight-only behavior.
+        // Storage unavailable (private mode, quota) — purchase tracking simply
+        // falls back to first-sight-only behavior from the server prop.
     }
 };
 
@@ -99,12 +100,13 @@ const goNext = () =>
         props.redirectToOnboarding ? onboarding.url() : calendar.url(),
     );
 
-// Fires `checkout.completed` exactly once for a real checkout. A trial-with-card
+// Fires purchase tracking exactly once for a real checkout. A trial-with-card
 // subscription is already `subscribed()` (status `trialing`) by the time the
 // webhook lands, so the user frequently reaches this page already active — the
-// false → true poll transition never happens. We therefore complete the purchase
-// from whichever path runs first (immediate active state or poll transition),
-// gated on a verified `conversion` so foreign sessions never fire the pixel.
+// false → true poll transition never happens. We therefore complete purchase
+// tracking from whichever path runs first (immediate active state or poll
+// transition), gated on a verified `conversion` so foreign sessions never fire
+// PostHog/Meta/Google purchase events. Stripe is only the verification source.
 const completePurchase = () => {
     if (finishing.value) {
         return;
@@ -121,8 +123,8 @@ const completePurchase = () => {
     const plan = (page.props.auth as Auth | undefined)?.plan;
     const trackedKey = storageKey ? `${storageKey}.tracked` : null;
 
-    // Verified-or-nothing: the purchase pixel only fires when the checkout
-    // session was verified against this account's Stripe customer.
+    // Verified-or-nothing: purchase tracking only fires when the Checkout
+    // Session was verified against this account's Stripe customer.
     if (conversion.value && plan && !(trackedKey && readSafely(trackedKey))) {
         trackPurchase(
             { name: plan.name, interval: plan.interval },

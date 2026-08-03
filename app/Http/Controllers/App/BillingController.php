@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Gate;
 use Inertia\Inertia;
 use Inertia\Response;
+use Stripe\Exception\InvalidRequestException;
 use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 use Throwable;
 
@@ -32,29 +33,45 @@ class BillingController extends Controller
         $account = $user->account;
         $sessionId = $request->query('session_id');
 
-        // First-sight per account, atomically: `Cache::add` returns true only
-        // for the first request with this session_id, so a back-button/refresh
-        // can't re-fire `checkout.completed` and a foreign session_id can't
-        // burn the real buyer's tracking.
-        $fromCheckout = $account !== null
+        // Verified purchase conversion for ad/analytics purchase events
+        // (PostHog + Meta/Google via GTM) — not a Stripe pixel. Stripe only
+        // proves the Checkout Session belongs to this account.
+        $conversion = null;
+        $fromCheckout = false;
+
+        if (
+            $account !== null
             && $account->stripe_id
             && is_string($sessionId)
             && $sessionId !== ''
-            && Cache::add("checkout_tracked:{$account->id}:{$sessionId}", true, now()->addDay());
+        ) {
+            $cacheKey = "checkout_tracked:{$account->id}:{$sessionId}";
 
-        // The purchase pixel only fires with a verified conversion (see
-        // Processing.vue), so the session must belong to this account's Stripe
-        // customer. A transient Stripe failure loses the pixel rather than
-        // firing it unverified.
-        $conversion = null;
+            // Already consumed (matched, mismatched, or invalid) — do not re-hit Stripe.
+            if (! Cache::has($cacheKey)) {
+                try {
+                    $session = $account->stripe()->checkout->sessions->retrieve($sessionId);
+                    $payload = CheckoutConversionData::fromSession(
+                        $session,
+                        (string) $account->stripe_id,
+                    );
 
-        if ($fromCheckout) {
-            try {
-                $session = $account->stripe()->checkout->sessions->retrieve($sessionId);
-
-                $conversion = CheckoutConversionData::fromSession($session, (string) $account->stripe_id);
-            } catch (Throwable) {
-                // Verified-or-nothing: no conversion, no purchase event.
+                    // Conclusive retrieve — claim first sight atomically so concurrent
+                    // polls cannot double-fire purchase tracking.
+                    if (Cache::add($cacheKey, true, now()->addDay())) {
+                        $fromCheckout = true;
+                        $conversion = $payload;
+                    }
+                } catch (InvalidRequestException) {
+                    // Missing/invalid session_id — conclusive; consume so the poll
+                    // loop does not hammer Stripe. No purchase event.
+                    if (Cache::add($cacheKey, true, now()->addDay())) {
+                        $fromCheckout = true;
+                    }
+                } catch (Throwable) {
+                    // Transient Stripe/network failure — leave the key unset so the
+                    // next processing poll can retry verification.
+                }
             }
         }
 

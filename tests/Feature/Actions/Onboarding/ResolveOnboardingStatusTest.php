@@ -295,7 +295,7 @@ test('resolves a teammate oauth token as mcp connected for the account', functio
 
 test('dismissed onboarding does not show the residual checklist', function () {
     Carbon::setTestNow('2026-07-24 12:00:00');
-    $this->user->account->update(['onboarding_dismissed_at' => now()]);
+    $this->user->account->forceFill(['onboarding_dismissed_at' => now()])->save();
 
     $status = app(ResolveOnboardingStatus::class)->handle($this->user->fresh());
 
@@ -307,7 +307,7 @@ test('completed onboarding returns immediately without resolving steps or captur
     config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test']);
     Carbon::setTestNow('2026-07-24 12:00:00');
     Bus::fake();
-    $this->user->account->update(['onboarding_completed_at' => now()]);
+    $this->user->account->forceFill(['onboarding_completed_at' => now()])->save();
 
     $status = app(ResolveOnboardingStatus::class)->syncProgress($this->user->fresh());
 
@@ -381,7 +381,7 @@ test('checklist and residual both count social and posts from any workspace', fu
 });
 
 test('residual returns false when the banner should not show', function () {
-    $this->user->account->update(['onboarding_dismissed_at' => now()]);
+    $this->user->account->forceFill(['onboarding_dismissed_at' => now()])->save();
 
     expect(app(ResolveOnboardingStatus::class)->residual($this->user->fresh()))->toBeFalse();
 });
@@ -459,7 +459,7 @@ test('markCompleted leaves the in-memory account clean', function () {
 });
 
 test('markCompleted refuses to stamp after onboarding was dismissed', function () {
-    $this->user->account->update(['onboarding_dismissed_at' => now()]);
+    $this->user->account->forceFill(['onboarding_dismissed_at' => now()])->save();
 
     expect(app(ResolveOnboardingStatus::class)->markCompleted($this->user->fresh()))->toBeFalse()
         ->and($this->user->account->fresh()->onboarding_completed_at)->toBeNull();
@@ -511,7 +511,7 @@ test('residual hides without writing when another workspace already finished act
 });
 
 test('residual does not query step state for dismissed accounts', function () {
-    $this->user->account->update(['onboarding_dismissed_at' => now()]);
+    $this->user->account->forceFill(['onboarding_dismissed_at' => now()])->save();
 
     $queries = [];
     DB::listen(fn ($query) => $queries[] = $query->sql);

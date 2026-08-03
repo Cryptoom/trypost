@@ -30,16 +30,16 @@ class OnboardingController extends Controller
 
         $user = $request->user();
         $workspace = $user->currentWorkspace;
-        // Capture before syncProgress — same-request auto-stamp still shows celebration.
+        // Capture before syncProgress — same-request auto-stamp still shows the ready state.
         $wasAlreadyComplete = $user->account?->onboarding_completed_at !== null;
         $status = $this->resolveOnboardingStatus->syncProgress($user);
 
-        // Skip is always terminal (including Echo partial reloads).
+        // Legacy dismiss (deploy backfill) is terminal, including Echo partial reloads.
         if ($status['dismissed_at'] !== null) {
             return redirect()->route('app.calendar');
         }
 
-        // Completed revisits leave — keep celebration for Echo/poll partials and
+        // Completed revisits leave — keep the ready state for Echo/poll partials and
         // for the immediate full reload after OAuth stamps completion.
         // The just-completed flag is session put (not flash) so partials never
         // age it out; only full visits pull/consume it.
@@ -104,7 +104,7 @@ class OnboardingController extends Controller
         $user = $request->user();
         $account = $user->account;
 
-        // The explicit Continue leaves for good — kill any stale celebration
+        // The explicit Continue leaves for good — kill any stale just-completed
         // flag, whichever path stamped completion (observer, syncProgress, or
         // the markCompleted below).
         $request->session()->forget(ResolveOnboardingStatus::JUST_COMPLETED_SESSION_KEY);
@@ -114,13 +114,13 @@ class OnboardingController extends Controller
             return redirect()->route('app.calendar');
         }
 
-        // Skip must stay terminal: never let Continue re-open completion after dismiss.
+        // Legacy dismiss stays terminal: never let Continue stamp after backfill.
         if ($account?->onboarding_dismissed_at !== null) {
             return redirect()->route('app.calendar');
         }
 
         // Any teammate who finishes activation may stamp — observers/syncProgress
-        // already do the same. Dismiss remains owner-only. Steps are account-scoped.
+        // already do the same. Steps are account-scoped.
         $status = $this->resolveOnboardingStatus->handle($user);
 
         if (! $status['all_complete']) {
@@ -130,7 +130,7 @@ class OnboardingController extends Controller
         // markCompleted broadcasts account-wide so residual banners clear immediately.
         $this->resolveOnboardingStatus->markCompleted($user);
 
-        // The explicit Continue already showed the ready state — the celebration
+        // The explicit Continue already showed the ready state — the just-completed
         // flag must not linger and resurface on a later visit.
         $request->session()->forget(ResolveOnboardingStatus::JUST_COMPLETED_SESSION_KEY);
 

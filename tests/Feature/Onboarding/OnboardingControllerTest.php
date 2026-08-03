@@ -194,12 +194,12 @@ test('skipping the same step twice is a no-op', function () {
     );
 });
 
-test('complete forgets a stale celebration flag when already stamped', function () {
+test('complete forgets a stale just-completed flag when already stamped', function () {
     Carbon::setTestNow('2026-07-29 12:00:00');
-    $this->user->account->update(['onboarding_completed_at' => now()]);
+    $this->user->account->forceFill(['onboarding_completed_at' => now()])->save();
 
     // Observer-style stamp left the flag behind; the explicit Continue must
-    // clear it so a later /onboarding visit redirects instead of celebrating.
+    // clear it so a later /onboarding visit redirects instead of showing ready.
     $this->actingAs($this->user->fresh())
         ->withSession([ResolveOnboardingStatus::JUST_COMPLETED_SESSION_KEY => true])
         ->post(route('app.onboarding.complete'))
@@ -210,7 +210,7 @@ test('complete forgets a stale celebration flag when already stamped', function 
 
 test('dismissed accounts are redirected away from onboarding index', function () {
     Carbon::setTestNow('2026-07-29 12:00:00');
-    $this->user->account->update(['onboarding_dismissed_at' => now()]);
+    $this->user->account->forceFill(['onboarding_dismissed_at' => now()])->save();
 
     Bus::fake();
 
@@ -226,7 +226,7 @@ test('dismissed accounts are redirected away from onboarding index', function ()
 
 test('completed accounts are redirected away from onboarding on full visits', function () {
     Carbon::setTestNow('2026-07-29 12:00:00');
-    $this->user->account->update(['onboarding_completed_at' => now()]);
+    $this->user->account->forceFill(['onboarding_completed_at' => now()])->save();
 
     Bus::fake();
 
@@ -240,7 +240,7 @@ test('completed accounts are redirected away from onboarding on full visits', fu
     );
 });
 
-test('partial reloads do not consume the just-completed celebration session flag', function () {
+test('partial reloads do not consume the just-completed session flag', function () {
     Carbon::setTestNow('2026-07-29 12:00:00');
 
     AccessToken::withoutEvents(fn () => mcpAccessToken($this->user, mcpOauthClient()));
@@ -269,7 +269,7 @@ test('partial reloads do not consume the just-completed celebration session flag
         ->get(route('app.onboarding'))
         ->assertOk();
 
-    // put() survives Echo/poll partials so a later full visit can celebrate.
+    // put() survives Echo/poll partials so a later full visit can show ready state.
     expect(session()->get(ResolveOnboardingStatus::JUST_COMPLETED_SESSION_KEY))->toBeTrue();
 
     // Drop partial headers — withHeaders persists on the test case.
@@ -287,7 +287,7 @@ test('partial reloads do not consume the just-completed celebration session flag
     expect(session()->get(ResolveOnboardingStatus::JUST_COMPLETED_SESSION_KEY))->toBeNull();
 });
 
-test('completed accounts still see celebration after just-completed session flag', function () {
+test('completed accounts stay on onboarding after just-completed session flag', function () {
     Carbon::setTestNow('2026-07-29 12:00:00');
 
     AccessToken::withoutEvents(fn () => mcpAccessToken($this->user, mcpOauthClient()));
@@ -323,7 +323,7 @@ test('completed accounts still see celebration after just-completed session flag
     );
 });
 
-test('completed accounts still see celebration on onboarding partial reloads', function () {
+test('completed accounts stay on onboarding during partial reloads', function () {
     Carbon::setTestNow('2026-07-29 12:00:00');
 
     AccessToken::withoutEvents(fn () => mcpAccessToken($this->user, mcpOauthClient()));
@@ -334,7 +334,7 @@ test('completed accounts still see celebration on onboarding partial reloads', f
         'workspace_id' => $this->workspace->id,
         'user_id' => $this->user->id,
     ]));
-    $this->user->account->update(['onboarding_completed_at' => now()]);
+    $this->user->account->forceFill(['onboarding_completed_at' => now()])->save();
 
     $this->actingAs($this->user->fresh())
         ->withHeaders(inertiaPartialHeaders(
@@ -352,7 +352,7 @@ test('skip step after completion is a no-op', function () {
     Carbon::setTestNow('2026-07-29 12:00:00');
     Event::fake([OnboardingStatusUpdated::class]);
 
-    $this->user->account->update(['onboarding_completed_at' => now()]);
+    $this->user->account->forceFill(['onboarding_completed_at' => now()])->save();
 
     Bus::fake();
 
@@ -416,7 +416,7 @@ test('onboarding complete does not re-fire completed when already stamped', func
         'workspace_id' => $this->workspace->id,
         'user_id' => $this->user->id,
     ]));
-    $this->user->account->update(['onboarding_completed_at' => now()]);
+    $this->user->account->forceFill(['onboarding_completed_at' => now()])->save();
 
     Bus::fake();
 
@@ -534,7 +534,7 @@ test('complete after dismiss redirects without stamping completion', function ()
         'workspace_id' => $this->workspace->id,
         'user_id' => $this->user->id,
     ]));
-    $this->user->account->update(['onboarding_dismissed_at' => now()]);
+    $this->user->account->forceFill(['onboarding_dismissed_at' => now()])->save();
 
     Bus::fake();
 

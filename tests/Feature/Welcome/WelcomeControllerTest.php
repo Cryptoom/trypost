@@ -227,7 +227,7 @@ test('welcome steps redirect to activation for subscribed accounts with residual
 
 test('welcome redirects subscribed accounts without residual onboarding to calendar', function (array $attributes) {
     subscribeAccount($this->user->account);
-    $this->user->account->update($attributes);
+    $this->user->account->forceFill($attributes)->save();
 
     $this->actingAs($this->user->fresh())
         ->get(route('app.welcome.persona'))
@@ -240,10 +240,10 @@ test('welcome redirects subscribed accounts without residual onboarding to calen
 test('welcome redirects generic-trial accounts with app access to calendar', function () {
     config(['trypost.billing.require_card_for_trial' => false]);
 
-    $this->user->account->update([
+    $this->user->account->forceFill([
         'trial_ends_at' => now()->addDays(8),
         'onboarding_dismissed_at' => now(),
-    ]);
+    ])->save();
 
     expect($this->user->account->fresh()->hasAppAccess())->toBeTrue()
         ->and($this->user->account->fresh()->subscribed(Account::SUBSCRIPTION_NAME))->toBeFalse();

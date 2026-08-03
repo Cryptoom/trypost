@@ -32,7 +32,7 @@ test('shares the onboarding residual progress for subscribed accounts', function
 });
 
 test('does not share the onboarding residual state after dismissal', function () {
-    $this->user->account->update(['onboarding_dismissed_at' => now()]);
+    $this->user->account->forceFill(['onboarding_dismissed_at' => now()])->save();
 
     $this->actingAs($this->user->fresh())
         ->get(route('app.calendar'))
@@ -41,7 +41,7 @@ test('does not share the onboarding residual state after dismissal', function ()
 });
 
 test('does not share the onboarding residual state after completion', function () {
-    $this->user->account->update(['onboarding_completed_at' => now()]);
+    $this->user->account->forceFill(['onboarding_completed_at' => now()])->save();
 
     $this->actingAs($this->user->fresh())
         ->get(route('app.calendar'))

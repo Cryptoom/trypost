@@ -24,7 +24,7 @@ class OnboardingStatusUpdated implements ShouldBroadcast, ShouldDispatchAfterCom
 
     /**
      * Notify every workspace channel that onboarding state changed — no sync.
-     * Use after complete/dismiss so owner residual banners update immediately
+     * Use after complete/skip so owner residual banners update immediately
      * even when dispatchForAccount would early-return on stamped timestamps.
      */
     public static function broadcastForAccount(?Account $account): void

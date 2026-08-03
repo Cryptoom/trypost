@@ -136,7 +136,7 @@ test('creating an oauth mcp token does not broadcast when onboarding is over', f
         'account_id' => $user->account_id,
         'user_id' => $user->id,
     ]);
-    $user->account->update([$column => now()]);
+    $user->account->forceFill([$column => now()])->save();
 
     mcpAccessToken($user, mcpOauthClient());
 
@@ -231,7 +231,7 @@ test('does not broadcast when onboarding is already completed', function () {
         'account_id' => $user->account_id,
         'user_id' => $user->id,
     ]);
-    $user->account->update(['onboarding_completed_at' => now()]);
+    $user->account->forceFill(['onboarding_completed_at' => now()])->save();
 
     Post::factory()->create([
         'workspace_id' => $workspace->id,
@@ -247,7 +247,7 @@ test('does not broadcast when onboarding is dismissed', function () {
         'account_id' => $user->account_id,
         'user_id' => $user->id,
     ]);
-    $user->account->update(['onboarding_dismissed_at' => now()]);
+    $user->account->forceFill(['onboarding_dismissed_at' => now()])->save();
 
     SocialAccount::factory()->create([
         'workspace_id' => $workspace->id,
@@ -307,7 +307,7 @@ test('deleting a post does not broadcast when onboarding is completed', function
         'account_id' => $user->account_id,
         'user_id' => $user->id,
     ]);
-    $user->account->update(['onboarding_completed_at' => now()]);
+    $user->account->forceFill(['onboarding_completed_at' => now()])->save();
 
     $post = Post::withoutEvents(fn () => Post::factory()->create([
         'workspace_id' => $workspace->id,

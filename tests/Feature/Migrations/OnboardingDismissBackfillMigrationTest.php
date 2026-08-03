@@ -77,11 +77,11 @@ test('does not overwrite already completed or dismissed accounts', function () {
 
     $completed = User::factory()->create();
     subscribeAccount($completed->account);
-    $completed->account->update(['onboarding_completed_at' => now()->subDay()]);
+    $completed->account->forceFill(['onboarding_completed_at' => now()->subDay()])->save();
 
     $dismissed = User::factory()->create();
     subscribeAccount($dismissed->account);
-    $dismissed->account->update(['onboarding_dismissed_at' => now()->subDay()]);
+    $dismissed->account->forceFill(['onboarding_dismissed_at' => now()->subDay()])->save();
 
     ($this->runBackfill)();
 
@@ -115,7 +115,7 @@ test('dismisses every account in self hosted mode regardless of subscription', f
     subscribeAccount($withSubscription->account);
 
     $alreadyCompleted = User::factory()->create();
-    $alreadyCompleted->account->update(['onboarding_completed_at' => now()->subDay()]);
+    $alreadyCompleted->account->forceFill(['onboarding_completed_at' => now()->subDay()])->save();
 
     ($this->runBackfill)();
 

@@ -19,7 +19,7 @@ final class CheckoutConversionData
         }
 
         // Abandoned (open/expired) sessions of the account's own customer are
-        // not purchases — only a completed checkout may fire the pixel.
+        // not purchases — only a completed checkout may fire purchase tracking.
         if (data_get($session, 'status') !== 'complete') {
             return null;
         }
