@@ -2,7 +2,6 @@
 import { Link } from '@inertiajs/vue3';
 import { computed } from 'vue';
 
-import { logout } from '@/routes';
 import {
     goals as goalsRoute,
     persona as personaRoute,
@@ -111,17 +110,6 @@ const canNavigateTo = (stepNumber: number): boolean =>
                     </div>
                 </div>
                 <slot />
-
-                <div class="flex justify-center">
-                    <Link
-                        :href="logout()"
-                        as="button"
-                        class="text-sm text-muted-foreground underline-offset-4 transition-colors hover:text-foreground hover:underline"
-                        data-testid="welcome-log-out"
-                    >
-                        {{ $t('auth.verify_email.log_out') }}
-                    </Link>
-                </div>
             </div>
         </div>
     </div>
