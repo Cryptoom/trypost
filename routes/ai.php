@@ -8,5 +8,5 @@ use Laravel\Mcp\Facades\Mcp;
 Mcp::oauthRoutes();
 
 Mcp::web('/mcp/trypost', TryPostServer::class)
-    ->middleware(['auth:api', 'workspace.token'])
+    ->middleware(['auth:api', 'workspace.token:mcp'])
     ->name('mcp.trypost');

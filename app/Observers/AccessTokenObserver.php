@@ -34,14 +34,21 @@ class AccessTokenObserver
 
     private function broadcastIfMcpOAuth(AccessToken $accessToken): void
     {
-        if (! $accessToken->isMcpOAuthGrant()) {
+        $user = User::query()
+            ->with(['account', 'currentWorkspace'])
+            ->find($accessToken->user_id);
+
+        if (
+            $user === null
+            || ! $accessToken->isUsableMcpGrant(
+                $user,
+                $accessToken->workspace ?? $user->currentWorkspace,
+                ignoreRevocation: true,
+            )
+        ) {
             return;
         }
 
-        $user = User::query()
-            ->with('account')
-            ->find($accessToken->user_id);
-
-        OnboardingStatusUpdated::dispatchForAccount($user?->account, $user);
+        OnboardingStatusUpdated::dispatchForAccount($user->account, $user);
     }
 }

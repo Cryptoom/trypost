@@ -13,7 +13,7 @@ use Symfony\Component\HttpFoundation\Response;
 
 class LoadWorkspaceFromToken
 {
-    public function handle(Request $request, Closure $next): Response
+    public function handle(Request $request, Closure $next, ?string $context = null): Response
     {
         $user = $request->user();
         $authenticatedToken = $user?->token();
@@ -37,6 +37,14 @@ class LoadWorkspaceFromToken
 
         if (! $workspace) {
             return response()->json(['message' => 'No workspace selected.'], Response::HTTP_UNAUTHORIZED);
+        }
+
+        if ($token->isMcpOAuthGrant() && ! $authenticatedToken->can('mcp:use')) {
+            return response()->json(['message' => 'MCP OAuth authorization required.'], Response::HTTP_FORBIDDEN);
+        }
+
+        if ($context === 'mcp' && ! $token->isUsableMcpGrant($user, $workspace)) {
+            return response()->json(['message' => 'MCP OAuth authorization required.'], Response::HTTP_FORBIDDEN);
         }
 
         if ($token->isMcpOAuthGrant() && ! $user->can('createPost', $workspace)) {

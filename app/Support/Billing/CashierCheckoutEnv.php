@@ -21,7 +21,17 @@ final class CashierCheckoutEnv
             return $default;
         }
 
-        return max(0, (int) $value);
+        if (! is_int($value) && ! is_string($value)) {
+            return $default;
+        }
+
+        $days = filter_var($value, FILTER_VALIDATE_INT);
+
+        if ($days === false) {
+            return $default;
+        }
+
+        return max(0, $days);
     }
 
     /**

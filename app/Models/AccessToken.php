@@ -56,6 +56,7 @@ class AccessToken extends Token
     {
         return $query
             ->where('revoked', false)
+            ->whereJsonContains('scopes', 'mcp:use')
             ->where(function (Builder $expires): void {
                 $expires->whereNull('expires_at')
                     ->orWhere('expires_at', '>', now());
@@ -87,5 +88,31 @@ class AccessToken extends Token
         }
 
         return true;
+    }
+
+    public function isUsableMcpGrant(
+        ?User $user = null,
+        ?Workspace $workspace = null,
+        bool $ignoreRevocation = false,
+    ): bool
+    {
+        if (
+            ! $this->isMcpOAuthGrant()
+            || (! $ignoreRevocation && $this->revoked)
+            || ! in_array('mcp:use', $this->scopes ?? [], true)
+        ) {
+            return false;
+        }
+
+        $user ??= $this->user;
+
+        if (! $user instanceof User) {
+            return false;
+        }
+
+        $workspace ??= $this->workspace ?? $user->currentWorkspace;
+
+        return $workspace instanceof Workspace
+            && $user->can('createPost', $workspace);
     }
 }

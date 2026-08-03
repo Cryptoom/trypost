@@ -79,19 +79,15 @@ class McpSettingsController extends Controller
         $tokens = AccessToken::query()
             ->whereIn('user_id', User::query()->select('id')->where('account_id', $accountId))
             ->activeMcpOAuth()
-            ->with('client')
-            ->get();
-
-        $users = User::query()
-            ->whereIn('id', $tokens->pluck('user_id')->unique()->filter()->all())
+            ->with(['client', 'user.currentWorkspace', 'workspace'])
             ->get()
-            ->keyBy('id');
+            ->filter(fn (AccessToken $token): bool => $token->isUsableMcpGrant());
 
         return $tokens
             ->groupBy(fn (AccessToken $token): string => "{$token->client_id}:{$token->user_id}")
-            ->map(function ($grouped) use ($currentUser, $users): array {
+            ->map(function ($grouped) use ($currentUser): array {
                 $first = $grouped->first();
-                $owner = $users->get($first->user_id);
+                $owner = $first->user;
 
                 return [
                     'client_id' => $first->client_id,

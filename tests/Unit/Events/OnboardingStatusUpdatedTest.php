@@ -188,7 +188,7 @@ test('dispatchForWorkspace stamps when nobody is currently on the workspace', fu
     ]);
     subscribeAccount($owner->account);
 
-    AccessToken::withoutEvents(fn () => mcpAccessToken($owner, mcpOauthClient()));
+    $owner->account->forceFill(['onboarding_skipped_steps' => ['mcp']])->save();
     SocialAccount::withoutEvents(fn () => SocialAccount::factory()->create([
         'workspace_id' => $readyWorkspace->id,
     ]));
@@ -217,7 +217,7 @@ test('dispatchForWorkspace stamps completion via the account owner when the acto
     ]);
     subscribeAccount($owner->account);
 
-    AccessToken::withoutEvents(fn () => mcpAccessToken($owner, mcpOauthClient()));
+    $owner->account->forceFill(['onboarding_skipped_steps' => ['mcp']])->save();
     SocialAccount::withoutEvents(fn () => SocialAccount::factory()->create([
         'workspace_id' => $readyWorkspace->id,
     ]));

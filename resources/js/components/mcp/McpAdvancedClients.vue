@@ -49,14 +49,20 @@ const advancedClients = [
 
 const openClient = ref('');
 const connectorName = computed(() => trans('mcp.connector_name'));
-const configSnippet = computed(() =>
-    JSON.stringify(
-        { mcpServers: { [connectorName.value]: { url: props.mcpUrl } } },
-        null,
-        2,
-    ),
-);
 const copiedMessage = computed(() => trans('mcp.copied'));
+
+const configSnippet = (client: string): string => {
+    const server =
+        client === 'vscode' || client === 'claude_code'
+            ? { type: 'http', url: props.mcpUrl }
+            : { url: props.mcpUrl };
+    const config =
+        client === 'vscode'
+            ? { servers: { [connectorName.value]: server } }
+            : { mcpServers: { [connectorName.value]: server } };
+
+    return JSON.stringify(config, null, 2);
+};
 
 const setClientOpen = (client: string, open: boolean): void => {
     openClient.value = open ? client : '';
@@ -83,7 +89,8 @@ const copy = (value: string): void => {
                 @update:open="(open) => setClientOpen(client.key, open)"
             >
                 <CollapsibleTrigger
-                    class="flex w-full items-start justify-between gap-4 rounded-md px-5 py-4 text-left text-sm font-medium transition-all outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50"
+                    class="flex w-full items-start justify-between gap-4 rounded-md px-5 py-4 text-left text-sm font-medium transition-all outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 motion-reduce:transition-none"
+                    :data-testid="`mcp-advanced-client-${client.key}`"
                 >
                     <span class="flex items-center gap-4 text-start">
                         <span
@@ -108,13 +115,13 @@ const copy = (value: string): void => {
                         </span>
                     </span>
                     <IconChevronDown
-                        class="pointer-events-none size-4 shrink-0 translate-y-0.5 text-muted-foreground transition-transform duration-200"
+                        class="pointer-events-none size-4 shrink-0 translate-y-0.5 text-muted-foreground transition-transform duration-200 motion-reduce:transition-none"
                         :class="openClient === client.key ? 'rotate-180' : ''"
                     />
                 </CollapsibleTrigger>
 
                 <CollapsibleContent
-                    class="overflow-hidden px-5 pt-1 pb-5 text-sm data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down"
+                    class="overflow-hidden px-5 pt-1 pb-5 text-sm data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down motion-reduce:data-[state=closed]:animate-none motion-reduce:data-[state=open]:animate-none"
                 >
                     <div class="space-y-5">
                         <p class="text-sm font-medium text-foreground/70">
@@ -181,14 +188,15 @@ const copy = (value: string): void => {
                                 <pre
                                     dir="ltr"
                                     class="overflow-x-auto rounded-xl border-2 border-foreground bg-background p-3 pe-14 text-left font-mono text-xs shadow-2xs"
-                                ><code>{{ configSnippet }}</code></pre>
+                                    :data-testid="`mcp-config-${client.key}`"
+                                ><code>{{ configSnippet(client.key) }}</code></pre>
                                 <Button
                                     type="button"
                                     variant="outline"
                                     size="icon"
                                     class="absolute inset-e-2 top-2 size-9"
                                     :aria-label="`${$t('common.actions.copy')} ${$t('mcp.config_label')}`"
-                                    @click="copy(configSnippet)"
+                                    @click="copy(configSnippet(client.key))"
                                 >
                                     <IconCopy class="size-4" />
                                 </Button>

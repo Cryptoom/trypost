@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button';
 import { useWorkspaceEcho } from '@/composables/echo/useWorkspaceEcho';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { copyToClipboard } from '@/lib/utils';
+
 import { calendar } from '@/routes/app';
 import { complete } from '@/routes/app/onboarding';
 import { skip as skipStepRoute } from '@/routes/app/onboarding/steps';
@@ -39,7 +40,6 @@ const props = defineProps<{
     samplePrompt: string;
     platforms: AvailablePlatform[];
     accounts: ConnectedAccount[];
-    socialConnectedElsewhere: boolean;
 }>();
 
 const page = usePage();
@@ -48,6 +48,11 @@ const firstName = computed(() => {
 
     return name === '' ? '' : (name.split(/\s+/)[0] ?? '');
 });
+const socialConnectedElsewhere = computed(
+    () =>
+        props.status.social_connected &&
+        !props.accounts.some((account) => account.status === 'connected'),
+);
 
 const skipStepForm = useForm({});
 const completeForm = useForm({});

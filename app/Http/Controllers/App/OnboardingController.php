@@ -82,9 +82,6 @@ class OnboardingController extends Controller
             'samplePrompt' => __('onboarding.first_post.sample_prompt'),
             'platforms' => SocialPlatform::connectableOptions(),
             'accounts' => $accounts,
-            // The step is account-scoped but the grid is workspace-local — tell
-            // the user when the check comes from a sibling workspace.
-            'socialConnectedElsewhere' => $status['social_connected'] && $accounts === [],
         ]);
     }
 

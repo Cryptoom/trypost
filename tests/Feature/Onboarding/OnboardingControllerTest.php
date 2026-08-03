@@ -82,7 +82,7 @@ test('onboarding flags the social step when only a sibling workspace is connecte
         ->assertInertia(fn ($page) => $page
             ->where('status.social_connected', true)
             ->where('accounts', [])
-            ->where('socialConnectedElsewhere', true)
+            ->missing('socialConnectedElsewhere')
         );
 });
 
@@ -94,7 +94,7 @@ test('onboarding does not flag social elsewhere when the current workspace is co
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->where('status.social_connected', true)
-            ->where('socialConnectedElsewhere', false)
+            ->missing('socialConnectedElsewhere')
         );
 });
 

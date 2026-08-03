@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 use App\Actions\Onboarding\ResolveOnboardingStatus;
 use App\Enums\PostHog\OnboardingEvent;
+use App\Enums\SocialAccount\Status;
+use App\Enums\UserWorkspace\Role;
 use App\Events\OnboardingStatusUpdated;
 use App\Jobs\PostHog\SendEvent;
 use App\Models\AccessToken;
@@ -133,7 +135,7 @@ test('does not resolve an expired oauth token as mcp connected', function () {
     expect($status['mcp_connected'])->toBeFalse();
 });
 
-test('resolves account-scoped steps even when the user has no current workspace', function () {
+test('requires an effective workspace for the mcp step', function () {
     $this->user->update(['current_workspace_id' => null]);
     SocialAccount::withoutEvents(fn () => SocialAccount::factory()->create([
         'workspace_id' => $this->workspace->id,
@@ -147,10 +149,10 @@ test('resolves account-scoped steps even when the user has no current workspace'
     $status = app(ResolveOnboardingStatus::class)->handle($this->user->fresh());
 
     expect($status)->toMatchArray([
-        'mcp_connected' => true,
+        'mcp_connected' => false,
         'social_connected' => true,
         'first_post_created' => true,
-        'all_complete' => true,
+        'all_complete' => false,
     ]);
 });
 
@@ -184,6 +186,20 @@ test('resolves a social account in another workspace as connected', function () 
 
     expect($status['social_connected'])->toBeTrue();
 });
+
+test('does not resolve an unusable social account as connected', function (Status $status) {
+    SocialAccount::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'status' => $status,
+    ]);
+
+    $onboarding = app(ResolveOnboardingStatus::class)->handle($this->user);
+
+    expect($onboarding['social_connected'])->toBeFalse();
+})->with([
+    'disconnected' => Status::Disconnected,
+    'token expired' => Status::TokenExpired,
+]);
 
 test('resolves any post in the current workspace as the first post', function () {
     Post::factory()->failed()->create([
@@ -287,11 +303,34 @@ test('stamps completion when the last step completes off the onboarding page', f
 
 test('resolves a teammate oauth token as mcp connected for the account', function () {
     $member = User::factory()->create(['account_id' => $this->user->account_id]);
+    $this->workspace->members()->attach($member->id, ['role' => Role::Member->value]);
+    $member->update(['current_workspace_id' => $this->workspace->id]);
     AccessToken::withoutEvents(fn () => mcpAccessToken($member, mcpOauthClient()));
 
     $status = app(ResolveOnboardingStatus::class)->handle($this->user);
 
     expect($status['mcp_connected'])->toBeTrue();
+});
+
+test('does not resolve an unscoped oauth token as mcp connected', function () {
+    AccessToken::withoutEvents(
+        fn () => mcpAccessToken($this->user, mcpOauthClient(), scopes: []),
+    );
+
+    $status = app(ResolveOnboardingStatus::class)->handle($this->user);
+
+    expect($status['mcp_connected'])->toBeFalse();
+});
+
+test('does not resolve a viewer oauth token as mcp connected', function () {
+    $viewer = User::factory()->create(['account_id' => $this->user->account_id]);
+    $this->workspace->members()->attach($viewer->id, ['role' => Role::Viewer->value]);
+    $viewer->update(['current_workspace_id' => $this->workspace->id]);
+    AccessToken::withoutEvents(fn () => mcpAccessToken($viewer, mcpOauthClient()));
+
+    $status = app(ResolveOnboardingStatus::class)->handle($this->user);
+
+    expect($status['mcp_connected'])->toBeFalse();
 });
 
 test('dismissed onboarding does not show the residual checklist', function () {
@@ -403,6 +442,7 @@ test('syncProgress stamps when a teammate is on an empty workspace but account a
         'account_id' => $this->user->account_id,
         'user_id' => $member->id,
     ]);
+    $memberWorkspace->members()->attach($member->id, ['role' => Role::Member->value]);
     $member->update(['current_workspace_id' => $memberWorkspace->id]);
 
     expect(app(ResolveOnboardingStatus::class)->syncProgress($member->fresh())['all_complete'])->toBeFalse();
@@ -430,6 +470,7 @@ test('mcp connection attributes step analytics to the acting teammate', function
         'account_id' => $this->user->account_id,
         'current_workspace_id' => $this->workspace->id,
     ]);
+    $this->workspace->members()->attach($member->id, ['role' => Role::Member->value]);
 
     // Owner has a lower id and would win if we still fan-out by users.id asc.
     expect($this->user->id < $member->id)->toBeTrue();

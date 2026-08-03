@@ -70,16 +70,18 @@ const canNavigateTo = (stepNumber: number): boolean =>
                             <Link
                                 v-if="canNavigateTo(stepNumber)"
                                 :href="stepRoutes[stepNumber - 1]"
-                                :class="[
-                                    'h-2 w-8 rounded-full bg-primary transition-opacity hover:opacity-70',
-                                ]"
+                                class="flex h-6 w-8 items-center"
                                 :aria-label="
                                     $t('welcome.go_to_step', {
                                         step: String(stepNumber),
                                     })
                                 "
                                 :data-testid="`welcome-step-${stepNumber}`"
-                            />
+                            >
+                                <span
+                                    class="h-2 w-full rounded-full bg-primary transition-opacity hover:opacity-70 motion-reduce:transition-none"
+                                />
+                            </Link>
                             <div
                                 v-else
                                 :class="[

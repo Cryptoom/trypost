@@ -20,6 +20,16 @@ test('numeric trial days are parsed and floored at zero', function (mixed $value
     'negative' => ['-3', 0],
 ]);
 
+test('invalid trial days fall back to the default', function (mixed $value) {
+    expect(CashierCheckoutEnv::trialDays($value))->toBe(8);
+})->with([
+    'word' => 'eight',
+    'decimal' => '8.5',
+    'array' => ['8'],
+    'boolean' => true,
+    'float' => 8.0,
+]);
+
 test('empty or null allow_promotion_codes fall back to the default', function (mixed $value) {
     expect(CashierCheckoutEnv::allowPromotionCodes($value))->toBeTrue();
 })->with([

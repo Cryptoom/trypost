@@ -41,6 +41,7 @@ it('shows the mcp settings page', function (): void {
 it('lists oauth clients as connected across the account, excluding personal access tokens', function (): void {
     $member = User::factory()->create(['account_id' => $this->user->account_id]);
     $this->workspace->members()->attach($member->id, ['role' => Role::Member->value]);
+    $member->update(['current_workspace_id' => $this->workspace->id]);
 
     $ownerClientId = mcpOauthClient('Owner Agent');
     mcpAccessToken($this->user, $ownerClientId);
@@ -66,6 +67,19 @@ it('lists oauth clients as connected across the account, excluding personal acce
                     && $client['can_disconnect'] === false
                     && $client['user_name'] === $member->name,
             )));
+});
+
+it('excludes unscoped and viewer oauth grants from connected clients', function (): void {
+    $viewer = User::factory()->create(['account_id' => $this->user->account_id]);
+    $this->workspace->members()->attach($viewer->id, ['role' => Role::Viewer->value]);
+    $viewer->update(['current_workspace_id' => $this->workspace->id]);
+
+    mcpAccessToken($this->user, mcpOauthClient('Unscoped Agent'), scopes: []);
+    mcpAccessToken($viewer, mcpOauthClient('Viewer Agent'));
+
+    $this->actingAs($this->user)
+        ->get(route('app.mcp.index'))
+        ->assertInertia(fn ($page) => $page->where('connectedClients', []));
 });
 
 it('disconnects a client by revoking its tokens and broadcasting onboarding status', function (): void {

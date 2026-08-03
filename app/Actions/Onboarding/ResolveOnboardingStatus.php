@@ -5,12 +5,14 @@ declare(strict_types=1);
 namespace App\Actions\Onboarding;
 
 use App\Enums\PostHog\OnboardingEvent;
+use App\Enums\SocialAccount\Status;
 use App\Events\OnboardingStatusUpdated;
 use App\Models\AccessToken;
 use App\Models\Account;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Services\PostHogService;
+use Illuminate\Database\Eloquent\Builder;
 
 class ResolveOnboardingStatus
 {
@@ -325,7 +327,9 @@ class ResolveOnboardingStatus
                 User::query()->select('id')->where('account_id', $account->id),
             )
             ->activeMcpOAuth()
-            ->exists();
+            ->with(['user.currentWorkspace', 'workspace'])
+            ->get()
+            ->contains(fn (AccessToken $token): bool => $token->isUsableMcpGrant());
     }
 
     private function accountHasSocialConnection(?Account $account): bool
@@ -336,7 +340,10 @@ class ResolveOnboardingStatus
 
         return Workspace::query()
             ->where('account_id', $account->id)
-            ->whereHas('socialAccounts')
+            ->whereHas(
+                'socialAccounts',
+                fn (Builder $query): Builder => $query->where('status', Status::Connected),
+            )
             ->exists();
     }
 

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Observers;
 
 use App\Enums\SocialAccount\Platform;
+use App\Enums\SocialAccount\Status;
 use App\Events\OnboardingStatusUpdated;
 use App\Exceptions\SocialAccount\NetworkAlreadyConnectedException;
 use App\Jobs\PostHog\SyncAccountUsage;
@@ -50,7 +51,11 @@ class SocialAccountObserver
 
         $account = $socialAccount->workspace?->account;
 
-        if ($account === null || $account->hasFinishedOnboarding()) {
+        if (
+            $account === null
+            || $account->hasFinishedOnboarding()
+            || $socialAccount->status !== Status::Connected
+        ) {
             return;
         }
 
@@ -58,6 +63,7 @@ class SocialAccountObserver
         $isFirstConnection = SocialAccount::query()
             ->whereIn('workspace_id', $account->workspaces()->select('id'))
             ->whereKeyNot($socialAccount->id)
+            ->where('status', Status::Connected)
             ->doesntExist();
 
         if ($isFirstConnection) {
@@ -74,13 +80,18 @@ class SocialAccountObserver
 
         $account = $socialAccount->workspace?->account;
 
-        if ($account === null || $account->hasFinishedOnboarding()) {
+        if (
+            $account === null
+            || $account->hasFinishedOnboarding()
+            || $socialAccount->status !== Status::Connected
+        ) {
             return;
         }
 
         // The step only flips when the account's last connection disappears.
         $accountHasConnections = SocialAccount::query()
             ->whereIn('workspace_id', $account->workspaces()->select('id'))
+            ->where('status', Status::Connected)
             ->exists();
 
         if (! $accountHasConnections) {
@@ -89,6 +100,41 @@ class SocialAccountObserver
                 $this->actorFor($socialAccount),
             );
         }
+    }
+
+    public function updated(SocialAccount $socialAccount): void
+    {
+        if (! $socialAccount->wasChanged('status')) {
+            return;
+        }
+
+        $wasConnected = $socialAccount->getRawOriginal('status') === Status::Connected->value;
+        $isConnected = $socialAccount->status === Status::Connected;
+
+        if ($wasConnected === $isConnected) {
+            return;
+        }
+
+        $account = $socialAccount->workspace?->account;
+
+        if ($account === null || $account->hasFinishedOnboarding()) {
+            return;
+        }
+
+        $otherConnectedAccountExists = SocialAccount::query()
+            ->whereIn('workspace_id', $account->workspaces()->select('id'))
+            ->whereKeyNot($socialAccount->id)
+            ->where('status', Status::Connected)
+            ->exists();
+
+        if ($otherConnectedAccountExists) {
+            return;
+        }
+
+        OnboardingStatusUpdated::dispatchForWorkspace(
+            $socialAccount->workspace_id,
+            $this->actorFor($socialAccount),
+        );
     }
 
     private function actorFor(SocialAccount $socialAccount): ?User

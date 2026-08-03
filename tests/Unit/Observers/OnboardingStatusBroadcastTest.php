@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use App\Enums\SocialAccount\Status;
+use App\Enums\UserWorkspace\Role;
 use App\Events\OnboardingStatusUpdated;
 use App\Models\AccessToken;
 use App\Models\Post;
@@ -51,6 +53,70 @@ test('deleting a social account broadcasts onboarding status for its workspace',
         OnboardingStatusUpdated::class,
         fn (OnboardingStatusUpdated $event): bool => $event->workspaceId === $workspace->id,
     );
+});
+
+test('disconnecting the last connected social account broadcasts onboarding status', function () {
+    $user = User::factory()->create();
+    $workspace = Workspace::factory()->create([
+        'account_id' => $user->account_id,
+        'user_id' => $user->id,
+    ]);
+    $socialAccount = SocialAccount::withoutEvents(fn () => SocialAccount::factory()->create([
+        'workspace_id' => $workspace->id,
+        'status' => Status::Connected,
+    ]));
+
+    Event::fake([OnboardingStatusUpdated::class]);
+
+    $socialAccount->update(['status' => Status::Disconnected]);
+
+    Event::assertDispatched(
+        OnboardingStatusUpdated::class,
+        fn (OnboardingStatusUpdated $event): bool => $event->workspaceId === $workspace->id,
+    );
+});
+
+test('reconnecting the first usable social account broadcasts onboarding status', function () {
+    $user = User::factory()->create();
+    $workspace = Workspace::factory()->create([
+        'account_id' => $user->account_id,
+        'user_id' => $user->id,
+    ]);
+    $socialAccount = SocialAccount::withoutEvents(fn () => SocialAccount::factory()->create([
+        'workspace_id' => $workspace->id,
+        'status' => Status::Disconnected,
+    ]));
+
+    Event::fake([OnboardingStatusUpdated::class]);
+
+    $socialAccount->update(['status' => Status::Connected]);
+
+    Event::assertDispatched(
+        OnboardingStatusUpdated::class,
+        fn (OnboardingStatusUpdated $event): bool => $event->workspaceId === $workspace->id,
+    );
+});
+
+test('changing one of multiple connected social accounts does not broadcast onboarding status', function () {
+    $user = User::factory()->create();
+    $workspace = Workspace::factory()->create([
+        'account_id' => $user->account_id,
+        'user_id' => $user->id,
+    ]);
+    $socialAccount = SocialAccount::withoutEvents(fn () => SocialAccount::factory()->create([
+        'workspace_id' => $workspace->id,
+        'status' => Status::Connected,
+    ]));
+    SocialAccount::withoutEvents(fn () => SocialAccount::factory()->create([
+        'workspace_id' => $workspace->id,
+        'status' => Status::Connected,
+    ]));
+
+    Event::fake([OnboardingStatusUpdated::class]);
+
+    $socialAccount->update(['status' => Status::TokenExpired]);
+
+    Event::assertNotDispatched(OnboardingStatusUpdated::class);
 });
 
 test('creating a post broadcasts onboarding status for its workspace', function () {
@@ -103,6 +169,7 @@ test('creating an oauth mcp token broadcasts onboarding status for every account
         'account_id' => $user->account_id,
         'user_id' => $user->id,
     ]);
+    $user->update(['current_workspace_id' => $workspaceA->id]);
 
     mcpAccessToken($user, mcpOauthClient());
 
@@ -130,12 +197,30 @@ test('creating a personal access token does not broadcast onboarding status', fu
     Event::assertNotDispatched(OnboardingStatusUpdated::class);
 });
 
+test('unscoped and viewer oauth tokens do not broadcast onboarding status', function () {
+    $owner = User::factory()->create();
+    $workspace = Workspace::factory()->create([
+        'account_id' => $owner->account_id,
+        'user_id' => $owner->id,
+    ]);
+    $owner->update(['current_workspace_id' => $workspace->id]);
+    $viewer = User::factory()->create(['account_id' => $owner->account_id]);
+    $workspace->members()->attach($viewer->id, ['role' => Role::Viewer->value]);
+    $viewer->update(['current_workspace_id' => $workspace->id]);
+
+    mcpAccessToken($owner, mcpOauthClient('Unscoped Agent'), scopes: []);
+    mcpAccessToken($viewer, mcpOauthClient('Viewer Agent'));
+
+    Event::assertNotDispatched(OnboardingStatusUpdated::class);
+});
+
 test('creating an oauth mcp token does not broadcast when onboarding is over', function (string $column) {
     $user = User::factory()->create();
-    Workspace::factory()->create([
+    $workspace = Workspace::factory()->create([
         'account_id' => $user->account_id,
         'user_id' => $user->id,
     ]);
+    $user->update(['current_workspace_id' => $workspace->id]);
     $user->account->forceFill([$column => now()])->save();
 
     mcpAccessToken($user, mcpOauthClient());

@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Enums\Plan\Slug;
+use App\Enums\SocialAccount\Status;
 use App\Enums\UserWorkspace\Role;
 use App\Models\AccessToken;
 use App\Models\Plan;
@@ -16,12 +17,12 @@ use Illuminate\Support\Facades\Cache;
  * Poll browser-side until the data-testid element exists — and fail loudly
  * when it never shows up.
  */
-function waitForDusk(mixed $page, string $selector): void
+function waitForDusk(mixed $page, string $selector, int $attempts = 100): void
 {
     $found = $page->script(<<<JS
         (async () => {
             const sel = '[data-testid="{$selector}"]';
-            for (let i = 0; i < 100; i++) {
+            for (let i = 0; i < {$attempts}; i++) {
                 if (document.querySelector(sel)) return true;
                 await new Promise((r) => setTimeout(r, 50));
             }
@@ -36,12 +37,12 @@ function waitForDusk(mixed $page, string $selector): void
  * Poll browser-side until the data-testid element is gone — and fail loudly
  * when it never disappears.
  */
-function waitForDuskGone(mixed $page, string $selector): void
+function waitForDuskGone(mixed $page, string $selector, int $attempts = 100): void
 {
     $gone = $page->script(<<<JS
         (async () => {
             const sel = '[data-testid="{$selector}"]';
-            for (let i = 0; i < 100; i++) {
+            for (let i = 0; i < {$attempts}; i++) {
                 if (! document.querySelector(sel)) return true;
                 await new Promise((r) => setTimeout(r, 50));
             }
@@ -253,6 +254,96 @@ test('mcp settings refresh connected clients when the browser regains focus', fu
 
     waitForDusk($page, "mcp-connected-client-{$clientId}");
     $page->assertVisible("@mcp-connected-client-{$clientId}");
+});
+
+test('mcp settings provide client-specific configuration snippets', function () {
+    config(['trypost.self_hosted' => false]);
+
+    $user = User::factory()->create();
+    $workspace = Workspace::factory()->create([
+        'account_id' => $user->account_id,
+        'user_id' => $user->id,
+    ]);
+    $workspace->members()->attach($user->id, ['role' => Role::Admin->value]);
+    $user->update(['current_workspace_id' => $workspace->id]);
+    subscribeAccount($user->account);
+
+    test()->actingAs($user->fresh());
+
+    $page = visit(route('app.mcp.index'));
+
+    $page->click('@mcp-advanced-client-cursor');
+    waitForDusk($page, 'mcp-config-cursor');
+    $cursorConfig = $page->script(
+        'JSON.parse(document.querySelector(\'[data-testid="mcp-config-cursor"]\').textContent)',
+    );
+
+    expect(data_get($cursorConfig, 'mcpServers.TryPost.url'))->toBe(route('mcp.trypost'))
+        ->and(data_get($cursorConfig, 'mcpServers.TryPost.type'))->toBeNull();
+
+    $page->click('@mcp-advanced-client-vscode');
+    waitForDusk($page, 'mcp-config-vscode');
+    $vscodeConfig = $page->script(
+        'JSON.parse(document.querySelector(\'[data-testid="mcp-config-vscode"]\').textContent)',
+    );
+
+    expect(data_get($vscodeConfig, 'servers.TryPost.type'))->toBe('http')
+        ->and(data_get($vscodeConfig, 'servers.TryPost.url'))->toBe(route('mcp.trypost'))
+        ->and(data_get($vscodeConfig, 'mcpServers'))->toBeNull();
+
+    $page->click('@mcp-advanced-client-claude_code');
+    waitForDusk($page, 'mcp-config-claude_code');
+    $claudeCodeConfig = $page->script(
+        'JSON.parse(document.querySelector(\'[data-testid="mcp-config-claude_code"]\').textContent)',
+    );
+
+    expect(data_get($claudeCodeConfig, 'mcpServers.TryPost.type'))->toBe('http')
+        ->and(data_get($claudeCodeConfig, 'mcpServers.TryPost.url'))->toBe(route('mcp.trypost'));
+
+    $page->click('@mcp-advanced-client-other');
+    waitForDusk($page, 'mcp-config-other');
+    $otherConfig = $page->script(
+        'JSON.parse(document.querySelector(\'[data-testid="mcp-config-other"]\').textContent)',
+    );
+
+    expect(data_get($otherConfig, 'mcpServers.TryPost.url'))->toBe(route('mcp.trypost'))
+        ->and(data_get($otherConfig, 'mcpServers.TryPost.type'))->toBeNull();
+});
+
+test('onboarding updates cross-workspace social state after a disconnection', function () {
+    config(['trypost.self_hosted' => false]);
+
+    $user = User::factory()->create();
+    $workspace = Workspace::factory()->create([
+        'account_id' => $user->account_id,
+        'user_id' => $user->id,
+    ]);
+    $otherWorkspace = Workspace::factory()->create([
+        'account_id' => $user->account_id,
+        'user_id' => $user->id,
+    ]);
+    $user->update(['current_workspace_id' => $workspace->id]);
+    subscribeAccount($user->account);
+    $socialAccount = SocialAccount::factory()->create([
+        'workspace_id' => $otherWorkspace->id,
+    ]);
+    SocialAccount::withoutEvents(fn () => SocialAccount::factory()->create([
+        'workspace_id' => $workspace->id,
+        'status' => Status::Disconnected,
+    ]));
+
+    test()->actingAs($user->fresh());
+
+    $page = visit(route('app.onboarding'));
+
+    waitForDusk($page, 'onboarding-social-elsewhere');
+    $page->assertVisible('@onboarding-social-elsewhere');
+
+    $socialAccount->update(['status' => Status::Disconnected]);
+
+    waitForDuskGone($page, 'onboarding-social-elsewhere', 220);
+    waitForDusk($page, 'onboarding-social-controls', 220);
+    $page->assertVisible('@onboarding-social-controls');
 });
 
 test('member without app access lands on the subscription required screen', function () {

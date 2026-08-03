@@ -189,8 +189,10 @@ function mcpOauthClient(string $name = 'My Agent'): string
 
 /**
  * Create an active OAuth access token for MCP connection tests.
+ *
+ * @param  list<string>  $scopes
  */
-function mcpAccessToken(User $user, string $clientId): AccessToken
+function mcpAccessToken(User $user, string $clientId, array $scopes = ['mcp:use']): AccessToken
 {
     $token = new AccessToken;
     $token->forceFill([
@@ -199,7 +201,7 @@ function mcpAccessToken(User $user, string $clientId): AccessToken
         'client_id' => $clientId,
         'workspace_id' => null,
         'name' => 'MCP',
-        'scopes' => [],
+        'scopes' => $scopes,
         'revoked' => false,
     ])->save();
 
