@@ -39,6 +39,15 @@ return new class extends Migration
                         ->from('subscriptions')
                         ->whereColumn('subscriptions.account_id', 'accounts.id')
                         ->where('subscriptions.type', 'default')
+                        ->where('subscriptions.id', function (Builder $latestSubscription): void {
+                            $latestSubscription->select('latest.id')
+                                ->from('subscriptions as latest')
+                                ->whereColumn('latest.account_id', 'accounts.id')
+                                ->where('latest.type', 'default')
+                                ->latest('latest.created_at')
+                                ->latest('latest.id')
+                                ->limit(1);
+                        })
                         ->where(function (Builder $valid) use ($now): void {
                             $valid
                                 ->where('subscriptions.ends_at', '>', $now)

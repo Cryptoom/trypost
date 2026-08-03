@@ -11,7 +11,6 @@ use App\Models\Account;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Services\PostHogService;
-use Illuminate\Support\Facades\Cache;
 
 class ResolveOnboardingStatus
 {
@@ -62,13 +61,17 @@ class ResolveOnboardingStatus
         $skippedSteps = $account?->onboarding_skipped_steps ?? [];
 
         if ($account?->onboarding_completed_at !== null) {
+            $mcpConnected = ! in_array('mcp', $skippedSteps, true)
+                || $this->accountHasMcpConnection($account);
+            $effectiveSkippedSteps = $mcpConnected
+                ? array_values(array_diff($skippedSteps, ['mcp']))
+                : $skippedSteps;
+
             return [
-                // Keep skipped optional steps honest in the ready UI — forcing
-                // mcp_connected=true would overwrite the Skipped badge.
-                'mcp_connected' => ! in_array('mcp', $skippedSteps, true),
+                'mcp_connected' => $mcpConnected,
                 'social_connected' => true,
                 'first_post_created' => true,
-                'skipped_steps' => $skippedSteps,
+                'skipped_steps' => $effectiveSkippedSteps,
                 'all_complete' => true,
                 'show_residual' => false,
                 'completed_at' => $account->onboarding_completed_at->toIso8601String(),
@@ -358,16 +361,12 @@ class ResolveOnboardingStatus
             return;
         }
 
-        // Durable once-per-account dedupe (no short TTL re-fire).
-        if (! Cache::add("onboarding_step:{$account->id}:{$step}", true, now()->addYears(100))) {
-            return;
-        }
-
         $this->postHog->capture(
             $user->id,
             OnboardingEvent::StepCompleted->value,
             ['step' => $step],
             $account,
+            dedupeKey: "onboarding:step:{$account->id}:{$step}",
         );
     }
 }

@@ -149,6 +149,35 @@ class WelcomeController extends Controller
             $user->account,
         );
 
+        return $this->startCheckout($request, $checkout, $postHog);
+    }
+
+    public function legacyCheckout(
+        Request $request,
+        StartSubscriptionCheckout $checkout,
+        PostHogService $postHog,
+    ): SymfonyResponse|RedirectResponse {
+        if ($redirect = $this->redirectIfStepIncomplete($request, requireGoals: true)) {
+            return $redirect;
+        }
+
+        $user = $request->user();
+
+        abort_unless($user->isAccountOwner(), SymfonyResponse::HTTP_FORBIDDEN);
+
+        if ($user->referral_source === null) {
+            return redirect()->route('app.welcome.referral-source');
+        }
+
+        return $this->startCheckout($request, $checkout, $postHog);
+    }
+
+    private function startCheckout(
+        Request $request,
+        StartSubscriptionCheckout $checkout,
+        PostHogService $postHog,
+    ): SymfonyResponse|RedirectResponse {
+        $user = $request->user();
         $plan = Plan::where('slug', Slug::Workspace)->firstOrFail();
         $priceId = $plan->stripe_monthly_price_id;
 

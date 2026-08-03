@@ -282,6 +282,43 @@ test('legacy welcome URLs redirect to their replacement routes', function (strin
     'connect' => ['app.legacy-onboarding.connect', 'app.welcome.referral-source'],
 ]);
 
+test('legacy persona and goals posts preserve submissions from an already loaded page', function () {
+    $this->actingAs($this->user)
+        ->post(route('app.legacy-onboarding.store'), [
+            'persona' => Persona::Agency->value,
+        ])
+        ->assertRedirect(route('app.welcome.goals'));
+
+    $this->actingAs($this->user->fresh())
+        ->post(route('app.legacy-onboarding.goals.store'), [
+            'goals' => [Goal::SaveTime->value],
+        ])
+        ->assertRedirect(route('app.welcome.referral-source'));
+
+    expect($this->user->fresh()->persona)->toBe(Persona::Agency)
+        ->and($this->user->fresh()->goals)->toBe([Goal::SaveTime->value]);
+});
+
+test('legacy connect post starts checkout for an already loaded page', function () {
+    $this->user->update([
+        'persona' => Persona::Agency->value,
+        'goals' => [Goal::SaveTime->value],
+        'referral_source' => ReferralSource::Google->value,
+    ]);
+    Plan::where('slug', Slug::Workspace)->firstOrFail()->update([
+        'stripe_monthly_price_id' => 'price_monthly_test',
+    ]);
+
+    $this->mock(StartSubscriptionCheckout::class)
+        ->shouldReceive('redirect')
+        ->once()
+        ->andReturn(redirect('https://checkout.stripe.test/session'));
+
+    $this->actingAs($this->user->fresh())
+        ->post(route('app.legacy-onboarding.checkout'))
+        ->assertRedirect('https://checkout.stripe.test/session');
+});
+
 test('members cannot start Stripe checkout from welcome', function () {
     $member = User::factory()->create(['account_id' => $this->user->account_id]);
     $member->update([

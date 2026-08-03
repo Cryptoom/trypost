@@ -31,31 +31,63 @@ export const useTracking = () => ({
     },
 
     trackPurchase: (
-        plan: { name: string; interval: string },
-        conversion?: { value: number; currency: string; transaction_id: string } | null,
+        plan: { name: string; interval: string } | null,
+        conversion: {
+            value: number;
+            currency: string;
+            transaction_id: string;
+            verified_at: string;
+        },
         persona?: string | null,
     ) => {
+        const planProperties = plan
+            ? {
+                  plan_name: plan.name,
+                  interval: plan.interval,
+              }
+            : {};
+
         captureEvent('checkout.completed', {
-            plan_name: plan.name,
-            interval: plan.interval,
+            ...planProperties,
             ...(persona ? { persona } : {}),
-            ...(conversion ? {
-                conversion_value: conversion.value,
-                conversion_currency: conversion.currency,
-                conversion_transaction_id: conversion.transaction_id,
-            } : {}),
+            $insert_id: conversion.transaction_id,
+            event_id: conversion.transaction_id,
+            conversion_value: conversion.value,
+            conversion_currency: conversion.currency,
+            conversion_transaction_id: conversion.transaction_id,
+            conversion_verified_at: conversion.verified_at,
         });
 
         push({
             event: 'purchase',
-            plan_name: plan.name,
-            plan_interval: plan.interval,
+            event_id: conversion.transaction_id,
+            transaction_id: conversion.transaction_id,
+            value: conversion.value,
+            currency: conversion.currency,
+            ...(plan
+                ? {
+                      plan_name: plan.name,
+                      plan_interval: plan.interval,
+                  }
+                : {}),
             ...(persona ? { persona } : {}),
-            ...(conversion ? {
-                conversion_value: conversion.value,
-                conversion_currency: conversion.currency,
-                conversion_transaction_id: conversion.transaction_id,
-            } : {}),
+            conversion_value: conversion.value,
+            conversion_currency: conversion.currency,
+            conversion_transaction_id: conversion.transaction_id,
+            ecommerce: {
+                transaction_id: conversion.transaction_id,
+                value: conversion.value,
+                currency: conversion.currency,
+                items: [
+                    {
+                        item_id: plan?.name ?? 'subscription',
+                        item_name: plan?.name ?? 'Subscription',
+                        item_variant: plan?.interval,
+                        price: conversion.value,
+                        quantity: 1,
+                    },
+                ],
+            },
         });
     },
 });

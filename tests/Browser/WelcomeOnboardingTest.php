@@ -2,6 +2,9 @@
 
 declare(strict_types=1);
 
+use App\Enums\Plan\Slug;
+use App\Models\CheckoutPurchaseTracking;
+use App\Models\Plan;
 use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Models\User;
@@ -156,6 +159,57 @@ test('member without app access lands on the subscription required screen', func
 
     waitForDusk($page, 'welcome-subscription-required');
     $page->assertVisible('@welcome-subscription-required');
+});
+
+test('purchase acknowledgement is not sent immediately after analytics is queued', function () {
+    config(['trypost.self_hosted' => false]);
+
+    $user = User::factory()->create();
+    $account = $user->account;
+    $account->forceFill([
+        'stripe_id' => 'cus_test_123',
+        'onboarding_completed_at' => now(),
+    ])->save();
+    $plan = Plan::where('slug', Slug::Workspace)->firstOrFail();
+    $plan->update([
+        'stripe_monthly_price_id' => 'price_123',
+    ]);
+    $account->update(['plan_id' => $plan->id]);
+    subscribeAccount($account);
+
+    $sessionId = 'cs_test_'.fake()->uuid();
+    CheckoutPurchaseTracking::query()->create([
+        'account_id' => $account->id,
+        'session_id' => $sessionId,
+        'kind' => 'purchase',
+        'payload' => [
+            'value' => 10,
+            'currency' => 'USD',
+            'transaction_id' => $sessionId,
+        ],
+        'verified_at' => now(),
+    ]);
+
+    test()->actingAs($user->fresh());
+
+    $page = visit(route('app.billing.processing', ['session_id' => $sessionId]));
+    $page->assertPathIs(parse_url(route('app.billing.processing'), PHP_URL_PATH));
+    $initialProps = $page->script('window.history.state.page.props');
+
+    expect(data_get($initialProps, 'subscriptionActive'))->toBeTrue()
+        ->and(data_get($initialProps, 'conversionResolved'))->toBeTrue()
+        ->and(data_get($initialProps, 'conversion.transaction_id'))->toBe($sessionId)
+        ->and(data_get($initialProps, 'auth.plan'))->not->toBeNull();
+
+    $page->script('(async () => { await new Promise((resolve) => setTimeout(resolve, 500)); })()');
+    $page->assertNoJavaScriptErrors();
+
+    $purchaseWasQueued = $page->script(
+        'Array.isArray(window.dataLayer) && window.dataLayer.some((entry) => entry.event === "purchase")',
+    );
+
+    expect($purchaseWasQueued)->toBeTrue()
+        ->and(CheckoutPurchaseTracking::query()->where('session_id', $sessionId)->value('acknowledged_at'))->toBeNull();
 });
 
 test('owner sees the residual banner on mobile and it links to onboarding', function () {

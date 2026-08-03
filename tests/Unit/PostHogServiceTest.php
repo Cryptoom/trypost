@@ -7,7 +7,9 @@ use App\Models\Account;
 use App\Models\Plan;
 use App\Services\PostHogService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Str;
 
 uses(RefreshDatabase::class);
 
@@ -22,6 +24,43 @@ test('capture dispatches job when api key is configured', function () {
         return $job->method === 'capture'
             && $job->payload['event'] === 'test_event'
             && $job->payload['distinctId'] === 'user-123';
+    });
+});
+
+test('capture carries a delivery dedupe key and skips events already delivered', function () {
+    Queue::fake();
+    config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test_key']);
+
+    $service = new PostHogService;
+    $service->capture('user-123', 'test_event', dedupeKey: 'onboarding:viewed:account-123');
+
+    Queue::assertPushed(
+        SendEvent::class,
+        fn (SendEvent $job): bool => $job->dedupeKey === 'onboarding:viewed:account-123',
+    );
+
+    Queue::fake();
+    Cache::put(SendEvent::deliveredKey('onboarding:viewed:account-123'), true);
+
+    $service->capture('user-123', 'test_event', dedupeKey: 'onboarding:viewed:account-123');
+
+    Queue::assertNothingPushed();
+});
+
+test('capture serializes a stable PostHog uuid and timestamp into the queued job', function () {
+    Queue::fake();
+    config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test_key']);
+
+    (new PostHogService)->capture('user-123', 'test_event');
+
+    Queue::assertPushed(SendEvent::class, function (SendEvent $job): bool {
+        $serialized = serialize($job);
+        $restored = unserialize($serialized);
+
+        return Str::isUuid((string) data_get($job->payload, 'uuid'))
+            && is_string(data_get($job->payload, 'timestamp'))
+            && data_get($restored->payload, 'uuid') === data_get($job->payload, 'uuid')
+            && data_get($restored->payload, 'timestamp') === data_get($job->payload, 'timestamp');
     });
 });
 

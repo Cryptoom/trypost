@@ -133,6 +133,53 @@ test('onboarding viewed is captured once per account', function () {
     );
 });
 
+test('disabled analytics does not consume the once-per-account viewed event', function () {
+    config(['services.posthog.enabled' => false]);
+
+    $this->actingAs($this->user)
+        ->get(route('app.onboarding'))
+        ->assertOk();
+
+    Bus::fake();
+    config(['services.posthog.enabled' => true]);
+
+    $this->actingAs($this->user->fresh())
+        ->get(route('app.onboarding'))
+        ->assertOk();
+
+    Bus::assertDispatched(
+        SendEvent::class,
+        fn (SendEvent $event): bool => data_get($event->payload, 'event') === OnboardingEvent::Viewed->value,
+    );
+});
+
+test('a member visit does not consume the owner onboarding viewed event', function () {
+    $member = User::factory()->create([
+        'account_id' => $this->user->account_id,
+        'current_workspace_id' => $this->workspace->id,
+    ]);
+    $this->workspace->members()->attach($member->id, ['role' => Role::Member->value]);
+
+    $this->actingAs($member->fresh())
+        ->get(route('app.onboarding'))
+        ->assertOk();
+
+    Bus::assertNotDispatched(
+        SendEvent::class,
+        fn (SendEvent $event): bool => data_get($event->payload, 'event') === OnboardingEvent::Viewed->value,
+    );
+
+    $this->actingAs($this->user->fresh())
+        ->get(route('app.onboarding'))
+        ->assertOk();
+
+    Bus::assertDispatched(
+        SendEvent::class,
+        fn (SendEvent $event): bool => data_get($event->payload, 'event') === OnboardingEvent::Viewed->value
+            && $event->dedupeKey === "onboarding:viewed:{$this->user->account_id}",
+    );
+});
+
 test('onboarding does not capture viewed when syncProgress stamps completion', function () {
     AccessToken::withoutEvents(fn () => mcpAccessToken($this->user, mcpOauthClient()));
     SocialAccount::withoutEvents(fn () => SocialAccount::factory()->create([

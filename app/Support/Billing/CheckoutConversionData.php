@@ -6,6 +6,11 @@ namespace App\Support\Billing;
 
 final class CheckoutConversionData
 {
+    private const SETTLED_PAYMENT_STATUSES = [
+        'paid',
+        'no_payment_required',
+    ];
+
     /**
      * Build purchase conversion payload from a Stripe Checkout Session.
      * Uses amount_total (amount collected) so trials report $0 instead of list price.
@@ -14,13 +19,21 @@ final class CheckoutConversionData
      */
     public static function fromSession(object|array $session, string $expectedCustomerId): ?array
     {
-        if (data_get($session, 'customer') !== $expectedCustomerId) {
+        $customer = data_get($session, 'customer');
+        $customerId = is_string($customer)
+            ? $customer
+            : data_get($customer, 'id');
+
+        if ($customerId !== $expectedCustomerId) {
             return null;
         }
 
         // Abandoned (open/expired) sessions of the account's own customer are
         // not purchases — only a completed checkout may fire purchase tracking.
-        if (data_get($session, 'status') !== 'complete') {
+        if (
+            data_get($session, 'status') !== 'complete'
+            || ! self::hasSettledPayment($session)
+        ) {
             return null;
         }
 
@@ -37,5 +50,14 @@ final class CheckoutConversionData
             'currency' => strtoupper((string) $currency),
             'transaction_id' => (string) $transactionId,
         ];
+    }
+
+    public static function hasSettledPayment(object|array $session): bool
+    {
+        return in_array(
+            data_get($session, 'payment_status'),
+            self::SETTLED_PAYMENT_STATUSES,
+            true,
+        );
     }
 }

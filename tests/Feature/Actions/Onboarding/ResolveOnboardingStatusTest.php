@@ -105,11 +105,12 @@ test('captures each completed step once without re-firing later', function () {
     Carbon::setTestNow('2026-07-24 12:00:00');
     Bus::fake();
 
-    $cacheKey = "onboarding_step:{$this->user->account_id}:social_connected";
-    Cache::forget($cacheKey);
+    $dedupeKey = "onboarding:step:{$this->user->account_id}:social_connected";
+    Cache::forget(SendEvent::deliveredKey($dedupeKey));
     SocialAccount::factory()->create(['workspace_id' => $this->workspace->id]);
 
     app(ResolveOnboardingStatus::class)->syncProgress($this->user);
+    Cache::put(SendEvent::deliveredKey($dedupeKey), true);
     app(ResolveOnboardingStatus::class)->syncProgress($this->user);
 
     Bus::assertDispatchedTimes(SendEvent::class, 1);
@@ -624,4 +625,24 @@ test('connecting the mcp step after skipping it prefers Complete over Skipped', 
         && ! $status['mcp_connected'];
 
     expect($showSkippedBadge)->toBeFalse();
+});
+
+test('connecting mcp after a skipped step completed onboarding replaces the skipped status', function () {
+    SocialAccount::withoutEvents(fn () => SocialAccount::factory()->create([
+        'workspace_id' => $this->workspace->id,
+    ]));
+    Post::withoutEvents(fn () => Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+    ]));
+
+    expect(app(ResolveOnboardingStatus::class)->skipStep($this->user, 'mcp'))->toBeTrue()
+        ->and($this->user->account->fresh()->onboarding_completed_at)->not->toBeNull();
+
+    mcpAccessToken($this->user, mcpOauthClient());
+
+    $status = app(ResolveOnboardingStatus::class)->handle($this->user->fresh());
+
+    expect($status['mcp_connected'])->toBeTrue()
+        ->and($status['skipped_steps'])->toBe([]);
 });

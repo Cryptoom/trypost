@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\App;
 
+use App\Actions\Onboarding\ResolveOnboardingStatus;
 use App\Http\Requests\App\Billing\AcknowledgeCheckoutPurchaseRequest;
 use App\Models\Account;
 use App\Support\Billing\CheckoutPurchaseTracker;
@@ -18,6 +19,7 @@ class BillingController extends Controller
 {
     public function __construct(
         private readonly CheckoutPurchaseTracker $checkoutPurchaseTracker,
+        private readonly ResolveOnboardingStatus $resolveOnboardingStatus,
     ) {}
 
     public function subscribe(): RedirectResponse
@@ -38,12 +40,13 @@ class BillingController extends Controller
         // Verified purchase conversion for ad/analytics purchase events
         // (PostHog + Meta/Google via GTM) — not a Stripe pixel. Stripe only
         // proves the Checkout Session belongs to this account. Payload is
-        // re-delivered until the client acknowledges (or grace expires).
+        // re-delivered until the client acknowledges it.
         $conversion = null;
         $conversionResolved = true;
 
         if (
             $account !== null
+            && $user->isAccountOwner()
             && is_string($sessionId)
             && $sessionId !== ''
         ) {
@@ -52,12 +55,21 @@ class BillingController extends Controller
             $conversionResolved = (bool) data_get($resolved, 'conversionResolved', true);
         }
 
+        $subscriptionActive = $account !== null
+            && $account->subscribed(Account::SUBSCRIPTION_NAME);
+        $redirectToOnboarding = $account !== null
+            && $user->isAccountOwner()
+            && $account->onboarding_completed_at === null
+            && $account->onboarding_dismissed_at === null;
+
+        if ($subscriptionActive && $redirectToOnboarding) {
+            $status = $this->resolveOnboardingStatus->syncProgress($user);
+            $redirectToOnboarding = (bool) data_get($status, 'show_residual', true);
+        }
+
         return Inertia::render('billing/Processing', [
-            'subscriptionActive' => $account && $account->subscribed(Account::SUBSCRIPTION_NAME),
-            'redirectToOnboarding' => $account !== null
-                && $user->isAccountOwner()
-                && $account->onboarding_completed_at === null
-                && $account->onboarding_dismissed_at === null,
+            'subscriptionActive' => $subscriptionActive,
+            'redirectToOnboarding' => $redirectToOnboarding,
             'persona' => $user->persona?->value,
             'conversion' => $conversion,
             'conversionResolved' => $conversionResolved,

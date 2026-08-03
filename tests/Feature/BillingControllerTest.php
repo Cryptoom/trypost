@@ -5,6 +5,8 @@ declare(strict_types=1);
 use App\Enums\UserWorkspace\Role;
 use App\Models\Account;
 use App\Models\Plan;
+use App\Models\Post;
+use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
 use Stripe\ApiRequestor;
@@ -182,6 +184,35 @@ test('billing processing skips onboarding when dismissed', function () {
         ->assertInertia(fn ($page) => $page->where('redirectToOnboarding', false));
 });
 
+test('billing processing completes already satisfied onboarding before redirecting', function () {
+    config(['trypost.self_hosted' => false]);
+    $this->account->subscriptions()->create([
+        'type' => Account::SUBSCRIPTION_NAME,
+        'stripe_id' => 'sub_test_'.fake()->uuid(),
+        'stripe_status' => 'active',
+        'stripe_price' => 'price_test',
+        'quantity' => 1,
+    ]);
+    mcpAccessToken($this->user, mcpOauthClient());
+    SocialAccount::withoutEvents(fn () => SocialAccount::factory()->create([
+        'workspace_id' => $this->workspace->id,
+    ]));
+    Post::withoutEvents(fn () => Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+    ]));
+
+    $this->actingAs($this->user->fresh())
+        ->get(route('app.billing.processing'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('subscriptionActive', true)
+            ->where('redirectToOnboarding', false)
+        );
+
+    expect($this->account->fresh()->onboarding_completed_at)->not->toBeNull();
+});
+
 test('billing processing re-delivers conversion until the client acknowledges', function () {
     config(['trypost.self_hosted' => false]);
 
@@ -192,6 +223,7 @@ test('billing processing re-delivers conversion until the client acknowledges', 
             'id' => $sessionId,
             'customer' => 'cus_test_123',
             'status' => 'complete',
+            'payment_status' => 'paid',
             'amount_total' => 1000,
             'currency' => 'usd',
         ],
@@ -232,6 +264,53 @@ test('billing processing re-delivers conversion until the client acknowledges', 
         );
 });
 
+test('only the account owner can acknowledge checkout purchase tracking', function () {
+    config(['trypost.self_hosted' => false]);
+
+    $sessionId = 'cs_test_'.fake()->uuid();
+    $this->account->forceFill(['stripe_id' => 'cus_test_123'])->save();
+    fakeStripeHttp([[
+        'body' => [
+            'id' => $sessionId,
+            'customer' => 'cus_test_123',
+            'status' => 'complete',
+            'payment_status' => 'paid',
+            'amount_total' => 1000,
+            'currency' => 'usd',
+        ],
+        'status' => 200,
+    ]]);
+
+    $this->actingAs($this->user->fresh())
+        ->get(route('app.billing.processing', ['session_id' => $sessionId]))
+        ->assertOk();
+
+    $member = User::factory()->create([
+        'account_id' => $this->account->id,
+        'current_workspace_id' => $this->workspace->id,
+    ]);
+    $this->workspace->members()->attach($member->id, ['role' => Role::Member->value]);
+
+    $this->actingAs($member->fresh())
+        ->get(route('app.billing.processing', ['session_id' => $sessionId]))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('conversion', null)
+            ->where('conversionResolved', true)
+        );
+
+    $this->actingAs($member->fresh())
+        ->post(route('app.billing.processing.acknowledge'), ['session_id' => $sessionId])
+        ->assertForbidden();
+
+    $this->actingAs($this->user->fresh())
+        ->get(route('app.billing.processing', ['session_id' => $sessionId]))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('conversion.transaction_id', $sessionId)
+        );
+});
+
 test('billing processing does not convert a session owned by another customer', function () {
     config(['trypost.self_hosted' => false]);
 
@@ -242,6 +321,7 @@ test('billing processing does not convert a session owned by another customer', 
             'id' => $sessionId,
             'customer' => 'cus_someone_else',
             'status' => 'complete',
+            'payment_status' => 'paid',
             'amount_total' => 1000,
             'currency' => 'usd',
         ],
@@ -317,6 +397,7 @@ test('billing processing retries an open checkout session until it completes', f
                 'id' => $sessionId,
                 'customer' => 'cus_test_123',
                 'status' => 'complete',
+                'payment_status' => 'paid',
                 'amount_total' => 1000,
                 'currency' => 'usd',
             ],
@@ -361,6 +442,7 @@ test('billing processing retries purchase verification after a transient stripe 
                 'id' => $sessionId,
                 'customer' => 'cus_test_123',
                 'status' => 'complete',
+                'payment_status' => 'paid',
                 'amount_total' => 1000,
                 'currency' => 'usd',
             ],
@@ -430,6 +512,7 @@ test('billing processing resolves without conversion when complete session paylo
             'id' => $sessionId,
             'customer' => 'cus_test_123',
             'status' => 'complete',
+            'payment_status' => 'paid',
             // Missing amount_total — CheckoutConversionData returns null.
             'currency' => 'usd',
         ],
@@ -514,6 +597,7 @@ test('billing processing does not let another account burn the buyers checkout s
             'id' => $sessionId,
             'customer' => 'cus_test_123',
             'status' => 'complete',
+            'payment_status' => 'paid',
             'amount_total' => 1000,
             'currency' => 'usd',
         ],

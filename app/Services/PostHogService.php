@@ -6,7 +6,10 @@ namespace App\Services;
 
 use App\Jobs\PostHog\SendEvent;
 use App\Models\Account;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
+use Throwable;
 
 class PostHogService
 {
@@ -19,9 +22,17 @@ class PostHogService
     /**
      * @param  array<string, mixed>  $properties
      */
-    public function capture(string $distinctId, string $event, array $properties = [], ?Account $account = null): void
-    {
-        if (! self::isEnabled()) {
+    public function capture(
+        string $distinctId,
+        string $event,
+        array $properties = [],
+        ?Account $account = null,
+        ?string $dedupeKey = null,
+    ): void {
+        if (
+            ! self::isEnabled()
+            || ($dedupeKey !== null && Cache::has(SendEvent::deliveredKey($dedupeKey)))
+        ) {
             return;
         }
 
@@ -29,6 +40,8 @@ class PostHogService
             'distinctId' => $distinctId,
             'event' => $event,
             'properties' => $properties,
+            'uuid' => (string) Str::uuid(),
+            'timestamp' => now()->toIso8601String(),
         ];
 
         if ($account) {
@@ -37,7 +50,7 @@ class PostHogService
             $payload['properties']['plan'] = $account->plan?->name;
         }
 
-        $this->dispatch('capture', $payload);
+        $this->dispatch('capture', $payload, $dedupeKey);
     }
 
     /**
@@ -74,11 +87,11 @@ class PostHogService
     /**
      * @param  array<string, mixed>  $payload
      */
-    private function dispatch(string $method, array $payload): void
+    private function dispatch(string $method, array $payload, ?string $dedupeKey = null): void
     {
         try {
-            SendEvent::dispatch($method, $payload);
-        } catch (\Throwable $e) {
+            SendEvent::dispatch($method, $payload, $dedupeKey);
+        } catch (Throwable $e) {
             Log::warning('PostHogService: failed to dispatch event', ['method' => $method, 'error' => $e->getMessage()]);
         }
     }

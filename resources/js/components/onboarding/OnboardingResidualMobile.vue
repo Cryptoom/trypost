@@ -8,7 +8,6 @@ import { useWorkspaceEcho } from '@/composables/echo/useWorkspaceEcho';
 import { onboarding } from '@/routes/app';
 import type { OnboardingResidual } from '@/types';
 
-
 // Mobile counterpart of SidebarOnboarding: the sidebar sheet unmounts on
 // phones, so the residual strip lives in the app layout instead. Only active
 // on mobile — on desktop the sidebar instance owns Echo/poll.
@@ -79,6 +78,11 @@ watch(
             </span>
             <span
                 class="shrink-0 rounded-full border-2 border-foreground bg-card px-1.5 py-0.5 text-[10px] font-bold tabular-nums"
+                role="progressbar"
+                :aria-label="$t('sidebar.onboarding')"
+                :aria-valuemin="0"
+                :aria-valuemax="residual.total"
+                :aria-valuenow="residual.completed"
             >
                 {{ residual.completed }}/{{ residual.total }}
             </span>

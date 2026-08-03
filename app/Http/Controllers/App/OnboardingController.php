@@ -12,7 +12,6 @@ use App\Http\Resources\App\SocialAccountResource;
 use App\Services\PostHogService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -59,16 +58,14 @@ class OnboardingController extends Controller
             && $status['completed_at'] === null
             && $status['dismissed_at'] === null
             && $user->account !== null
-            && Cache::add(
-                "onboarding_viewed:{$user->account->id}",
-                true,
-                now()->addYears(100),
-            )
+            && $user->isAccountOwner()
+            && PostHogService::isEnabled()
         ) {
             $this->postHog->capture(
                 $user->id,
                 OnboardingEvent::Viewed->value,
                 account: $user->account,
+                dedupeKey: "onboarding:viewed:{$user->account->id}",
             );
         }
 

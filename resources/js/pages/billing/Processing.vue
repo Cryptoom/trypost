@@ -1,14 +1,13 @@
 <script setup lang="ts">
-import { Head, router, usePage, usePoll } from '@inertiajs/vue3';
+import { Head, router, useHttp, usePage, usePoll } from '@inertiajs/vue3';
 import { IconCheck, IconLoader2 } from '@tabler/icons-vue';
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 
 import { acknowledgePurchase } from '@/actions/App/Http/Controllers/App/BillingController';
 import { Button } from '@/components/ui/button';
 import { useTracking } from '@/composables/useTracking';
-import type { Auth } from '@/types';
-
 import { calendar, onboarding } from '@/routes/app';
+import type { Auth } from '@/types';
 
 const props = defineProps<{
     subscriptionActive: boolean;
@@ -18,6 +17,7 @@ const props = defineProps<{
         value: number;
         currency: string;
         transaction_id: string;
+        verified_at: string;
     } | null;
     /** False while Stripe verification is still retryable (open / transient). */
     conversionResolved: boolean;
@@ -39,71 +39,11 @@ const page = usePage();
 type Conversion = NonNullable<typeof props.conversion>;
 
 const sessionId = new URLSearchParams(window.location.search).get('session_id');
-const storageKey = sessionId ? `trypost.checkout.${sessionId}` : null;
-
-const storeSafely = (key: string, value: string): void => {
-    try {
-        localStorage.setItem(key, value);
-    } catch {
-        // Storage unavailable (private mode, quota) — purchase tracking simply
-        // falls back to server re-delivery until acknowledge/grace.
-    }
-};
-
-const readSafely = (key: string): string | null => {
-    try {
-        return localStorage.getItem(key);
-    } catch {
-        return null;
-    }
-};
-
-// Persist conversion while verification is still open so a mid-poll reload can
-// recover. Once the server says resolved+null, ignore LS for firing — the
-// server re-delivers until ack, and LS must not double-fire after tracked.
-const cachedConversion = ref<Conversion | null>(((): Conversion | null => {
-    if (!storageKey || readSafely(`${storageKey}.tracked`)) {
-        return null;
-    }
-
-    try {
-        const cached = readSafely(storageKey);
-
-        return cached ? (JSON.parse(cached) as Conversion) : null;
-    } catch {
-        return null;
-    }
-})());
-
-watch(
-    () => props.conversion,
-    (value) => {
-        if (!value || !storageKey) {
-            return;
-        }
-
-        storeSafely(storageKey, JSON.stringify(value));
-        cachedConversion.value = value;
-    },
-    { immediate: true },
-);
-
-const conversion = computed<Conversion | null>(() => {
-    if (props.conversion) {
-        return props.conversion;
-    }
-
-    // Server still retrying — allow LS recovery. Resolved+null means stop.
-    if (!props.conversionResolved) {
-        return cachedConversion.value;
-    }
-
-    return null;
-});
 
 const { stop } = usePoll(2000, {
     only: [
         'subscriptionActive',
+        'redirectToOnboarding',
         'auth',
         'conversion',
         'conversionResolved',
@@ -111,11 +51,15 @@ const { stop } = usePoll(2000, {
 });
 
 const { trackPurchase } = useTracking();
+const purchaseAcknowledgement = useHttp({
+    session_id: sessionId ?? '',
+});
 
 const finishing = ref(false);
 const takingLong = ref(false);
 const forceContinue = ref(false);
 let redirectTimer: ReturnType<typeof setTimeout> | null = null;
+let acknowledgementFallbackTimer: ReturnType<typeof setTimeout> | null = null;
 let slowNoticeTimer: ReturnType<typeof setTimeout> | null = null;
 let forceContinueTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -128,59 +72,58 @@ const authPlan = computed(
     () => (page.props.auth as Auth | undefined)?.plan ?? null,
 );
 
-const acknowledgeIfNeeded = (): void => {
-    if (!sessionId) {
+const firePurchaseTracking = (
+    plan: { name: string; interval: string } | null,
+): void => {
+    const conversion = props.conversion as Conversion | null | undefined;
+
+    if (!conversion) {
         return;
     }
 
-    router.post(
-        acknowledgePurchase.url(),
-        { session_id: sessionId },
-        {
-            preserveState: true,
-            preserveScroll: true,
-        },
-    );
+    trackPurchase(plan, conversion, props.persona ?? null);
 };
 
-const firePurchaseTracking = (plan: {
-    name: string;
-    interval: string;
-}): void => {
-    const trackedKey = storageKey ? `${storageKey}.tracked` : null;
-
-    if (!conversion.value || (trackedKey && readSafely(trackedKey))) {
-        acknowledgeIfNeeded();
+const finishAfterDeliveryWindow = (): void => {
+    if (!sessionId || !props.conversion) {
+        goNext();
 
         return;
     }
 
-    // Mark tracked before side effects so a reload/second tab cannot double-fire.
-    if (trackedKey) {
-        storeSafely(trackedKey, '1');
-    }
+    let navigated = false;
+    const navigateOnce = () => {
+        if (navigated) {
+            return;
+        }
 
-    trackPurchase(plan, conversion.value, props.persona ?? null);
-    acknowledgeIfNeeded();
+        navigated = true;
+
+        if (acknowledgementFallbackTimer) {
+            clearTimeout(acknowledgementFallbackTimer);
+            acknowledgementFallbackTimer = null;
+        }
+
+        goNext();
+    };
+
+    acknowledgementFallbackTimer = setTimeout(navigateOnce, REDIRECT_DELAY_MS);
+    void purchaseAcknowledgement.post(acknowledgePurchase.url(), {
+        onSuccess: navigateOnce,
+    });
 };
 
-// Fires purchase tracking exactly once for a real checkout. Gated on verified
-// conversion (server re-delivers until ack). Wait for auth.plan AND
-// conversionResolved unless the force-continue escape is active.
+// A verified conversion is re-delivered by the server until this client fires
+// the transaction event with stable provider IDs and acknowledges it.
 const completePurchase = (options: { force?: boolean } = {}) => {
+    const force = options.force === true || forceContinue.value;
+
     if (finishing.value || !props.subscriptionActive) {
         return;
     }
 
-    const force = options.force === true || forceContinue.value;
-    const plan = authPlan.value;
-
     if (!force) {
-        if (!plan) {
-            return;
-        }
-
-        if (!props.conversionResolved) {
+        if (!authPlan.value || !props.conversionResolved) {
             return;
         }
     }
@@ -200,40 +143,28 @@ const completePurchase = (options: { force?: boolean } = {}) => {
 
     takingLong.value = false;
 
-    firePurchaseTracking(
-        plan ?? {
-            name: 'Subscription',
-            interval: 'monthly',
-        },
-    );
+    firePurchaseTracking(authPlan.value);
 
-    redirectTimer = setTimeout(goNext, REDIRECT_DELAY_MS);
+    redirectTimer = setTimeout(finishAfterDeliveryWindow, REDIRECT_DELAY_MS);
 };
 
 const continueNow = () => {
-    forceContinue.value = true;
-
-    if (props.subscriptionActive) {
-        completePurchase({ force: true });
+    if (!props.subscriptionActive) {
+        router.reload({
+            only: [
+                'subscriptionActive',
+                'redirectToOnboarding',
+                'auth',
+                'conversion',
+                'conversionResolved',
+            ],
+        });
 
         return;
     }
 
-    // Webhook never flipped the sub — still let the user leave.
-    finishing.value = true;
-    stop();
-
-    if (slowNoticeTimer) {
-        clearTimeout(slowNoticeTimer);
-        slowNoticeTimer = null;
-    }
-
-    if (forceContinueTimer) {
-        clearTimeout(forceContinueTimer);
-        forceContinueTimer = null;
-    }
-
-    redirectTimer = setTimeout(goNext, REDIRECT_DELAY_MS);
+    forceContinue.value = true;
+    completePurchase({ force: true });
 };
 
 watch(
@@ -241,7 +172,7 @@ watch(
         () => props.subscriptionActive,
         authPlan,
         () => props.conversionResolved,
-        conversion,
+        () => props.conversion,
         forceContinue,
     ],
     () => {
@@ -265,8 +196,6 @@ onMounted(() => {
             forceContinue.value = true;
             completePurchase({ force: true });
         } else if (!finishing.value) {
-            // Sub never flipped — still offer the button via takingLong UI.
-            forceContinue.value = true;
             takingLong.value = true;
         }
     }, FORCE_CONTINUE_MS);
@@ -275,6 +204,10 @@ onMounted(() => {
 onUnmounted(() => {
     if (redirectTimer) {
         clearTimeout(redirectTimer);
+    }
+
+    if (acknowledgementFallbackTimer) {
+        clearTimeout(acknowledgementFallbackTimer);
     }
 
     if (slowNoticeTimer) {
@@ -373,7 +306,7 @@ onUnmounted(() => {
                         class="size-8 animate-spin text-foreground motion-reduce:animate-none"
                     />
                 </div>
-                <div>
+                <div role="status" aria-live="polite">
                     <h2
                         class="text-2xl font-normal tracking-tight text-foreground"
                         style="font-family: var(--font-display)"
@@ -401,7 +334,11 @@ onUnmounted(() => {
                     data-testid="billing-processing-continue"
                     @click="continueNow"
                 >
-                    {{ $t('billing.processing.continue') }}
+                    {{
+                        subscriptionActive
+                            ? $t('billing.processing.continue')
+                            : $t('billing.processing.retry')
+                    }}
                 </Button>
             </div>
         </div>
