@@ -15,12 +15,12 @@ function createApiKeyApiToken(array $overrides = []): array
 test('list api keys', function () {
     $result = createApiKeyApiToken();
 
-    // Create two more tokens for the same user/workspace.
-    AccessToken::factory()->count(2)->state([
-        'user_id' => $result['user']->id,
-        'workspace_id' => $result['workspace']->id,
-        'revoked' => false,
-    ])->create();
+    foreach (['Second', 'Third'] as $name) {
+        $token = $result['user']->createToken($name)->token;
+        AccessToken::query()->findOrFail($token->id)
+            ->forceFill(['workspace_id' => $result['workspace']->id])
+            ->saveQuietly();
+    }
 
     $response = $this->withHeaders([
         'Authorization' => 'Bearer '.$result['plain_token'],
@@ -30,9 +30,35 @@ test('list api keys', function () {
     );
 
     $response->assertOk();
-    // 1 from auth + 2 created + ? we may also need to ensure factory has client id
     $response->assertJsonCount(3);
-})->skip('AccessToken factory not available; covered by app-level ApiKeyControllerTest.');
+});
+
+test('list api keys excludes revoked and other-workspace tokens', function () {
+    $result = createApiKeyApiToken();
+    $revoked = $result['user']->createToken('Revoked')->token;
+    AccessToken::query()->findOrFail($revoked->id)
+        ->forceFill([
+            'workspace_id' => $result['workspace']->id,
+            'revoked' => true,
+        ])
+        ->saveQuietly();
+
+    $otherWorkspace = Workspace::factory()->create([
+        'account_id' => $result['user']->account_id,
+        'user_id' => $result['user']->id,
+    ]);
+    $other = $result['user']->createToken('Other workspace')->token;
+    AccessToken::query()->findOrFail($other->id)
+        ->forceFill(['workspace_id' => $otherWorkspace->id])
+        ->saveQuietly();
+
+    $this->withHeaders(['Authorization' => 'Bearer '.$result['plain_token']])
+        ->getJson(route('api.api-keys.index'))
+        ->assertOk()
+        ->assertJsonCount(1)
+        ->assertJsonMissing(['id' => $revoked->id])
+        ->assertJsonMissing(['id' => $other->id]);
+});
 
 test('create api key returns plain token', function () {
     $result = createApiKeyApiToken();
@@ -135,6 +161,20 @@ it('validates api key expires_at must be future date', function () {
         ->postJson(route('api.api-keys.store'), [
             'name' => 'Test Key',
             'expires_at' => '2020-01-01',
+        ])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['expires_at']);
+});
+
+it('validates api key expires_at cannot exceed the configured lifetime', function () {
+    $result = createApiKeyApiToken();
+
+    $this->withHeaders(['Authorization' => 'Bearer '.$result['plain_token']])
+        ->postJson(route('api.api-keys.store'), [
+            'name' => 'Too Long',
+            'expires_at' => now()
+                ->addDays((int) config('trypost.api_keys.expiration_days') + 1)
+                ->toDateString(),
         ])
         ->assertUnprocessable()
         ->assertJsonValidationErrors(['expires_at']);

@@ -44,7 +44,7 @@ jobs:
 
       - name: Check changed frontend files
         run: |
-          mapfile -t resources < <(git diff --name-only --diff-filter=ACM "$DIFF_BASE"...HEAD | rg '^resources/' || true)
+          mapfile -t resources < <(git diff --name-only --diff-filter=ACMR "$DIFF_BASE"...HEAD | rg '^resources/' || true)
           if [ "${#resources[@]}" -gt 0 ]; then
             npx prettier --check "${resources[@]}"
           fi

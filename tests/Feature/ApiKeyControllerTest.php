@@ -96,6 +96,17 @@ it('validates name is required', function () {
         ->assertSessionHasErrors('name');
 });
 
+it('rejects an expiration beyond the configured token lifetime', function () {
+    $this->actingAs($this->user)
+        ->post(route('app.api-keys.store'), [
+            'name' => 'Too Long',
+            'expires_at' => now()
+                ->addDays((int) config('trypost.api_keys.expiration_days') + 1)
+                ->toDateString(),
+        ])
+        ->assertSessionHasErrors('expires_at');
+});
+
 it('revokes an api key', function () {
     $token = makeWorkspaceToken($this->user, $this->workspace);
 

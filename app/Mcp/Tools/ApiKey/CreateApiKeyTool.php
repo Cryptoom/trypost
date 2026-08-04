@@ -26,7 +26,14 @@ class CreateApiKeyTool extends Tool
 
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'expires_at' => ['nullable', 'date', 'after:now'],
+            'expires_at' => [
+                'nullable',
+                'date',
+                'after:now',
+                'before_or_equal:'.now()
+                    ->addDays(max(1, (int) config('trypost.api_keys.expiration_days')))
+                    ->toIso8601String(),
+            ],
         ]);
 
         $result = $user->createToken(data_get($validated, 'name'));

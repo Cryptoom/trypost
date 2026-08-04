@@ -53,7 +53,14 @@ class ApiKeyController extends Controller
 
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'expires_at' => ['nullable', 'date', 'after:today'],
+            'expires_at' => [
+                'nullable',
+                'date',
+                'after:today',
+                'before_or_equal:'.now()
+                    ->addDays(max(1, (int) config('trypost.api_keys.expiration_days')))
+                    ->toDateString(),
+            ],
         ]);
 
         $result = $request->user()->createToken($validated['name']);

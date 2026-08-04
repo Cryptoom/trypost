@@ -172,7 +172,7 @@ test('stamps every matching account through the chunked update', function () {
     Carbon::setTestNow('2026-07-29 12:00:00');
 
     $accounts = collect();
-    for ($i = 0; $i < 3; $i++) {
+    for ($i = 0; $i < 501; $i++) {
         $user = User::factory()->create();
         subscribeAccount($user->account);
         $accounts->push($user->account);

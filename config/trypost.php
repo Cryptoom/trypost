@@ -32,6 +32,10 @@ return [
         'allow_private_network' => (bool) env('TRYPOST_ALLOW_PRIVATE_NETWORK', false),
     ],
 
+    'api_keys' => [
+        'expiration_days' => (int) env('API_KEY_EXPIRATION_DAYS', 365),
+    ],
+
     /*
     |--------------------------------------------------------------------------
     | Billing

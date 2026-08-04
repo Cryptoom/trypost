@@ -7,6 +7,17 @@ cd /var/www/html
 
 TARGET="${TRYPOST_TARGET:-dev}"
 
+# One-off commands from `docker compose run app ...` must bypass the long-lived
+# application bootstrap and execute exactly as requested.
+if [ "$#" -gt 0 ]; then
+    exec "$@"
+fi
+
+if [ "${TARGET}" = "production" ] && [ -z "${APP_KEY:-}" ]; then
+    echo "[entrypoint] APP_KEY is required in production" >&2
+    exit 1
+fi
+
 # 1) Bootstrap .env from the Docker template on first dev boot. The bind-mount
 #    in dev hides /var/www/html/.env.docker.example, so prefer docker/ first.
 if [ "${TRYPOST_DOCKER_BOOTSTRAP:-0}" = "1" ] && [ ! -f .env ]; then
@@ -65,7 +76,7 @@ done
 
 # 7) Run migrations (graceful: succeeds even when nothing to migrate).
 echo "[entrypoint] running migrations"
-php artisan migrate --force --graceful
+php artisan migrate --force
 
 # 8) storage:link if missing.
 if [ ! -L public/storage ]; then

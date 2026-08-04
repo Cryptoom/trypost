@@ -126,6 +126,17 @@ test('create api key rejects expires_at in the past', function () {
     $response->assertHasErrors();
 });
 
+test('create api key rejects expiration beyond the configured token lifetime', function () {
+    TryPostServer::actingAs($this->user)
+        ->tool(CreateApiKeyTool::class, [
+            'name' => 'Too Long',
+            'expires_at' => now()
+                ->addDays((int) config('trypost.api_keys.expiration_days') + 1)
+                ->toIso8601String(),
+        ])
+        ->assertHasErrors();
+});
+
 test('delete api key marks revoked', function () {
     $token = attachToken($this->user, $this->workspace);
 

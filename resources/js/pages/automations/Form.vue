@@ -26,6 +26,8 @@ import '@vue-flow/core/dist/theme-default.css';
 import AutomationConnectionLine from '@/components/automations/AutomationConnectionLine.vue';
 import AutomationHeader from '@/components/automations/AutomationHeader.vue';
 import AutomationMobileBackHeader from '@/components/automations/AutomationMobileBackHeader.vue';
+// eslint-disable-next-line import/order
+import { firstConfigIssue } from '@/components/automations/config-validation';
 import ConditionNodeConfig from '@/components/automations/config/ConditionNodeConfig.vue';
 import DelayNodeConfig from '@/components/automations/config/DelayNodeConfig.vue';
 import EndNodeConfig from '@/components/automations/config/EndNodeConfig.vue';
@@ -35,7 +37,6 @@ import HttpRequestNodeConfig from '@/components/automations/config/HttpRequestNo
 import PublishNodeConfig from '@/components/automations/config/PublishNodeConfig.vue';
 import TriggerNodeConfig from '@/components/automations/config/TriggerNodeConfig.vue';
 import WebhookNodeConfig from '@/components/automations/config/WebhookNodeConfig.vue';
-import { firstConfigIssue } from '@/components/automations/config-validation';
 import EditorSidebar from '@/components/automations/EditorSidebar.vue';
 import ConditionNode from '@/components/automations/nodes/ConditionNode.vue';
 import DelayNode from '@/components/automations/nodes/DelayNode.vue';

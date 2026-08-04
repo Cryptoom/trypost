@@ -107,6 +107,9 @@ class AppServiceProvider extends ServiceProvider
         }
 
         Passport::useTokenModel(AccessToken::class);
+        Passport::personalAccessTokensExpireIn(
+            now()->addDays(max(1, (int) config('trypost.api_keys.expiration_days'))),
+        );
 
         Passport::tokensCan([
             'mcp:use' => 'Use MCP server',
@@ -165,6 +168,11 @@ class AppServiceProvider extends ServiceProvider
 
             return Limit::perMinute(60)->by($request->workspace?->id ?: $request->ip());
         });
+
+        RateLimiter::for(
+            'mcp-oauth-registration',
+            fn (Request $request): Limit => Limit::perMinute(30)->by($request->ip()),
+        );
 
         // Signed media uploads (api.uploads.store). MCP hosts share egress IPs
         // across tenants — key by workspace_id from the signed URL, with a high
