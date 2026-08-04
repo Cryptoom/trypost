@@ -147,6 +147,48 @@ test('create api key omits expiration when not provided', function () {
         ->expires_at)->toBeNull();
 });
 
+test('create api key stores expiration at end of day', function () {
+    $expiresAt = now()->addDays(14)->startOfDay();
+
+    $response = TryPostServer::actingAs($this->user)
+        ->tool(CreateApiKeyTool::class, [
+            'name' => 'Expiring Key',
+            'expires_at' => $expiresAt->toDateString(),
+        ]);
+
+    $response->assertOk();
+
+    $token = AccessToken::query()
+        ->where('user_id', $this->user->id)
+        ->where('workspace_id', $this->workspace->id)
+        ->where('name', 'Expiring Key')
+        ->firstOrFail();
+
+    expect($token->expires_at->toDateString())->toBe($expiresAt->toDateString())
+        ->and($token->expires_at->format('H:i:s'))->toBe('23:59:59');
+});
+
+test('create api key allows an expiration of today', function () {
+    $today = now()->toDateString();
+
+    $response = TryPostServer::actingAs($this->user)
+        ->tool(CreateApiKeyTool::class, [
+            'name' => 'Expires Today',
+            'expires_at' => $today,
+        ]);
+
+    $response->assertOk();
+
+    $token = AccessToken::query()
+        ->where('user_id', $this->user->id)
+        ->where('workspace_id', $this->workspace->id)
+        ->where('name', 'Expires Today')
+        ->firstOrFail();
+
+    expect($token->expires_at->toDateString())->toBe($today)
+        ->and($token->expires_at->format('H:i:s'))->toBe('23:59:59');
+});
+
 test('delete api key marks revoked', function () {
     $token = attachToken($this->user, $this->workspace);
 

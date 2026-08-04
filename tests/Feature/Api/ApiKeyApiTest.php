@@ -179,6 +179,40 @@ it('creates an api key without expiration', function () {
         ->and(AccessToken::query()->findOrFail($response->json('token.id'))->expires_at)->toBeNull();
 });
 
+it('creates an api key with expiration at end of day', function () {
+    $result = createApiKeyApiToken();
+    $expiresAt = now()->addDays(14)->startOfDay();
+
+    $response = $this->withHeaders(['Authorization' => 'Bearer '.$result['plain_token']])
+        ->postJson(route('api.api-keys.store'), [
+            'name' => 'Expiring Key',
+            'expires_at' => $expiresAt->toDateString(),
+        ])
+        ->assertCreated();
+
+    $token = AccessToken::query()->findOrFail($response->json('token.id'));
+
+    expect($token->expires_at->toDateString())->toBe($expiresAt->toDateString())
+        ->and($token->expires_at->format('H:i:s'))->toBe('23:59:59');
+});
+
+it('allows an api key expiration of today', function () {
+    $result = createApiKeyApiToken();
+    $today = now()->toDateString();
+
+    $response = $this->withHeaders(['Authorization' => 'Bearer '.$result['plain_token']])
+        ->postJson(route('api.api-keys.store'), [
+            'name' => 'Expires Today',
+            'expires_at' => $today,
+        ])
+        ->assertCreated();
+
+    $token = AccessToken::query()->findOrFail($response->json('token.id'));
+
+    expect($token->expires_at->toDateString())->toBe($today)
+        ->and($token->expires_at->format('H:i:s'))->toBe('23:59:59');
+});
+
 it('validates api key name max length', function () {
     $result = createApiKeyApiToken();
 

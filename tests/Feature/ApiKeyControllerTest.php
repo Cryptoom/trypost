@@ -109,6 +109,25 @@ it('rejects an expiration in the past', function () {
         ->assertSessionHasErrors('expires_at');
 });
 
+it('allows an expiration of today', function () {
+    $today = now()->toDateString();
+
+    $this->actingAs($this->user)
+        ->post(route('app.api-keys.store'), [
+            'name' => 'Expires Today',
+            'expires_at' => $today,
+        ])
+        ->assertRedirect();
+
+    $token = AccessToken::where('user_id', $this->user->id)
+        ->where('workspace_id', $this->workspace->id)
+        ->where('name', 'Expires Today')
+        ->firstOrFail();
+
+    expect($token->expires_at->toDateString())->toBe($today)
+        ->and($token->expires_at->format('H:i:s'))->toBe('23:59:59');
+});
+
 it('revokes an api key', function () {
     $token = makeWorkspaceToken($this->user, $this->workspace);
 
