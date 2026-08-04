@@ -91,7 +91,7 @@ const firePurchaseTracking = (
     trackPurchase(plan, conversion, props.persona ?? null);
 };
 
-const finishAfterDeliveryWindow = (): void => {
+const finishAfterDeliveryWindow = async (): Promise<void> => {
     if (!sessionId || !props.conversion) {
         goNext();
 
@@ -115,9 +115,12 @@ const finishAfterDeliveryWindow = (): void => {
     };
 
     acknowledgementFallbackTimer = setTimeout(navigateOnce, REDIRECT_DELAY_MS);
-    void purchaseAcknowledgement.post(acknowledgePurchase.url(), {
-        onSuccess: navigateOnce,
-    });
+
+    try {
+        await purchaseAcknowledgement.post(acknowledgePurchase.url());
+    } finally {
+        navigateOnce();
+    }
 };
 
 // A verified conversion is re-delivered by the server until this client fires
@@ -153,7 +156,10 @@ const completePurchase = (options: { force?: boolean } = {}) => {
 
     firePurchaseTracking(authPlan.value);
 
-    redirectTimer = setTimeout(finishAfterDeliveryWindow, REDIRECT_DELAY_MS);
+    redirectTimer = setTimeout(
+        () => void finishAfterDeliveryWindow(),
+        REDIRECT_DELAY_MS,
+    );
 };
 
 const continueNow = () => {
