@@ -7,6 +7,7 @@ use App\Enums\SocialAccount\Status;
 use App\Exceptions\SocialAccount\NetworkAlreadyConnectedException;
 use App\Models\SocialAccount;
 use App\Models\Workspace;
+use Illuminate\Database\QueryException;
 
 beforeEach(function () {
     config()->set('trypost.self_hosted', false);
@@ -25,6 +26,24 @@ test('blocks a second account of the same network', function () {
         'platform' => Platform::Instagram,
         'platform_user_id' => 'ig-b',
     ]))->toThrow(NetworkAlreadyConnectedException::class);
+});
+
+test('database constraint blocks concurrent duplicate network inserts', function () {
+    SocialAccount::withoutEvents(fn () => SocialAccount::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'platform' => Platform::Instagram,
+        'network' => Platform::Instagram->network(),
+        'platform_user_id' => 'ig-a',
+    ]));
+
+    expect(fn () => SocialAccount::withoutEvents(
+        fn () => SocialAccount::factory()->create([
+            'workspace_id' => $this->workspace->id,
+            'platform' => Platform::InstagramFacebook,
+            'network' => Platform::InstagramFacebook->network(),
+            'platform_user_id' => 'ig-b',
+        ]),
+    ))->toThrow(QueryException::class);
 });
 
 test('collapses platform variants into one network', function () {

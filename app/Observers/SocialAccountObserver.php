@@ -12,6 +12,7 @@ use App\Jobs\PostHog\SyncAccountUsage;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Services\PostHogService;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 
 class SocialAccountObserver
@@ -25,24 +26,12 @@ class SocialAccountObserver
      */
     public function creating(SocialAccount $socialAccount): void
     {
-        if (config('trypost.self_hosted')) {
-            return;
-        }
+        $this->prepareNetwork($socialAccount);
+    }
 
-        $platform = $socialAccount->platform;
-
-        if (! $platform instanceof Platform) {
-            return;
-        }
-
-        $conflict = SocialAccount::query()
-            ->where('workspace_id', $socialAccount->workspace_id)
-            ->whereIn('platform', $platform->networkPlatformValues())
-            ->exists();
-
-        if ($conflict) {
-            throw new NetworkAlreadyConnectedException($platform);
-        }
+    public function updating(SocialAccount $socialAccount): void
+    {
+        $this->prepareNetwork($socialAccount);
     }
 
     public function created(SocialAccount $socialAccount): void
@@ -150,6 +139,36 @@ class SocialAccountObserver
         }
 
         return $user;
+    }
+
+    private function prepareNetwork(SocialAccount $socialAccount): void
+    {
+        if (config('trypost.self_hosted')) {
+            $socialAccount->network = null;
+
+            return;
+        }
+
+        $platform = $socialAccount->platform;
+
+        if (! $platform instanceof Platform) {
+            return;
+        }
+
+        $socialAccount->network = $platform->network();
+
+        $conflict = SocialAccount::query()
+            ->where('workspace_id', $socialAccount->workspace_id)
+            ->where('network', $socialAccount->network)
+            ->when(
+                $socialAccount->exists,
+                fn (Builder $query): Builder => $query->whereKeyNot($socialAccount->id),
+            )
+            ->exists();
+
+        if ($conflict) {
+            throw new NetworkAlreadyConnectedException($platform);
+        }
     }
 
     private function syncUsage(SocialAccount $socialAccount): void

@@ -32,6 +32,7 @@ class SocialAccount extends Model
     protected $fillable = [
         'workspace_id',
         'platform',
+        'network',
         'platform_user_id',
         'username',
         'display_name',
