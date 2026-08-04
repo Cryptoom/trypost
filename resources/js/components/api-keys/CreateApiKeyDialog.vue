@@ -69,6 +69,11 @@ const onSuccess = () => {
                         name="token-expires"
                         v-model="expiresAt"
                         :show-time="false"
+                        :placeholder="
+                            trans(
+                                'settings.api_keys.create_dialog.expires_placeholder',
+                            )
+                        "
                     />
                     <input type="hidden" name="expires_at" :value="expiresAt" />
                     <InputError :message="errors.expires_at" />

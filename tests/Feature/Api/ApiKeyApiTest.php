@@ -166,18 +166,17 @@ it('validates api key expires_at must be future date', function () {
         ->assertJsonValidationErrors(['expires_at']);
 });
 
-it('validates api key expires_at cannot exceed the configured lifetime', function () {
+it('creates an api key without expiration', function () {
     $result = createApiKeyApiToken();
 
-    $this->withHeaders(['Authorization' => 'Bearer '.$result['plain_token']])
+    $response = $this->withHeaders(['Authorization' => 'Bearer '.$result['plain_token']])
         ->postJson(route('api.api-keys.store'), [
-            'name' => 'Too Long',
-            'expires_at' => now()
-                ->addDays((int) config('trypost.api_keys.expiration_days') + 1)
-                ->toDateString(),
+            'name' => 'Never Expires',
         ])
-        ->assertUnprocessable()
-        ->assertJsonValidationErrors(['expires_at']);
+        ->assertCreated();
+
+    expect($response->json('token.expires_at'))->toBeNull()
+        ->and(AccessToken::query()->findOrFail($response->json('token.id'))->expires_at)->toBeNull();
 });
 
 it('validates api key name max length', function () {

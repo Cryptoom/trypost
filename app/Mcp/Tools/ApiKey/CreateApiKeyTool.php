@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Mcp\Tools\ApiKey;
 
+use App\Actions\ApiKey\CreateApiKey;
 use App\Http\Resources\Api\ApiKeyResource;
-use App\Models\AccessToken;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
@@ -19,39 +19,22 @@ class CreateApiKeyTool extends Tool
     public function handle(Request $request): Response|ResponseFactory
     {
         $user = $request->user();
+        $workspace = $user->currentWorkspace;
 
-        if ($user->cannot('manageTeam', $user->currentWorkspace)) {
+        if ($workspace === null || $user->cannot('manageTeam', $workspace)) {
             return Response::error('Not authorized to manage API keys.');
         }
 
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'expires_at' => [
-                'nullable',
-                'date',
-                'after:now',
-                'before_or_equal:'.now()
-                    ->addDays(max(1, (int) config('trypost.api_keys.expiration_days')))
-                    ->toIso8601String(),
-            ],
+            'expires_at' => CreateApiKey::expiresAtRules(),
         ]);
 
-        $result = $user->createToken(data_get($validated, 'name'));
-
-        $token = AccessToken::find($result->token->id);
-        $attributes = [
-            'workspace_id' => $user->current_workspace_id,
-        ];
-
-        if ($expiresAt = data_get($validated, 'expires_at')) {
-            $attributes['expires_at'] = $expiresAt;
-        }
-
-        $token->forceFill($attributes)->saveQuietly();
+        $created = CreateApiKey::execute($user, $workspace, $validated);
 
         return Response::structured(array_merge(
-            (new ApiKeyResource($token))->resolve(),
-            ['token' => $result->accessToken],
+            (new ApiKeyResource($created['token']))->resolve(),
+            ['token' => $created['plain_token']],
         ));
     }
 
@@ -59,7 +42,7 @@ class CreateApiKeyTool extends Tool
     {
         return [
             'name' => $schema->string()->required()->description('A human-readable name to identify the key (e.g. "My integration").'),
-            'expires_at' => $schema->string()->description('Optional ISO 8601 expiration date (e.g. 2026-12-31). Must be in the future.'),
+            'expires_at' => $schema->string()->description('Optional expiration date (YYYY-MM-DD or ISO 8601). Omit for a key that never expires.'),
         ];
     }
 }

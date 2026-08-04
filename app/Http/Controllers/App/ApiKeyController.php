@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\App;
 
+use App\Actions\ApiKey\CreateApiKey;
+use App\Http\Requests\App\ApiKey\StoreApiKeyRequest;
 use App\Models\AccessToken;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -41,7 +43,7 @@ class ApiKeyController extends Controller
         ]);
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(StoreApiKeyRequest $request): RedirectResponse
     {
         $workspace = $request->user()->currentWorkspace;
 
@@ -51,33 +53,15 @@ class ApiKeyController extends Controller
 
         $this->authorize('manageTeam', $workspace);
 
-        $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'expires_at' => [
-                'nullable',
-                'date',
-                'after:today',
-                'before_or_equal:'.now()
-                    ->addDays(max(1, (int) config('trypost.api_keys.expiration_days')))
-                    ->toDateString(),
-            ],
-        ]);
-
-        $result = $request->user()->createToken($validated['name']);
-        $accessToken = AccessToken::find($result->token->id);
-        $attributes = [
-            'workspace_id' => $workspace->id,
-        ];
-
-        if ($expiresAt = data_get($validated, 'expires_at')) {
-            $attributes['expires_at'] = $expiresAt;
-        }
-
-        $accessToken->forceFill($attributes)->saveQuietly();
+        $created = CreateApiKey::execute(
+            $request->user(),
+            $workspace,
+            $request->validated(),
+        );
 
         return back()
             ->with('flash.success', __('settings.api_keys.flash.created'))
-            ->with('flash.plainToken', $result->accessToken);
+            ->with('flash.plainToken', $created['plain_token']);
     }
 
     public function destroy(Request $request, string $tokenId): RedirectResponse

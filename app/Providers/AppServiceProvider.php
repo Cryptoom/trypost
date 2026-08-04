@@ -107,9 +107,11 @@ class AppServiceProvider extends ServiceProvider
         }
 
         Passport::useTokenModel(AccessToken::class);
-        Passport::personalAccessTokensExpireIn(
-            now()->addDays(max(1, (int) config('trypost.api_keys.expiration_days'))),
-        );
+
+        // API keys may omit an application expiry ("never"). Passport still
+        // embeds a JWT `exp`, so keep that far ahead and enforce optional
+        // `oauth_access_tokens.expires_at` in LoadWorkspaceFromToken.
+        Passport::personalAccessTokensExpireIn(now()->addYears(100));
 
         Passport::tokensCan([
             'mcp:use' => 'Use MCP server',

@@ -54,7 +54,7 @@ it('creates an api key', function () {
     expect($tokens)->toHaveCount(1);
     expect($tokens->first()->name)->toBe('My API Key');
     expect($tokens->first()->revoked)->toBeFalse();
-    expect($tokens->first()->expires_at)->not->toBeNull();
+    expect($tokens->first()->expires_at)->toBeNull();
 });
 
 it('bootstraps the personal access client idempotently', function () {
@@ -76,10 +76,12 @@ it('bootstraps the personal access client idempotently', function () {
 });
 
 it('creates an api key with expiration', function () {
+    $expiresAt = now()->addDays(30)->startOfDay();
+
     $this->actingAs($this->user)
         ->post(route('app.api-keys.store'), [
             'name' => 'Expiring Key',
-            'expires_at' => now()->addDays(30)->format('Y-m-d'),
+            'expires_at' => $expiresAt->format('Y-m-d'),
         ])
         ->assertRedirect();
 
@@ -87,7 +89,9 @@ it('creates an api key with expiration', function () {
         ->where('workspace_id', $this->workspace->id)
         ->first();
 
-    expect($token->expires_at)->not->toBeNull();
+    expect($token->expires_at)->not->toBeNull()
+        ->and($token->expires_at->toDateString())->toBe($expiresAt->toDateString())
+        ->and($token->expires_at->format('H:i:s'))->toBe('23:59:59');
 });
 
 it('validates name is required', function () {
@@ -96,13 +100,11 @@ it('validates name is required', function () {
         ->assertSessionHasErrors('name');
 });
 
-it('rejects an expiration beyond the configured token lifetime', function () {
+it('rejects an expiration in the past', function () {
     $this->actingAs($this->user)
         ->post(route('app.api-keys.store'), [
-            'name' => 'Too Long',
-            'expires_at' => now()
-                ->addDays((int) config('trypost.api_keys.expiration_days') + 1)
-                ->toDateString(),
+            'name' => 'Past Key',
+            'expires_at' => now()->subDay()->toDateString(),
         ])
         ->assertSessionHasErrors('expires_at');
 });

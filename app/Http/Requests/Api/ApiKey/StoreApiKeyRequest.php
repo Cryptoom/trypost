@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Api\ApiKey;
 
+use App\Actions\ApiKey\CreateApiKey;
 use Illuminate\Foundation\Http\FormRequest;
 
 class StoreApiKeyRequest extends FormRequest
@@ -24,14 +25,7 @@ class StoreApiKeyRequest extends FormRequest
     {
         return [
             'name' => ['required', 'string', 'max:255'],
-            'expires_at' => [
-                'nullable',
-                'date',
-                'after:today',
-                'before_or_equal:'.now()
-                    ->addDays(max(1, (int) config('trypost.api_keys.expiration_days')))
-                    ->toDateString(),
-            ],
+            'expires_at' => CreateApiKey::expiresAtRules(),
         ];
     }
 }

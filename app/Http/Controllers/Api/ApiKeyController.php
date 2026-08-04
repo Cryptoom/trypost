@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api;
 
+use App\Actions\ApiKey\CreateApiKey;
 use App\Http\Requests\Api\ApiKey\StoreApiKeyRequest;
 use App\Http\Resources\Api\ApiKeyResource;
 use App\Models\AccessToken;
@@ -31,24 +32,16 @@ class ApiKeyController extends Controller
     {
         $workspace = $request->user()->currentWorkspace;
         $this->authorize('manageTeam', $workspace);
-        $validated = $request->validated();
 
-        $result = $request->user()->createToken($validated['name']);
-
-        $token = AccessToken::find($result->token->id);
-        $attributes = [
-            'workspace_id' => $workspace->id,
-        ];
-
-        if ($expiresAt = data_get($validated, 'expires_at')) {
-            $attributes['expires_at'] = $expiresAt;
-        }
-
-        $token->forceFill($attributes)->saveQuietly();
+        $created = CreateApiKey::execute(
+            $request->user(),
+            $workspace,
+            $request->validated(),
+        );
 
         return response()->json([
-            'token' => new ApiKeyResource($token->refresh()),
-            'plain_token' => $result->accessToken,
+            'token' => new ApiKeyResource($created['token']),
+            'plain_token' => $created['plain_token'],
         ], Response::HTTP_CREATED);
     }
 

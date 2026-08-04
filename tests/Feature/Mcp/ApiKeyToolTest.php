@@ -126,15 +126,25 @@ test('create api key rejects expires_at in the past', function () {
     $response->assertHasErrors();
 });
 
-test('create api key rejects expiration beyond the configured token lifetime', function () {
-    TryPostServer::actingAs($this->user)
+test('create api key omits expiration when not provided', function () {
+    $response = TryPostServer::actingAs($this->user)
         ->tool(CreateApiKeyTool::class, [
-            'name' => 'Too Long',
-            'expires_at' => now()
-                ->addDays((int) config('trypost.api_keys.expiration_days') + 1)
-                ->toIso8601String(),
-        ])
-        ->assertHasErrors();
+            'name' => 'Never Expires',
+        ]);
+
+    $response->assertOk()
+        ->assertStructuredContent(function (AssertableJson $json) {
+            $json->where('name', 'Never Expires')
+                ->where('expires_at', null)
+                ->etc();
+        });
+
+    expect(AccessToken::query()
+        ->where('user_id', $this->user->id)
+        ->where('workspace_id', $this->workspace->id)
+        ->where('name', 'Never Expires')
+        ->firstOrFail()
+        ->expires_at)->toBeNull();
 });
 
 test('delete api key marks revoked', function () {
