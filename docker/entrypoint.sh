@@ -84,16 +84,12 @@ if [ ! -L public/storage ]; then
     php artisan storage:link --force || true
 fi
 
-# 9) Passport keys on first boot. Default matches config/trypost.php
-# (SELF_HOSTED=true): keys live in their own persisted volume. Explicit
-# SELF_HOSTED=false keeps Passport's default storage/ path for SaaS images.
-PASSPORT_KEY_DIR="storage"
-if [ "${SELF_HOSTED:-true}" = "true" ]; then
-    PASSPORT_KEY_DIR="storage/passport"
-    mkdir -p "${PASSPORT_KEY_DIR}"
-fi
-
-if [ ! -f "${PASSPORT_KEY_DIR}/oauth-private.key" ] || [ ! -f "${PASSPORT_KEY_DIR}/oauth-public.key" ]; then
+# 9) Passport keys. Prefer PASSPORT_PRIVATE_KEY / PASSPORT_PUBLIC_KEY from
+# the environment (required for multi-node / load-balanced deploys). Fall
+# back to generating files under storage/ only when those env vars are unset.
+if [ -n "${PASSPORT_PRIVATE_KEY:-}" ] && [ -n "${PASSPORT_PUBLIC_KEY:-}" ]; then
+    echo "[entrypoint] using Passport keys from environment"
+elif [ ! -f storage/oauth-private.key ] || [ ! -f storage/oauth-public.key ]; then
     echo "[entrypoint] generating Passport keys"
     php artisan passport:keys --force
 fi

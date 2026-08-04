@@ -50,6 +50,13 @@ services:
       REVERB_PORT: "8080"
       REVERB_SCHEME: http
 
+      # ===== Passport (OAuth / API keys / MCP) =====
+      # Required on multi-node / load-balanced setups so every instance signs
+      # and verifies tokens with the same key pair. Paste the PEM contents
+      # (use \n for newlines), e.g. from `php artisan passport:keys` output.
+      # PASSPORT_PRIVATE_KEY: "-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----"
+      # PASSPORT_PUBLIC_KEY: "-----BEGIN PUBLIC KEY-----\n...\n-----END PUBLIC KEY-----"
+
       # ===== Storage =====
       # Default: local disk, persisted in the "storage" volume below.
       FILESYSTEM_DISK: public
@@ -109,7 +116,6 @@ services:
       - "8080:8080"   # Reverb WebSocket
     volumes:
       - storage:/var/www/html/storage/app
-      - passport-keys:/var/www/html/storage/passport
     depends_on:
       pgsql:
         condition: service_healthy
@@ -173,6 +179,5 @@ volumes:
   pgdata:
   redisdata:
   storage:
-  passport-keys:
   caddy-data:
   caddy-config:
