@@ -1,8 +1,12 @@
 import { captureEvent } from '@/posthog';
 
 const push = (data: Record<string, unknown>) => {
-    window.dataLayer = window.dataLayer || [];
-    window.dataLayer.push(data);
+    try {
+        window.dataLayer = window.dataLayer || [];
+        window.dataLayer.push(data);
+    } catch {
+        // Analytics must never break product flows.
+    }
 };
 
 export const useTracking = () => ({

@@ -6,6 +6,8 @@ use App\Models\User;
 use App\Support\Billing\CheckoutPurchaseTracker;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
+use Stripe\ApiRequestor;
+use Stripe\HttpClient\CurlClient;
 
 beforeEach(function () {
     config(['trypost.self_hosted' => false]);
@@ -14,6 +16,11 @@ beforeEach(function () {
     $this->account = $this->user->account;
     $this->account->forceFill(['stripe_id' => 'cus_test_123'])->save();
     $this->tracker = app(CheckoutPurchaseTracker::class);
+});
+
+afterEach(function () {
+    // The Stripe HTTP fake is a process-global static — never leak it.
+    ApiRequestor::setHttpClient(new CurlClient);
 });
 
 test('re-delivers purchase conversion until acknowledge', function () {

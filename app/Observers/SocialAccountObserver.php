@@ -166,9 +166,19 @@ class SocialAccountObserver
             )
             ->exists();
 
-        if ($conflict) {
-            throw new NetworkAlreadyConnectedException($platform);
+        if (! $conflict) {
+            return;
         }
+
+        // Legacy duplicates left with network=null by the backfill must not throw
+        // during token refresh / status updates — keep the null and move on.
+        if ($socialAccount->exists) {
+            $socialAccount->network = $socialAccount->getRawOriginal('network');
+
+            return;
+        }
+
+        throw new NetworkAlreadyConnectedException($platform);
     }
 
     private function syncUsage(SocialAccount $socialAccount): void

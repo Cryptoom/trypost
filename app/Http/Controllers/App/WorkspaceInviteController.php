@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\App;
 
+use App\Actions\AccessToken\RevokeMcpOAuthGrants;
 use App\Actions\Invite\CreateInvite;
 use App\Actions\Invite\DeleteInvite;
 use App\Actions\Invite\RemoveMember;
@@ -178,6 +179,16 @@ class WorkspaceInviteController extends Controller
                 ->where('workspace_id', $workspace->id)
                 ->where('revoked', false)
                 ->update(['revoked' => true]);
+        }
+
+        // Viewers cannot use MCP on this workspace. Only revoke account-scoped
+        // OAuth grants when they also lack createPost everywhere else.
+        if ($role === WorkspaceRole::Viewer) {
+            $member = User::query()->find($userId);
+
+            if ($member instanceof User) {
+                RevokeMcpOAuthGrants::forUserIfLacksCreatePost($member->fresh());
+            }
         }
 
         session()->flash('flash.banner', __('settings.members.flash.role_updated'));

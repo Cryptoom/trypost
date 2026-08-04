@@ -103,7 +103,12 @@ export const captureEvent = (
     if (!enabled) {
         return;
     }
-    posthog.capture(event, properties);
+
+    try {
+        posthog.capture(event, properties);
+    } catch {
+        // Analytics must never break product flows.
+    }
 };
 
 export default posthog;

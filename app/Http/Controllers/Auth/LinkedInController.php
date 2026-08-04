@@ -7,7 +7,6 @@ namespace App\Http\Controllers\Auth;
 use App\Enums\SocialAccount\LinkedInIdentityType;
 use App\Enums\SocialAccount\Platform as SocialPlatform;
 use App\Enums\SocialAccount\Status;
-use App\Exceptions\SocialAccount\NetworkAlreadyConnectedException;
 use App\Models\Workspace;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -168,9 +167,11 @@ class LinkedInController extends SocialController
             session()->forget('linkedin_pending');
 
             return $this->popupCallback(true, __('accounts.popup_callback.connected'), $this->platform->value);
-        } catch (NetworkAlreadyConnectedException) {
-            return $this->popupCallback(false, __('accounts.popup_callback.network_taken'), $this->platform->value);
         } catch (\Exception $e) {
+            if ($this->isNetworkConflict($e)) {
+                return $this->networkTakenResponse($this->platform);
+            }
+
             Log::error('LinkedIn selection error', [
                 'error' => $e->getMessage(),
             ]);

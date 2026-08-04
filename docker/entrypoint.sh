@@ -84,10 +84,11 @@ if [ ! -L public/storage ]; then
     php artisan storage:link --force || true
 fi
 
-# 9) Passport keys on first boot. Self-hosted keys live in their own persisted
-# volume; SaaS/custom images retain Passport's default storage path.
+# 9) Passport keys on first boot. Default matches config/trypost.php
+# (SELF_HOSTED=true): keys live in their own persisted volume. Explicit
+# SELF_HOSTED=false keeps Passport's default storage/ path for SaaS images.
 PASSPORT_KEY_DIR="storage"
-if [ "${SELF_HOSTED:-false}" = "true" ]; then
+if [ "${SELF_HOSTED:-true}" = "true" ]; then
     PASSPORT_KEY_DIR="storage/passport"
     mkdir -p "${PASSPORT_KEY_DIR}"
 fi

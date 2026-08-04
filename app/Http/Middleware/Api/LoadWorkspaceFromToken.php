@@ -48,7 +48,9 @@ class LoadWorkspaceFromToken
         }
 
         if ($context !== 'mcp') {
-            if ($token->isMcpOAuthGrant()) {
+            // Positive PAT check — do not infer "not OAuth" from isMcpOAuthGrant(),
+            // which returns false for revoked/missing clients.
+            if (! $token->isPersonalAccessToken()) {
                 return response()->json(['message' => 'Personal access token required.'], Response::HTTP_FORBIDDEN);
             }
 

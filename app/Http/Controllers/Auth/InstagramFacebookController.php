@@ -6,7 +6,6 @@ namespace App\Http\Controllers\Auth;
 
 use App\Enums\SocialAccount\Platform as SocialPlatform;
 use App\Enums\SocialAccount\Status;
-use App\Exceptions\SocialAccount\NetworkAlreadyConnectedException;
 use App\Models\Workspace;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -106,9 +105,11 @@ class InstagramFacebookController extends SocialController
             ]);
 
             return redirect()->route('app.social.instagram-facebook.select-page');
-        } catch (NetworkAlreadyConnectedException) {
-            return $this->popupCallback(false, __('accounts.popup_callback.network_taken'), $this->platform->value);
         } catch (\Exception $e) {
+            if ($this->isNetworkConflict($e)) {
+                return $this->networkTakenResponse($this->platform);
+            }
+
             Log::error('Instagram via Facebook OAuth Error', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
@@ -180,9 +181,11 @@ class InstagramFacebookController extends SocialController
             session()->forget(['instagram_facebook_oauth', 'social_reconnect_id']);
 
             return $result;
-        } catch (NetworkAlreadyConnectedException) {
-            return $this->popupCallback(false, __('accounts.popup_callback.network_taken'), $this->platform->value);
         } catch (\Exception $e) {
+            if ($this->isNetworkConflict($e)) {
+                return $this->networkTakenResponse($this->platform);
+            }
+
             Log::error('Instagram via Facebook page selection error', ['error' => $e->getMessage()]);
 
             return $this->popupCallback(false, __('accounts.popup_callback.error_connecting'), $this->platform->value);

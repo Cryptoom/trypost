@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Actions\Invite;
 
+use App\Actions\AccessToken\RevokeMcpOAuthGrants;
 use App\Actions\User\ReassignCurrentWorkspace;
 use App\Actions\User\SettleStrandedMember;
 use App\Actions\User\StrandedSettlement;
@@ -55,6 +56,14 @@ class RemoveMember
                 && $user->id !== $account->owner_id
             ) {
                 $settlement = SettleStrandedMember::execute($user, $account);
+            }
+
+            // If the member still exists but can no longer create posts anywhere,
+            // drop their MCP OAuth grants (refresh tokens included).
+            $remaining = User::query()->find($userId);
+
+            if ($remaining instanceof User) {
+                RevokeMcpOAuthGrants::forUserIfLacksCreatePost($remaining);
             }
         });
 

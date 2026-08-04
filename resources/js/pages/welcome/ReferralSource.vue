@@ -119,27 +119,56 @@ const sourceLabel = (value: string): string =>
 
 const isSelected = (value: string): boolean => form.referral_source === value;
 const checkoutTrackingKey = 'trypost:welcome:checkout-started';
+const checkoutTrackingPending = 'pending';
+const checkoutTrackingDone = '1';
 
-const shouldTrackCheckout = (): boolean => {
+// In-memory reservation survives privacy-restricted sessionStorage and is
+// cleared on error/429 so begin_checkout never fires for failed checkouts.
+let checkoutTrackingReserved = false;
+
+const reserveCheckoutTracking = (): void => {
+    checkoutTrackingReserved = false;
+
     try {
         if (sessionStorage.getItem(checkoutTrackingKey)) {
-            return false;
+            return;
         }
 
-        sessionStorage.setItem(checkoutTrackingKey, '1');
-
-        return true;
+        sessionStorage.setItem(checkoutTrackingKey, checkoutTrackingPending);
     } catch {
-        return true;
+        // Storage may be unavailable — still allow a one-shot in-memory reserve.
     }
+
+    checkoutTrackingReserved = true;
 };
 
 const clearCheckoutTracking = (): void => {
+    checkoutTrackingReserved = false;
+
     try {
         sessionStorage.removeItem(checkoutTrackingKey);
     } catch {
         // Storage may be unavailable in privacy-restricted browsers.
     }
+};
+
+const commitCheckoutTracking = (): void => {
+    if (!checkoutTrackingReserved) {
+        return;
+    }
+
+    checkoutTrackingReserved = false;
+
+    try {
+        sessionStorage.setItem(checkoutTrackingKey, checkoutTrackingDone);
+    } catch {
+        // Storage may be unavailable in privacy-restricted browsers.
+    }
+
+    trackBeginCheckout({
+        name: props.plan.name,
+        interval: props.plan.interval,
+    });
 };
 
 const select = (value: string): void => {
@@ -151,18 +180,22 @@ const submit = (): void => {
         return;
     }
 
-    // Fire begin_checkout only once the request actually starts — clicks blocked
-    // by validation or the route throttle must not inflate the analytics event.
+    // Reserve on start, commit on finish only when the request did not error.
+    // Inertia::location navigates away before onSuccess, but onFinish still runs
+    // and dataLayer can accept the event before unload. Lock contention (429) and
+    // validation errors clear the reservation so begin_checkout is not inflated.
     form.submit(store(), {
-        onStart: () => {
-            if (shouldTrackCheckout()) {
-                trackBeginCheckout({
-                    name: props.plan.name,
-                    interval: props.plan.interval,
-                });
+        onStart: reserveCheckoutTracking,
+        onError: clearCheckoutTracking,
+        onHttpException: (response) => {
+            clearCheckoutTracking();
+
+            // Suppress the Inertia error dialog for expected lock contention.
+            if (response.status === 429) {
+                return false;
             }
         },
-        onError: clearCheckoutTracking,
+        onFinish: commitCheckoutTracking,
     });
 };
 </script>

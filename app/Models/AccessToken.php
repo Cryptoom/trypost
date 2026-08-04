@@ -80,6 +80,18 @@ class AccessToken extends Token
     }
 
     /**
+     * Whether this token was issued by a live personal-access client (REST API keys).
+     */
+    public function isPersonalAccessToken(): bool
+    {
+        $this->loadMissing('client');
+
+        return $this->client !== null
+            && ! $this->client->revoked
+            && $this->client->hasGrantType('personal_access');
+    }
+
+    /**
      * Whether this token belongs to an MCP OAuth client (not a personal access
      * API key) and is unexpired. Intentionally ignores `revoked`: the observer
      * needs a stable answer while a revoke is mid-flight so it can broadcast

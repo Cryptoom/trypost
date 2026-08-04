@@ -269,3 +269,34 @@ test('allows scoped oauth grants for workspace members on the mcp endpoint', fun
         ],
     ])->assertSuccessful();
 });
+
+test('rejects a revoked personal access token on api routes', function () {
+    subscribeAccount($this->user->account);
+
+    AccessToken::query()
+        ->where('user_id', $this->user->id)
+        ->where('workspace_id', $this->workspace->id)
+        ->firstOrFail()
+        ->forceFill(['revoked' => true])
+        ->saveQuietly();
+
+    $this->withHeaders(['Authorization' => 'Bearer '.$this->plainToken])
+        ->getJson(route('api.workspace.show'))
+        ->assertUnauthorized();
+});
+
+test('does not treat oauth tokens with a revoked client as personal access tokens', function () {
+    $result = $this->user->createToken('MCP', ['mcp:use']);
+    $token = AccessToken::query()->findOrFail($result->token->id);
+    DB::table('oauth_clients')
+        ->where('id', $token->client_id)
+        ->update([
+            'grant_types' => json_encode(['authorization_code']),
+            'revoked' => true,
+        ]);
+
+    $token = $token->fresh();
+
+    expect($token->isPersonalAccessToken())->toBeFalse()
+        ->and($token->isMcpOAuthGrant())->toBeFalse();
+});

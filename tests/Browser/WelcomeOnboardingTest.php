@@ -413,8 +413,8 @@ test('purchase acknowledgement waits for analytics before navigating', function 
     expect($purchaseWasQueued)->toBeTrue()
         ->and(Cache::has("checkout_tracked:{$account->id}:{$sessionId}"))->toBeFalse();
 
-    usleep(12_000_000);
-    $page->assertPathIs(parse_url(route('app.calendar'), PHP_URL_PATH));
+    // REDIRECT_DELAY_MS (5s) + acknowledgement fallback (5s) + page load.
+    waitForPath($page, parse_url(route('app.calendar'), PHP_URL_PATH), 400);
 
     expect(Cache::has("checkout_tracked:{$account->id}:{$sessionId}"))->toBeTrue();
 });

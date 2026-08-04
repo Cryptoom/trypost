@@ -156,12 +156,17 @@ const completePurchase = (options: { force?: boolean } = {}) => {
 
     takingLong.value = false;
 
-    firePurchaseTracking(authPlan.value);
-
+    // Always schedule navigation first — analytics must never strand a paying user.
     redirectTimer = setTimeout(
         () => void finishAfterDeliveryWindow(),
         REDIRECT_DELAY_MS,
     );
+
+    try {
+        firePurchaseTracking(authPlan.value);
+    } catch {
+        // Fail-open: redirect still runs via redirectTimer.
+    }
 };
 
 const continueNow = () => {

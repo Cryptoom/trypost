@@ -13,6 +13,8 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\App\SocialAccountResource;
 use App\Models\SocialAccount;
 use App\Models\Workspace;
+use App\Support\SocialAccount\NetworkUniqueViolation;
+use Exception;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -20,6 +22,7 @@ use Inertia\Inertia;
 use Inertia\Response;
 use Laravel\Socialite\Facades\Socialite;
 use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
+use Throwable;
 
 class SocialController extends Controller
 {
@@ -149,9 +152,11 @@ class SocialController extends Controller
             );
 
             return $this->popupCallback(true, __('accounts.popup_callback.connected'), $platform->value);
-        } catch (NetworkAlreadyConnectedException) {
-            return $this->popupCallback(false, __('accounts.popup_callback.network_taken'), $platform->value);
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
+            if ($this->isNetworkConflict($e)) {
+                return $this->networkTakenResponse($platform);
+            }
+
             Log::error('Social OAuth Error', [
                 'platform' => $platform->value,
                 'error' => $e->getMessage(),
@@ -159,6 +164,17 @@ class SocialController extends Controller
 
             return $this->popupCallback(false, __('accounts.popup_callback.error_connecting'), $platform->value);
         }
+    }
+
+    protected function isNetworkConflict(Throwable $exception): bool
+    {
+        return $exception instanceof NetworkAlreadyConnectedException
+            || NetworkUniqueViolation::matches($exception);
+    }
+
+    protected function networkTakenResponse(SocialPlatform $platform): Response
+    {
+        return $this->popupCallback(false, __('accounts.popup_callback.network_taken'), $platform->value);
     }
 
     protected function forgetSocialConnectSession(): void
