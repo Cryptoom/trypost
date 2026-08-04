@@ -54,14 +54,15 @@ test('reuses the pending checkout session and stamps its purpose', function () {
         ?? $second->headers->get('Location');
 
     expect($firstLocation)->toBe('https://checkout.stripe.test/session')
-        ->and($secondLocation)->toBe('https://checkout.stripe.test/session')
-        ->and($stripe->calls)->toBe(2);
+        ->and($secondLocation)->toBe('https://checkout.stripe.test/session');
 
-    $checkoutRequest = collect($stripe->requests)
-        ->first(fn (array $request): bool => str_contains($request['absUrl'], '/v1/checkout/sessions'));
+    $checkoutRequests = collect($stripe->requests)
+        ->filter(fn (array $request): bool => str_contains($request['absUrl'], '/v1/checkout/sessions'));
+    $checkoutRequest = $checkoutRequests->first();
     $params = data_get($checkoutRequest, 'params', []);
 
-    expect(data_get($params, 'client_reference_id'))->toBe((string) $account->id)
+    expect($checkoutRequests)->toHaveCount(1)
+        ->and(data_get($params, 'client_reference_id'))->toBe((string) $account->id)
         ->and(data_get($params, 'metadata.trypost_purpose'))->toBe(CheckoutConversionData::PURPOSE)
         ->and(data_get($params, 'metadata.trypost_account_id'))->toBe((string) $account->id)
         ->and(data_get($params, 'metadata.trypost_price_id'))->toBe('price_monthly_test')

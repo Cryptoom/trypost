@@ -132,6 +132,7 @@ const completePurchase = (options: { force?: boolean } = {}) => {
 
     finishing.value = true;
     stop();
+    router.cancelAll();
 
     if (slowNoticeTimer) {
         clearTimeout(slowNoticeTimer);
