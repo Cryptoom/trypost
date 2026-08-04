@@ -70,7 +70,7 @@ Route::middleware(['auth'])->group(function () {
         ->middleware('throttle:6,1')
         ->name('app.welcome.referral-source.store');
     Route::get('billing/processing', [BillingController::class, 'processing'])
-        ->middleware('throttle:60,1')
+        ->middleware('throttle:180,1')
         ->name('app.billing.processing');
     Route::post('billing/processing/acknowledge', [BillingController::class, 'acknowledgePurchase'])
         ->middleware('throttle:60,1')

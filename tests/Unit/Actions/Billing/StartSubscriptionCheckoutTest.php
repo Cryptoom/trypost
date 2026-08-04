@@ -55,6 +55,8 @@ test('reuses the pending checkout session and stamps its purpose', function () {
 
     expect($firstLocation)->toBe('https://checkout.stripe.test/session')
         ->and($secondLocation)->toBe('https://checkout.stripe.test/session');
+    expect($first->headers->get(StartSubscriptionCheckout::CREATED_HEADER))->toBe('1')
+        ->and($second->headers->get(StartSubscriptionCheckout::CREATED_HEADER))->toBe('0');
 
     $checkoutRequests = collect($stripe->requests)
         ->filter(fn (array $request): bool => str_contains($request['absUrl'], '/v1/checkout/sessions'));

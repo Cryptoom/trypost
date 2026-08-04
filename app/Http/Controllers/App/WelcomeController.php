@@ -169,15 +169,17 @@ class WelcomeController extends Controller
             route('app.welcome.referral-source'),
         );
 
-        $postHog->capture(
-            $user->id,
-            WelcomeEvent::CheckoutStarted->value,
-            [
-                'plan_name' => $plan->name,
-                'interval' => 'monthly',
-            ],
-            $user->account,
-        );
+        if ($response->headers->get(StartSubscriptionCheckout::CREATED_HEADER) !== '0') {
+            $postHog->capture(
+                $user->id,
+                WelcomeEvent::CheckoutStarted->value,
+                [
+                    'plan_name' => $plan->name,
+                    'interval' => 'monthly',
+                ],
+                $user->account,
+            );
+        }
 
         return $response;
     }

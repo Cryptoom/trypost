@@ -207,6 +207,35 @@ test('referral source store saves the source and starts Stripe checkout without 
         && data_get($event->payload, 'event') === WelcomeEvent::CheckoutStarted->value);
 });
 
+test('reusing a pending Stripe checkout does not recapture checkout started', function () {
+    config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test']);
+    Bus::fake();
+    $this->user->update([
+        'persona' => Persona::Agency->value,
+        'goals' => [Goal::SaveTime->value],
+    ]);
+    Plan::where('slug', Slug::Workspace)->firstOrFail()->update([
+        'stripe_monthly_price_id' => 'price_monthly_test',
+    ]);
+    $response = redirect('https://checkout.stripe.test/session');
+    $response->headers->set(StartSubscriptionCheckout::CREATED_HEADER, '0');
+    $this->mock(StartSubscriptionCheckout::class)
+        ->shouldReceive('redirect')
+        ->once()
+        ->andReturn($response);
+
+    $this->actingAs($this->user->fresh())
+        ->post(route('app.welcome.referral-source.store'), [
+            'referral_source' => ReferralSource::ProductHunt->value,
+        ])
+        ->assertRedirect('https://checkout.stripe.test/session');
+
+    Bus::assertNotDispatched(
+        SendEvent::class,
+        fn (SendEvent $event): bool => data_get($event->payload, 'event') === WelcomeEvent::CheckoutStarted->value,
+    );
+});
+
 test('welcome steps redirect to activation for subscribed accounts with residual onboarding', function (string $routeName, string $method, array $payload = []) {
     subscribeAccount($this->user->account);
 

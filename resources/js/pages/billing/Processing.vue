@@ -9,6 +9,7 @@ import type { Auth } from '@/types';
 
 import { acknowledgePurchase } from '@/actions/App/Http/Controllers/App/BillingController';
 import { calendar, onboarding } from '@/routes/app';
+import { referralSource } from '@/routes/app/welcome';
 
 const props = defineProps<{
     subscriptionActive: boolean;
@@ -64,6 +65,7 @@ const purchaseAcknowledgement = useHttp({
 const finishing = ref(false);
 const takingLong = ref(false);
 const forceContinue = ref(false);
+const recoveryAvailable = ref(false);
 let redirectTimer: ReturnType<typeof setTimeout> | null = null;
 let acknowledgementFallbackTimer: ReturnType<typeof setTimeout> | null = null;
 let slowNoticeTimer: ReturnType<typeof setTimeout> | null = null;
@@ -164,6 +166,12 @@ const completePurchase = (options: { force?: boolean } = {}) => {
 
 const continueNow = () => {
     if (!props.subscriptionActive) {
+        if (recoveryAvailable.value) {
+            window.location.assign(referralSource.url());
+
+            return;
+        }
+
         router.reload({
             only: [
                 'subscriptionActive',
@@ -195,9 +203,9 @@ watch(
 );
 
 onMounted(() => {
-    if (props.subscriptionActive) {
-        completePurchase();
-    } else {
+    completePurchase();
+
+    if (!finishing.value) {
         start();
     }
 
@@ -213,6 +221,7 @@ onMounted(() => {
             completePurchase({ force: true });
         } else if (!finishing.value) {
             takingLong.value = true;
+            recoveryAvailable.value = true;
         }
     }, FORCE_CONTINUE_MS);
 });

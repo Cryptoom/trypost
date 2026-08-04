@@ -118,6 +118,29 @@ const sourceLabel = (value: string): string =>
     trans(`welcome.referral_source.${value}`);
 
 const isSelected = (value: string): boolean => form.referral_source === value;
+const checkoutTrackingKey = 'trypost:welcome:checkout-started';
+
+const shouldTrackCheckout = (): boolean => {
+    try {
+        if (sessionStorage.getItem(checkoutTrackingKey)) {
+            return false;
+        }
+
+        sessionStorage.setItem(checkoutTrackingKey, '1');
+
+        return true;
+    } catch {
+        return true;
+    }
+};
+
+const clearCheckoutTracking = (): void => {
+    try {
+        sessionStorage.removeItem(checkoutTrackingKey);
+    } catch {
+        // Storage may be unavailable in privacy-restricted browsers.
+    }
+};
 
 const select = (value: string): void => {
     form.referral_source = value;
@@ -132,11 +155,14 @@ const submit = (): void => {
     // by validation or the route throttle must not inflate the analytics event.
     form.submit(store(), {
         onStart: () => {
-            trackBeginCheckout({
-                name: props.plan.name,
-                interval: props.plan.interval,
-            });
+            if (shouldTrackCheckout()) {
+                trackBeginCheckout({
+                    name: props.plan.name,
+                    interval: props.plan.interval,
+                });
+            }
         },
+        onError: clearCheckoutTracking,
     });
 };
 </script>
