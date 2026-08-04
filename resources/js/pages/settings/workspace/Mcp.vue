@@ -36,6 +36,7 @@ const deleteModal = ref<InstanceType<typeof ConfirmDeleteModal> | null>(null);
 const confirmDisconnect = (client: ConnectedClient): void => {
     deleteModal.value?.open({
         url: mcpDisconnect.url({ client: client.client_id }),
+        confirmText: client.name,
     });
 };
 
@@ -104,8 +105,16 @@ onUnmounted(() => {
                             :data-testid="`mcp-connected-client-${client.client_id}`"
                         >
                             <div class="min-w-0">
-                                <p class="truncate text-sm font-bold">
-                                    {{ client.name }}
+                                <p
+                                    class="flex items-center gap-2 truncate text-sm font-bold"
+                                >
+                                    <span
+                                        class="size-2 shrink-0 rounded-full bg-emerald-500"
+                                        aria-hidden="true"
+                                    />
+                                    <span class="truncate">{{
+                                        client.name
+                                    }}</span>
                                 </p>
                                 <p
                                     v-if="client.user_name"

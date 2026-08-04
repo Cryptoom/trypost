@@ -10,6 +10,7 @@ return [
     'profile' => 'プロフィール',
     'my_account' => 'マイアカウント',
     'account_settings' => 'アカウントと請求',
+    'workspace_settings' => 'ワークスペース設定',
     'log_out' => 'ログアウト',
 
     'workspace' => 'ワークスペース: :name',

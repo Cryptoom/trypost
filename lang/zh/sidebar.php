@@ -10,6 +10,7 @@ return [
     'profile' => '个人资料',
     'my_account' => '我的账户',
     'account_settings' => '账户与账单',
+    'workspace_settings' => '工作区设置',
     'log_out' => '退出登录',
 
     'workspace' => '工作区：:name',

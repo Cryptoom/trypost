@@ -10,6 +10,7 @@ return [
     'profile' => 'Perfil',
     'my_account' => 'Minha conta',
     'account_settings' => 'Conta e cobrança',
+    'workspace_settings' => 'Configurações do workspace',
     'log_out' => 'Sair',
 
     'workspace' => 'Workspace: :name',

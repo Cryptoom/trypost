@@ -10,6 +10,7 @@ return [
     'profile' => 'Profil',
     'my_account' => 'Hesabım',
     'account_settings' => 'Hesap ve faturalandırma',
+    'workspace_settings' => 'Çalışma alanı ayarları',
     'log_out' => 'Çıkış yap',
 
     'workspace' => 'Çalışma alanı: :name',

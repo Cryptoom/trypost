@@ -10,6 +10,7 @@ return [
     'profile' => 'الملف الشخصي',
     'my_account' => 'حسابي',
     'account_settings' => 'الحساب والفوترة',
+    'workspace_settings' => 'إعدادات مساحة العمل',
     'log_out' => 'تسجيل الخروج',
 
     'workspace' => 'مساحة العمل: :name',

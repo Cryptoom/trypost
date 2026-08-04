@@ -89,7 +89,7 @@ const copy = (value: string): void => {
                 @update:open="(open) => setClientOpen(client.key, open)"
             >
                 <CollapsibleTrigger
-                    class="flex w-full items-start justify-between gap-4 rounded-md px-5 py-4 text-left text-sm font-medium transition-all outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 motion-reduce:transition-none"
+                    class="flex w-full items-start justify-between gap-4 rounded-md px-5 py-4 text-left text-sm font-medium outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50"
                     :data-testid="`mcp-advanced-client-${client.key}`"
                 >
                     <span class="flex items-center gap-4 text-start">
@@ -121,7 +121,7 @@ const copy = (value: string): void => {
                 </CollapsibleTrigger>
 
                 <CollapsibleContent
-                    class="overflow-hidden px-5 pt-1 pb-5 text-sm data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down motion-reduce:data-[state=closed]:animate-none motion-reduce:data-[state=open]:animate-none"
+                    class="overflow-hidden px-5 pt-1 pb-5 text-sm data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down motion-reduce:data-[state=closed]:animate-none motion-reduce:data-[state=open]:animate-none"
                 >
                     <div class="space-y-5">
                         <p class="text-sm font-medium text-foreground/70">

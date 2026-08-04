@@ -10,6 +10,7 @@ return [
     'profile' => 'Perfil',
     'my_account' => 'Mi cuenta',
     'account_settings' => 'Cuenta y facturación',
+    'workspace_settings' => 'Configuración del workspace',
     'log_out' => 'Cerrar sesión',
 
     'workspace' => 'Workspace: :name',

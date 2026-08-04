@@ -26,9 +26,9 @@ import {
 import { useWorkspaceRole } from '@/composables/useWorkspaceRole';
 import posthog from '@/posthog';
 import { logout } from '@/routes';
-import { settings as settingsHub } from '@/routes/app';
 import { edit as accountEdit } from '@/routes/app/account';
 import { edit as profileEdit } from '@/routes/app/profile';
+import { settings as workspaceSettings } from '@/routes/app/workspace';
 import {
     create as createWorkspaceRoute,
     switchMethod,
@@ -54,11 +54,12 @@ const props = defineProps<{
 }>();
 
 const page = usePage();
-const { canManageBilling } = useWorkspaceRole();
+const { canManageBilling, canManageWorkspace } = useWorkspaceRole();
 const selfHosted = computed(() => Boolean(page.props.selfHosted));
 const showAccountSettings = computed(
     () => canManageBilling.value && !selfHosted.value,
 );
+const showWorkspaceSettings = computed(() => canManageWorkspace.value);
 const languages = computed<Language[]>(
     () => page.props.languages as Language[],
 );
@@ -128,14 +129,14 @@ const handleLogout = (): void => {
                 {{ $t('sidebar.account_settings') }}
             </Link>
         </DropdownMenuItem>
-        <DropdownMenuItem :as-child="true">
+        <DropdownMenuItem v-if="showWorkspaceSettings" :as-child="true">
             <Link
                 class="block w-full cursor-pointer"
-                :href="settingsHub.url()"
+                :href="workspaceSettings.url()"
                 prefetch
             >
                 <IconSettings class="size-4" />
-                {{ $t('sidebar.settings') }}
+                {{ $t('sidebar.workspace_settings') }}
             </Link>
         </DropdownMenuItem>
     </DropdownMenuGroup>
