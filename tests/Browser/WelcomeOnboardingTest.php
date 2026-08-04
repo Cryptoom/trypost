@@ -364,6 +364,11 @@ test('purchase acknowledgement waits for analytics before navigating', function 
 
     $user = User::factory()->create();
     $account = $user->account;
+    $workspace = Workspace::factory()->create([
+        'account_id' => $account->id,
+        'user_id' => $user->id,
+    ]);
+    $user->update(['current_workspace_id' => $workspace->id]);
     $account->forceFill([
         'stripe_id' => 'cus_test_123',
         'onboarding_completed_at' => now(),
