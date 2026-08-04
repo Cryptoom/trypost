@@ -5,12 +5,12 @@ declare(strict_types=1);
 namespace App\Http\Controllers\App;
 
 use App\Actions\AccessToken\RevokeMcpOAuthGrants;
+use App\Actions\AccessToken\RevokeWorkspaceApiKeys;
 use App\Actions\Invite\CreateInvite;
 use App\Actions\Invite\DeleteInvite;
 use App\Actions\Invite\RemoveMember;
 use App\Enums\UserWorkspace\Role as WorkspaceRole;
 use App\Http\Requests\App\Invite\StoreWorkspaceInviteRequest;
-use App\Models\AccessToken;
 use App\Models\Invite;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
@@ -173,13 +173,7 @@ class WorkspaceInviteController extends Controller
             'role' => $role->value,
         ]);
 
-        if ($role !== WorkspaceRole::Admin) {
-            AccessToken::query()
-                ->where('user_id', $userId)
-                ->where('workspace_id', $workspace->id)
-                ->where('revoked', false)
-                ->update(['revoked' => true]);
-        }
+        RevokeWorkspaceApiKeys::forUserUnlessAdmin($userId, $workspace, $role);
 
         // Viewers cannot use MCP on this workspace. Only revoke account-scoped
         // OAuth grants when they also lack createPost everywhere else.
