@@ -42,15 +42,19 @@ type Conversion = NonNullable<typeof props.conversion>;
 
 const sessionId = new URLSearchParams(window.location.search).get('session_id');
 
-const { stop } = usePoll(2000, {
-    only: [
-        'subscriptionActive',
-        'redirectToOnboarding',
-        'auth',
-        'conversion',
-        'conversionResolved',
-    ],
-});
+const { start, stop } = usePoll(
+    2000,
+    {
+        only: [
+            'subscriptionActive',
+            'redirectToOnboarding',
+            'auth',
+            'conversion',
+            'conversionResolved',
+        ],
+    },
+    { autoStart: false },
+);
 
 const { trackPurchase } = useTracking();
 const purchaseAcknowledgement = useHttp({
@@ -187,6 +191,8 @@ watch(
 onMounted(() => {
     if (props.subscriptionActive) {
         completePurchase();
+    } else {
+        start();
     }
 
     slowNoticeTimer = setTimeout(() => {
