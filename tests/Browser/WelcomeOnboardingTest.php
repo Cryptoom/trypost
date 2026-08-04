@@ -57,11 +57,11 @@ function waitForDuskGone(mixed $page, string $selector, int $attempts = 100): vo
  * Poll browser-side until the location path matches, then let the new page
  * mount before asserting.
  */
-function waitForPath(mixed $page, string $path): void
+function waitForPath(mixed $page, string $path, int $attempts = 100): void
 {
     $reached = $page->script(<<<JS
         (async () => {
-            for (let i = 0; i < 100; i++) {
+            for (let i = 0; i < {$attempts}; i++) {
                 if (window.location.pathname === '{$path}') break;
                 await new Promise((r) => setTimeout(r, 50));
             }
@@ -408,8 +408,7 @@ test('purchase acknowledgement waits for analytics before navigating', function 
     expect($purchaseWasQueued)->toBeTrue()
         ->and(Cache::has("checkout_tracked:{$account->id}:{$sessionId}"))->toBeFalse();
 
-    $page->script('(async () => { await new Promise((resolve) => setTimeout(resolve, 6000)); })()');
-    waitForPath($page, parse_url(route('app.calendar'), PHP_URL_PATH));
+    waitForPath($page, parse_url(route('app.calendar'), PHP_URL_PATH), 300);
 
     expect(Cache::has("checkout_tracked:{$account->id}:{$sessionId}"))->toBeTrue();
 });

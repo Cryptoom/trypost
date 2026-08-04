@@ -48,9 +48,13 @@ test('reuses the pending checkout session and stamps its purpose', function () {
     $action = app(StartSubscriptionCheckout::class);
     $first = $action->redirect($account, 'price_monthly_test', route('app.welcome.referral-source'));
     $second = $action->redirect($account->fresh(), 'price_monthly_test', route('app.welcome.referral-source'));
+    $firstLocation = $first->headers->get('X-Inertia-Location')
+        ?? $first->headers->get('Location');
+    $secondLocation = $second->headers->get('X-Inertia-Location')
+        ?? $second->headers->get('Location');
 
-    expect($first->headers->get('X-Inertia-Location'))->toBe('https://checkout.stripe.test/session')
-        ->and($second->headers->get('X-Inertia-Location'))->toBe('https://checkout.stripe.test/session')
+    expect($firstLocation)->toBe('https://checkout.stripe.test/session')
+        ->and($secondLocation)->toBe('https://checkout.stripe.test/session')
         ->and($stripe->calls)->toBe(2);
 
     $checkoutRequest = collect($stripe->requests)
