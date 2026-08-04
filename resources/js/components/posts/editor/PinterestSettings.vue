@@ -1,5 +1,9 @@
 <script setup lang="ts">
-import { IconAlertTriangle, IconChevronDown, IconChevronUp } from '@tabler/icons-vue';
+import {
+    IconAlertTriangle,
+    IconChevronDown,
+    IconChevronUp,
+} from '@tabler/icons-vue';
 import { computed, ref, watch } from 'vue';
 
 import InputError from '@/components/InputError.vue';
@@ -17,7 +21,10 @@ import {
 import { getMediaValidationWarning } from '@/composables/useMedia';
 import { usePageErrors } from '@/composables/usePageErrors';
 import { getPlatformLogo } from '@/composables/usePlatformLogo';
-import { fallbackImageCapableVariant, filterImageCapableVariants } from '@/lib/aiGenerateVariants';
+import {
+    fallbackImageCapableVariant,
+    filterImageCapableVariants,
+} from '@/lib/aiGenerateVariants';
 import type { PinterestBoard } from '@/types';
 import { ContentType } from '@/types/content-type';
 import type { MediaItem } from '@/types/media';
@@ -60,18 +67,32 @@ const emit = defineEmits<{
 const open = ref(false);
 
 const allVariants = [
-    { value: ContentType.PinterestPin, labelKey: 'posts.form.pinterest.variant.pin' },
-    { value: ContentType.PinterestVideoPin, labelKey: 'posts.form.pinterest.variant.video_pin' },
-    { value: ContentType.PinterestCarousel, labelKey: 'posts.form.pinterest.variant.carousel' },
+    {
+        value: ContentType.PinterestPin,
+        labelKey: 'posts.form.pinterest.variant.pin',
+    },
+    {
+        value: ContentType.PinterestVideoPin,
+        labelKey: 'posts.form.pinterest.variant.video_pin',
+    },
+    {
+        value: ContentType.PinterestCarousel,
+        labelKey: 'posts.form.pinterest.variant.carousel',
+    },
 ] as const;
 
 // Generate node only creates images — hide Video Pin there.
-const variants = computed(() => filterImageCapableVariants(allVariants, props.previewOnly));
+const variants = computed(() =>
+    filterImageCapableVariants(allVariants, props.previewOnly),
+);
 
 watch(
     () => [props.previewOnly, props.contentType, variants.value] as const,
     () => {
-        const fallback = fallbackImageCapableVariant(props.contentType, variants.value);
+        const fallback = fallbackImageCapableVariant(
+            props.contentType,
+            variants.value,
+        );
         if (fallback) {
             emit('update:contentType', fallback);
         }
@@ -84,7 +105,9 @@ const pickVariant = (value: string) => {
     emit('update:contentType', value);
 };
 
-const warning = computed(() => getMediaValidationWarning(props.contentType, props.media));
+const warning = computed(() =>
+    getMediaValidationWarning(props.contentType, props.media),
+);
 
 const boardOptions = computed<BoardOption[]>(() =>
     props.boards.map((b) => ({ value: b.id, label: b.name })),
@@ -92,7 +115,8 @@ const boardOptions = computed<BoardOption[]>(() =>
 
 const selectedBoard = computed<BoardOption | undefined>({
     get: () => boardOptions.value.find((b) => b.value === props.meta?.board_id),
-    set: (board) => emit('update:meta', { ...props.meta, board_id: board?.value ?? null }),
+    set: (board) =>
+        emit('update:meta', { ...props.meta, board_id: board?.value ?? null }),
 });
 
 // Surface the backend validation error keyed by platform index
@@ -102,7 +126,9 @@ const selectedBoard = computed<BoardOption | undefined>({
 const errors = usePageErrors();
 const boardError = computed<string | undefined>(() => {
     if (props.meta?.board_id) return undefined;
-    return Object.entries(errors.value).find(([key]) => key.endsWith('.meta.board_id'))?.[1];
+    return Object.entries(errors.value).find(([key]) =>
+        key.endsWith('.meta.board_id'),
+    )?.[1];
 });
 </script>
 
@@ -114,43 +140,83 @@ const boardError = computed<string | undefined>(() => {
             @click="open = !open"
         >
             <span class="flex min-w-0 items-center gap-2">
-                <span class="inline-flex size-6 shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-foreground bg-card shadow-2xs">
-                    <img :src="getPlatformLogo('pinterest')" alt="Pinterest" class="size-full object-cover" />
+                <span
+                    class="inline-flex size-6 shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-foreground bg-card shadow-2xs"
+                >
+                    <img
+                        :src="getPlatformLogo('pinterest')"
+                        alt="Pinterest"
+                        class="size-full object-cover"
+                    />
                 </span>
-                <span class="truncate font-bold text-foreground">{{ $t('posts.form.pinterest.settings') }}</span>
-                <span v-if="socialAccount?.username" class="truncate font-medium text-foreground/60">·&nbsp;@{{ socialAccount.username }}</span>
+                <span class="truncate font-bold text-foreground">{{
+                    $t('posts.form.pinterest.settings')
+                }}</span>
+                <span
+                    v-if="socialAccount?.username"
+                    class="truncate font-medium text-foreground/60"
+                    >·&nbsp;@{{ socialAccount.username }}</span
+                >
             </span>
-            <IconChevronUp v-if="open" class="size-4 shrink-0 text-foreground/60" />
-            <IconChevronDown v-else class="size-4 shrink-0 text-foreground/60" />
+            <IconChevronUp
+                v-if="open"
+                class="size-4 shrink-0 text-foreground/60"
+            />
+            <IconChevronDown
+                v-else
+                class="size-4 shrink-0 text-foreground/60"
+            />
         </button>
 
-        <div v-if="open" class="space-y-5 border-t-2 border-foreground/10 px-4 pb-4 pt-4">
-            <div v-if="socialAccount" class="flex items-center gap-3 rounded-lg bg-foreground/5 p-3">
+        <div
+            v-if="open"
+            class="space-y-5 border-t-2 border-foreground/10 px-4 pt-4 pb-4"
+        >
+            <div
+                v-if="socialAccount"
+                class="flex items-center gap-3 rounded-lg bg-foreground/5 p-3"
+            >
                 <Avatar
                     :src="socialAccount.avatar_url"
                     :name="socialAccount.display_name"
                     class="size-9 shrink-0 rounded-full border-2 border-foreground shadow-2xs"
                 />
                 <div class="min-w-0 flex-1">
-                    <p class="text-[11px] font-black uppercase tracking-widest text-foreground/60">{{ $t('posts.form.pinterest.posting_to') }}</p>
+                    <p
+                        class="text-[11px] font-black tracking-widest text-foreground/60 uppercase"
+                    >
+                        {{ $t('posts.form.pinterest.posting_to') }}
+                    </p>
                     <p class="truncate text-sm">
-                        <span class="font-bold text-foreground">{{ socialAccount.display_name }}</span>
-                        <span v-if="socialAccount?.username" class="font-medium text-foreground/60">&nbsp;@{{ socialAccount.username }}</span>
+                        <span class="font-bold text-foreground">{{
+                            socialAccount.display_name
+                        }}</span>
+                        <span
+                            v-if="socialAccount?.username"
+                            class="font-medium text-foreground/60"
+                            >&nbsp;@{{ socialAccount.username }}</span
+                        >
                     </p>
                 </div>
             </div>
 
             <div class="space-y-2">
-                <p class="text-[11px] font-black uppercase tracking-widest text-foreground/60">{{ $t('posts.form.pinterest.variant_label') }}</p>
+                <p
+                    class="text-[11px] font-black tracking-widest text-foreground/60 uppercase"
+                >
+                    {{ $t('posts.form.pinterest.variant_label') }}
+                </p>
                 <div class="flex flex-wrap gap-2">
                     <button
                         v-for="variant in variants"
                         :key="variant.value"
                         type="button"
-                        class="cursor-pointer rounded-full border-2 px-3 py-1 text-xs font-bold uppercase tracking-widest transition-colors disabled:cursor-not-allowed disabled:opacity-50"
-                        :class="contentType === variant.value
-                            ? 'border-foreground bg-violet-100 text-foreground shadow-2xs'
-                            : 'border-foreground/30 text-foreground/70 hover:border-foreground hover:text-foreground'"
+                        class="cursor-pointer rounded-full border-2 px-3 py-1 text-xs font-bold tracking-widest uppercase transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+                        :class="
+                            contentType === variant.value
+                                ? 'border-foreground bg-violet-100 text-foreground shadow-2xs'
+                                : 'border-foreground/30 text-foreground/70 hover:border-foreground hover:text-foreground'
+                        "
                         :disabled="disabled"
                         @click="pickVariant(variant.value)"
                     >
@@ -160,7 +226,11 @@ const boardError = computed<string | undefined>(() => {
             </div>
 
             <div class="space-y-2">
-                <p class="text-[11px] font-black uppercase tracking-widest text-foreground/60">{{ $t('posts.form.pinterest.board') }}</p>
+                <p
+                    class="text-[11px] font-black tracking-widest text-foreground/60 uppercase"
+                >
+                    {{ $t('posts.form.pinterest.board') }}
+                </p>
                 <p
                     v-if="boards.length === 0"
                     class="flex items-start gap-2 rounded-lg border-2 border-foreground/30 bg-foreground/5 p-2 text-xs font-semibold text-foreground/60"
@@ -171,7 +241,9 @@ const boardError = computed<string | undefined>(() => {
                 <template v-else>
                     <Combobox
                         v-model="selectedBoard"
-                        :display-value="(b: BoardOption | undefined) => b?.label ?? ''"
+                        :display-value="
+                            (b: BoardOption | undefined) => b?.label ?? ''
+                        "
                         :disabled="disabled"
                     >
                         <ComboboxAnchor class="w-full">
@@ -179,19 +251,43 @@ const boardError = computed<string | undefined>(() => {
                                 <button
                                     type="button"
                                     class="flex w-full items-center justify-between rounded-lg border-2 bg-card px-3 py-2 text-sm font-medium text-foreground transition-colors disabled:cursor-not-allowed disabled:opacity-50"
-                                    :class="boardError ? 'border-rose-500' : 'border-foreground/30 hover:border-foreground'"
+                                    :class="
+                                        boardError
+                                            ? 'border-rose-500'
+                                            : 'border-foreground/30 hover:border-foreground'
+                                    "
                                     :disabled="disabled"
                                 >
-                                    <span :class="selectedBoard ? 'text-foreground' : 'text-foreground/50'">
-                                        {{ selectedBoard ? selectedBoard.label : $t('posts.form.pinterest.select_board') }}
+                                    <span
+                                        :class="
+                                            selectedBoard
+                                                ? 'text-foreground'
+                                                : 'text-foreground/50'
+                                        "
+                                    >
+                                        {{
+                                            selectedBoard
+                                                ? selectedBoard.label
+                                                : $t(
+                                                      'posts.form.pinterest.select_board',
+                                                  )
+                                        }}
                                     </span>
-                                    <IconChevronDown class="size-4 shrink-0 text-foreground/60" />
+                                    <IconChevronDown
+                                        class="size-4 shrink-0 text-foreground/60"
+                                    />
                                 </button>
                             </ComboboxTrigger>
                         </ComboboxAnchor>
                         <ComboboxList>
-                            <ComboboxInput :placeholder="$t('posts.form.pinterest.search_board')" />
-                            <ComboboxEmpty>{{ $t('posts.form.pinterest.no_board_found') }}</ComboboxEmpty>
+                            <ComboboxInput
+                                :placeholder="
+                                    $t('posts.form.pinterest.search_board')
+                                "
+                            />
+                            <ComboboxEmpty>{{
+                                $t('posts.form.pinterest.no_board_found')
+                            }}</ComboboxEmpty>
                             <ComboboxGroup>
                                 <ComboboxItem
                                     v-for="board in boardOptions"

@@ -1,4 +1,4 @@
-name: linter
+name: lints
 
 on:
   push:
@@ -10,16 +10,11 @@ on:
       - develop
       - main
 
-permissions:
-  contents: write
-
 jobs:
   quality:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-        with:
-          fetch-depth: 0
+      - uses: actions/checkout@v6
 
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
@@ -29,27 +24,13 @@ jobs:
       - name: Install Dependencies
         run: |
           composer install -q --no-ansi --no-interaction --no-scripts --no-progress --prefer-dist
-          npm ci
+          npm install
 
-      - name: Run Pint
+      - name: Check PHP Formatting
         run: composer test:lint
 
-      - name: Resolve diff base
-        run: |
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            echo "DIFF_BASE=${{ github.event.pull_request.base.sha }}" >> "$GITHUB_ENV"
-          else
-            echo "DIFF_BASE=${{ github.event.before }}" >> "$GITHUB_ENV"
-          fi
+      - name: Check Frontend Formatting
+        run: npm run format:check
 
-      - name: Check changed frontend files
-        run: |
-          mapfile -t resources < <(git diff --name-only --diff-filter=ACMR "$DIFF_BASE"...HEAD | rg '^resources/' || true)
-          if [ "${#resources[@]}" -gt 0 ]; then
-            npx prettier --check "${resources[@]}"
-          fi
-
-          mapfile -t code < <(printf '%s\n' "${resources[@]}" | rg '\.(ts|vue)$' || true)
-          if [ "${#code[@]}" -gt 0 ]; then
-            npx eslint "${code[@]}"
-          fi
+      - name: Lint Frontend
+        run: npm run lint:check

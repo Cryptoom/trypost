@@ -18,7 +18,6 @@ import type { FunctionalComponent } from 'vue';
 import InputError from '@/components/InputError.vue';
 import { Button } from '@/components/ui/button';
 import WelcomeLayout from '@/layouts/WelcomeLayout.vue';
-
 import { store } from '@/routes/app/welcome/goals';
 
 const props = defineProps<{

@@ -26,23 +26,19 @@ const summary = computed(() => {
         :class="{ 'is-selected': selected }"
     >
         <div class="automation-node__header">
-            <div class="automation-node__icon-tile automation-node__icon-tile--cyan">
+            <div
+                class="automation-node__icon-tile automation-node__icon-tile--cyan"
+            >
                 <IconClock :size="16" />
             </div>
-            <span class="automation-node__title">{{ $t('automations.nodes.delay') }}</span>
+            <span class="automation-node__title">{{
+                $t('automations.nodes.delay')
+            }}</span>
         </div>
         <div class="automation-node__summary">
             {{ summary }}
         </div>
-        <Handle
-            type="target"
-            :position="Position.Left"
-            class="!bg-cyan-500"
-        />
-        <Handle
-            type="source"
-            :position="Position.Right"
-            class="!bg-cyan-500"
-        />
+        <Handle type="target" :position="Position.Left" class="!bg-cyan-500" />
+        <Handle type="source" :position="Position.Right" class="!bg-cyan-500" />
     </div>
 </template>

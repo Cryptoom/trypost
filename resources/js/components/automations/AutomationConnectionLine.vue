@@ -41,7 +41,13 @@ const pathData = computed(() => {
             >
                 <polyline
                     points="-5,-4 0,0 -5,4 -5,-4"
-                    style="stroke: #0a0a0a; fill: #0a0a0a; stroke-width: 1; stroke-linecap: round; stroke-linejoin: round;"
+                    style="
+                        stroke: #0a0a0a;
+                        fill: #0a0a0a;
+                        stroke-width: 1;
+                        stroke-linecap: round;
+                        stroke-linejoin: round;
+                    "
                 />
             </marker>
         </defs>

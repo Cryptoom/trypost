@@ -15,7 +15,6 @@ import {
     TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { formatNumberCompact } from '@/lib/utils';
-
 import { metrics as metricsRoute } from '@/routes/app/posts/platforms';
 
 interface Metric {

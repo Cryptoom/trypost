@@ -18,7 +18,9 @@ withDefaults(
 );
 
 const hasPickedTime = defineModel<boolean>('hasPickedTime', { required: true });
-const scheduledDateTime = defineModel<string>('scheduledDateTime', { required: true });
+const scheduledDateTime = defineModel<string>('scheduledDateTime', {
+    required: true,
+});
 
 const emit = defineEmits<{
     (e: 'delete'): void;

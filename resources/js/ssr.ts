@@ -22,7 +22,9 @@ createServer(
             setup: ({ App, props, plugin }) => {
                 syncContentTypeMediaRules(props.initialPage);
 
-                return createSSRApp({ render: () => h(App, props) }).use(plugin);
+                return createSSRApp({ render: () => h(App, props) }).use(
+                    plugin,
+                );
             },
         }),
     { cluster: true },

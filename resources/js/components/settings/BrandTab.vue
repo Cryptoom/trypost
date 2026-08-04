@@ -65,6 +65,8 @@ const submit = () => {
             :autofill="!workspace.brand_website"
         />
 
-        <Button :disabled="form.processing">{{ $t('settings.workspace.save') }}</Button>
+        <Button :disabled="form.processing">{{
+            $t('settings.workspace.save')
+        }}</Button>
     </form>
 </template>

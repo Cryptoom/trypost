@@ -35,7 +35,10 @@ export const isPayloadTemplateValid = (template: string): boolean => {
  */
 export const firstConfigIssue = (nodes: WorkflowNode[]): string | null => {
     for (const node of nodes) {
-        if (node.type === NodeType.Webhook && !isPayloadTemplateValid(String(node.data?.payload_template ?? ''))) {
+        if (
+            node.type === NodeType.Webhook &&
+            !isPayloadTemplateValid(String(node.data?.payload_template ?? ''))
+        ) {
             return trans('automations.errors.webhook_invalid_payload_json');
         }
     }

@@ -11,6 +11,7 @@ import {
 } from '@tabler/icons-vue';
 import { computed } from 'vue';
 
+import { updateLanguage } from '@/actions/App/Http/Controllers/App/Settings/ProfileController';
 import { Avatar } from '@/components/ui/avatar';
 import {
     DropdownMenuGroup,
@@ -24,9 +25,6 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useWorkspaceRole } from '@/composables/useWorkspaceRole';
 import posthog from '@/posthog';
-import type { User } from '@/types';
-
-import { updateLanguage } from '@/actions/App/Http/Controllers/App/Settings/ProfileController';
 import { logout } from '@/routes';
 import { settings as settingsHub } from '@/routes/app';
 import { edit as accountEdit } from '@/routes/app/account';
@@ -35,6 +33,7 @@ import {
     create as createWorkspaceRoute,
     switchMethod,
 } from '@/routes/app/workspaces';
+import type { User } from '@/types';
 
 interface Workspace {
     id: string;

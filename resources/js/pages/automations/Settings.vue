@@ -44,21 +44,31 @@ const isToggling = ref(false);
 
 // A misconfigured node can't be activated (the backend rejects it too); surface
 // it up front and block the toggle. Pausing an active automation stays allowed.
-const configIssue = computed(() => firstConfigIssue(props.automation.nodes ?? []));
-const activationBlocked = computed(() => !isActive.value && configIssue.value !== null);
+const configIssue = computed(() =>
+    firstConfigIssue(props.automation.nodes ?? []),
+);
+const activationBlocked = computed(
+    () => !isActive.value && configIssue.value !== null,
+);
 
 const statusDetail = computed(() => {
     const automation = props.automation;
 
     if (automation.status === 'active' && automation.activated_at) {
-        return trans('automations.settings.activated_at', { date: date.formatDate(automation.activated_at) });
+        return trans('automations.settings.activated_at', {
+            date: date.formatDate(automation.activated_at),
+        });
     }
 
     if (automation.status === 'paused' && automation.paused_at) {
-        return trans('automations.settings.paused_at', { date: date.formatDate(automation.paused_at) });
+        return trans('automations.settings.paused_at', {
+            date: date.formatDate(automation.paused_at),
+        });
     }
 
-    return trans('automations.settings.created_at', { date: date.formatDate(automation.created_at) });
+    return trans('automations.settings.created_at', {
+        date: date.formatDate(automation.created_at),
+    });
 });
 
 const toggleActive = () => {

@@ -3,6 +3,7 @@ import { Form } from '@inertiajs/vue3';
 import { trans } from 'laravel-vue-i18n';
 import { ref } from 'vue';
 
+import ApiKeyController from '@/actions/App/Http/Controllers/App/ApiKeyController';
 import DatePicker from '@/components/DatePicker.vue';
 import InputError from '@/components/InputError.vue';
 import { Button } from '@/components/ui/button';
@@ -16,8 +17,6 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-
-import ApiKeyController from '@/actions/App/Http/Controllers/App/ApiKeyController';
 
 const open = defineModel<boolean>('open', { default: false });
 

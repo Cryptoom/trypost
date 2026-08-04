@@ -25,7 +25,9 @@ export const useLinkCard = (content: Ref<string>, media: Ref<MediaItem[]>) => {
     const http = useHttp<{ url: string }, LinkCard | null>({ url: '' });
 
     const url = computed(() =>
-        media.value.length > 0 ? null : (content.value.match(/https?:\/\/\S+/)?.[0] ?? null),
+        media.value.length > 0
+            ? null
+            : (content.value.match(/https?:\/\/\S+/)?.[0] ?? null),
     );
 
     const fetchCard = async (target: string): Promise<void> => {

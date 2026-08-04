@@ -9,11 +9,13 @@ export const filterImageCapableVariants = <T extends { value: string }>(
     variants: readonly T[],
     imageOnly: boolean,
 ): T[] => {
-    if (! imageOnly) {
+    if (!imageOnly) {
         return [...variants];
     }
 
-    return variants.filter((variant) => getMediaRulesForContentType(variant.value).acceptImages);
+    return variants.filter(
+        (variant) => getMediaRulesForContentType(variant.value).acceptImages,
+    );
 };
 
 /**

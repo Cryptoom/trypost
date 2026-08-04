@@ -2,6 +2,7 @@ import type { Edge } from '@vue-flow/core';
 import type { Ref } from 'vue';
 
 import type { Command } from '../types';
+
 import { RemoveEdgeCommand } from './RemoveEdgeCommand';
 
 export class AddEdgeCommand implements Command {
@@ -13,7 +14,9 @@ export class AddEdgeCommand implements Command {
     ) {}
 
     revert(): void {
-        this.edgesRef.value = this.edgesRef.value.filter((e) => e.id !== this.edge.id);
+        this.edgesRef.value = this.edgesRef.value.filter(
+            (e) => e.id !== this.edge.id,
+        );
     }
 
     getReverseCommand(): Command {

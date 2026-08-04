@@ -3,8 +3,19 @@ import { IconCheck, IconChevronDown } from '@tabler/icons-vue';
 import { computed, ref } from 'vue';
 
 import { Button } from '@/components/ui/button';
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import {
+    Command,
+    CommandEmpty,
+    CommandGroup,
+    CommandInput,
+    CommandItem,
+    CommandList,
+} from '@/components/ui/command';
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 import type { ContentLanguageOption } from '@/types';
 
@@ -28,7 +39,11 @@ const value = defineModel<string | null>({ required: true });
 
 const open = ref(false);
 
-const selectedLabel = computed(() => props.options.find((option) => option.value === value.value)?.label ?? '');
+const selectedLabel = computed(
+    () =>
+        props.options.find((option) => option.value === value.value)?.label ??
+        '',
+);
 
 const select = (code: string) => {
     value.value = code;
@@ -54,7 +69,10 @@ const select = (code: string) => {
             </Button>
         </PopoverTrigger>
 
-        <PopoverContent class="w-(--reka-popover-trigger-width) p-0" align="start">
+        <PopoverContent
+            class="w-(--reka-popover-trigger-width) p-0"
+            align="start"
+        >
             <Command>
                 <CommandInput :placeholder="searchPlaceholder" />
                 <CommandList>
@@ -67,8 +85,19 @@ const select = (code: string) => {
                             @select="select(option.value)"
                         >
                             {{ option.label }}
-                            <span v-if="option.englishName" class="sr-only">{{ option.englishName }}</span>
-                            <IconCheck :class="cn('ms-auto size-4', value === option.value ? 'opacity-100' : 'opacity-0')" />
+                            <span v-if="option.englishName" class="sr-only">{{
+                                option.englishName
+                            }}</span>
+                            <IconCheck
+                                :class="
+                                    cn(
+                                        'ms-auto size-4',
+                                        value === option.value
+                                            ? 'opacity-100'
+                                            : 'opacity-0',
+                                    )
+                                "
+                            />
                         </CommandItem>
                     </CommandGroup>
                 </CommandList>

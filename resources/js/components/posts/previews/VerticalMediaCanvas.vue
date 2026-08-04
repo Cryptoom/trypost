@@ -16,16 +16,35 @@ const item = computed<MediaItem | null>(() => props.media[0] ?? null);
 <template>
     <div class="absolute inset-0 overflow-hidden bg-black">
         <template v-if="item">
-            <VideoPreview v-if="isVideoMedia(item)" :src="item.url" video-class="h-full w-full object-cover" />
+            <VideoPreview
+                v-if="isVideoMedia(item)"
+                :src="item.url"
+                video-class="h-full w-full object-cover"
+            />
             <template v-else>
                 <div class="absolute inset-x-0 top-0 h-1/2 overflow-hidden">
-                    <img :src="item.url" alt="" aria-hidden="true" class="h-full w-full blur-3xl brightness-110" />
+                    <img
+                        :src="item.url"
+                        alt=""
+                        aria-hidden="true"
+                        class="h-full w-full blur-3xl brightness-110"
+                    />
                 </div>
-                <div class="absolute inset-x-0 bottom-0 h-1/2 -scale-y-100 overflow-hidden">
-                    <img :src="item.url" alt="" aria-hidden="true" class="h-full w-full blur-3xl brightness-110" />
+                <div
+                    class="absolute inset-x-0 bottom-0 h-1/2 -scale-y-100 overflow-hidden"
+                >
+                    <img
+                        :src="item.url"
+                        alt=""
+                        aria-hidden="true"
+                        class="h-full w-full blur-3xl brightness-110"
+                    />
                 </div>
-                <img :src="item.url" :alt="item.original_filename"
-                    class="absolute inset-0 h-full w-full object-contain" />
+                <img
+                    :src="item.url"
+                    :alt="item.original_filename"
+                    class="absolute inset-0 h-full w-full object-contain"
+                />
             </template>
         </template>
         <template v-else>

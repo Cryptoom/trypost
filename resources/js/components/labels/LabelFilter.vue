@@ -13,8 +13,17 @@ import {
     CommandItem,
     CommandList,
 } from '@/components/ui/command';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from '@/components/ui/popover';
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 
 interface Label {
@@ -64,7 +73,9 @@ const clear = () => {
                     <IconTag class="size-4 shrink-0 opacity-60" />
 
                     <template v-if="selectedLabels.length === 0">
-                        <span class="text-foreground/70">{{ trans('posts.filter_by_label') }}</span>
+                        <span class="text-foreground/70">{{
+                            trans('posts.filter_by_label')
+                        }}</span>
                     </template>
                     <template v-else>
                         <div class="flex flex-wrap items-center gap-1">
@@ -76,12 +87,16 @@ const clear = () => {
                             <span
                                 v-if="selectedLabels.length > 3"
                                 class="text-xs font-bold text-foreground/60"
-                            >+{{ selectedLabels.length - 3 }}</span>
+                                >+{{ selectedLabels.length - 3 }}</span
+                            >
                         </div>
                     </template>
                 </div>
 
-                <TooltipProvider v-if="selectedIds.length" :delay-duration="200">
+                <TooltipProvider
+                    v-if="selectedIds.length"
+                    :delay-duration="200"
+                >
                     <Tooltip>
                         <TooltipTrigger as-child>
                             <button
@@ -104,9 +119,14 @@ const clear = () => {
             </Button>
         </PopoverTrigger>
 
-        <PopoverContent class="w-(--reka-popover-trigger-width) min-w-[220px] p-0" align="start">
+        <PopoverContent
+            class="w-(--reka-popover-trigger-width) min-w-[220px] p-0"
+            align="start"
+        >
             <Command>
-                <CommandInput :placeholder="trans('posts.label_search_placeholder')" />
+                <CommandInput
+                    :placeholder="trans('posts.label_search_placeholder')"
+                />
                 <CommandList>
                     <CommandEmpty>{{ trans('posts.no_labels') }}</CommandEmpty>
                     <CommandGroup>
@@ -118,7 +138,14 @@ const clear = () => {
                         >
                             <LabelBadge :label="label" />
                             <IconCheck
-                                :class="cn('ml-auto size-4', isSelected(label.id) ? 'opacity-100' : 'opacity-0')"
+                                :class="
+                                    cn(
+                                        'ml-auto size-4',
+                                        isSelected(label.id)
+                                            ? 'opacity-100'
+                                            : 'opacity-0',
+                                    )
+                                "
                             />
                         </CommandItem>
                     </CommandGroup>

@@ -11,7 +11,10 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { PublishMode, type PublishModeValue } from '@/types/automation/publish-mode';
+import {
+    PublishMode,
+    type PublishModeValue,
+} from '@/types/automation/publish-mode';
 
 interface PublishConfig {
     mode: PublishModeValue;
@@ -35,23 +38,41 @@ watch(local, (val) => emit('update', val), { deep: true });
 <template>
     <div class="space-y-3">
         <div>
-            <Label class="mb-1 block">{{ $t('automations.config.publish.mode') }}</Label>
+            <Label class="mb-1 block">{{
+                $t('automations.config.publish.mode')
+            }}</Label>
             <Select v-model="local.mode">
                 <SelectTrigger class="w-full">
-                    <SelectValue :placeholder="$t('automations.config.select_placeholder')" />
+                    <SelectValue
+                        :placeholder="
+                            $t('automations.config.select_placeholder')
+                        "
+                    />
                 </SelectTrigger>
                 <SelectContent>
-                    <SelectItem :value="PublishMode.Now">{{ $t('automations.config.publish.modes.now') }}</SelectItem>
-                    <SelectItem :value="PublishMode.Scheduled">{{ $t('automations.config.publish.modes.scheduled') }}</SelectItem>
-                    <SelectItem :value="PublishMode.Draft">{{ $t('automations.config.publish.modes.draft') }}</SelectItem>
+                    <SelectItem :value="PublishMode.Now">{{
+                        $t('automations.config.publish.modes.now')
+                    }}</SelectItem>
+                    <SelectItem :value="PublishMode.Scheduled">{{
+                        $t('automations.config.publish.modes.scheduled')
+                    }}</SelectItem>
+                    <SelectItem :value="PublishMode.Draft">{{
+                        $t('automations.config.publish.modes.draft')
+                    }}</SelectItem>
                 </SelectContent>
             </Select>
             <InputError :message="errors?.mode" class="mt-1" />
         </div>
 
         <div v-if="local.mode === PublishMode.Scheduled">
-            <Label class="mb-1 block">{{ $t('automations.config.publish.scheduled_offset') }}</Label>
-            <Input type="number" v-model.number="local.scheduled_offset" placeholder="60" />
+            <Label class="mb-1 block">{{
+                $t('automations.config.publish.scheduled_offset')
+            }}</Label>
+            <Input
+                type="number"
+                v-model.number="local.scheduled_offset"
+                placeholder="60"
+            />
             <InputError :message="errors?.scheduled_offset" class="mt-1" />
         </div>
     </div>

@@ -14,7 +14,6 @@ import { Button } from '@/components/ui/button';
 import { useWorkspaceEcho } from '@/composables/echo/useWorkspaceEcho';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { copyToClipboard } from '@/lib/utils';
-
 import { calendar } from '@/routes/app';
 import { complete } from '@/routes/app/onboarding';
 import { skip as skipStepRoute } from '@/routes/app/onboarding/steps';

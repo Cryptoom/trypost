@@ -21,7 +21,6 @@ import InputError from '@/components/InputError.vue';
 import { Button } from '@/components/ui/button';
 import { useTracking } from '@/composables/useTracking';
 import WelcomeLayout from '@/layouts/WelcomeLayout.vue';
-
 import { store } from '@/routes/app/welcome/referral-source';
 
 const props = defineProps<{

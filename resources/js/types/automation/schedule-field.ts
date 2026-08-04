@@ -6,4 +6,5 @@ export const ScheduleField = {
     Months: 'months',
 } as const;
 
-export type ScheduleFieldValue = (typeof ScheduleField)[keyof typeof ScheduleField];
+export type ScheduleFieldValue =
+    (typeof ScheduleField)[keyof typeof ScheduleField];

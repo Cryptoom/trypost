@@ -4,11 +4,10 @@ import { IconBookmarks, IconPencil, IconSparkles } from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
 import { computed, ref } from 'vue';
 
+import { index as templatesIndex } from '@/actions/App/Http/Controllers/App/PostTemplateController';
 import PageHeader from '@/components/PageHeader.vue';
 import AiPostWizard from '@/components/posts/create/AiPostWizard.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
-
-import { index as templatesIndex } from '@/actions/App/Http/Controllers/App/PostTemplateController';
 import { store as storePost } from '@/routes/app/posts';
 
 interface SocialAccount {

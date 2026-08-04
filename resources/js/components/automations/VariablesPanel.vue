@@ -20,19 +20,29 @@ const removeVariable = (index: number) => {
 };
 
 const updateKey = (index: number, key: string) => {
-    variables.value = variables.value.map((variable, i) => (i === index ? { ...variable, key } : variable));
+    variables.value = variables.value.map((variable, i) =>
+        i === index ? { ...variable, key } : variable,
+    );
 };
 
 const updateValue = (index: number, value: string) => {
-    variables.value = variables.value.map((variable, i) => (i === index ? { ...variable, value } : variable));
+    variables.value = variables.value.map((variable, i) =>
+        i === index ? { ...variable, value } : variable,
+    );
 };
 </script>
 
 <template>
     <div class="flex flex-col gap-4">
         <div>
-            <p class="text-[11px] font-black uppercase tracking-widest text-foreground/50">{{ $t('automations.variables.title') }}</p>
-            <p class="mt-1 text-xs text-foreground/60">{{ $t('automations.variables.hint') }}</p>
+            <p
+                class="text-[11px] font-black tracking-widest text-foreground/50 uppercase"
+            >
+                {{ $t('automations.variables.title') }}
+            </p>
+            <p class="mt-1 text-xs text-foreground/60">
+                {{ $t('automations.variables.hint') }}
+            </p>
         </div>
 
         <div
@@ -49,20 +59,33 @@ const updateValue = (index: number, value: string) => {
         >
             <div class="flex items-start gap-2">
                 <div class="flex-1 space-y-1">
-                    <Label class="text-[11px] font-bold uppercase tracking-wider text-foreground/60">{{ $t('automations.variables.key') }}</Label>
+                    <Label
+                        class="text-[11px] font-bold tracking-wider text-foreground/60 uppercase"
+                        >{{ $t('automations.variables.key') }}</Label
+                    >
                     <Input
                         :model-value="variable.key"
-                        :placeholder="$t('automations.variables.key_placeholder')"
+                        :placeholder="
+                            $t('automations.variables.key_placeholder')
+                        "
                         @update:model-value="updateKey(index, String($event))"
                     />
                 </div>
-                <Button variant="ghost" size="icon-sm" class="mt-6" @click="removeVariable(index)">
+                <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    class="mt-6"
+                    @click="removeVariable(index)"
+                >
                     <IconTrash class="size-4" />
                 </Button>
             </div>
 
             <div class="space-y-1">
-                <Label class="text-[11px] font-bold uppercase tracking-wider text-foreground/60">{{ $t('automations.variables.value') }}</Label>
+                <Label
+                    class="text-[11px] font-bold tracking-wider text-foreground/60 uppercase"
+                    >{{ $t('automations.variables.value') }}</Label
+                >
                 <Input
                     :model-value="variable.value"
                     :placeholder="$t('automations.variables.value_placeholder')"
@@ -81,7 +104,12 @@ const updateValue = (index: number, value: string) => {
             </button>
         </div>
 
-        <Button variant="outline" size="sm" class="self-start" @click="addVariable">
+        <Button
+            variant="outline"
+            size="sm"
+            class="self-start"
+            @click="addVariable"
+        >
             <IconPlus class="size-4" />
             {{ $t('automations.variables.add') }}
         </Button>

@@ -1,7 +1,10 @@
 import { trans } from 'laravel-vue-i18n';
 import { computed, type ComputedRef, type Ref } from 'vue';
 
-import { getMediaItemIssue, getMediaValidationWarning } from '@/composables/useMedia';
+import {
+    getMediaItemIssue,
+    getMediaValidationWarning,
+} from '@/composables/useMedia';
 import { getMediaRulesForContentType } from '@/composables/useMediaRules';
 import { getPlatformLabel } from '@/composables/usePlatformLogo';
 import { ContentType } from '@/types/content-type';
@@ -21,20 +24,41 @@ export interface CompliancePost {
 }
 
 export const PLATFORM_VARIANTS: Record<string, string[]> = {
-    [Platform.Facebook]: [ContentType.FacebookPost, ContentType.FacebookReel, ContentType.FacebookStory],
-    [Platform.Instagram]: [ContentType.InstagramFeed, ContentType.InstagramReel, ContentType.InstagramStory],
-    [Platform.InstagramFacebook]: [ContentType.InstagramFeed, ContentType.InstagramReel, ContentType.InstagramStory],
+    [Platform.Facebook]: [
+        ContentType.FacebookPost,
+        ContentType.FacebookReel,
+        ContentType.FacebookStory,
+    ],
+    [Platform.Instagram]: [
+        ContentType.InstagramFeed,
+        ContentType.InstagramReel,
+        ContentType.InstagramStory,
+    ],
+    [Platform.InstagramFacebook]: [
+        ContentType.InstagramFeed,
+        ContentType.InstagramReel,
+        ContentType.InstagramStory,
+    ],
     [Platform.LinkedIn]: [ContentType.LinkedInPost],
     [Platform.LinkedInPage]: [ContentType.LinkedInPagePost],
     [Platform.TikTok]: [ContentType.TikTokVideo, ContentType.TikTokPhoto],
-    [Platform.Pinterest]: [ContentType.PinterestPin, ContentType.PinterestVideoPin, ContentType.PinterestCarousel],
+    [Platform.Pinterest]: [
+        ContentType.PinterestPin,
+        ContentType.PinterestVideoPin,
+        ContentType.PinterestCarousel,
+    ],
 };
 
 // Content types whose post needs text to publish — YouTube Shorts derive their
 // required title from the post content, so an empty post can't be scheduled.
-const CONTENT_TYPES_REQUIRING_TEXT = new Set<string>([ContentType.YouTubeShort]);
+const CONTENT_TYPES_REQUIRING_TEXT = new Set<string>([
+    ContentType.YouTubeShort,
+]);
 
-type MetaRule = (meta: Record<string, any>) => { valid: boolean; tooltipKey: string | null };
+type MetaRule = (meta: Record<string, any>) => {
+    valid: boolean;
+    tooltipKey: string | null;
+};
 
 // Platforms whose `meta` blob has publish-time requirements. `valid` gates
 // scheduling; `tooltipKey` (when set) surfaces a platform-specific message
@@ -42,9 +66,10 @@ type MetaRule = (meta: Record<string, any>) => { valid: boolean; tooltipKey: str
 // to the generic incomplete tooltip".
 const PLATFORM_META_RULES: Record<string, MetaRule> = {
     [Platform.TikTok]: (meta) => {
-        const disclosureIncomplete = Boolean(meta.disclose)
-            && !meta.brand_organic_toggle
-            && !meta.brand_content_toggle;
+        const disclosureIncomplete =
+            Boolean(meta.disclose) &&
+            !meta.brand_organic_toggle &&
+            !meta.brand_content_toggle;
         const privacyLevelMissing = !meta.privacy_level;
         let tooltipKey: string | null = null;
         if (disclosureIncomplete) {
@@ -59,11 +84,15 @@ const PLATFORM_META_RULES: Record<string, MetaRule> = {
     },
     [Platform.Pinterest]: (meta) => ({
         valid: Boolean(meta.board_id),
-        tooltipKey: meta.board_id ? null : 'posts.form.pinterest.board_required',
+        tooltipKey: meta.board_id
+            ? null
+            : 'posts.form.pinterest.board_required',
     }),
     [Platform.Discord]: (meta) => ({
         valid: Boolean(meta.channel_id),
-        tooltipKey: meta.channel_id ? null : 'posts.form.discord.channel_required',
+        tooltipKey: meta.channel_id
+            ? null
+            : 'posts.form.discord.channel_required',
     }),
 };
 
@@ -84,10 +113,15 @@ export const evaluatePlatformMeta = (
  * Translated meta issue for a platform (or null when compliant) — the same
  * requirement the post editor enforces before scheduling.
  */
-export const getPlatformMetaIssue = (platform: string, meta: Record<string, any>): string | null => {
+export const getPlatformMetaIssue = (
+    platform: string,
+    meta: Record<string, any>,
+): string | null => {
     const result = evaluatePlatformMeta(platform, meta);
     if (result.valid) return null;
-    return result.tooltipKey ? trans(result.tooltipKey) : trans('posts.edit.compliance_incomplete');
+    return result.tooltipKey
+        ? trans(result.tooltipKey)
+        : trans('posts.edit.compliance_incomplete');
 };
 
 // The editor's compliance copy keyed by the shared media-warning core's key.
@@ -127,7 +161,9 @@ export const getMediaIncompatibilityReason = (
     if (warning.key === 'max_files_exceeded') params.max = warning.params.max;
     if (warning.key === 'min_files_required') params.min = warning.params.min;
     if (warning.key === 'video_too_long') {
-        params.seconds = String(getMediaRulesForContentType(contentType).maxVideoDurationSec ?? '');
+        params.seconds = String(
+            getMediaRulesForContentType(contentType).maxVideoDurationSec ?? '',
+        );
     }
 
     return trans(`posts.edit.compliance.${complianceKey}`, params);
@@ -139,7 +175,10 @@ export const firstCompatibleVariant = (
 ): string | null => {
     const variants = PLATFORM_VARIANTS[platform];
     if (!variants) return null;
-    return variants.find((ct) => !getMediaIncompatibilityReason(ct, mediaItems)) ?? null;
+    return (
+        variants.find((ct) => !getMediaIncompatibilityReason(ct, mediaItems)) ??
+        null
+    );
 };
 
 interface UsePostComplianceOptions {
@@ -153,18 +192,30 @@ interface UsePostComplianceOptions {
 }
 
 export const usePostCompliance = (opts: UsePostComplianceOptions) => {
-    const { post, content, media, selectedPlatformIds, platformContentTypes, platformMeta, platformConfigs } = opts;
+    const {
+        post,
+        content,
+        media,
+        selectedPlatformIds,
+        platformContentTypes,
+        platformMeta,
+        platformConfigs,
+    } = opts;
 
-    const selectedPlatforms = computed(() => post.value.post_platforms.filter(
-        (pp) => selectedPlatformIds.value.includes(pp.id),
-    ));
+    const selectedPlatforms = computed(() =>
+        post.value.post_platforms.filter((pp) =>
+            selectedPlatformIds.value.includes(pp.id),
+        ),
+    );
 
     const platformLimits = computed(() => {
         const seen = new Set<string>();
         const result: { platform: string; maxLength: number }[] = [];
         for (const pp of selectedPlatforms.value) {
             if (seen.has(pp.platform)) continue;
-            const max = pp.social_account_id ? platformConfigs[pp.social_account_id]?.maxContentLength : null;
+            const max = pp.social_account_id
+                ? platformConfigs[pp.social_account_id]?.maxContentLength
+                : null;
             if (typeof max === 'number' && max > 0) {
                 seen.add(pp.platform);
                 result.push({ platform: pp.platform, maxLength: max });
@@ -173,14 +224,18 @@ export const usePostCompliance = (opts: UsePostComplianceOptions) => {
         return result;
     });
 
-    const mediaIssues = computed<Record<string, { platform: string; reason: string }[]>>(() => {
-        const result: Record<string, { platform: string; reason: string }[]> = {};
+    const mediaIssues = computed<
+        Record<string, { platform: string; reason: string }[]>
+    >(() => {
+        const result: Record<string, { platform: string; reason: string }[]> =
+            {};
         for (const item of media.value) {
             const issues: { platform: string; reason: string }[] = [];
             const seen = new Set<string>();
             for (const pp of selectedPlatforms.value) {
                 if (seen.has(pp.platform)) continue;
-                const contentType = platformContentTypes.value[pp.id] ?? pp.content_type ?? '';
+                const contentType =
+                    platformContentTypes.value[pp.id] ?? pp.content_type ?? '';
                 const reason = getMediaItemIssue(item, contentType);
                 if (reason) {
                     seen.add(pp.platform);
@@ -202,16 +257,23 @@ export const usePostCompliance = (opts: UsePostComplianceOptions) => {
                 continue;
             }
 
-            if (CONTENT_TYPES_REQUIRING_TEXT.has(contentType) && content.value.trim() === '') {
+            if (
+                CONTENT_TYPES_REQUIRING_TEXT.has(contentType) &&
+                content.value.trim() === ''
+            ) {
                 issues[pp.id] = trans('posts.edit.compliance.requires_text');
                 continue;
             }
 
-            const reason = getMediaIncompatibilityReason(contentType, media.value);
+            const reason = getMediaIncompatibilityReason(
+                contentType,
+                media.value,
+            );
             if (!reason) continue;
 
             const isSelected = selectedPlatformIds.value.includes(pp.id);
-            if (!isSelected && firstCompatibleVariant(pp.platform, media.value)) continue;
+            if (!isSelected && firstCompatibleVariant(pp.platform, media.value))
+                continue;
 
             issues[pp.id] = reason;
         }
@@ -219,9 +281,11 @@ export const usePostCompliance = (opts: UsePostComplianceOptions) => {
         return issues;
     });
 
-    const platformMetaResults = computed(() => selectedPlatforms.value.map(
-        (pp) => evaluatePlatformMeta(pp.platform, platformMeta.value[pp.id] ?? {}),
-    ));
+    const platformMetaResults = computed(() =>
+        selectedPlatforms.value.map((pp) =>
+            evaluatePlatformMeta(pp.platform, platformMeta.value[pp.id] ?? {}),
+        ),
+    );
 
     const hasContentOrMedia = computed(
         () => content.value.trim().length > 0 || media.value.length > 0,
@@ -231,16 +295,24 @@ export const usePostCompliance = (opts: UsePostComplianceOptions) => {
         const len = content.value.length;
         return platformLimits.value
             .filter((p) => len > p.maxLength)
-            .map((p) => ({ platform: p.platform, limit: p.maxLength, over: len - p.maxLength }));
+            .map((p) => ({
+                platform: p.platform,
+                limit: p.maxLength,
+                over: len - p.maxLength,
+            }));
     });
 
     const canSchedule = computed(() => {
-        const mediaValid = selectedPlatformIds.value.every((id) => !platformIssues.value[id]);
+        const mediaValid = selectedPlatformIds.value.every(
+            (id) => !platformIssues.value[id],
+        );
         const metaValid = platformMetaResults.value.every((r) => r.valid);
-        return mediaValid
-            && metaValid
-            && hasContentOrMedia.value
-            && contentLengthOverflows.value.length === 0;
+        return (
+            mediaValid &&
+            metaValid &&
+            hasContentOrMedia.value &&
+            contentLengthOverflows.value.length === 0
+        );
     });
 
     const postActionTooltip = computed(() => {
@@ -248,21 +320,29 @@ export const usePostCompliance = (opts: UsePostComplianceOptions) => {
 
         const mediaReasons = selectedPlatforms.value
             .filter((pp) => platformIssues.value[pp.id])
-            .map((pp) => `${pp.platform_name ?? pp.platform}: ${platformIssues.value[pp.id]}`);
+            .map(
+                (pp) =>
+                    `${pp.platform_name ?? pp.platform}: ${platformIssues.value[pp.id]}`,
+            );
 
-        const lengthReasons = contentLengthOverflows.value.map((overflow) => trans('posts.form.content_exceeds_platform', {
-            platform: getPlatformLabel(overflow.platform),
-            limit: String(overflow.limit),
-            over: String(overflow.over),
-        }));
+        const lengthReasons = contentLengthOverflows.value.map((overflow) =>
+            trans('posts.form.content_exceeds_platform', {
+                platform: getPlatformLabel(overflow.platform),
+                limit: String(overflow.limit),
+                over: String(overflow.over),
+            }),
+        );
 
         const combined = [...mediaReasons, ...lengthReasons].join('\n');
         if (combined) return combined;
 
-        const metaTooltipKey = platformMetaResults.value.find((r) => r.tooltipKey)?.tooltipKey;
+        const metaTooltipKey = platformMetaResults.value.find(
+            (r) => r.tooltipKey,
+        )?.tooltipKey;
         if (metaTooltipKey) return trans(metaTooltipKey);
 
-        if (!hasContentOrMedia.value) return trans('posts.edit.compliance.requires_content_or_media');
+        if (!hasContentOrMedia.value)
+            return trans('posts.edit.compliance.requires_content_or_media');
 
         return trans('posts.edit.compliance_incomplete');
     });

@@ -2,6 +2,7 @@ import type { Edge } from '@vue-flow/core';
 import type { Ref } from 'vue';
 
 import type { Command } from '../types';
+
 import { AddEdgeCommand } from './AddEdgeCommand';
 
 export class RemoveEdgeCommand implements Command {

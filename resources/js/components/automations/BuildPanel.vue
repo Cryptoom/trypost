@@ -19,29 +19,69 @@ const categories = computed(() => [
     {
         title: trans('automations.categories.sources'),
         nodes: [
-            { type: NodeType.FetchRss, label: trans('automations.nodes.fetch_rss'), icon: IconRss, accent: 'amber' },
-            { type: NodeType.HttpRequest, label: trans('automations.nodes.http_request'), icon: IconWorld, accent: 'slate' },
+            {
+                type: NodeType.FetchRss,
+                label: trans('automations.nodes.fetch_rss'),
+                icon: IconRss,
+                accent: 'amber',
+            },
+            {
+                type: NodeType.HttpRequest,
+                label: trans('automations.nodes.http_request'),
+                icon: IconWorld,
+                accent: 'slate',
+            },
         ],
     },
     {
         title: trans('automations.categories.content'),
         nodes: [
-            { type: NodeType.Generate, label: trans('automations.nodes.generate'), icon: IconSparkles, accent: 'blue' },
+            {
+                type: NodeType.Generate,
+                label: trans('automations.nodes.generate'),
+                icon: IconSparkles,
+                accent: 'blue',
+            },
         ],
     },
     {
         title: trans('automations.categories.flow'),
         nodes: [
-            { type: NodeType.Condition, label: trans('automations.nodes.condition'), icon: IconGitBranch, accent: 'rose' },
-            { type: NodeType.Delay, label: trans('automations.nodes.delay'), icon: IconClock, accent: 'cyan' },
-            { type: NodeType.End, label: trans('automations.nodes.end'), icon: IconCircleX, accent: 'zinc' },
+            {
+                type: NodeType.Condition,
+                label: trans('automations.nodes.condition'),
+                icon: IconGitBranch,
+                accent: 'rose',
+            },
+            {
+                type: NodeType.Delay,
+                label: trans('automations.nodes.delay'),
+                icon: IconClock,
+                accent: 'cyan',
+            },
+            {
+                type: NodeType.End,
+                label: trans('automations.nodes.end'),
+                icon: IconCircleX,
+                accent: 'zinc',
+            },
         ],
     },
     {
         title: trans('automations.categories.output'),
         nodes: [
-            { type: NodeType.Publish, label: trans('automations.nodes.publish'), icon: IconSend, accent: 'emerald' },
-            { type: NodeType.Webhook, label: trans('automations.nodes.webhook'), icon: IconWebhook, accent: 'slate' },
+            {
+                type: NodeType.Publish,
+                label: trans('automations.nodes.publish'),
+                icon: IconSend,
+                accent: 'emerald',
+            },
+            {
+                type: NodeType.Webhook,
+                label: trans('automations.nodes.webhook'),
+                icon: IconWebhook,
+                accent: 'slate',
+            },
         ],
     },
 ]);
@@ -66,8 +106,14 @@ const onDragStart = (event: DragEvent, nodeType: string) => {
 
 <template>
     <div class="flex flex-col gap-5">
-        <div v-for="category in categories" :key="category.title" class="flex flex-col gap-2">
-            <p class="px-0.5 text-[11px] font-black uppercase tracking-widest text-foreground/45">
+        <div
+            v-for="category in categories"
+            :key="category.title"
+            class="flex flex-col gap-2"
+        >
+            <p
+                class="px-0.5 text-[11px] font-black tracking-widest text-foreground/45 uppercase"
+            >
                 {{ category.title }}
             </p>
             <button
@@ -77,11 +123,23 @@ const onDragStart = (event: DragEvent, nodeType: string) => {
                 class="group flex cursor-grab items-center gap-2.5 rounded-xl border-2 border-foreground bg-card p-2.5 text-left text-sm font-bold text-foreground shadow-[2px_2px_0_var(--foreground)] transition-all hover:-translate-x-px hover:-translate-y-px hover:shadow-[3px_3px_0_var(--foreground)] active:translate-x-0 active:translate-y-0 active:rotate-[-1deg] active:cursor-grabbing active:shadow-[1px_1px_0_var(--foreground)]"
                 @dragstart="onDragStart($event, option.type)"
             >
-                <div :class="['flex size-7 -rotate-3 items-center justify-center rounded-md border-2 border-foreground', accentClasses[option.accent].tint]">
-                    <component :is="option.icon" :size="14" :class="accentClasses[option.accent].text" />
+                <div
+                    :class="[
+                        'flex size-7 -rotate-3 items-center justify-center rounded-md border-2 border-foreground',
+                        accentClasses[option.accent].tint,
+                    ]"
+                >
+                    <component
+                        :is="option.icon"
+                        :size="14"
+                        :class="accentClasses[option.accent].text"
+                    />
                 </div>
                 <span class="flex-1">{{ option.label }}</span>
-                <IconGripVertical :size="16" class="shrink-0 text-foreground/30 transition-colors group-hover:text-foreground/55" />
+                <IconGripVertical
+                    :size="16"
+                    class="shrink-0 text-foreground/30 transition-colors group-hover:text-foreground/55"
+                />
             </button>
         </div>
     </div>

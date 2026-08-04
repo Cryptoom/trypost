@@ -2,6 +2,7 @@ import type { Node } from '@vue-flow/core';
 import type { Ref } from 'vue';
 
 import type { Command } from '../types';
+
 import { RemoveNodeCommand } from './RemoveNodeCommand';
 
 export class AddNodeCommand implements Command {
@@ -13,7 +14,9 @@ export class AddNodeCommand implements Command {
     ) {}
 
     revert(): void {
-        this.nodesRef.value = this.nodesRef.value.filter((n) => n.id !== this.node.id);
+        this.nodesRef.value = this.nodesRef.value.filter(
+            (n) => n.id !== this.node.id,
+        );
     }
 
     getReverseCommand(): Command {

@@ -5,4 +5,5 @@ export const NodeRunStatus = {
     Skipped: 'skipped',
 } as const;
 
-export type NodeRunStatusValue = (typeof NodeRunStatus)[keyof typeof NodeRunStatus];
+export type NodeRunStatusValue =
+    (typeof NodeRunStatus)[keyof typeof NodeRunStatus];

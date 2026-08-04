@@ -12,4 +12,5 @@ export const ConditionOperator = {
     LessThan: 'less_than',
 } as const;
 
-export type ConditionOperatorValue = (typeof ConditionOperator)[keyof typeof ConditionOperator];
+export type ConditionOperatorValue =
+    (typeof ConditionOperator)[keyof typeof ConditionOperator];

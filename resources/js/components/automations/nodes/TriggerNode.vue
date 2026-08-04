@@ -20,10 +20,14 @@ const summary = computed(() => triggerSummary(props.data));
         :class="{ 'is-selected': selected }"
     >
         <div class="automation-node__header">
-            <div class="automation-node__icon-tile automation-node__icon-tile--violet">
+            <div
+                class="automation-node__icon-tile automation-node__icon-tile--violet"
+            >
                 <IconBolt :size="16" />
             </div>
-            <span class="automation-node__title">{{ $t('automations.nodes.trigger') }}</span>
+            <span class="automation-node__title">{{
+                $t('automations.nodes.trigger')
+            }}</span>
         </div>
         <div class="automation-node__summary">
             {{ summary }}

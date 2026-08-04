@@ -80,8 +80,10 @@ const statusVariant = (
     status: RunStatusValue | NodeRunStatusValue,
 ): 'default' | 'secondary' | 'destructive' | 'outline' => {
     if (status === RunStatus.Completed) return 'default';
-    if (status === RunStatus.Failed || status === RunStatus.Cancelled) return 'destructive';
-    if (status === RunStatus.Running || status === RunStatus.Waiting) return 'secondary';
+    if (status === RunStatus.Failed || status === RunStatus.Cancelled)
+        return 'destructive';
+    if (status === RunStatus.Running || status === RunStatus.Waiting)
+        return 'secondary';
     return 'outline';
 };
 
@@ -93,13 +95,15 @@ const summary = (invocation: Invocation): string => {
         );
     if (invocation.status === RunStatus.Completed)
         return trans('automations.invocations.summary.completed');
-    if (invocation.status === RunStatus.Running || invocation.status === RunStatus.Waiting)
+    if (
+        invocation.status === RunStatus.Running ||
+        invocation.status === RunStatus.Waiting
+    )
         return trans('automations.invocations.summary.running');
     if (invocation.status === RunStatus.Cancelled)
         return trans('automations.invocations.summary.cancelled');
     return trans('automations.invocations.summary.pending');
 };
-
 
 const stepsLabel = (count: number): string =>
     transChoice('automations.invocations.steps', count, {
@@ -155,7 +159,12 @@ const toggleExpand = async (invocation: Invocation) => {
     if (expanded.value[invocation.id] && !nodeRuns.value[invocation.id]) {
         loadingRuns.value[invocation.id] = true;
         try {
-            const payload = await runHttp.get(showRunRoute.url({ automation: props.automation.id, run: invocation.id }));
+            const payload = await runHttp.get(
+                showRunRoute.url({
+                    automation: props.automation.id,
+                    run: invocation.id,
+                }),
+            );
             nodeRuns.value[invocation.id] = payload.node_runs ?? [];
         } catch {
             toast.error(trans('automations.invocations.load_error'));
@@ -169,7 +178,9 @@ const toggleExpand = async (invocation: Invocation) => {
 <template>
     <AutomationDetailLayout :automation="automation" current="invocations">
         <div class="space-y-4 p-4">
-            <div class="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+            <div
+                class="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center"
+            >
                 <div class="flex items-center gap-2 sm:contents">
                     <Select v-model="statusFilter">
                         <SelectTrigger
@@ -212,7 +223,9 @@ const toggleExpand = async (invocation: Invocation) => {
                                 >
                                     <IconRefresh
                                         class="size-4"
-                                        :class="{ 'animate-spin': isRefreshing }"
+                                        :class="{
+                                            'animate-spin': isRefreshing,
+                                        }"
                                     />
                                 </Button>
                             </TooltipTrigger>

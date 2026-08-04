@@ -6,7 +6,10 @@ import { computed, inject } from 'vue';
  * to collapse the inline field — the editing happens in the panel instead.
  */
 export const useExpandedEditor = () => {
-    const state = inject<{ active: boolean } | null>('automationExpandedEditor', null);
+    const state = inject<{ active: boolean } | null>(
+        'automationExpandedEditor',
+        null,
+    );
 
     return computed(() => state?.active ?? false);
 };

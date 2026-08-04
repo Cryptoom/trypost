@@ -31,9 +31,21 @@ defineProps<{
 }>();
 
 const tabs = computed(() => [
-    { name: 'account', label: trans('settings.account.tabs.account'), href: accountEdit().url },
-    { name: 'usage', label: trans('settings.account.tabs.usage'), href: usageIndex().url },
-    { name: 'billing', label: trans('settings.account.tabs.billing'), href: billingIndex().url },
+    {
+        name: 'account',
+        label: trans('settings.account.tabs.account'),
+        href: accountEdit().url,
+    },
+    {
+        name: 'usage',
+        label: trans('settings.account.tabs.usage'),
+        href: usageIndex().url,
+    },
+    {
+        name: 'billing',
+        label: trans('settings.account.tabs.billing'),
+        href: billingIndex().url,
+    },
 ]);
 </script>
 
@@ -56,7 +68,9 @@ const tabs = computed(() => [
                         :description="$t('usage.section_account_description')"
                     />
 
-                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    <div
+                        class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3"
+                    >
                         <UsageMetricCard
                             :label="$t('usage.workspaces')"
                             :icon="IconBuildingCommunity"
@@ -89,7 +103,9 @@ const tabs = computed(() => [
                         :description="$t('usage.section_ai_description')"
                     />
 
-                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    <div
+                        class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3"
+                    >
                         <UsageMetricCard
                             :label="$t('usage.credits')"
                             :icon="IconSparkles"

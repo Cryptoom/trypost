@@ -2,7 +2,6 @@ import { trans } from 'laravel-vue-i18n';
 import { computed } from 'vue';
 
 import { useWorkspaceRole } from '@/composables/useWorkspaceRole';
-
 import { members as membersRoute } from '@/routes/app';
 import { index as apiKeysRoute } from '@/routes/app/api-keys';
 import { index as mcpRoute } from '@/routes/app/mcp';

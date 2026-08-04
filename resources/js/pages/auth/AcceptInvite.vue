@@ -4,7 +4,13 @@ import { trans } from 'laravel-vue-i18n';
 import { computed } from 'vue';
 
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
+} from '@/components/ui/card';
 import { login, register } from '@/routes';
 import { home } from '@/routes/app';
 import { accept, decline, show } from '@/routes/app/invites';
@@ -54,16 +60,28 @@ const description = computed(() =>
 </script>
 
 <template>
-    <div class="flex min-h-svh flex-col items-center justify-center gap-6 bg-background p-6 md:p-10">
-
+    <div
+        class="flex min-h-svh flex-col items-center justify-center gap-6 bg-background p-6 md:p-10"
+    >
         <Head :title="$t('auth.accept_invite.page_title')" />
 
         <div class="w-full max-w-md">
             <div class="flex flex-col gap-8">
                 <div class="flex flex-col items-center gap-4">
-                    <Link :href="home()" class="flex flex-col items-center gap-2 font-medium">
-                        <img src="/images/trypost/logo-light.png" alt="TryPost" class="dark:hidden h-8 w-auto" />
-                        <img src="/images/trypost/logo-dark.png" alt="TryPost" class="hidden dark:block h-8 w-auto" />
+                    <Link
+                        :href="home()"
+                        class="flex flex-col items-center gap-2 font-medium"
+                    >
+                        <img
+                            src="/images/trypost/logo-light.png"
+                            alt="TryPost"
+                            class="h-8 w-auto dark:hidden"
+                        />
+                        <img
+                            src="/images/trypost/logo-dark.png"
+                            alt="TryPost"
+                            class="hidden h-8 w-auto dark:block"
+                        />
                     </Link>
                 </div>
 
@@ -80,38 +98,63 @@ const description = computed(() =>
                         <template v-if="!expired && invite">
                             <div class="space-y-2 rounded-lg bg-muted p-4">
                                 <div class="flex justify-between gap-3 text-sm">
-                                    <span class="shrink-0 text-muted-foreground">{{
-                                        $t('auth.accept_invite.workspace')
-                                    }}</span>
-                                    <span class="min-w-0 truncate font-medium">{{
-                                        invite.workspace.name
-                                    }}</span>
+                                    <span
+                                        class="shrink-0 text-muted-foreground"
+                                        >{{
+                                            $t('auth.accept_invite.workspace')
+                                        }}</span
+                                    >
+                                    <span
+                                        class="min-w-0 truncate font-medium"
+                                        >{{ invite.workspace.name }}</span
+                                    >
                                 </div>
                                 <div class="flex justify-between gap-3 text-sm">
-                                    <span class="shrink-0 text-muted-foreground">{{
-                                        $t('auth.accept_invite.your_role')
-                                    }}</span>
-                                    <span class="min-w-0 truncate font-medium">{{
-                                        invite.role.label
-                                    }}</span>
+                                    <span
+                                        class="shrink-0 text-muted-foreground"
+                                        >{{
+                                            $t('auth.accept_invite.your_role')
+                                        }}</span
+                                    >
+                                    <span
+                                        class="min-w-0 truncate font-medium"
+                                        >{{ invite.role.label }}</span
+                                    >
                                 </div>
                                 <div class="flex justify-between gap-3 text-sm">
-                                    <span class="shrink-0 text-muted-foreground">{{
-                                        $t('auth.accept_invite.email')
-                                    }}</span>
-                                    <span class="min-w-0 truncate font-medium">{{ invite.email }}</span>
+                                    <span
+                                        class="shrink-0 text-muted-foreground"
+                                        >{{
+                                            $t('auth.accept_invite.email')
+                                        }}</span
+                                    >
+                                    <span
+                                        class="min-w-0 truncate font-medium"
+                                        >{{ invite.email }}</span
+                                    >
                                 </div>
                             </div>
 
                             <!-- User is logged in - show Accept/Decline -->
                             <div v-if="isLoggedIn" class="flex flex-col gap-3">
                                 <Button as-child size="lg" class="w-full">
-                                    <Link :href="accept.url(invite.id)" method="post">
+                                    <Link
+                                        :href="accept.url(invite.id)"
+                                        method="post"
+                                    >
                                         {{ $t('auth.accept_invite.accept') }}
                                     </Link>
                                 </Button>
-                                <Button as-child variant="outline" size="lg" class="w-full">
-                                    <Link :href="decline.url(invite.id)" method="post">
+                                <Button
+                                    as-child
+                                    variant="outline"
+                                    size="lg"
+                                    class="w-full"
+                                >
+                                    <Link
+                                        :href="decline.url(invite.id)"
+                                        method="post"
+                                    >
                                         {{ $t('auth.accept_invite.decline') }}
                                     </Link>
                                 </Button>
@@ -119,21 +162,31 @@ const description = computed(() =>
 
                             <!-- User is not logged in - show Login/Register -->
                             <div v-else class="flex flex-col gap-3">
-                                <p class="text-center text-sm text-muted-foreground">
+                                <p
+                                    class="text-center text-sm text-muted-foreground"
+                                >
                                     {{ $t('auth.accept_invite.login_prompt') }}
                                 </p>
                                 <Button as-child size="lg" class="w-full">
                                     <Link
                                         :href="
                                             login({
-                                                query: { redirect: inviteUrl, email: invite.email },
+                                                query: {
+                                                    redirect: inviteUrl,
+                                                    email: invite.email,
+                                                },
                                             })
                                         "
                                     >
                                         {{ $t('auth.accept_invite.log_in') }}
                                     </Link>
                                 </Button>
-                                <Button as-child variant="outline" size="lg" class="w-full">
+                                <Button
+                                    as-child
+                                    variant="outline"
+                                    size="lg"
+                                    class="w-full"
+                                >
                                     <Link
                                         :href="
                                             register({
@@ -145,7 +198,11 @@ const description = computed(() =>
                                             })
                                         "
                                     >
-                                        {{ $t('auth.accept_invite.create_account') }}
+                                        {{
+                                            $t(
+                                                'auth.accept_invite.create_account',
+                                            )
+                                        }}
                                     </Link>
                                 </Button>
                             </div>
@@ -154,7 +211,9 @@ const description = computed(() =>
                         <div v-else class="flex flex-col gap-3">
                             <Button as-child size="lg" class="w-full">
                                 <Link :href="home()">
-                                    {{ $t('auth.accept_invite.expired_action') }}
+                                    {{
+                                        $t('auth.accept_invite.expired_action')
+                                    }}
                                 </Link>
                             </Button>
                         </div>

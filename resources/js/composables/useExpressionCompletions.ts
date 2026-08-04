@@ -1,4 +1,8 @@
-import type { Completion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
+import type {
+    Completion,
+    CompletionContext,
+    CompletionResult,
+} from '@codemirror/autocomplete';
 import { trans } from 'laravel-vue-i18n';
 
 import type { AutomationVariable } from '@/types/automation/automation';
@@ -32,16 +36,28 @@ const providedBy = (node: GraphNode): ExpressionSuggestion[] => {
     switch (node.type) {
         case 'trigger': {
             const triggerType = node.data?.trigger_type;
-            if (triggerType === 'post_published' || triggerType === 'post_scheduled') {
+            if (
+                triggerType === 'post_published' ||
+                triggerType === 'post_scheduled'
+            ) {
                 return [
                     suggestion('trigger.post.id', 'trigger_post_id'),
                     suggestion('trigger.post.content', 'trigger_post_content'),
                     suggestion('trigger.post.status', 'trigger_post_status'),
-                    suggestion('trigger.post.scheduled_at', 'trigger_post_scheduled_at'),
-                    suggestion('trigger.post.published_at', 'trigger_post_published_at'),
+                    suggestion(
+                        'trigger.post.scheduled_at',
+                        'trigger_post_scheduled_at',
+                    ),
+                    suggestion(
+                        'trigger.post.published_at',
+                        'trigger_post_published_at',
+                    ),
                 ];
             }
-            return [suggestion('trigger.event', 'trigger_event'), suggestion('trigger.fired_at', 'trigger_fired_at')];
+            return [
+                suggestion('trigger.event', 'trigger_event'),
+                suggestion('trigger.fired_at', 'trigger_fired_at'),
+            ];
         }
         case 'fetch_rss': {
             const aliases = [
@@ -58,13 +74,24 @@ const providedBy = (node: GraphNode): ExpressionSuggestion[] => {
             // Fields discovered by inspecting the real feed — the dynamic raw layer
             // (yt_videoId, media_group.*, dc_creator, …) that aliases can't enumerate.
             const discovered = Array.isArray(node.data?.discovered_fields)
-                ? (node.data.discovered_fields as Array<{ path: string; sample?: string }>).map(
-                      (field): ExpressionSuggestion => ({ label: field.path, info: field.sample ?? '' }),
+                ? (
+                      node.data.discovered_fields as Array<{
+                          path: string;
+                          sample?: string;
+                      }>
+                  ).map(
+                      (field): ExpressionSuggestion => ({
+                          label: field.path,
+                          info: field.sample ?? '',
+                      }),
                   )
                 : [];
             const known = new Set(aliases.map((alias) => alias.label));
 
-            return [...aliases, ...discovered.filter((field) => !known.has(field.label))];
+            return [
+                ...aliases,
+                ...discovered.filter((field) => !known.has(field.label)),
+            ];
         }
         case 'http_request':
             return [suggestion('fetched', 'fetched_http')];
@@ -82,7 +109,11 @@ const providedBy = (node: GraphNode): ExpressionSuggestion[] => {
  * Every node upstream of `nodeId`, following connections backwards. These are
  * the only nodes whose output is in scope when the given node runs.
  */
-const ancestorNodes = (nodeId: string, nodes: GraphNode[], edges: GraphEdge[]): GraphNode[] => {
+const ancestorNodes = (
+    nodeId: string,
+    nodes: GraphNode[],
+    edges: GraphEdge[],
+): GraphNode[] => {
     const byId = new Map(nodes.map((node) => [node.id, node]));
     const incoming = new Map<string, string[]>();
     edges.forEach((edge) => {
@@ -134,13 +165,18 @@ export const buildExpressionCatalog = (
     variables
         .filter((variable) => variable.key?.trim())
         .forEach((variable) => {
-            suggestions.push({ label: `variables.${variable.key}`, info: trans('automations.expr.variable') });
+            suggestions.push({
+                label: `variables.${variable.key}`,
+                info: trans('automations.expr.variable'),
+            });
         });
 
     suggestions.push(suggestion('now', 'now'));
 
     const seen = new Set<string>();
-    return suggestions.filter((item) => (seen.has(item.label) ? false : seen.add(item.label)));
+    return suggestions.filter((item) =>
+        seen.has(item.label) ? false : seen.add(item.label),
+    );
 };
 
 /**
@@ -150,7 +186,10 @@ export const buildExpressionCatalog = (
  * `fetched` in the catalog makes any `fetched.x.y` valid). When the catalog is
  * empty (no upstream context yet) nothing is flagged.
  */
-export const isKnownExpression = (path: string, suggestions: ExpressionSuggestion[]): boolean => {
+export const isKnownExpression = (
+    path: string,
+    suggestions: ExpressionSuggestion[],
+): boolean => {
     if (suggestions.length === 0) {
         return true;
     }

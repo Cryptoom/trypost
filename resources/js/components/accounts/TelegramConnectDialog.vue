@@ -22,7 +22,6 @@ import {
 import { useWorkspaceEcho } from '@/composables/echo/useWorkspaceEcho';
 import dayjs from '@/dayjs';
 import { copyToClipboard } from '@/lib/utils';
-
 import { connect as connectTelegram } from '@/routes/app/social/telegram';
 
 const open = defineModel<boolean>('open', { required: true });

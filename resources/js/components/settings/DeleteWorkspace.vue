@@ -71,9 +71,13 @@ const openDeleteModal = () => {
             :description="$t('settings.workspace.danger_description')"
         />
 
-        <div class="space-y-4 rounded-xl border-2 border-foreground bg-rose-50 p-4 shadow-2xs">
+        <div
+            class="space-y-4 rounded-xl border-2 border-foreground bg-rose-50 p-4 shadow-2xs"
+        >
             <div class="relative space-y-0.5 text-rose-700">
-                <p class="font-bold">{{ $t('settings.workspace.delete_warning') }}</p>
+                <p class="font-bold">
+                    {{ $t('settings.workspace.delete_warning') }}
+                </p>
                 <p class="text-sm font-medium">
                     {{ warningMessage }}
                 </p>
@@ -104,7 +108,11 @@ const openDeleteModal = () => {
                         dusk="workspace-delete-account-link"
                     >
                         <Link :href="editAuthentication()">
-                            {{ $t('settings.workspace.delete_go_to_delete_account') }}
+                            {{
+                                $t(
+                                    'settings.workspace.delete_go_to_delete_account',
+                                )
+                            }}
                         </Link>
                     </Button>
                 </template>

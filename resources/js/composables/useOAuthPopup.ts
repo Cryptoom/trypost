@@ -45,7 +45,9 @@ export interface SocialOAuthResult {
  * `onResult` with the popup's `{success, message}` outcome. The listener is
  * wired to the calling component's lifecycle.
  */
-export const useOAuthPopup = (onResult: (result: SocialOAuthResult) => void) => {
+export const useOAuthPopup = (
+    onResult: (result: SocialOAuthResult) => void,
+) => {
     const openOAuthPopup = (platform: string) => {
         const route = CONNECT_ROUTES[platform];
 

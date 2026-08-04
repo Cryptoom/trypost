@@ -18,7 +18,9 @@ export class BulkCommand implements Command {
     }
 
     getReverseCommand(): Command {
-        const reverses = [...this.commands].reverse().map((c) => c.getReverseCommand());
+        const reverses = [...this.commands]
+            .reverse()
+            .map((c) => c.getReverseCommand());
         return new BulkCommand(reverses);
     }
 }

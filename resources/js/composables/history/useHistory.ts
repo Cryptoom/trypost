@@ -31,9 +31,14 @@ export const useHistory = (): UseHistoryReturn => {
     let bulk: Command[] | null = null;
 
     const trim = (stack: Command[]): Command[] =>
-        stack.length > STACK_LIMIT ? stack.slice(stack.length - STACK_LIMIT) : stack;
+        stack.length > STACK_LIMIT
+            ? stack.slice(stack.length - STACK_LIMIT)
+            : stack;
 
-    const push = (command: Command, options: { clearRedo?: boolean } = {}): void => {
+    const push = (
+        command: Command,
+        options: { clearRedo?: boolean } = {},
+    ): void => {
         if (reverting) return;
 
         if (bulk !== null) {
@@ -65,7 +70,10 @@ export const useHistory = (): UseHistoryReturn => {
             reverting = false;
         }
 
-        sinkStack.value = trim([...sinkStack.value, command.getReverseCommand()]);
+        sinkStack.value = trim([
+            ...sinkStack.value,
+            command.getReverseCommand(),
+        ]);
         return true;
     };
 
@@ -80,7 +88,9 @@ export const useHistory = (): UseHistoryReturn => {
         if (bulk && bulk.length > 0) {
             const commands = bulk;
             bulk = null;
-            push(commands.length === 1 ? commands[0] : new BulkCommand(commands));
+            push(
+                commands.length === 1 ? commands[0] : new BulkCommand(commands),
+            );
             return;
         }
         bulk = null;

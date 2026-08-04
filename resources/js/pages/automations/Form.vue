@@ -26,7 +26,6 @@ import '@vue-flow/core/dist/theme-default.css';
 import AutomationConnectionLine from '@/components/automations/AutomationConnectionLine.vue';
 import AutomationHeader from '@/components/automations/AutomationHeader.vue';
 import AutomationMobileBackHeader from '@/components/automations/AutomationMobileBackHeader.vue';
-// eslint-disable-next-line import/order
 import { firstConfigIssue } from '@/components/automations/config-validation';
 import ConditionNodeConfig from '@/components/automations/config/ConditionNodeConfig.vue';
 import DelayNodeConfig from '@/components/automations/config/DelayNodeConfig.vue';
@@ -65,6 +64,7 @@ import { buildExpressionCatalog } from '@/composables/useExpressionCompletions';
 import { usePageErrors } from '@/composables/usePageErrors';
 import { useShortcut } from '@/composables/useShortcut';
 import AppLayout from '@/layouts/AppLayout.vue';
+import { update as updateAutomation } from '@/routes/app/automations';
 import { AuthType } from '@/types/automation/auth-type';
 import type {
     Automation,
@@ -78,8 +78,6 @@ import { PublishMode } from '@/types/automation/publish-mode';
 import type { RawConnection } from '@/types/automation/raw-connection';
 import { ScheduleField } from '@/types/automation/schedule-field';
 import { TriggerType } from '@/types/automation/trigger-type';
-
-import { update as updateAutomation } from '@/routes/app/automations';
 
 const props = defineProps<{ automation: Automation }>();
 

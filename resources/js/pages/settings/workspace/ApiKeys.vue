@@ -4,6 +4,7 @@ import { IconCopy, IconDots, IconKey, IconTrash } from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
 import { computed, ref } from 'vue';
 
+import ApiKeyController from '@/actions/App/Http/Controllers/App/ApiKeyController';
 import CreateApiKeyDialog from '@/components/api-keys/CreateApiKeyDialog.vue';
 import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.vue';
 import EmptyState from '@/components/EmptyState.vue';
@@ -30,8 +31,6 @@ import { useWorkspaceSettingsTabs } from '@/composables/useWorkspaceSettingsTabs
 import date from '@/date';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { copyToClipboard } from '@/lib/utils';
-
-import ApiKeyController from '@/actions/App/Http/Controllers/App/ApiKeyController';
 
 interface ApiToken {
     id: string;

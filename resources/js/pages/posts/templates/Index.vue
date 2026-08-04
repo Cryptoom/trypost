@@ -10,6 +10,10 @@ import {
 import { trans, transChoice } from 'laravel-vue-i18n';
 import { computed, ref, watch } from 'vue';
 
+import {
+    apply as applyRoute,
+    index as templatesIndex,
+} from '@/actions/App/Http/Controllers/App/PostTemplateController';
 import EmptyState from '@/components/EmptyState.vue';
 import PageHeader from '@/components/PageHeader.vue';
 import { Badge } from '@/components/ui/badge';
@@ -32,11 +36,6 @@ import { getPlatformLogo } from '@/composables/usePlatformLogo';
 import debounce from '@/debounce';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { cn } from '@/lib/utils';
-
-import {
-    apply as applyRoute,
-    index as templatesIndex,
-} from '@/actions/App/Http/Controllers/App/PostTemplateController';
 
 interface Slide {
     title: string;

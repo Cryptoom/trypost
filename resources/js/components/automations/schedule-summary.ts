@@ -5,15 +5,29 @@ import { ScheduleField } from '@/types/automation/schedule-field';
 import { TriggerType } from '@/types/automation/trigger-type';
 
 const pad2 = (n: number) => String(n).padStart(2, '0');
-const clamp = (n: number, min: number, max: number) => Math.min(Math.max(n, min), max);
-const num = (data: ScheduleData, key: keyof ScheduleData, fallback: number, min: number, max: number) =>
-    clamp(Number(data[key]) || fallback, min, max);
+const clamp = (n: number, min: number, max: number) =>
+    Math.min(Math.max(n, min), max);
+const num = (
+    data: ScheduleData,
+    key: keyof ScheduleData,
+    fallback: number,
+    min: number,
+    max: number,
+) => clamp(Number(data[key]) || fallback, min, max);
 
-const summaryKey = (key: string) => `automations.config.trigger.schedule.summary.${key}`;
-const weekdayKey = (label: string) => `automations.config.trigger.schedule.weekday_names.${label}`;
+const summaryKey = (key: string) =>
+    `automations.config.trigger.schedule.summary.${key}`;
+const weekdayKey = (label: string) =>
+    `automations.config.trigger.schedule.weekday_names.${label}`;
 
 const weekdayLabels: Record<number, string> = {
-    0: 'sun', 1: 'mon', 2: 'tue', 3: 'wed', 4: 'thu', 5: 'fri', 6: 'sat',
+    0: 'sun',
+    1: 'mon',
+    2: 'tue',
+    3: 'wed',
+    4: 'thu',
+    5: 'fri',
+    6: 'sat',
 };
 
 /**
@@ -28,13 +42,19 @@ const inferScheduleFromCron = (cron: string): Partial<ScheduleData> | null => {
     const [minute, hour, dom, month, dow] = parts;
     if (month !== '*') return null; // no preset pins a month
 
-    const interval = (token: string): number | null => (/^\*\/\d+$/.test(token) ? Number(token.slice(2)) : null);
+    const interval = (token: string): number | null =>
+        /^\*\/\d+$/.test(token) ? Number(token.slice(2)) : null;
     const isNum = (token: string) => /^\d+$/.test(token);
 
     // Sub-hourly: every minute or every Nth minute, regardless of hour/day.
     if (hour === '*' && dom === '*' && dow === '*') {
         const every = minute === '*' ? 1 : interval(minute);
-        return every === null ? null : { schedule_field: ScheduleField.Minutes, schedule_minutes_interval: every };
+        return every === null
+            ? null
+            : {
+                  schedule_field: ScheduleField.Minutes,
+                  schedule_minutes_interval: every,
+              };
     }
 
     if (!isNum(minute)) return null;
@@ -43,7 +63,11 @@ const inferScheduleFromCron = (cron: string): Partial<ScheduleData> | null => {
     // Hourly: a fixed minute past every Nth hour.
     const everyHours = interval(hour);
     if (everyHours !== null && dom === '*' && dow === '*') {
-        return { schedule_field: ScheduleField.Hours, schedule_hours_interval: everyHours, schedule_minute };
+        return {
+            schedule_field: ScheduleField.Hours,
+            schedule_hours_interval: everyHours,
+            schedule_minute,
+        };
     }
 
     if (!isNum(hour)) return null;
@@ -51,15 +75,27 @@ const inferScheduleFromCron = (cron: string): Partial<ScheduleData> | null => {
 
     // Daily: at `clock`, every Nth day (a bare `*` means every day).
     if (dow === '*' && (dom === '*' || interval(dom) !== null)) {
-        return { schedule_field: ScheduleField.Days, schedule_days_interval: interval(dom) ?? 1, ...clock };
+        return {
+            schedule_field: ScheduleField.Days,
+            schedule_days_interval: interval(dom) ?? 1,
+            ...clock,
+        };
     }
     // Weekly: at `clock`, on the listed weekdays.
     if (dom === '*' && /^\d+(,\d+)*$/.test(dow)) {
-        return { schedule_field: ScheduleField.Weeks, schedule_weekdays: dow.split(',').map(Number), ...clock };
+        return {
+            schedule_field: ScheduleField.Weeks,
+            schedule_weekdays: dow.split(',').map(Number),
+            ...clock,
+        };
     }
     // Monthly: at `clock`, on a fixed day of the month.
     if (dow === '*' && isNum(dom)) {
-        return { schedule_field: ScheduleField.Months, schedule_day_of_month: Number(dom), ...clock };
+        return {
+            schedule_field: ScheduleField.Months,
+            schedule_day_of_month: Number(dom),
+            ...clock,
+        };
     }
     return null;
 };
@@ -73,20 +109,33 @@ const inferScheduleFromCron = (cron: string): Partial<ScheduleData> | null => {
  * `data.cron` → hardcoded fallback.
  */
 export const normalizeScheduleData = (data: ScheduleData): ScheduleData => {
-    const inferred = (data.schedule_field === undefined && typeof data.cron === 'string')
-        ? inferScheduleFromCron(data.cron) ?? {}
-        : {};
+    const inferred =
+        data.schedule_field === undefined && typeof data.cron === 'string'
+            ? (inferScheduleFromCron(data.cron) ?? {})
+            : {};
 
     return {
         ...data,
-        schedule_field: data.schedule_field ?? inferred.schedule_field ?? ScheduleField.Days,
-        schedule_minutes_interval: data.schedule_minutes_interval ?? inferred.schedule_minutes_interval ?? 5,
-        schedule_hours_interval: data.schedule_hours_interval ?? inferred.schedule_hours_interval ?? 1,
-        schedule_days_interval: data.schedule_days_interval ?? inferred.schedule_days_interval ?? 1,
+        schedule_field:
+            data.schedule_field ??
+            inferred.schedule_field ??
+            ScheduleField.Days,
+        schedule_minutes_interval:
+            data.schedule_minutes_interval ??
+            inferred.schedule_minutes_interval ??
+            5,
+        schedule_hours_interval:
+            data.schedule_hours_interval ??
+            inferred.schedule_hours_interval ??
+            1,
+        schedule_days_interval:
+            data.schedule_days_interval ?? inferred.schedule_days_interval ?? 1,
         schedule_hour: data.schedule_hour ?? inferred.schedule_hour ?? 9,
         schedule_minute: data.schedule_minute ?? inferred.schedule_minute ?? 0,
-        schedule_weekdays: data.schedule_weekdays ?? inferred.schedule_weekdays ?? [1],
-        schedule_day_of_month: data.schedule_day_of_month ?? inferred.schedule_day_of_month ?? 1,
+        schedule_weekdays: data.schedule_weekdays ??
+            inferred.schedule_weekdays ?? [1],
+        schedule_day_of_month:
+            data.schedule_day_of_month ?? inferred.schedule_day_of_month ?? 1,
     };
 };
 
@@ -108,7 +157,9 @@ export const generateScheduleCron = (data: ScheduleData): string => {
             return `${minute} ${hour} */${n} * *`;
         }
         case ScheduleField.Weeks: {
-            const days = [...(data.schedule_weekdays ?? [])].sort((a, b) => a - b);
+            const days = [...(data.schedule_weekdays ?? [])].sort(
+                (a, b) => a - b,
+            );
             return `${minute} ${hour} * * ${days.length ? days.join(',') : '1'}`;
         }
         case ScheduleField.Months: {
@@ -131,15 +182,21 @@ export const humanSchedule = (data: ScheduleData): string => {
         }
         case ScheduleField.Hours: {
             const n = num(data, 'schedule_hours_interval', 1, 1, 23);
-            return transChoice(summaryKey('every_n_hours'), n, { minute: pad2(minute) });
+            return transChoice(summaryKey('every_n_hours'), n, {
+                minute: pad2(minute),
+            });
         }
         case ScheduleField.Days: {
             const n = num(data, 'schedule_days_interval', 1, 1, 31);
             return transChoice(summaryKey('every_n_days'), n, { time });
         }
         case ScheduleField.Weeks: {
-            const days = [...(data.schedule_weekdays ?? [])].sort((a, b) => a - b);
-            const labels = days.map((v) => trans(weekdayKey(weekdayLabels[v]))).join(', ');
+            const days = [...(data.schedule_weekdays ?? [])].sort(
+                (a, b) => a - b,
+            );
+            const labels = days
+                .map((v) => trans(weekdayKey(weekdayLabels[v])))
+                .join(', ');
             return trans(summaryKey('weekly'), { days: labels, time });
         }
         case ScheduleField.Months: {

@@ -122,7 +122,7 @@ defineExpose({ open, openCollection, close });
                     v-if="showNav && hasPrev"
                     type="button"
                     aria-label="Previous"
-                    class="absolute left-2 top-1/2 -translate-y-1/2 rounded-full bg-black/50 p-2 text-white transition hover:bg-black/70"
+                    class="absolute top-1/2 left-2 -translate-y-1/2 rounded-full bg-black/50 p-2 text-white transition hover:bg-black/70"
                     @click.stop="goPrev"
                 >
                     <IconChevronLeft class="size-6" />
@@ -132,7 +132,7 @@ defineExpose({ open, openCollection, close });
                     v-if="showNav && hasNext"
                     type="button"
                     aria-label="Next"
-                    class="absolute right-2 top-1/2 -translate-y-1/2 rounded-full bg-black/50 p-2 text-white transition hover:bg-black/70"
+                    class="absolute top-1/2 right-2 -translate-y-1/2 rounded-full bg-black/50 p-2 text-white transition hover:bg-black/70"
                     @click.stop="goNext"
                 >
                     <IconChevronRight class="size-6" />

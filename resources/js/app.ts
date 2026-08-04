@@ -10,7 +10,11 @@ import { createApp, h } from 'vue';
 import { initializeDataLayer } from './datalayer';
 import dayjs from './dayjs';
 import { syncContentTypeMediaRules } from './lib/contentTypeMediaRules';
-import { capturePageview, initializePostHog, syncPostHogContext } from './posthog';
+import {
+    capturePageview,
+    initializePostHog,
+    syncPostHogContext,
+} from './posthog';
 import type { Auth } from './types';
 
 const appName = import.meta.env.VITE_APP_NAME || 'TryPost.it';
@@ -24,7 +28,8 @@ createInertiaApp({
         ),
     setup({ el, App, props, plugin }) {
         // Get locale from shared Inertia props
-        const locale = (props.initialPage.props as { locale?: string })?.locale || 'en';
+        const locale =
+            (props.initialPage.props as { locale?: string })?.locale || 'en';
 
         // Set dayjs locale based on user's language
         dayjs.locale(locale.toLowerCase());

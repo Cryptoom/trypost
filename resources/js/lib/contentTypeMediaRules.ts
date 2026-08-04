@@ -45,14 +45,18 @@ type ContentTypeMediaRulesMap = Record<string, ContentTypeMediaRule>;
 let cachedRules: ContentTypeMediaRulesMap | null = null;
 
 export const syncContentTypeMediaRules = (page: Page): void => {
-    const rules = page.props.contentTypeMediaRules as ContentTypeMediaRulesMap | undefined;
+    const rules = page.props.contentTypeMediaRules as
+        | ContentTypeMediaRulesMap
+        | undefined;
 
     if (rules) {
         cachedRules = rules;
     }
 };
 
-export const mediaRuleFor = (contentType: string): ContentTypeMediaRule | undefined => {
+export const mediaRuleFor = (
+    contentType: string,
+): ContentTypeMediaRule | undefined => {
     return cachedRules?.[contentType];
 };
 

@@ -17,7 +17,8 @@ const CLOSE_DELAY = 1500;
 const canAutoClose = ref(false);
 
 onMounted(() => {
-    const opener = window.opener && !window.opener.closed ? window.opener : null;
+    const opener =
+        window.opener && !window.opener.closed ? window.opener : null;
     canAutoClose.value = opener !== null;
 
     if (opener) {
@@ -41,8 +42,19 @@ onMounted(() => {
 </script>
 
 <template>
-    <PopupLayout :title="success ? $t('accounts.popup_callback.title_success') : $t('accounts.popup_callback.title_error')">
-        <div class="flex flex-col items-center justify-center gap-3 py-16 text-center" dusk="popup-callback" role="status" aria-live="polite">
+    <PopupLayout
+        :title="
+            success
+                ? $t('accounts.popup_callback.title_success')
+                : $t('accounts.popup_callback.title_error')
+        "
+    >
+        <div
+            class="flex flex-col items-center justify-center gap-3 py-16 text-center"
+            dusk="popup-callback"
+            role="status"
+            aria-live="polite"
+        >
             <div
                 class="flex h-14 w-14 items-center justify-center rounded-full"
                 :class="
@@ -51,11 +63,21 @@ onMounted(() => {
                         : 'bg-red-100 text-red-600 dark:bg-red-900 dark:text-red-400'
                 "
             >
-                <IconCircleCheck v-if="success" class="h-7 w-7" aria-hidden="true" />
+                <IconCircleCheck
+                    v-if="success"
+                    class="h-7 w-7"
+                    aria-hidden="true"
+                />
                 <IconCircleX v-else class="h-7 w-7" aria-hidden="true" />
             </div>
             <p class="text-lg font-medium text-foreground">{{ message }}</p>
-            <p class="text-sm text-muted-foreground">{{ canAutoClose ? $t('accounts.popup_callback.closing') : $t('accounts.popup_callback.manual_close') }}</p>
+            <p class="text-sm text-muted-foreground">
+                {{
+                    canAutoClose
+                        ? $t('accounts.popup_callback.closing')
+                        : $t('accounts.popup_callback.manual_close')
+                }}
+            </p>
         </div>
     </PopupLayout>
 </template>

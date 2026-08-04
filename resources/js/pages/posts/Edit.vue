@@ -25,14 +25,13 @@ import date from '@/date';
 import dayjs from '@/dayjs';
 import debounce from '@/debounce';
 import AppLayout from '@/layouts/AppLayout.vue';
-import type { PinterestBoardsPayload } from '@/types';
-import type { MediaItem } from '@/types/media';
-import { PostStatus } from '@/types/post';
-
 import {
     destroy as destroyPost,
     update as updatePost,
 } from '@/routes/app/posts';
+import type { PinterestBoardsPayload } from '@/types';
+import type { MediaItem } from '@/types/media';
+import { PostStatus } from '@/types/post';
 
 interface SocialAccount {
     id: string;

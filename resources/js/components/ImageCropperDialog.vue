@@ -53,14 +53,24 @@ const MIN_SELECTION_RATIO = 0.1;
 
 let dragMode: 'move' | Corner | null = null;
 let activePointerId: number | null = null;
-let dragStart = { pointerX: 0, pointerY: 0, selection: { sx: 0, sy: 0, sw: 0, sh: 0 } as SourceRect };
+let dragStart = {
+    pointerX: 0,
+    pointerY: 0,
+    selection: { sx: 0, sy: 0, sw: 0, sh: 0 } as SourceRect,
+};
 let resizeObserver: ResizeObserver | null = null;
 
 const ready = computed(() => viewportSize.value > 0 && natural.value.width > 0);
 
-const scale = computed(() => containScale(natural.value.width, natural.value.height, viewportSize.value));
+const scale = computed(() =>
+    containScale(natural.value.width, natural.value.height, viewportSize.value),
+);
 
-const minSourceSize = computed(() => Math.min(natural.value.width, natural.value.height) * MIN_SELECTION_RATIO);
+const minSourceSize = computed(
+    () =>
+        Math.min(natural.value.width, natural.value.height) *
+        MIN_SELECTION_RATIO,
+);
 
 const imageDisplay = computed(() => {
     const width = natural.value.width * scale.value;
@@ -91,14 +101,19 @@ const selectionStyle = computed(() => ({
 
 const outputMime = computed(() => resolveOutputMime(props.mimeType));
 
-const outputFileName = computed(() => resolveOutputFileName(props.fileName, outputMime.value));
+const outputFileName = computed(() =>
+    resolveOutputFileName(props.fileName, outputMime.value),
+);
 
 const maybeInitialize = () => {
     if (!ready.value || initialized.value) {
         return;
     }
 
-    selection.value = defaultSelection(natural.value.width, natural.value.height);
+    selection.value = defaultSelection(
+        natural.value.width,
+        natural.value.height,
+    );
     initialized.value = true;
 };
 
@@ -134,7 +149,10 @@ const onImageError = () => {
     imageError.value = true;
 };
 
-const sourcePoint = (clientX: number, clientY: number): { px: number; py: number } => {
+const sourcePoint = (
+    clientX: number,
+    clientY: number,
+): { px: number; py: number } => {
     const box = viewportEl.value!.getBoundingClientRect();
 
     return {
@@ -150,7 +168,11 @@ const beginDrag = (mode: 'move' | Corner, event: PointerEvent) => {
 
     dragMode = mode;
     activePointerId = event.pointerId;
-    dragStart = { pointerX: event.clientX, pointerY: event.clientY, selection: { ...selection.value } };
+    dragStart = {
+        pointerX: event.clientX,
+        pointerY: event.clientY,
+        selection: { ...selection.value },
+    };
     viewportEl.value?.setPointerCapture(event.pointerId);
 };
 
@@ -179,8 +201,12 @@ const onPointerMove = (event: PointerEvent) => {
     if (dragMode === 'move') {
         selection.value = clampSelection(
             {
-                sx: dragStart.selection.sx + (event.clientX - dragStart.pointerX) / scale.value,
-                sy: dragStart.selection.sy + (event.clientY - dragStart.pointerY) / scale.value,
+                sx:
+                    dragStart.selection.sx +
+                    (event.clientX - dragStart.pointerX) / scale.value,
+                sy:
+                    dragStart.selection.sy +
+                    (event.clientY - dragStart.pointerY) / scale.value,
                 sw: dragStart.selection.sw,
                 sh: dragStart.selection.sh,
             },
@@ -237,7 +263,17 @@ const save = () => {
     processing.value = true;
 
     try {
-        context.drawImage(img, rect.sx, rect.sy, rect.sw, rect.sh, 0, 0, props.outputSize, props.outputSize);
+        context.drawImage(
+            img,
+            rect.sx,
+            rect.sy,
+            rect.sw,
+            rect.sh,
+            0,
+            0,
+            props.outputSize,
+            props.outputSize,
+        );
         canvas.toBlob(
             (blob) => {
                 processing.value = false;
@@ -246,7 +282,12 @@ const save = () => {
                     return;
                 }
 
-                emit('cropped', new File([blob], outputFileName.value, { type: outputMime.value }));
+                emit(
+                    'cropped',
+                    new File([blob], outputFileName.value, {
+                        type: outputMime.value,
+                    }),
+                );
                 close();
             },
             outputMime.value,
@@ -298,13 +339,17 @@ onBeforeUnmount(() => resizeObserver?.disconnect());
     <Dialog :open="open" @update:open="emit('update:open', $event)">
         <DialogContent class="sm:max-w-lg">
             <DialogHeader>
-                <DialogTitle>{{ $t('common.photo_upload.crop_title') }}</DialogTitle>
-                <DialogDescription>{{ $t('common.photo_upload.crop_description') }}</DialogDescription>
+                <DialogTitle>{{
+                    $t('common.photo_upload.crop_title')
+                }}</DialogTitle>
+                <DialogDescription>{{
+                    $t('common.photo_upload.crop_description')
+                }}</DialogDescription>
             </DialogHeader>
 
             <div
                 ref="viewportEl"
-                class="relative aspect-square w-full touch-none select-none overflow-hidden rounded-xl border-2 border-foreground bg-muted"
+                class="relative aspect-square w-full touch-none overflow-hidden rounded-xl border-2 border-foreground bg-muted select-none"
                 @pointermove="onPointerMove"
                 @pointerup="onPointerUp"
                 @pointercancel="onPointerUp"
@@ -333,13 +378,15 @@ onBeforeUnmount(() => resizeObserver?.disconnect());
                     :style="selectionStyle"
                     @pointerdown="onSelectionPointerDown"
                 >
-                    <div class="pointer-events-none absolute inset-0 border-2 border-white shadow-[0_0_0_1px_rgba(0,0,0,0.4)]" />
+                    <div
+                        class="pointer-events-none absolute inset-0 border-2 border-white shadow-[0_0_0_1px_rgba(0,0,0,0.4)]"
+                    />
                     <span
-                        class="absolute left-0 top-0 size-3 cursor-nwse-resize rounded-sm border border-foreground bg-white"
+                        class="absolute top-0 left-0 size-3 cursor-nwse-resize rounded-sm border border-foreground bg-white"
                         @pointerdown.stop="onHandlePointerDown('nw', $event)"
                     />
                     <span
-                        class="absolute right-0 top-0 size-3 cursor-nesw-resize rounded-sm border border-foreground bg-white"
+                        class="absolute top-0 right-0 size-3 cursor-nesw-resize rounded-sm border border-foreground bg-white"
                         @pointerdown.stop="onHandlePointerDown('ne', $event)"
                     />
                     <span
@@ -347,16 +394,23 @@ onBeforeUnmount(() => resizeObserver?.disconnect());
                         @pointerdown.stop="onHandlePointerDown('sw', $event)"
                     />
                     <span
-                        class="absolute bottom-0 right-0 size-3 cursor-nwse-resize rounded-sm border border-foreground bg-white"
+                        class="absolute right-0 bottom-0 size-3 cursor-nwse-resize rounded-sm border border-foreground bg-white"
                         @pointerdown.stop="onHandlePointerDown('se', $event)"
                     />
                 </div>
             </div>
 
-            <p class="text-center text-xs text-muted-foreground">{{ $t('common.photo_upload.crop_hint') }}</p>
+            <p class="text-center text-xs text-muted-foreground">
+                {{ $t('common.photo_upload.crop_hint') }}
+            </p>
 
             <DialogFooter>
-                <Button type="button" data-testid="crop-save" :disabled="processing || !ready" @click="save">
+                <Button
+                    type="button"
+                    data-testid="crop-save"
+                    :disabled="processing || !ready"
+                    @click="save"
+                >
                     {{ $t('common.photo_upload.crop_save') }}
                 </Button>
                 <Button type="button" variant="outline" @click="close">

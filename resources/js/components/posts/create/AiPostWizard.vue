@@ -1,13 +1,9 @@
 <script setup lang="ts">
 import { router, useHttp } from '@inertiajs/vue3';
-import {
-    IconArrowLeft,
-    IconCheck,
-} from '@tabler/icons-vue';
+import { IconArrowLeft, IconCheck } from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
 import { computed, ref, watch } from 'vue';
 import { toast } from 'vue-sonner';
-
 
 import { start as startRoute } from '@/actions/App/Http/Controllers/App/PostAiCreateController';
 import ContentStylePicker from '@/components/ai/ContentStylePicker.vue';
@@ -80,12 +76,26 @@ const httpStart = useHttp<{
     date: string | null;
     template: string;
     apply_brand_visuals: boolean;
-}>({ format: null, social_account_id: null, image_count: 0, prompt: '', date: null, template: 'image_card', apply_brand_visuals: true });
+}>({
+    format: null,
+    social_account_id: null,
+    image_count: 0,
+    prompt: '',
+    date: null,
+    template: 'image_card',
+    apply_brand_visuals: true,
+});
 
 const AI_FORMATS: Array<{ value: AiFormat; platforms: string[] }> = [
-    { value: ContentType.InstagramFeed, platforms: ['instagram', 'instagram-facebook'] },
+    {
+        value: ContentType.InstagramFeed,
+        platforms: ['instagram', 'instagram-facebook'],
+    },
     { value: CAROUSEL_FORMAT, platforms: ['instagram', 'instagram-facebook'] },
-    { value: ContentType.InstagramStory, platforms: ['instagram', 'instagram-facebook'] },
+    {
+        value: ContentType.InstagramStory,
+        platforms: ['instagram', 'instagram-facebook'],
+    },
     { value: ContentType.LinkedInPost, platforms: ['linkedin'] },
     { value: ContentType.LinkedInPagePost, platforms: ['linkedin-page'] },
     { value: ContentType.XPost, platforms: ['x'] },
@@ -97,22 +107,28 @@ const AI_FORMATS: Array<{ value: AiFormat; platforms: string[] }> = [
 ];
 
 /** Templates with no format restriction — pure visual styles (image_card, tweet_card). */
-const styleTemplates = computed(() => props.templates.filter((t) => t.supported_formats.length === 0));
+const styleTemplates = computed(() =>
+    props.templates.filter((t) => t.supported_formats.length === 0),
+);
 
 /** The template whose supported_formats includes the currently selected format (e.g. carousel). */
 const formatBoundTemplate = computed(() =>
     selectedFormat.value
-        ? props.templates.find((t) => t.supported_formats.includes(selectedFormat.value as string)) ?? null
+        ? (props.templates.find((t) =>
+              t.supported_formats.includes(selectedFormat.value as string),
+          ) ?? null)
         : null,
 );
 
 /** The template key that will be sent to the backend. */
 const resolvedTemplate = computed(() =>
-    formatBoundTemplate.value ? formatBoundTemplate.value.key : selectedStyle.value,
+    formatBoundTemplate.value
+        ? formatBoundTemplate.value.key
+        : selectedStyle.value,
 );
 
-const resolvedTemplateRecord = computed(() =>
-    props.templates.find((t) => t.key === resolvedTemplate.value) ?? null,
+const resolvedTemplateRecord = computed(
+    () => props.templates.find((t) => t.key === resolvedTemplate.value) ?? null,
 );
 
 const connectedPlatforms = computed(() => {
@@ -125,52 +141,60 @@ const connectedPlatforms = computed(() => {
 
 const availableFormats = computed(() => AI_FORMATS);
 
-const isFormatConnected = (format: typeof AI_FORMATS[number]): boolean =>
+const isFormatConnected = (format: (typeof AI_FORMATS)[number]): boolean =>
     format.platforms.some((p) => connectedPlatforms.value.includes(p));
 
 const accountsForFormat = computed(() => {
     if (!selectedFormat.value) return [];
     const format = AI_FORMATS.find((f) => f.value === selectedFormat.value);
     if (!format) return [];
-    return props.socialAccounts.filter((a) => format.platforms.includes(a.platform));
+    return props.socialAccounts.filter((a) =>
+        format.platforms.includes(a.platform),
+    );
 });
 
 const isCarousel = computed(() => selectedFormat.value === CAROUSEL_FORMAT);
-const requiresImage = computed(() =>
-    selectedFormat.value === ContentType.FacebookPost ||
-    selectedFormat.value === ContentType.PinterestPin ||
-    selectedFormat.value === ContentType.InstagramStory,
+const requiresImage = computed(
+    () =>
+        selectedFormat.value === ContentType.FacebookPost ||
+        selectedFormat.value === ContentType.PinterestPin ||
+        selectedFormat.value === ContentType.InstagramStory,
 );
-const supportsOptionalImages = computed(() =>
-    selectedFormat.value === ContentType.InstagramFeed ||
-    selectedFormat.value === ContentType.LinkedInPost ||
-    selectedFormat.value === ContentType.LinkedInPagePost ||
-    selectedFormat.value === ContentType.XPost ||
-    selectedFormat.value === ContentType.BlueskyPost ||
-    selectedFormat.value === ContentType.ThreadsPost ||
-    selectedFormat.value === ContentType.MastodonPost,
+const supportsOptionalImages = computed(
+    () =>
+        selectedFormat.value === ContentType.InstagramFeed ||
+        selectedFormat.value === ContentType.LinkedInPost ||
+        selectedFormat.value === ContentType.LinkedInPagePost ||
+        selectedFormat.value === ContentType.XPost ||
+        selectedFormat.value === ContentType.BlueskyPost ||
+        selectedFormat.value === ContentType.ThreadsPost ||
+        selectedFormat.value === ContentType.MastodonPost,
 );
 const maxOptionalImages = computed(() =>
     selectedFormat.value === ContentType.InstagramFeed ? 1 : 4,
 );
 const showsAccountPicker = computed(() => accountsForFormat.value.length > 1);
 
-const templateNeedsAccount = computed(() => resolvedTemplateRecord.value?.needs_account ?? false);
+const templateNeedsAccount = computed(
+    () => resolvedTemplateRecord.value?.needs_account ?? false,
+);
 
 const submittedImageCount = computed(() => {
     if (isCarousel.value) return imageCount.value;
     if (requiresImage.value) return 1;
-    if (supportsOptionalImages.value && includeImages.value) return imageCount.value;
+    if (supportsOptionalImages.value && includeImages.value)
+        return imageCount.value;
     return 0;
 });
 
 const promptLength = computed(() => [...promptText.value.trim()].length);
 
-const canSubmit = computed(() =>
-    selectedFormat.value !== null &&
-    selectedAccountId.value !== null &&
-    promptLength.value >= PROMPT_MIN &&
-    promptLength.value <= PROMPT_MAX,
+const canSubmit = computed(
+    () =>
+        selectedFormat.value !== null &&
+        selectedAccountId.value !== null &&
+        promptLength.value >= PROMPT_MIN &&
+        promptLength.value <= PROMPT_MAX,
 );
 
 // Auto-pick the only account when format has exactly one match.
@@ -179,7 +203,10 @@ watch(accountsForFormat, (accounts) => {
         selectedAccountId.value = accounts[0].id;
     } else if (accounts.length === 0) {
         selectedAccountId.value = null;
-    } else if (accounts.length > 1 && !accounts.some((a) => a.id === selectedAccountId.value)) {
+    } else if (
+        accounts.length > 1 &&
+        !accounts.some((a) => a.id === selectedAccountId.value)
+    ) {
         selectedAccountId.value = null;
     }
 });
@@ -220,24 +247,31 @@ const startGeneration = async () => {
     httpStart.apply_brand_visuals = useBrandColors.value;
 
     try {
-        const data = await httpStart.post(startRoute.url()) as { creation_id: string; channel: string };
+        const data = (await httpStart.post(startRoute.url())) as {
+            creation_id: string;
+            channel: string;
+        };
 
-        router.visit(loadingRoute(
-            { creationId: data.creation_id },
-            {
-                query: {
-                    images: String(submittedImageCount.value),
-                    format: selectedFormat.value ?? '',
-                    prompt: promptText.value.trim(),
+        router.visit(
+            loadingRoute(
+                { creationId: data.creation_id },
+                {
+                    query: {
+                        images: String(submittedImageCount.value),
+                        format: selectedFormat.value ?? '',
+                        prompt: promptText.value.trim(),
+                    },
                 },
-            },
-        ).url);
+            ).url,
+        );
     } catch (err: any) {
-        toast.error(err?.response?.data?.message ?? trans('posts.create.steps.preview_error'));
+        toast.error(
+            err?.response?.data?.message ??
+                trans('posts.create.steps.preview_error'),
+        );
         submitting.value = false;
     }
 };
-
 </script>
 
 <template>
@@ -248,49 +282,86 @@ const startGeneration = async () => {
             class="group inline-flex cursor-pointer items-center gap-1.5 text-sm font-semibold text-foreground/70 transition-colors hover:text-foreground"
             @click="goBack"
         >
-            <span class="inline-flex size-7 items-center justify-center rounded-md border-2 border-foreground bg-card shadow-2xs transition-transform group-hover:-translate-x-0.5">
-                <IconArrowLeft class="size-3.5 text-foreground" stroke-width="2.5" />
+            <span
+                class="inline-flex size-7 items-center justify-center rounded-md border-2 border-foreground bg-card shadow-2xs transition-transform group-hover:-translate-x-0.5"
+            >
+                <IconArrowLeft
+                    class="size-3.5 text-foreground"
+                    stroke-width="2.5"
+                />
             </span>
             {{ $t('posts.create.steps.back') }}
         </button>
 
         <!-- Format -->
         <div class="space-y-2">
-            <Label class="text-sm font-bold">{{ $t('posts.create.steps.format_title') }}</Label>
+            <Label class="text-sm font-bold">{{
+                $t('posts.create.steps.format_title')
+            }}</Label>
             <div class="grid gap-2 sm:grid-cols-2">
                 <button
                     v-for="format in availableFormats"
                     :key="format.value"
                     type="button"
                     class="flex cursor-pointer items-center gap-3 rounded-xl border-2 border-foreground bg-card p-3.5 text-left text-sm shadow-2xs transition-all hover:bg-foreground/5 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-card"
-                    :class="{ '!bg-violet-100 shadow-md': selectedFormat === format.value }"
+                    :class="{
+                        '!bg-violet-100 shadow-md':
+                            selectedFormat === format.value,
+                    }"
                     :disabled="!isFormatConnected(format)"
-                    :title="!isFormatConnected(format) ? $t('posts.create.steps.connect_first') : ''"
+                    :title="
+                        !isFormatConnected(format)
+                            ? $t('posts.create.steps.connect_first')
+                            : ''
+                    "
                     @click="selectFormat(format.value)"
                 >
-                    <span class="inline-flex size-7 items-center justify-center overflow-hidden rounded-full border-2 border-foreground bg-card shadow-2xs">
+                    <span
+                        class="inline-flex size-7 items-center justify-center overflow-hidden rounded-full border-2 border-foreground bg-card shadow-2xs"
+                    >
                         <img
                             :src="getPlatformLogo(format.platforms[0])"
                             :alt="format.platforms[0]"
                             class="size-full object-cover"
                         />
                     </span>
-                    <span class="flex-1 font-semibold text-foreground">{{ $t(`posts.create.steps.format.${format.value}`) }}</span>
-                    <IconCheck v-if="selectedFormat === format.value" class="size-4 text-foreground" stroke-width="3" />
+                    <span class="flex-1 font-semibold text-foreground">{{
+                        $t(`posts.create.steps.format.${format.value}`)
+                    }}</span>
+                    <IconCheck
+                        v-if="selectedFormat === format.value"
+                        class="size-4 text-foreground"
+                        stroke-width="3"
+                    />
                 </button>
             </div>
         </div>
 
         <!-- Visual style — shown only for single-image formats (not carousel) -->
         <div v-if="selectedFormat && !formatBoundTemplate" class="space-y-2">
-            <Label class="text-sm font-bold">{{ $t('posts.create.steps.template_picker_title') }}</Label>
-            <ContentStylePicker v-model="selectedStyle" :styles="styleTemplates" />
+            <Label class="text-sm font-bold">{{
+                $t('posts.create.steps.template_picker_title')
+            }}</Label>
+            <ContentStylePicker
+                v-model="selectedStyle"
+                :styles="styleTemplates"
+            />
         </div>
 
         <!-- Account (when template needs_account OR there's a choice to make) -->
-        <div v-if="selectedFormat && (templateNeedsAccount || showsAccountPicker)" class="space-y-2">
-            <Label class="text-sm font-bold">{{ $t('posts.create.steps.account_title') }}</Label>
-            <p v-if="templateNeedsAccount && accountsForFormat.length === 0" class="text-sm text-foreground/60">
+        <div
+            v-if="
+                selectedFormat && (templateNeedsAccount || showsAccountPicker)
+            "
+            class="space-y-2"
+        >
+            <Label class="text-sm font-bold">{{
+                $t('posts.create.steps.account_title')
+            }}</Label>
+            <p
+                v-if="templateNeedsAccount && accountsForFormat.length === 0"
+                class="text-sm text-foreground/60"
+            >
                 {{ $t('posts.create.steps.no_account_for_template') }}
             </p>
             <div v-else class="grid grid-cols-2 gap-2 sm:grid-cols-3">
@@ -299,30 +370,55 @@ const startGeneration = async () => {
                     :key="account.id"
                     type="button"
                     class="relative flex cursor-pointer items-center gap-2 rounded-xl border-2 border-foreground bg-card p-2.5 text-left text-sm shadow-2xs transition-all hover:bg-foreground/5"
-                    :class="{ '!bg-violet-100 shadow-md': selectedAccountId === account.id }"
+                    :class="{
+                        '!bg-violet-100 shadow-md':
+                            selectedAccountId === account.id,
+                    }"
                     @click="selectedAccountId = account.id"
                 >
-                    <span class="inline-flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-foreground bg-card shadow-2xs">
+                    <span
+                        class="inline-flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-foreground bg-card shadow-2xs"
+                    >
                         <img
                             v-if="account.avatar_url"
                             :src="account.avatar_url"
                             :alt="account.display_name"
                             class="size-full object-cover"
                         />
-                        <img v-else :src="getPlatformLogo(account.platform)" :alt="account.platform" class="size-4" />
+                        <img
+                            v-else
+                            :src="getPlatformLogo(account.platform)"
+                            :alt="account.platform"
+                            class="size-4"
+                        />
                     </span>
                     <div class="min-w-0 flex-1">
-                        <p class="truncate text-xs font-bold leading-tight text-foreground">{{ account.display_name }}</p>
-                        <p v-if="account.username" class="truncate text-xs font-medium text-foreground/60">@{{ account.username }}</p>
+                        <p
+                            class="truncate text-xs leading-tight font-bold text-foreground"
+                        >
+                            {{ account.display_name }}
+                        </p>
+                        <p
+                            v-if="account.username"
+                            class="truncate text-xs font-medium text-foreground/60"
+                        >
+                            @{{ account.username }}
+                        </p>
                     </div>
-                    <IconCheck v-if="selectedAccountId === account.id" class="absolute right-2 top-2 size-3.5 text-foreground" stroke-width="3" />
+                    <IconCheck
+                        v-if="selectedAccountId === account.id"
+                        class="absolute top-2 right-2 size-3.5 text-foreground"
+                        stroke-width="3"
+                    />
                 </button>
             </div>
         </div>
 
         <!-- Media — inline, only when format actually has options -->
         <div v-if="selectedFormat && isCarousel" class="space-y-2">
-            <Label class="text-sm font-bold">{{ $t('posts.create.steps.media_carousel') }}</Label>
+            <Label class="text-sm font-bold">{{
+                $t('posts.create.steps.media_carousel')
+            }}</Label>
             <div class="flex flex-wrap gap-2">
                 <Button
                     v-for="n in [2, 3, 4, 5, 6, 7, 8, 9, 10]"
@@ -338,7 +434,9 @@ const startGeneration = async () => {
         </div>
 
         <div v-if="selectedFormat && supportsOptionalImages" class="space-y-2">
-            <Label class="text-sm font-bold">{{ $t('posts.create.steps.media_optional_label') }}</Label>
+            <Label class="text-sm font-bold">{{
+                $t('posts.create.steps.media_optional_label')
+            }}</Label>
             <div class="flex flex-wrap gap-2">
                 <Button
                     type="button"
@@ -352,8 +450,15 @@ const startGeneration = async () => {
                     :key="n"
                     type="button"
                     size="icon"
-                    :variant="includeImages && imageCount === n ? 'default' : 'outline'"
-                    @click="includeImages = true; imageCount = n"
+                    :variant="
+                        includeImages && imageCount === n
+                            ? 'default'
+                            : 'outline'
+                    "
+                    @click="
+                        includeImages = true;
+                        imageCount = n;
+                    "
                 >
                     {{ n }}
                 </Button>
@@ -363,19 +468,29 @@ const startGeneration = async () => {
         <!-- Brand colors: apply the workspace palette or let the AI decide. Only
              for image templates that honor it (tweet cards are always branded). -->
         <div
-            v-if="selectedFormat && submittedImageCount > 0 && resolvedTemplateRecord?.applies_brand_visuals"
+            v-if="
+                selectedFormat &&
+                submittedImageCount > 0 &&
+                resolvedTemplateRecord?.applies_brand_visuals
+            "
             class="flex items-center justify-between gap-4 rounded-xl border-2 border-foreground bg-card p-4 shadow-2xs"
         >
             <div class="space-y-0.5">
-                <Label for="apply-brand-visuals" class="text-sm font-bold">{{ $t('posts.create.steps.brand_colors_label') }}</Label>
-                <p class="text-sm text-foreground/70">{{ $t('posts.create.steps.brand_colors_description') }}</p>
+                <Label for="apply-brand-visuals" class="text-sm font-bold">{{
+                    $t('posts.create.steps.brand_colors_label')
+                }}</Label>
+                <p class="text-sm text-foreground/70">
+                    {{ $t('posts.create.steps.brand_colors_description') }}
+                </p>
             </div>
             <Switch id="apply-brand-visuals" v-model="useBrandColors" />
         </div>
 
         <!-- Prompt -->
         <div v-if="selectedFormat" class="space-y-2">
-            <Label for="ai-prompt" class="text-sm font-bold">{{ $t('posts.create.steps.prompt_label') }}</Label>
+            <Label for="ai-prompt" class="text-sm font-bold">{{
+                $t('posts.create.steps.prompt_label')
+            }}</Label>
             <Textarea
                 id="ai-prompt"
                 v-model="promptText"
@@ -386,7 +501,11 @@ const startGeneration = async () => {
                 data-testid="ai-prompt-counter"
                 aria-live="polite"
                 class="text-right text-xs tabular-nums"
-                :class="promptLength > PROMPT_MAX ? 'font-semibold text-destructive' : 'text-muted-foreground'"
+                :class="
+                    promptLength > PROMPT_MAX
+                        ? 'font-semibold text-destructive'
+                        : 'text-muted-foreground'
+                "
             >
                 {{ promptLength }}/{{ PROMPT_MAX }}
             </p>
@@ -394,7 +513,10 @@ const startGeneration = async () => {
 
         <!-- Generate -->
         <div v-if="selectedFormat" class="flex justify-end pt-1">
-            <Button :disabled="!canSubmit || submitting" @click="startGeneration">
+            <Button
+                :disabled="!canSubmit || submitting"
+                @click="startGeneration"
+            >
                 {{ $t('posts.ai.generate.start') }}
             </Button>
         </div>

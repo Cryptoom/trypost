@@ -15,11 +15,18 @@ export class MoveNodeCommand implements Command {
 
     revert(): void {
         this.nodesRef.value = this.nodesRef.value.map((n) =>
-            n.id === this.nodeId ? { ...n, position: { ...this.oldPosition } } : n,
+            n.id === this.nodeId
+                ? { ...n, position: { ...this.oldPosition } }
+                : n,
         );
     }
 
     getReverseCommand(): Command {
-        return new MoveNodeCommand(this.nodeId, this.newPosition, this.oldPosition, this.nodesRef);
+        return new MoveNodeCommand(
+            this.nodeId,
+            this.newPosition,
+            this.oldPosition,
+            this.nodesRef,
+        );
     }
 }

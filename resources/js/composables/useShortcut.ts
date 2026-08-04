@@ -35,8 +35,15 @@ const isEditableTarget = (target: EventTarget | null): boolean => {
  *   useShortcut('mod+shift+z', () => redo());
  *   useShortcut('backspace', () => deleteSelected(), { ignoreOnInput: true });
  */
-export const useShortcut = (combo: string, callback: ShortcutCallback, options: ShortcutOptions = {}): void => {
-    const parts = combo.toLowerCase().split('+').map((p) => p.trim());
+export const useShortcut = (
+    combo: string,
+    callback: ShortcutCallback,
+    options: ShortcutOptions = {},
+): void => {
+    const parts = combo
+        .toLowerCase()
+        .split('+')
+        .map((p) => p.trim());
     const key = parts.at(-1) ?? '';
     const modifiers = parts.slice(0, -1);
 

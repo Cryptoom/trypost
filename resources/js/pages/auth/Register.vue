@@ -39,7 +39,9 @@ const hasSocial = computed(
 
 // With no social providers the email form is the only way to sign up, so it
 // stays visible; otherwise it is revealed by the "Sign up with email" toggle.
-const emailFormVisible = computed(() => !hasSocial.value || showEmailForm.value);
+const emailFormVisible = computed(
+    () => !hasSocial.value || showEmailForm.value,
+);
 </script>
 
 <template>
@@ -72,14 +74,27 @@ const emailFormVisible = computed(() => !hasSocial.value || showEmailForm.value)
                 v-slot="{ errors, processing }"
                 class="flex flex-col gap-6"
             >
-                <input v-if="redirect" type="hidden" name="redirect" :value="redirect" />
-                <input v-if="invite" type="hidden" name="invite" :value="invite" />
+                <input
+                    v-if="redirect"
+                    type="hidden"
+                    name="redirect"
+                    :value="redirect"
+                />
+                <input
+                    v-if="invite"
+                    type="hidden"
+                    name="invite"
+                    :value="invite"
+                />
 
                 <div
                     v-if="hasSocial && showEmailForm"
                     class="relative text-center text-sm after:absolute after:inset-0 after:top-1/2 after:z-0 after:flex after:items-center after:border-t after:border-border"
                 >
-                    <span class="relative z-10 bg-background px-2 text-muted-foreground">{{ $t('auth.or_continue_with_email') }}</span>
+                    <span
+                        class="relative z-10 bg-background px-2 text-muted-foreground"
+                        >{{ $t('auth.or_continue_with_email') }}</span
+                    >
                 </div>
 
                 <Transition
@@ -89,7 +104,9 @@ const emailFormVisible = computed(() => !hasSocial.value || showEmailForm.value)
                 >
                     <div v-if="emailFormVisible" class="grid gap-6">
                         <div class="grid gap-2">
-                            <Label for="name">{{ $t('auth.register.name') }}</Label>
+                            <Label for="name">{{
+                                $t('auth.register.name')
+                            }}</Label>
                             <Input
                                 id="name"
                                 type="text"
@@ -97,13 +114,17 @@ const emailFormVisible = computed(() => !hasSocial.value || showEmailForm.value)
                                 :tabindex="1"
                                 autocomplete="name"
                                 name="name"
-                                :placeholder="$t('auth.register.name_placeholder')"
+                                :placeholder="
+                                    $t('auth.register.name_placeholder')
+                                "
                             />
                             <InputError :message="errors.name" />
                         </div>
 
                         <div class="grid gap-2">
-                            <Label for="email">{{ $t('auth.register.email') }}</Label>
+                            <Label for="email">{{
+                                $t('auth.register.email')
+                            }}</Label>
                             <Input
                                 id="email"
                                 type="email"
@@ -114,13 +135,17 @@ const emailFormVisible = computed(() => !hasSocial.value || showEmailForm.value)
                                 :default-value="email ?? ''"
                                 :readonly="Boolean(invite)"
                                 :aria-readonly="Boolean(invite)"
-                                :class="{ 'pointer-events-none opacity-60': invite }"
+                                :class="{
+                                    'pointer-events-none opacity-60': invite,
+                                }"
                             />
                             <InputError :message="errors.email" />
                         </div>
 
                         <div class="grid gap-2">
-                            <Label for="password">{{ $t('auth.register.password') }}</Label>
+                            <Label for="password">{{
+                                $t('auth.register.password')
+                            }}</Label>
                             <div class="relative">
                                 <Input
                                     id="password"
@@ -130,7 +155,9 @@ const emailFormVisible = computed(() => !hasSocial.value || showEmailForm.value)
                                     name="password"
                                     :placeholder="$t('auth.register.password')"
                                 />
-                                <div class="absolute inset-y-0 end-0 flex items-center pe-3">
+                                <div
+                                    class="absolute inset-y-0 end-0 flex items-center pe-3"
+                                >
                                     <TooltipProvider>
                                         <Tooltip>
                                             <TooltipTrigger as-child>
@@ -138,14 +165,33 @@ const emailFormVisible = computed(() => !hasSocial.value || showEmailForm.value)
                                                     type="button"
                                                     :tabindex="-1"
                                                     class="cursor-pointer text-muted-foreground hover:text-foreground"
-                                                    @click="showPassword = !showPassword"
+                                                    @click="
+                                                        showPassword =
+                                                            !showPassword
+                                                    "
                                                 >
-                                                    <IconEyeOff v-if="showPassword" class="size-4" />
-                                                    <IconEye v-else class="size-4" />
+                                                    <IconEyeOff
+                                                        v-if="showPassword"
+                                                        class="size-4"
+                                                    />
+                                                    <IconEye
+                                                        v-else
+                                                        class="size-4"
+                                                    />
                                                 </button>
                                             </TooltipTrigger>
                                             <TooltipContent>
-                                                <p>{{ showPassword ? $t('auth.register.hide_password') : $t('auth.register.show_password') }}</p>
+                                                <p>
+                                                    {{
+                                                        showPassword
+                                                            ? $t(
+                                                                  'auth.register.hide_password',
+                                                              )
+                                                            : $t(
+                                                                  'auth.register.show_password',
+                                                              )
+                                                    }}
+                                                </p>
                                             </TooltipContent>
                                         </Tooltip>
                                     </TooltipProvider>

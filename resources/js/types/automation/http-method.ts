@@ -16,4 +16,8 @@ export type HttpMethodValue = (typeof HttpMethod)[keyof typeof HttpMethod];
 export const HTTP_METHODS: HttpMethodValue[] = Object.values(HttpMethod);
 
 /** Verbs that carry a request body (mirror HttpMethod::withBody on the backend). */
-export const HTTP_METHODS_WITH_BODY: HttpMethodValue[] = [HttpMethod.Post, HttpMethod.Put, HttpMethod.Patch];
+export const HTTP_METHODS_WITH_BODY: HttpMethodValue[] = [
+    HttpMethod.Post,
+    HttpMethod.Put,
+    HttpMethod.Patch,
+];

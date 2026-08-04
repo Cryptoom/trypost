@@ -3,7 +3,14 @@ import { useHttp } from '@inertiajs/vue3';
 import { computed, ref, watch } from 'vue';
 
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useAiStream } from '@/composables/echo/useAiStream';
@@ -22,20 +29,26 @@ const emit = defineEmits<{
 
 const prompt = ref('');
 const dispatching = ref(false);
-const { text, status, errorMessage, subscribe, unsubscribe, reset } = useAiStream();
+const { text, status, errorMessage, subscribe, unsubscribe, reset } =
+    useAiStream();
 
-const httpGenerate = useHttp<{ prompt: string; current_content: string | null }>({
+const httpGenerate = useHttp<{
+    prompt: string;
+    current_content: string | null;
+}>({
     prompt: '',
     current_content: null,
 });
 
 const startGeneration = async () => {
-    if (! prompt.value.trim()) return;
+    if (!prompt.value.trim()) return;
     dispatching.value = true;
     httpGenerate.prompt = prompt.value;
     httpGenerate.current_content = props.currentContent || null;
     try {
-        const data = (await httpGenerate.post(generatePostAi.url(props.postId))) as { channel: string };
+        const data = (await httpGenerate.post(
+            generatePostAi.url(props.postId),
+        )) as { channel: string };
         subscribe(data.channel);
     } catch {
         status.value = 'failed';
@@ -51,7 +64,7 @@ const startGeneration = async () => {
 // content field — and only once the JSON is complete (mid-stream the parse
 // fails and we show nothing, avoiding the typewriter-of-JSON effect).
 const previewText = computed(() => {
-    if (! text.value) return '';
+    if (!text.value) return '';
     try {
         const parsed = JSON.parse(text.value);
         if (parsed && typeof parsed.content === 'string') return parsed.content;
@@ -72,8 +85,12 @@ const retry = () => {
     startGeneration();
 };
 
-const canApply = computed(() => status.value === 'completed' && previewText.value.trim().length > 0);
-const canRetry = computed(() => status.value === 'completed' || status.value === 'failed');
+const canApply = computed(
+    () => status.value === 'completed' && previewText.value.trim().length > 0,
+);
+const canRetry = computed(
+    () => status.value === 'completed' || status.value === 'failed',
+);
 
 watch(open, () => {
     unsubscribe();
@@ -87,25 +104,43 @@ watch(open, () => {
         <DialogContent class="sm:max-w-2xl">
             <DialogHeader>
                 <DialogTitle>{{ $t('posts.ai.generate.title') }}</DialogTitle>
-                <DialogDescription>{{ $t('posts.ai.generate.description') }}</DialogDescription>
+                <DialogDescription>{{
+                    $t('posts.ai.generate.description')
+                }}</DialogDescription>
             </DialogHeader>
 
             <div class="space-y-4">
                 <div class="grid gap-2">
-                    <Label for="ai-generate-prompt">{{ $t('posts.ai.generate.prompt_label') }}</Label>
+                    <Label for="ai-generate-prompt">{{
+                        $t('posts.ai.generate.prompt_label')
+                    }}</Label>
                     <Textarea
                         id="ai-generate-prompt"
                         v-model="prompt"
-                        :placeholder="$t('posts.ai.generate.prompt_placeholder')"
+                        :placeholder="
+                            $t('posts.ai.generate.prompt_placeholder')
+                        "
                         :disabled="status === 'streaming'"
                         rows="3"
                     />
                 </div>
 
                 <div v-if="status !== 'idle'" class="grid gap-2">
-                    <Label class="text-[11px] font-black uppercase tracking-widest text-foreground/60">{{ $t('posts.ai.generate.preview_label') }}</Label>
-                    <div class="min-h-[120px] whitespace-pre-wrap break-words rounded-lg border-2 border-foreground bg-card px-3 py-2 text-sm font-medium text-foreground shadow-2xs">{{ previewText || '...' }}</div>
-                    <p v-if="status === 'failed'" class="text-xs font-semibold text-rose-700">{{ errorMessage }}</p>
+                    <Label
+                        class="text-[11px] font-black tracking-widest text-foreground/60 uppercase"
+                        >{{ $t('posts.ai.generate.preview_label') }}</Label
+                    >
+                    <div
+                        class="min-h-[120px] rounded-lg border-2 border-foreground bg-card px-3 py-2 text-sm font-medium break-words whitespace-pre-wrap text-foreground shadow-2xs"
+                    >
+                        {{ previewText || '...' }}
+                    </div>
+                    <p
+                        v-if="status === 'failed'"
+                        class="text-xs font-semibold text-rose-700"
+                    >
+                        {{ errorMessage }}
+                    </p>
                 </div>
             </div>
 
@@ -113,7 +148,7 @@ watch(open, () => {
                 <Button
                     v-if="status === 'idle' || status === 'streaming'"
                     :loading="dispatching || status === 'streaming'"
-                    :disabled="! prompt.trim()"
+                    :disabled="!prompt.trim()"
                     @click="startGeneration"
                 >
                     {{ $t('posts.ai.generate.start') }}

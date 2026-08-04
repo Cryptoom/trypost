@@ -18,7 +18,9 @@ const props = defineProps<{
 
 const summary = computed(() => {
     const field = props.data.field || '…';
-    const operator = trans(`automations.config.condition.operators.${props.data.operator}`);
+    const operator = trans(
+        `automations.config.condition.operators.${props.data.operator}`,
+    );
     const value = props.data.value || '…';
     return `${field} ${operator} ${value}`;
 });
@@ -30,20 +32,20 @@ const summary = computed(() => {
         :class="{ 'is-selected': selected }"
     >
         <div class="automation-node__header">
-            <div class="automation-node__icon-tile automation-node__icon-tile--rose">
+            <div
+                class="automation-node__icon-tile automation-node__icon-tile--rose"
+            >
                 <IconGitBranch :size="16" />
             </div>
-            <span class="automation-node__title">{{ $t('automations.nodes.condition') }}</span>
+            <span class="automation-node__title">{{
+                $t('automations.nodes.condition')
+            }}</span>
         </div>
         <div class="automation-node__summary" :title="summary">
             {{ summary }}
         </div>
 
-        <Handle
-            type="target"
-            :position="Position.Left"
-            class="!bg-rose-500"
-        />
+        <Handle type="target" :position="Position.Left" class="!bg-rose-500" />
         <Handle
             :id="ConditionHandle.Yes"
             type="source"
@@ -51,7 +53,10 @@ const summary = computed(() => {
             class="!bg-emerald-500"
             :style="{ top: '35%' }"
         />
-        <span class="pointer-events-none absolute left-full top-[35%] z-10 ml-3 -translate-y-1/2 rounded bg-background px-1.5 text-[10px] font-bold uppercase tracking-wider text-emerald-700">yes</span>
+        <span
+            class="pointer-events-none absolute top-[35%] left-full z-10 ml-3 -translate-y-1/2 rounded bg-background px-1.5 text-[10px] font-bold tracking-wider text-emerald-700 uppercase"
+            >yes</span
+        >
         <Handle
             :id="ConditionHandle.No"
             type="source"
@@ -59,6 +64,9 @@ const summary = computed(() => {
             class="!bg-rose-500"
             :style="{ top: '75%' }"
         />
-        <span class="pointer-events-none absolute left-full top-[75%] z-10 ml-3 -translate-y-1/2 rounded bg-background px-1.5 text-[10px] font-bold uppercase tracking-wider text-rose-700">no</span>
+        <span
+            class="pointer-events-none absolute top-[75%] left-full z-10 ml-3 -translate-y-1/2 rounded bg-background px-1.5 text-[10px] font-bold tracking-wider text-rose-700 uppercase"
+            >no</span
+        >
     </div>
 </template>

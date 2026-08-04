@@ -1,4 +1,4 @@
-import { computed, type Ref, type ComputedRef } from 'vue';
+import { computed, type ComputedRef, type Ref } from 'vue';
 
 import {
     mediaRuleFor,
@@ -22,7 +22,9 @@ const DEFAULT_RULES: MediaRules = {
     acceptsGif: false,
 };
 
-export const getMediaRulesForContentType = (contentType: string): MediaRules => {
+export const getMediaRulesForContentType = (
+    contentType: string,
+): MediaRules => {
     const shared = mediaRuleFor(contentType);
 
     if (!shared) {
@@ -32,8 +34,12 @@ export const getMediaRulesForContentType = (contentType: string): MediaRules => 
     return toMediaRules(shared);
 };
 
-export const useMediaRules = (contentType: Ref<string> | ComputedRef<string>) => {
-    const rules = computed<MediaRules>(() => getMediaRulesForContentType(contentType.value));
+export const useMediaRules = (
+    contentType: Ref<string> | ComputedRef<string>,
+) => {
+    const rules = computed<MediaRules>(() =>
+        getMediaRulesForContentType(contentType.value),
+    );
 
     const acceptMimeTypes = computed<string>(() => {
         const types: string[] = [];
@@ -71,7 +77,11 @@ export const useMediaRules = (contentType: Ref<string> | ComputedRef<string>) =>
     });
 
     const getAcceptDescription = computed<string>(() => {
-        if (rules.value.acceptDocuments && !rules.value.acceptImages && !rules.value.acceptVideos) {
+        if (
+            rules.value.acceptDocuments &&
+            !rules.value.acceptImages &&
+            !rules.value.acceptVideos
+        ) {
             return 'PDF document';
         }
         if (rules.value.acceptImages && rules.value.acceptVideos) {

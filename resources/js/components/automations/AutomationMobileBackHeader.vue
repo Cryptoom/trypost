@@ -9,7 +9,7 @@ import { index as automationsIndex } from '@/routes/app/automations';
 <template>
     <header
         data-testid="automation-mobile-back"
-        class="flex items-center border-b-2 border-foreground/10 bg-card py-3 pl-16 pr-4 md:pl-4 lg:hidden"
+        class="flex items-center border-b-2 border-foreground/10 bg-card py-3 pr-4 pl-16 md:pl-4 lg:hidden"
     >
         <Link :href="automationsIndex.url()" class="block w-full">
             <Button variant="outline" class="w-full justify-start gap-2">

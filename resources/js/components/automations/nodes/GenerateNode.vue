@@ -14,9 +14,17 @@ const props = defineProps<{
 }>();
 
 const summary = computed(() => {
-    const count = props.data.accounts?.length ?? props.data.social_account_ids?.length ?? 0;
-    const format = trans(`automations.config.generate.formats.${props.data.format ?? 'single'}`);
-    return transChoice('automations.config.generate.account_summary', count, { count: String(count), format });
+    const count =
+        props.data.accounts?.length ??
+        props.data.social_account_ids?.length ??
+        0;
+    const format = trans(
+        `automations.config.generate.formats.${props.data.format ?? 'single'}`,
+    );
+    return transChoice('automations.config.generate.account_summary', count, {
+        count: String(count),
+        format,
+    });
 });
 </script>
 
@@ -26,23 +34,19 @@ const summary = computed(() => {
         :class="{ 'is-selected': selected }"
     >
         <div class="automation-node__header">
-            <div class="automation-node__icon-tile automation-node__icon-tile--blue">
+            <div
+                class="automation-node__icon-tile automation-node__icon-tile--blue"
+            >
                 <IconSparkles :size="16" />
             </div>
-            <span class="automation-node__title">{{ $t('automations.nodes.generate') }}</span>
+            <span class="automation-node__title">{{
+                $t('automations.nodes.generate')
+            }}</span>
         </div>
         <div class="automation-node__summary">
             {{ summary }}
         </div>
-        <Handle
-            type="target"
-            :position="Position.Left"
-            class="!bg-blue-500"
-        />
-        <Handle
-            type="source"
-            :position="Position.Right"
-            class="!bg-blue-500"
-        />
+        <Handle type="target" :position="Position.Left" class="!bg-blue-500" />
+        <Handle type="source" :position="Position.Right" class="!bg-blue-500" />
     </div>
 </template>

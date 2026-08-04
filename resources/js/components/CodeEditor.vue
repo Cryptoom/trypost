@@ -2,7 +2,7 @@
 import { autocompletion } from '@codemirror/autocomplete';
 import { indentWithTab } from '@codemirror/commands';
 import { json } from '@codemirror/lang-json';
-import { type Extension, EditorState } from '@codemirror/state';
+import { EditorState, type Extension } from '@codemirror/state';
 import {
     Decoration,
     type DecorationSet,
@@ -13,9 +13,21 @@ import {
     ViewPlugin,
     type ViewUpdate,
 } from '@codemirror/view';
-import { IconArrowsMaximize, IconArrowsMinimize, IconCopy } from '@tabler/icons-vue';
+import {
+    IconArrowsMaximize,
+    IconArrowsMinimize,
+    IconCopy,
+} from '@tabler/icons-vue';
 import { basicSetup } from 'codemirror';
-import { computed, inject, onBeforeUnmount, onMounted, type Ref, ref, watch } from 'vue';
+import {
+    computed,
+    inject,
+    onBeforeUnmount,
+    onMounted,
+    type Ref,
+    ref,
+    watch,
+} from 'vue';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -25,8 +37,8 @@ import {
     TooltipTrigger,
 } from '@/components/ui/tooltip';
 import {
-    type ExpressionSuggestion,
     expressionCompletionSource,
+    type ExpressionSuggestion,
     isKnownExpression,
 } from '@/composables/useExpressionCompletions';
 import debounce from '@/debounce';
@@ -65,7 +77,10 @@ const expressionCompletions = inject<Ref<ExpressionSuggestion[]>>(
 // Shared with Form.vue: toggling `.active` slides out the side panel (and shifts
 // the sidebar to make room). Null outside the automation editor, so `expandable`
 // only takes effect where Form provides the panel target.
-const expandedPanel = inject<{ active: boolean } | null>('automationExpandedEditor', null);
+const expandedPanel = inject<{ active: boolean } | null>(
+    'automationExpandedEditor',
+    null,
+);
 
 const isExpanded = ref(false);
 const canExpand = computed(() => props.expandable && expandedPanel !== null);
@@ -97,7 +112,10 @@ const expressionHighlighter = (() => {
         decoration: (match) =>
             Decoration.mark({
                 attributes: {
-                    style: isKnownExpression(match[1], expressionCompletions.value)
+                    style: isKnownExpression(
+                        match[1],
+                        expressionCompletions.value,
+                    )
                         ? KNOWN_EXPR_STYLE
                         : UNKNOWN_EXPR_STYLE,
                 },
@@ -164,13 +182,16 @@ const lightTheme = EditorView.theme({
         backgroundColor: 'var(--muted)',
         color: 'var(--muted-foreground)',
         border: 'none',
-        borderRight: '2px solid color-mix(in srgb, var(--foreground) 15%, transparent)',
+        borderRight:
+            '2px solid color-mix(in srgb, var(--foreground) 15%, transparent)',
     },
     '.cm-activeLine': {
-        backgroundColor: 'color-mix(in srgb, var(--foreground) 4%, transparent)',
+        backgroundColor:
+            'color-mix(in srgb, var(--foreground) 4%, transparent)',
     },
     '.cm-activeLineGutter': {
-        backgroundColor: 'color-mix(in srgb, var(--foreground) 8%, transparent)',
+        backgroundColor:
+            'color-mix(in srgb, var(--foreground) 8%, transparent)',
     },
     '.cm-selectionBackground, &.cm-focused .cm-selectionBackground, .cm-content ::selection':
         {
@@ -201,7 +222,9 @@ onMounted(() => {
         languageExtension(),
         EditorView.lineWrapping,
         autocompletion({
-            override: [expressionCompletionSource(() => expressionCompletions.value)],
+            override: [
+                expressionCompletionSource(() => expressionCompletions.value),
+            ],
             activateOnTyping: true,
             icons: false,
         }),
@@ -273,7 +296,7 @@ onBeforeUnmount(() => {
         <TooltipProvider :delay-duration="200">
             <div
                 v-if="!isExpanded && (canExpand || modelValue)"
-                class="absolute right-2 top-2 z-10 flex gap-0.5 rounded-lg border-2 border-foreground bg-card p-0.5 opacity-0 shadow-[1px_1px_0_var(--foreground)] transition-opacity duration-150 group-hover:opacity-100 focus-within:opacity-100"
+                class="absolute top-2 right-2 z-10 flex gap-0.5 rounded-lg border-2 border-foreground bg-card p-0.5 opacity-0 shadow-[1px_1px_0_var(--foreground)] transition-opacity duration-150 group-hover:opacity-100 focus-within:opacity-100"
             >
                 <Tooltip v-if="canExpand">
                     <TooltipTrigger as-child>
@@ -283,10 +306,15 @@ onBeforeUnmount(() => {
                             :aria-label="$t('automations.config.expand_editor')"
                             @click="isExpanded = true"
                         >
-                            <IconArrowsMaximize class="size-3.5" stroke-width="2.5" />
+                            <IconArrowsMaximize
+                                class="size-3.5"
+                                stroke-width="2.5"
+                            />
                         </button>
                     </TooltipTrigger>
-                    <TooltipContent>{{ $t('automations.config.expand_editor') }}</TooltipContent>
+                    <TooltipContent>{{
+                        $t('automations.config.expand_editor')
+                    }}</TooltipContent>
                 </Tooltip>
 
                 <Tooltip v-if="modelValue">
@@ -300,22 +328,40 @@ onBeforeUnmount(() => {
                             <IconCopy class="size-3.5" stroke-width="2.5" />
                         </button>
                     </TooltipTrigger>
-                    <TooltipContent>{{ $t('common.actions.copy') }}</TooltipContent>
+                    <TooltipContent>{{
+                        $t('common.actions.copy')
+                    }}</TooltipContent>
                 </Tooltip>
             </div>
         </TooltipProvider>
 
-        <Teleport v-if="canExpand && isExpanded" to="#automation-expanded-editor">
-            <div class="flex shrink-0 items-center justify-between gap-2 border-b-2 border-foreground/10 px-3 py-3">
-                <span class="truncate text-sm font-bold">{{ label || $t('automations.config.expand_editor') }}</span>
+        <Teleport
+            v-if="canExpand && isExpanded"
+            to="#automation-expanded-editor"
+        >
+            <div
+                class="flex shrink-0 items-center justify-between gap-2 border-b-2 border-foreground/10 px-3 py-3"
+            >
+                <span class="truncate text-sm font-bold">{{
+                    label || $t('automations.config.expand_editor')
+                }}</span>
                 <TooltipProvider :delay-duration="200">
                     <Tooltip>
                         <TooltipTrigger as-child>
-                            <Button variant="ghost" size="icon-sm" :aria-label="$t('automations.config.minimize_editor')" @click="isExpanded = false">
+                            <Button
+                                variant="ghost"
+                                size="icon-sm"
+                                :aria-label="
+                                    $t('automations.config.minimize_editor')
+                                "
+                                @click="isExpanded = false"
+                            >
                                 <IconArrowsMinimize class="size-4" />
                             </Button>
                         </TooltipTrigger>
-                        <TooltipContent>{{ $t('automations.config.minimize_editor') }}</TooltipContent>
+                        <TooltipContent>{{
+                            $t('automations.config.minimize_editor')
+                        }}</TooltipContent>
                     </Tooltip>
                 </TooltipProvider>
             </div>

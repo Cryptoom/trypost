@@ -8,4 +8,5 @@ export const ConditionHandle = {
     No: 'no',
 } as const;
 
-export type ConditionHandleValue = (typeof ConditionHandle)[keyof typeof ConditionHandle];
+export type ConditionHandleValue =
+    (typeof ConditionHandle)[keyof typeof ConditionHandle];

@@ -29,7 +29,12 @@ const { urlIsActive } = useActiveUrl();
             <SidebarMenuItem v-for="item in items" :key="item.title">
                 <SidebarMenuButton
                     as-child
-                    :is-active="urlIsActive(item.activePattern ?? item.href, { exact: item.exact, exclude: item.excludeActive })"
+                    :is-active="
+                        urlIsActive(item.activePattern ?? item.href, {
+                            exact: item.exact,
+                            exclude: item.excludeActive,
+                        })
+                    "
                     :tooltip="item.title"
                 >
                     <Link :href="item.href">
@@ -40,7 +45,7 @@ const { urlIsActive } = useActiveUrl();
                 <Badge
                     v-if="item.badge"
                     variant="warning"
-                    class="pointer-events-none absolute top-1/2 end-2 -translate-y-1/2 px-1.5 group-data-[collapsible=icon]:hidden"
+                    class="pointer-events-none absolute end-2 top-1/2 -translate-y-1/2 px-1.5 group-data-[collapsible=icon]:hidden"
                 >
                     {{ item.badge }}
                 </Badge>

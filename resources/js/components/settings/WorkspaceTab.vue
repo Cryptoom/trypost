@@ -2,16 +2,16 @@
 import { Form } from '@inertiajs/vue3';
 
 import WorkspaceController from '@/actions/App/Http/Controllers/App/WorkspaceController';
-import DeleteWorkspace from '@/components/settings/DeleteWorkspace.vue';
 import HeadingSmall from '@/components/HeadingSmall.vue';
 import InputError from '@/components/InputError.vue';
 import PhotoUpload from '@/components/PhotoUpload.vue';
+import DeleteWorkspace from '@/components/settings/DeleteWorkspace.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { useWorkspaceRole } from '@/composables/useWorkspaceRole';
-import { uploadLogo, deleteLogo } from '@/routes/app/workspace';
+import { deleteLogo, uploadLogo } from '@/routes/app/workspace';
 
 interface Workspace {
     id: string;
@@ -60,7 +60,9 @@ const { canManageBilling } = useWorkspaceRole();
                 class="space-y-6"
             >
                 <div class="grid gap-2">
-                    <Label for="name">{{ $t('settings.workspace.name') }}</Label>
+                    <Label for="name">{{
+                        $t('settings.workspace.name')
+                    }}</Label>
                     <Input
                         id="name"
                         name="name"
@@ -70,7 +72,9 @@ const { canManageBilling } = useWorkspaceRole();
                     <InputError :message="errors.name" />
                 </div>
 
-                <Button :disabled="processing">{{ $t('settings.workspace.save') }}</Button>
+                <Button :disabled="processing">{{
+                    $t('settings.workspace.save')
+                }}</Button>
             </Form>
         </div>
 

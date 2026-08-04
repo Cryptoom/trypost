@@ -9,7 +9,10 @@ import { Button } from '@/components/ui/button';
 import date from '@/date';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { calendar as calendarRoute } from '@/routes/app';
-import { create as createPostRoute, edit as editPostRoute } from '@/routes/app/posts';
+import {
+    create as createPostRoute,
+    edit as editPostRoute,
+} from '@/routes/app/posts';
 
 const props = defineProps<{
     creationId: string;
@@ -27,15 +30,22 @@ let echoChannel: any = null;
 const TEXT_BASELINE_SECONDS = 30;
 const PER_IMAGE_SECONDS = 35;
 
-const estimatedSeconds = computed(() => TEXT_BASELINE_SECONDS + props.imageCount * PER_IMAGE_SECONDS);
+const estimatedSeconds = computed(
+    () => TEXT_BASELINE_SECONDS + props.imageCount * PER_IMAGE_SECONDS,
+);
 
 const minutesLabel = computed(() => {
     const minutes = Math.max(1, Math.ceil(estimatedSeconds.value / 60));
-    const key = minutes === 1 ? 'posts.create.steps.loading_eta_minute_one' : 'posts.create.steps.loading_eta_minute_other';
+    const key =
+        minutes === 1
+            ? 'posts.create.steps.loading_eta_minute_one'
+            : 'posts.create.steps.loading_eta_minute_other';
     return trans(key, { count: String(minutes) });
 });
 
-const etaLabel = computed(() => trans('posts.create.steps.loading_eta', { minutes: minutesLabel.value }));
+const etaLabel = computed(() =>
+    trans('posts.create.steps.loading_eta', { minutes: minutesLabel.value }),
+);
 
 const tipKeys = [
     'posts.create.steps.loading_tip_credits',
@@ -49,7 +59,9 @@ const tipKeys = [
 const tipIndex = ref(0);
 let tipTimer: ReturnType<typeof setInterval> | null = null;
 
-const currentTip = computed(() => trans(tipKeys[tipIndex.value % tipKeys.length]));
+const currentTip = computed(() =>
+    trans(tipKeys[tipIndex.value % tipKeys.length]),
+);
 
 const elapsed = ref(0);
 let elapsedTimer: ReturnType<typeof setInterval> | null = null;
@@ -64,14 +76,18 @@ const progress = computed(() => {
 const subscribe = () => {
     echoChannel = echo()
         .private(props.channel)
-        .listen('.ai.creation.completed', (e: { post_id?: string; error?: string }) => {
-            if (e.error || !e.post_id) {
-                status.value = 'error';
-                errorMessage.value = e.error ?? trans('posts.create.steps.preview_error');
-                return;
-            }
-            router.visit(editPostRoute(e.post_id).url);
-        });
+        .listen(
+            '.ai.creation.completed',
+            (e: { post_id?: string; error?: string }) => {
+                if (e.error || !e.post_id) {
+                    status.value = 'error';
+                    errorMessage.value =
+                        e.error ?? trans('posts.create.steps.preview_error');
+                    return;
+                }
+                router.visit(editPostRoute(e.post_id).url);
+            },
+        );
 };
 
 const unsubscribe = () => {
@@ -110,55 +126,102 @@ onBeforeUnmount(() => {
     <Head :title="$t('posts.create.steps.loading_page_title')" />
 
     <AppLayout>
-        <div class="mx-auto flex w-full max-w-2xl flex-col items-center gap-6 px-4 py-12">
-            <div class="inline-flex size-14 -rotate-2 items-center justify-center rounded-2xl border-2 border-foreground bg-violet-200 shadow-2xs">
-                <IconLoader2 v-if="status === 'loading'" class="size-7 animate-spin text-foreground" stroke-width="2" />
-                <IconSparkles v-else class="size-7 text-foreground" stroke-width="2" />
+        <div
+            class="mx-auto flex w-full max-w-2xl flex-col items-center gap-6 px-4 py-12"
+        >
+            <div
+                class="inline-flex size-14 -rotate-2 items-center justify-center rounded-2xl border-2 border-foreground bg-violet-200 shadow-2xs"
+            >
+                <IconLoader2
+                    v-if="status === 'loading'"
+                    class="size-7 animate-spin text-foreground"
+                    stroke-width="2"
+                />
+                <IconSparkles
+                    v-else
+                    class="size-7 text-foreground"
+                    stroke-width="2"
+                />
             </div>
 
             <h1 class="text-center text-2xl font-bold text-foreground">
                 {{ $t('posts.create.steps.loading_page_title') }}
             </h1>
 
-            <div v-if="status === 'loading'" class="flex w-full flex-col items-center gap-4">
-                <p class="text-center text-sm text-foreground/70">{{ etaLabel }}</p>
+            <div
+                v-if="status === 'loading'"
+                class="flex w-full flex-col items-center gap-4"
+            >
+                <p class="text-center text-sm text-foreground/70">
+                    {{ etaLabel }}
+                </p>
 
                 <div class="w-full max-w-md">
-                    <div class="h-2 w-full overflow-hidden rounded-full border-2 border-foreground bg-card">
+                    <div
+                        class="h-2 w-full overflow-hidden rounded-full border-2 border-foreground bg-card"
+                    >
                         <div
                             class="h-full bg-foreground transition-[width] duration-700 ease-out"
                             :style="{ width: `${Math.round(progress * 100)}%` }"
                         ></div>
                     </div>
-                    <div class="mt-1.5 flex justify-between text-[11px] font-mono text-foreground/50">
+                    <div
+                        class="mt-1.5 flex justify-between font-mono text-[11px] text-foreground/50"
+                    >
                         <span>{{ elapsedLabel }}</span>
                         <span>{{ minutesLabel }}</span>
                     </div>
                 </div>
 
-                <div class="mt-4 flex min-h-[3rem] w-full max-w-lg items-center justify-center rounded-xl border-2 border-foreground bg-card px-5 py-3 shadow-2xs">
-                    <p class="text-center text-sm text-foreground/80 transition-opacity">
+                <div
+                    class="mt-4 flex min-h-[3rem] w-full max-w-lg items-center justify-center rounded-xl border-2 border-foreground bg-card px-5 py-3 shadow-2xs"
+                >
+                    <p
+                        class="text-center text-sm text-foreground/80 transition-opacity"
+                    >
                         💡 {{ currentTip }}
                     </p>
                 </div>
 
-                <div class="mt-8 flex w-full max-w-lg flex-col items-center gap-3 rounded-2xl border-2 border-foreground bg-card p-5 text-center shadow-2xs">
-                    <p class="text-base font-bold text-foreground">{{ $t('posts.create.steps.loading_leave_title') }}</p>
-                    <p class="text-sm text-foreground/70">{{ $t('posts.create.steps.loading_leave_body') }}</p>
-                    <div class="flex flex-wrap items-center justify-center gap-2 pt-1">
-                        <Button @click="createAnother">{{ $t('posts.create.steps.loading_create_another_cta') }}</Button>
-                        <Button variant="outline" @click="leave">{{ $t('posts.create.steps.loading_leave_cta') }}</Button>
+                <div
+                    class="mt-8 flex w-full max-w-lg flex-col items-center gap-3 rounded-2xl border-2 border-foreground bg-card p-5 text-center shadow-2xs"
+                >
+                    <p class="text-base font-bold text-foreground">
+                        {{ $t('posts.create.steps.loading_leave_title') }}
+                    </p>
+                    <p class="text-sm text-foreground/70">
+                        {{ $t('posts.create.steps.loading_leave_body') }}
+                    </p>
+                    <div
+                        class="flex flex-wrap items-center justify-center gap-2 pt-1"
+                    >
+                        <Button @click="createAnother">{{
+                            $t('posts.create.steps.loading_create_another_cta')
+                        }}</Button>
+                        <Button variant="outline" @click="leave">{{
+                            $t('posts.create.steps.loading_leave_cta')
+                        }}</Button>
                     </div>
                 </div>
             </div>
 
-            <div v-else class="flex w-full max-w-lg flex-col items-center gap-4">
-                <div class="w-full rounded-xl border-2 border-foreground bg-rose-50 p-4 shadow-2xs">
+            <div
+                v-else
+                class="flex w-full max-w-lg flex-col items-center gap-4"
+            >
+                <div
+                    class="w-full rounded-xl border-2 border-foreground bg-rose-50 p-4 shadow-2xs"
+                >
                     <p class="text-center text-sm font-semibold text-rose-700">
-                        {{ errorMessage || $t('posts.create.steps.preview_error') }}
+                        {{
+                            errorMessage ||
+                            $t('posts.create.steps.preview_error')
+                        }}
                     </p>
                 </div>
-                <Button @click="leave">{{ $t('posts.create.steps.loading_leave_cta') }}</Button>
+                <Button @click="leave">{{
+                    $t('posts.create.steps.loading_leave_cta')
+                }}</Button>
             </div>
         </div>
     </AppLayout>

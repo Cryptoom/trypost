@@ -20,6 +20,11 @@ export class UpdateNodeDataCommand implements Command {
     }
 
     getReverseCommand(): Command {
-        return new UpdateNodeDataCommand(this.nodeId, this.newData, this.oldData, this.nodesRef);
+        return new UpdateNodeDataCommand(
+            this.nodeId,
+            this.newData,
+            this.oldData,
+            this.nodesRef,
+        );
     }
 }

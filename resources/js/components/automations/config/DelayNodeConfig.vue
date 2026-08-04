@@ -35,21 +35,39 @@ watch(local, (val) => emit('update', val), { deep: true });
 <template>
     <div class="space-y-3">
         <div>
-            <Label class="mb-1 block">{{ $t('automations.config.delay.duration') }}</Label>
-            <Input type="number" v-model.number="local.duration" placeholder="1" />
+            <Label class="mb-1 block">{{
+                $t('automations.config.delay.duration')
+            }}</Label>
+            <Input
+                type="number"
+                v-model.number="local.duration"
+                placeholder="1"
+            />
             <InputError :message="errors?.duration" class="mt-1" />
         </div>
 
         <div>
-            <Label class="mb-1 block">{{ $t('automations.config.delay.unit') }}</Label>
+            <Label class="mb-1 block">{{
+                $t('automations.config.delay.unit')
+            }}</Label>
             <Select v-model="local.unit">
                 <SelectTrigger class="w-full">
-                    <SelectValue :placeholder="$t('automations.config.select_placeholder')" />
+                    <SelectValue
+                        :placeholder="
+                            $t('automations.config.select_placeholder')
+                        "
+                    />
                 </SelectTrigger>
                 <SelectContent>
-                    <SelectItem :value="DelayUnit.Minutes">{{ $t('automations.config.delay.units.minutes') }}</SelectItem>
-                    <SelectItem :value="DelayUnit.Hours">{{ $t('automations.config.delay.units.hours') }}</SelectItem>
-                    <SelectItem :value="DelayUnit.Days">{{ $t('automations.config.delay.units.days') }}</SelectItem>
+                    <SelectItem :value="DelayUnit.Minutes">{{
+                        $t('automations.config.delay.units.minutes')
+                    }}</SelectItem>
+                    <SelectItem :value="DelayUnit.Hours">{{
+                        $t('automations.config.delay.units.hours')
+                    }}</SelectItem>
+                    <SelectItem :value="DelayUnit.Days">{{
+                        $t('automations.config.delay.units.days')
+                    }}</SelectItem>
                 </SelectContent>
             </Select>
             <InputError :message="errors?.unit" class="mt-1" />

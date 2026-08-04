@@ -9,9 +9,8 @@ import TelegramConnectDialog from '@/components/accounts/TelegramConnectDialog.v
 import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.vue';
 import { Button } from '@/components/ui/button';
 import { useOAuthPopup } from '@/composables/useOAuthPopup';
-import { Platform } from '@/types/platform';
-
 import { disconnect } from '@/routes/app/accounts';
+import { Platform } from '@/types/platform';
 
 export interface AvailablePlatform {
     value: string;

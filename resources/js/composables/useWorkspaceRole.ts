@@ -12,7 +12,8 @@ export const useWorkspaceRole = () => {
     const page = usePage();
 
     const role = computed<string | null>(
-        () => (page.props.auth?.currentWorkspace?.role as string | null) ?? null,
+        () =>
+            (page.props.auth?.currentWorkspace?.role as string | null) ?? null,
     );
 
     const isOwner = computed(() => role.value === WorkspaceRole.Owner);

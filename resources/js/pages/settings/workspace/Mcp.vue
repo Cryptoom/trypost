@@ -13,7 +13,6 @@ import { Button } from '@/components/ui/button';
 import { useWorkspaceSettingsTabs } from '@/composables/useWorkspaceSettingsTabs';
 import date from '@/date';
 import AppLayout from '@/layouts/AppLayout.vue';
-
 import { disconnect as mcpDisconnect } from '@/routes/app/mcp';
 
 interface ConnectedClient {

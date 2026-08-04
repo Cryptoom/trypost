@@ -8,7 +8,8 @@ export const useWorkspaceEcho = <T = unknown>(
     callback: (payload: T) => void,
 ) => {
     const page = usePage();
-    const workspaceId = (page.props.auth as Auth | undefined)?.currentWorkspace?.id;
+    const workspaceId = (page.props.auth as Auth | undefined)?.currentWorkspace
+        ?.id;
 
     if (!workspaceId) {
         return;
