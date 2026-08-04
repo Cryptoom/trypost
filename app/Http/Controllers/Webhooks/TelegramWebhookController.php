@@ -10,8 +10,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Workspace;
 use App\Services\Social\Telegram\TelegramConnectCode;
 use Illuminate\Http\Request;
-use Illuminate\Http\Response;
-use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
+use Symfony\Component\HttpFoundation\Response;
 
 class TelegramWebhookController extends Controller
 {
@@ -26,7 +25,7 @@ class TelegramWebhookController extends Controller
 
         abort_if(
             $secret === '' || ! hash_equals($secret, (string) $request->header('X-Telegram-Bot-Api-Secret-Token')),
-            SymfonyResponse::HTTP_FORBIDDEN,
+            Response::HTTP_FORBIDDEN,
         );
 
         $update = $request->all();

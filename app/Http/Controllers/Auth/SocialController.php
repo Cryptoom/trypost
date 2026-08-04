@@ -19,9 +19,9 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
-use Inertia\Response;
+use Inertia\Response as InertiaResponse;
 use Laravel\Socialite\Facades\Socialite;
-use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
+use Symfony\Component\HttpFoundation\Response;
 use Throwable;
 
 class SocialController extends Controller
@@ -31,11 +31,11 @@ class SocialController extends Controller
     protected function ensurePlatformEnabled(): void
     {
         if (isset($this->platform) && ! $this->platform->isEnabled()) {
-            abort(SymfonyResponse::HTTP_FORBIDDEN, 'This platform is currently unavailable.');
+            abort(Response::HTTP_FORBIDDEN, 'This platform is currently unavailable.');
         }
     }
 
-    public function index(Request $request): Response
+    public function index(Request $request): InertiaResponse
     {
         $workspace = $request->user()->currentWorkspace;
 
@@ -59,7 +59,7 @@ class SocialController extends Controller
         $this->authorize('manageAccounts', $workspace);
 
         if ($account->workspace_id !== $workspace->id) {
-            abort(403);
+            abort(Response::HTTP_FORBIDDEN);
         }
 
         // Drop pending platform rows from drafts/scheduled posts so the account
@@ -84,7 +84,7 @@ class SocialController extends Controller
         $this->authorize('manageAccounts', $workspace);
 
         if ($account->workspace_id !== $workspace->id) {
-            abort(403);
+            abort(Response::HTTP_FORBIDDEN);
         }
 
         ToggleSocialAccount::execute($account);
@@ -96,7 +96,7 @@ class SocialController extends Controller
         return back();
     }
 
-    protected function redirectToProvider(Request $request, string $driver, array $scopes): SymfonyResponse
+    protected function redirectToProvider(Request $request, string $driver, array $scopes): Response
     {
         $workspace = $request->user()->currentWorkspace;
 
@@ -114,7 +114,7 @@ class SocialController extends Controller
         Request $request,
         SocialPlatform $platform,
         string $driver
-    ): Response {
+    ): InertiaResponse {
         $workspaceId = session('social_connect_workspace');
 
         if (! $workspaceId) {
@@ -172,7 +172,7 @@ class SocialController extends Controller
             || NetworkUniqueViolation::matches($exception);
     }
 
-    protected function networkTakenResponse(SocialPlatform $platform): Response
+    protected function networkTakenResponse(SocialPlatform $platform): InertiaResponse
     {
         return $this->popupCallback(false, __('accounts.popup_callback.network_taken'), $platform->value);
     }
@@ -187,7 +187,7 @@ class SocialController extends Controller
      * popup. Used by both the GET OAuth callbacks (a fresh popup page load) and
      * the XHR selection submits (an Inertia visit that swaps to this page).
      */
-    protected function popupCallback(bool $success, string $message, ?string $platform = null): Response
+    protected function popupCallback(bool $success, string $message, ?string $platform = null): InertiaResponse
     {
         $this->forgetSocialConnectSession();
 

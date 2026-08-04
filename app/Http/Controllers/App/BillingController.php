@@ -12,8 +12,8 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Inertia\Inertia;
-use Inertia\Response;
-use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
+use Inertia\Response as InertiaResponse;
+use Symfony\Component\HttpFoundation\Response;
 
 class BillingController extends Controller
 {
@@ -27,7 +27,7 @@ class BillingController extends Controller
         return redirect()->route('app.welcome.persona');
     }
 
-    public function processing(Request $request): Response|RedirectResponse
+    public function processing(Request $request): InertiaResponse|RedirectResponse
     {
         if (config('trypost.self_hosted')) {
             return redirect()->route('app.calendar');
@@ -75,7 +75,7 @@ class BillingController extends Controller
         ]);
     }
 
-    public function acknowledgePurchase(AcknowledgeCheckoutPurchaseRequest $request): SymfonyResponse
+    public function acknowledgePurchase(AcknowledgeCheckoutPurchaseRequest $request): Response
     {
         if (! config('trypost.self_hosted')) {
             $account = $request->user()->account;
@@ -91,7 +91,7 @@ class BillingController extends Controller
         return response()->noContent();
     }
 
-    public function index(Request $request): Response|RedirectResponse
+    public function index(Request $request): InertiaResponse|RedirectResponse
     {
         if (config('trypost.self_hosted')) {
             return redirect()->route('app.calendar');
@@ -99,7 +99,7 @@ class BillingController extends Controller
 
         $account = $request->user()->account;
 
-        abort_unless($request->user()->isAccountOwner(), SymfonyResponse::HTTP_FORBIDDEN);
+        abort_unless($request->user()->isAccountOwner(), Response::HTTP_FORBIDDEN);
 
         $subscription = $account->subscription(Account::SUBSCRIPTION_NAME);
 
@@ -132,17 +132,17 @@ class BillingController extends Controller
 
         $account = $request->user()->account;
 
-        abort_unless($request->user()->isAccountOwner(), SymfonyResponse::HTTP_FORBIDDEN);
-        abort_unless($account->subscribed(Account::SUBSCRIPTION_NAME), SymfonyResponse::HTTP_UNPROCESSABLE_ENTITY, 'No active subscription');
+        abort_unless($request->user()->isAccountOwner(), Response::HTTP_FORBIDDEN);
+        abort_unless($account->subscribed(Account::SUBSCRIPTION_NAME), Response::HTTP_UNPROCESSABLE_ENTITY, 'No active subscription');
 
         $plan = $account->plan;
         $yearlyPriceId = $plan?->stripe_yearly_price_id;
 
-        abort_if($yearlyPriceId === null, SymfonyResponse::HTTP_UNPROCESSABLE_ENTITY, 'No annual price configured');
+        abort_if($yearlyPriceId === null, Response::HTTP_UNPROCESSABLE_ENTITY, 'No annual price configured');
 
         $subscription = $account->subscription(Account::SUBSCRIPTION_NAME);
 
-        abort_if($subscription === null, SymfonyResponse::HTTP_UNPROCESSABLE_ENTITY, 'No active subscription');
+        abort_if($subscription === null, Response::HTTP_UNPROCESSABLE_ENTITY, 'No active subscription');
 
         if ($subscription->stripe_price === $yearlyPriceId) {
             return redirect()->route('app.billing.index');
@@ -168,7 +168,7 @@ class BillingController extends Controller
 
         $account = $request->user()->account;
 
-        abort_unless($request->user()->isAccountOwner(), SymfonyResponse::HTTP_FORBIDDEN);
+        abort_unless($request->user()->isAccountOwner(), Response::HTTP_FORBIDDEN);
 
         return $account->redirectToBillingPortal(
             route('app.billing.index')

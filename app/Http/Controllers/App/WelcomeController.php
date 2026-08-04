@@ -19,8 +19,8 @@ use App\Services\PostHogService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
-use Inertia\Response;
-use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
+use Inertia\Response as InertiaResponse;
+use Symfony\Component\HttpFoundation\Response;
 
 class WelcomeController extends Controller
 {
@@ -28,7 +28,7 @@ class WelcomeController extends Controller
         private readonly ResolveOnboardingStatus $resolveOnboardingStatus,
     ) {}
 
-    public function persona(Request $request): Response|RedirectResponse
+    public function persona(Request $request): InertiaResponse|RedirectResponse
     {
         if ($redirect = $this->redirectIfUnavailable($request)) {
             return $redirect;
@@ -64,7 +64,7 @@ class WelcomeController extends Controller
         return redirect()->route('app.welcome.goals');
     }
 
-    public function goals(Request $request): Response|RedirectResponse
+    public function goals(Request $request): InertiaResponse|RedirectResponse
     {
         if ($redirect = $this->redirectIfStepIncomplete($request)) {
             return $redirect;
@@ -102,7 +102,7 @@ class WelcomeController extends Controller
         return redirect()->route('app.welcome.referral-source');
     }
 
-    public function referralSource(Request $request): Response|RedirectResponse
+    public function referralSource(Request $request): InertiaResponse|RedirectResponse
     {
         if ($redirect = $this->redirectIfStepIncomplete($request, requireGoals: true)) {
             return $redirect;
@@ -126,14 +126,14 @@ class WelcomeController extends Controller
         StoreWelcomeReferralSourceRequest $request,
         StartSubscriptionCheckout $checkout,
         PostHogService $postHog,
-    ): SymfonyResponse|RedirectResponse {
+    ): Response|RedirectResponse {
         if ($redirect = $this->redirectIfStepIncomplete($request, requireGoals: true)) {
             return $redirect;
         }
 
         $user = $request->user();
 
-        abort_unless($user->isAccountOwner(), SymfonyResponse::HTTP_FORBIDDEN);
+        abort_unless($user->isAccountOwner(), Response::HTTP_FORBIDDEN);
 
         $referralSource = (string) $request->validated('referral_source');
 
@@ -156,12 +156,12 @@ class WelcomeController extends Controller
         Request $request,
         StartSubscriptionCheckout $checkout,
         PostHogService $postHog,
-    ): SymfonyResponse|RedirectResponse {
+    ): Response|RedirectResponse {
         $user = $request->user();
         $plan = Plan::where('slug', Slug::Workspace)->firstOrFail();
         $priceId = $plan->stripe_monthly_price_id;
 
-        abort_if($priceId === null, SymfonyResponse::HTTP_INTERNAL_SERVER_ERROR, 'Monthly price is not configured.');
+        abort_if($priceId === null, Response::HTTP_INTERNAL_SERVER_ERROR, 'Monthly price is not configured.');
 
         $response = $checkout->redirect(
             $user->account,
@@ -184,7 +184,7 @@ class WelcomeController extends Controller
         return $response;
     }
 
-    public function subscriptionRequired(Request $request): Response|RedirectResponse
+    public function subscriptionRequired(Request $request): InertiaResponse|RedirectResponse
     {
         if (config('trypost.self_hosted')) {
             return redirect()->route('app.calendar');

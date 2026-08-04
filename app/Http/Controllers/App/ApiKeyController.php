@@ -10,11 +10,12 @@ use App\Models\AccessToken;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
-use Inertia\Response;
+use Inertia\Response as InertiaResponse;
+use Symfony\Component\HttpFoundation\Response;
 
 class ApiKeyController extends Controller
 {
-    public function index(Request $request): Response|RedirectResponse
+    public function index(Request $request): InertiaResponse|RedirectResponse
     {
         $workspace = $request->user()->currentWorkspace;
 
@@ -80,7 +81,7 @@ class ApiKeyController extends Controller
             ->first();
 
         if (! $token) {
-            abort(404);
+            abort(Response::HTTP_NOT_FOUND);
         }
 
         $token->forceFill(['revoked' => true])->saveQuietly();

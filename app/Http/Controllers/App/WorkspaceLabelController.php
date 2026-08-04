@@ -11,11 +11,12 @@ use App\Models\WorkspaceLabel;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
-use Inertia\Response;
+use Inertia\Response as InertiaResponse;
+use Symfony\Component\HttpFoundation\Response;
 
 class WorkspaceLabelController extends Controller
 {
-    public function index(Request $request): Response|RedirectResponse
+    public function index(Request $request): InertiaResponse|RedirectResponse
     {
         $workspace = $request->user()->currentWorkspace;
 
@@ -73,7 +74,7 @@ class WorkspaceLabelController extends Controller
         $this->authorize('createPost', $workspace);
 
         if ($label->workspace_id !== $workspace->id) {
-            abort(404);
+            abort(Response::HTTP_NOT_FOUND);
         }
 
         $validated = $request->validate([
@@ -100,7 +101,7 @@ class WorkspaceLabelController extends Controller
         $this->authorize('createPost', $workspace);
 
         if ($label->workspace_id !== $workspace->id) {
-            abort(404);
+            abort(Response::HTTP_NOT_FOUND);
         }
 
         DeleteLabel::execute($label);

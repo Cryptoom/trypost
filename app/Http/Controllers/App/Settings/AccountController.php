@@ -8,14 +8,14 @@ use App\Http\Controllers\App\Controller;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
-use Inertia\Response;
-use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
+use Inertia\Response as InertiaResponse;
+use Symfony\Component\HttpFoundation\Response;
 
 class AccountController extends Controller
 {
-    public function edit(Request $request): Response
+    public function edit(Request $request): InertiaResponse
     {
-        abort_unless($request->user()->isAccountOwner(), SymfonyResponse::HTTP_FORBIDDEN);
+        abort_unless($request->user()->isAccountOwner(), Response::HTTP_FORBIDDEN);
 
         $account = $request->user()->account;
 
@@ -31,7 +31,7 @@ class AccountController extends Controller
 
     public function update(Request $request): RedirectResponse
     {
-        abort_unless($request->user()->isAccountOwner(), SymfonyResponse::HTTP_FORBIDDEN);
+        abort_unless($request->user()->isAccountOwner(), Response::HTTP_FORBIDDEN);
 
         $isSelfHosted = config('trypost.self_hosted');
 

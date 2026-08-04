@@ -31,11 +31,12 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
-use Inertia\Response;
+use Inertia\Response as InertiaResponse;
+use Symfony\Component\HttpFoundation\Response;
 
 class PostController extends Controller
 {
-    public function index(Request $request, ?string $status = null): Response|RedirectResponse
+    public function index(Request $request, ?string $status = null): InertiaResponse|RedirectResponse
     {
         $workspace = $request->user()->currentWorkspace;
 
@@ -83,7 +84,7 @@ class PostController extends Controller
         ]);
     }
 
-    public function calendar(Request $request): Response|RedirectResponse
+    public function calendar(Request $request): InertiaResponse|RedirectResponse
     {
         $workspace = $request->user()->currentWorkspace;
 
@@ -139,7 +140,7 @@ class PostController extends Controller
         ]);
     }
 
-    public function create(Request $request): Response
+    public function create(Request $request): InertiaResponse
     {
         $workspace = $request->user()->currentWorkspace;
 
@@ -166,7 +167,7 @@ class PostController extends Controller
         ]);
     }
 
-    public function store(StorePostRequest $request): RedirectResponse|\Symfony\Component\HttpFoundation\Response
+    public function store(StorePostRequest $request): RedirectResponse|Response
     {
         $workspace = $request->user()->currentWorkspace;
 
@@ -201,13 +202,13 @@ class PostController extends Controller
         $this->authorize('view', $post);
 
         if ($postPlatform->post_id !== $post->id) {
-            abort(404);
+            abort(Response::HTTP_NOT_FOUND);
         }
 
         return response()->json(app(PostMetricsFetcher::class)->forPlatform($postPlatform));
     }
 
-    public function show(Request $request, Post $post): Response|RedirectResponse
+    public function show(Request $request, Post $post): InertiaResponse|RedirectResponse
     {
         $workspace = $request->user()->currentWorkspace;
 
@@ -229,7 +230,7 @@ class PostController extends Controller
         ]);
     }
 
-    public function edit(Request $request, Post $post): Response|RedirectResponse
+    public function edit(Request $request, Post $post): InertiaResponse|RedirectResponse
     {
         $workspace = $request->user()->currentWorkspace;
 

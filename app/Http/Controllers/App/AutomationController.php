@@ -39,15 +39,14 @@ use App\Services\Automation\FeedParser;
 use App\Services\Brand\SafeHttpFetcher;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Response as HttpResponse;
 use Inertia\Inertia;
-use Inertia\Response;
+use Inertia\Response as InertiaResponse;
 use RuntimeException;
-use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
+use Symfony\Component\HttpFoundation\Response;
 
 class AutomationController extends Controller
 {
-    public function index(ListAutomations $list): Response
+    public function index(ListAutomations $list): InertiaResponse
     {
         $this->authorize('viewAny', Automation::class);
 
@@ -85,7 +84,7 @@ class AutomationController extends Controller
         return redirect()->route("app.automations.{$tab}", $automation->id);
     }
 
-    public function workflow(Automation $automation, GetAutomationEditorData $editorData): Response
+    public function workflow(Automation $automation, GetAutomationEditorData $editorData): InertiaResponse
     {
         $this->authorize('update', $automation);
 
@@ -104,7 +103,7 @@ class AutomationController extends Controller
         ]);
     }
 
-    public function invocations(Automation $automation, GetAutomationInvocations $invocations): Response
+    public function invocations(Automation $automation, GetAutomationInvocations $invocations): InertiaResponse
     {
         $this->authorize('view', $automation);
 
@@ -123,7 +122,7 @@ class AutomationController extends Controller
         ]);
     }
 
-    public function settings(Automation $automation): Response
+    public function settings(Automation $automation): InertiaResponse
     {
         $this->authorize('view', $automation);
 
@@ -132,7 +131,7 @@ class AutomationController extends Controller
         ]);
     }
 
-    public function metrics(Automation $automation, GetAutomationMetrics $metrics): Response
+    public function metrics(Automation $automation, GetAutomationMetrics $metrics): InertiaResponse
     {
         $this->authorize('view', $automation);
 
@@ -202,9 +201,9 @@ class AutomationController extends Controller
         RetryRunFromNode $retry,
         Automation $automation,
         AutomationRun $run,
-    ): HttpResponse {
+    ): Response {
         $this->authorize('update', $automation);
-        abort_unless($run->automation_id === $automation->id, 404);
+        abort_unless($run->automation_id === $automation->id, Response::HTTP_NOT_FOUND);
 
         $nodeId = $request->validated('node_id') ?? $run->current_node_id;
         $retry($run, $nodeId);
@@ -241,13 +240,13 @@ class AutomationController extends Controller
         try {
             $response = $safeHttp->get($feedUrl);
         } catch (RuntimeException) {
-            return response()->json(['message' => __('automations.errors.fetch_rss_request_failed')], SymfonyResponse::HTTP_UNPROCESSABLE_ENTITY);
+            return response()->json(['message' => __('automations.errors.fetch_rss_request_failed')], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 
         $items = $parser->parse($response->body());
 
         if ($items === null) {
-            return response()->json(['message' => __('automations.errors.fetch_rss_malformed')], SymfonyResponse::HTTP_UNPROCESSABLE_ENTITY);
+            return response()->json(['message' => __('automations.errors.fetch_rss_malformed')], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 
         return new FeedInspectionResource($items[0] ?? []);
@@ -256,7 +255,7 @@ class AutomationController extends Controller
     public function showRun(Automation $automation, AutomationRun $run): JsonResponse
     {
         $this->authorize('view', $automation);
-        abort_unless($run->automation_id === $automation->id, 404);
+        abort_unless($run->automation_id === $automation->id, Response::HTTP_NOT_FOUND);
 
         // Aggregate the node runs of every branch forked by a fan-out so the test
         // panel shows the whole execution, not just the branch the root walked.

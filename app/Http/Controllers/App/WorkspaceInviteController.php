@@ -17,11 +17,12 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
-use Inertia\Response;
+use Inertia\Response as InertiaResponse;
+use Symfony\Component\HttpFoundation\Response;
 
 class WorkspaceInviteController extends Controller
 {
-    public function index(Request $request): Response|RedirectResponse
+    public function index(Request $request): InertiaResponse|RedirectResponse
     {
         $workspace = $request->user()->currentWorkspace;
 
@@ -105,7 +106,7 @@ class WorkspaceInviteController extends Controller
         $this->authorize('manageTeam', $workspace);
 
         if ($invite->account_id !== $workspace->account_id) {
-            abort(404);
+            abort(Response::HTTP_NOT_FOUND);
         }
 
         DeleteInvite::execute($invite);

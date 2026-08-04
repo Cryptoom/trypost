@@ -19,13 +19,13 @@ use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
-use Inertia\Response;
+use Inertia\Response as InertiaResponse;
 use RuntimeException;
-use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
+use Symfony\Component\HttpFoundation\Response;
 
 class AssetController extends Controller
 {
-    public function index(Request $request): Response|RedirectResponse
+    public function index(Request $request): InertiaResponse|RedirectResponse
     {
         $workspace = $request->user()->currentWorkspace;
 
@@ -104,11 +104,11 @@ class AssetController extends Controller
         try {
             $response = $safeHttp->guardedRequest($url)->timeout(30)->get($url);
         } catch (RuntimeException) {
-            abort(SymfonyResponse::HTTP_BAD_REQUEST, 'Failed to download image from URL');
+            abort(Response::HTTP_BAD_REQUEST, 'Failed to download image from URL');
         }
 
         if ($response->failed()) {
-            abort(SymfonyResponse::HTTP_BAD_REQUEST, 'Failed to download image from URL');
+            abort(Response::HTTP_BAD_REQUEST, 'Failed to download image from URL');
         }
 
         $mimeType = $response->header('Content-Type', 'image/jpeg');
@@ -156,7 +156,7 @@ class AssetController extends Controller
         $this->authorize('createPost', $workspace);
 
         if ($media->mediable_type !== $workspace->getMorphClass() || $media->mediable_id !== $workspace->id) {
-            abort(SymfonyResponse::HTTP_FORBIDDEN);
+            abort(Response::HTTP_FORBIDDEN);
         }
 
         $media->delete();

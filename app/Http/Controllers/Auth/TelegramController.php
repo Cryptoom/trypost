@@ -8,7 +8,7 @@ use App\Enums\SocialAccount\Platform as SocialPlatform;
 use App\Services\Social\Telegram\TelegramConnectCode;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
+use Symfony\Component\HttpFoundation\Response;
 
 class TelegramController extends SocialController
 {
@@ -25,7 +25,7 @@ class TelegramController extends SocialController
         $this->ensurePlatformEnabled();
 
         $workspace = $request->user()->currentWorkspace;
-        abort_if($workspace === null, SymfonyResponse::HTTP_CONFLICT, 'No active workspace.');
+        abort_if($workspace === null, Response::HTTP_CONFLICT, 'No active workspace.');
 
         $this->authorize('manageAccounts', $workspace);
 

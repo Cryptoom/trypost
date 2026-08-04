@@ -20,8 +20,8 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Inertia\Inertia;
-use Inertia\Response;
-use Symfony\Component\HttpFoundation\Response as HttpResponse;
+use Inertia\Response as InertiaResponse;
+use Symfony\Component\HttpFoundation\Response;
 
 class AnalyticsController extends Controller
 {
@@ -38,7 +38,7 @@ class AnalyticsController extends Controller
         Platform::Telegram,
     ];
 
-    public function index(Request $request): Response
+    public function index(Request $request): InertiaResponse
     {
         $workspace = $request->user()->currentWorkspace;
 
@@ -66,7 +66,7 @@ class AnalyticsController extends Controller
         $workspace = $request->user()->currentWorkspace;
 
         if ($account->workspace_id !== $workspace->id) {
-            abort(HttpResponse::HTTP_FORBIDDEN);
+            abort(Response::HTTP_FORBIDDEN);
         }
 
         $since = $request->has('since') ? Carbon::parse($request->input('since')) : null;

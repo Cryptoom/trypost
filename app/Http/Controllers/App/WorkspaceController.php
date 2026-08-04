@@ -24,9 +24,9 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Inertia\Inertia;
-use Inertia\Response;
+use Inertia\Response as InertiaResponse;
 use RuntimeException;
-use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
+use Symfony\Component\HttpFoundation\Response;
 
 class WorkspaceController extends Controller
 {
@@ -34,7 +34,7 @@ class WorkspaceController extends Controller
     {
         $workspace = $request->user()->currentWorkspace;
 
-        abort_if(! $workspace, SymfonyResponse::HTTP_FORBIDDEN);
+        abort_if(! $workspace, Response::HTTP_FORBIDDEN);
 
         $this->authorize('view', $workspace);
 
@@ -50,7 +50,7 @@ class WorkspaceController extends Controller
         return WorkspaceMemberResource::collection($members);
     }
 
-    public function index(Request $request): Response
+    public function index(Request $request): InertiaResponse
     {
         $user = $request->user();
 
@@ -66,7 +66,7 @@ class WorkspaceController extends Controller
         ]);
     }
 
-    public function create(Request $request): Response|RedirectResponse
+    public function create(Request $request): InertiaResponse|RedirectResponse
     {
         $this->authorize('create', Workspace::class);
 
@@ -94,7 +94,7 @@ class WorkspaceController extends Controller
         // workspace on their empty invite-signup shell would leave it non-empty
         // and billable after accept abandons it — send them back to the invite.
         if (Invite::query()->where('email', $user->email)->whereNull('accepted_at')->exists()) {
-            abort(403);
+            abort(Response::HTTP_FORBIDDEN);
         }
 
         if (! config('trypost.self_hosted')
@@ -112,7 +112,7 @@ class WorkspaceController extends Controller
         try {
             $metadata = $autofill($request->validated('url'));
         } catch (RuntimeException $e) {
-            return response()->json(['message' => $e->getMessage()], SymfonyResponse::HTTP_UNPROCESSABLE_ENTITY);
+            return response()->json(['message' => $e->getMessage()], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 
         return response()->json($metadata->toArray());
@@ -145,7 +145,7 @@ class WorkspaceController extends Controller
         $this->authorize('view', $workspace);
 
         if (! $user->belongsToWorkspace($workspace)) {
-            abort(403);
+            abort(Response::HTTP_FORBIDDEN);
         }
 
         $user->switchWorkspace($workspace);
@@ -153,7 +153,7 @@ class WorkspaceController extends Controller
         return redirect()->route('app.calendar');
     }
 
-    public function settings(Request $request): Response|RedirectResponse
+    public function settings(Request $request): InertiaResponse|RedirectResponse
     {
         $user = $request->user();
         $workspace = $user->currentWorkspace;
@@ -180,7 +180,7 @@ class WorkspaceController extends Controller
         ]);
     }
 
-    public function brandSettings(Request $request): Response|RedirectResponse
+    public function brandSettings(Request $request): InertiaResponse|RedirectResponse
     {
         $user = $request->user();
         $workspace = $user->currentWorkspace;
