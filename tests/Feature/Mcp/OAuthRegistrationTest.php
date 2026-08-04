@@ -25,7 +25,7 @@ test('dynamic oauth registration rejects custom callback schemes', function (str
         'grant_types' => ['authorization_code'],
         'response_types' => ['code'],
         'token_endpoint_auth_method' => 'none',
-    ])->assertUnprocessable();
+    ])->assertBadRequest();
 })->with([
     'cursor' => 'cursor://oauth/callback',
     'vscode' => 'vscode://oauth/callback',
