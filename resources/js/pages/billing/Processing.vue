@@ -65,10 +65,11 @@ let acknowledgementFallbackTimer: ReturnType<typeof setTimeout> | null = null;
 let slowNoticeTimer: ReturnType<typeof setTimeout> | null = null;
 let forceContinueTimer: ReturnType<typeof setTimeout> | null = null;
 
-const goNext = () =>
-    router.visit(
+const goNext = (): void => {
+    window.location.assign(
         props.redirectToOnboarding ? onboarding.url() : calendar.url(),
     );
+};
 
 const authPlan = computed(
     () => (page.props.auth as Auth | undefined)?.plan ?? null,
