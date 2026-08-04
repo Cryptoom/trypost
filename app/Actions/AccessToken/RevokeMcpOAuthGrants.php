@@ -8,6 +8,7 @@ use App\Events\OnboardingStatusUpdated;
 use App\Models\AccessToken;
 use App\Models\User;
 use App\Models\Workspace;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 class RevokeMcpOAuthGrants
@@ -35,12 +36,46 @@ class RevokeMcpOAuthGrants
      */
     public static function forUser(User $user): bool
     {
-        $tokens = AccessToken::query()
-            ->where('user_id', $user->id)
-            ->mcpOAuth()
-            ->where('revoked', false)
-            ->get();
+        return self::revoke(
+            AccessToken::query()
+                ->where('user_id', $user->id)
+                ->mcpOAuth()
+                ->where('revoked', false)
+                ->get(),
+            $user,
+        );
+    }
 
+    /**
+     * Revoke active MCP OAuth grants for one OAuth client owned by the user.
+     *
+     * @return bool True when at least one grant was revoked.
+     */
+    public static function forUserClient(User $user, string $clientId): bool
+    {
+        return self::revoke(
+            AccessToken::query()
+                ->where('user_id', $user->id)
+                ->where('client_id', $clientId)
+                ->mcpOAuth()
+                ->where('revoked', false)
+                ->get(),
+            $user,
+        );
+    }
+
+    public static function canCreatePostSomewhere(User $user): bool
+    {
+        return $user->workspaces()
+            ->get()
+            ->contains(fn (Workspace $workspace): bool => $user->can('createPost', $workspace));
+    }
+
+    /**
+     * @param  Collection<int, AccessToken>  $tokens
+     */
+    private static function revoke(Collection $tokens, User $user): bool
+    {
         if ($tokens->isEmpty()) {
             return false;
         }
@@ -60,12 +95,5 @@ class RevokeMcpOAuthGrants
         OnboardingStatusUpdated::dispatchForAccount($user->account, $user);
 
         return true;
-    }
-
-    public static function canCreatePostSomewhere(User $user): bool
-    {
-        return $user->workspaces()
-            ->get()
-            ->contains(fn (Workspace $workspace): bool => $user->can('createPost', $workspace));
     }
 }
