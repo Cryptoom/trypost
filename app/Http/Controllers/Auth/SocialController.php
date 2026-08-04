@@ -13,7 +13,6 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\App\SocialAccountResource;
 use App\Models\SocialAccount;
 use App\Models\Workspace;
-use App\Support\SocialAccount\NetworkUniqueViolation;
 use Exception;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -168,8 +167,7 @@ class SocialController extends Controller
 
     protected function isNetworkConflict(Throwable $exception): bool
     {
-        return $exception instanceof NetworkAlreadyConnectedException
-            || NetworkUniqueViolation::matches($exception);
+        return NetworkAlreadyConnectedException::matches($exception);
     }
 
     protected function networkTakenResponse(SocialPlatform $platform): InertiaResponse

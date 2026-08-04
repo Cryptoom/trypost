@@ -6,7 +6,6 @@ namespace App\Services;
 
 use App\Jobs\PostHog\SendEvent;
 use App\Models\Account;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Throwable;
@@ -33,17 +32,8 @@ class PostHogService
             return;
         }
 
-        if ($dedupeKey !== null) {
-            try {
-                if (Cache::has(SendEvent::deliveredKey($dedupeKey))) {
-                    return;
-                }
-            } catch (Throwable $exception) {
-                Log::warning('PostHog delivery dedupe lookup failed; dispatching event.', [
-                    'dedupe_key' => $dedupeKey,
-                    'exception' => $exception,
-                ]);
-            }
+        if ($dedupeKey !== null && SendEvent::wasDelivered($dedupeKey)) {
+            return;
         }
 
         $payload = [

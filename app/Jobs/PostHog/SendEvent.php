@@ -9,6 +9,7 @@ use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
+use Illuminate\Queue\Attributes\UniqueFor;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Cache;
@@ -16,7 +17,9 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use PostHog\PostHog;
 use RuntimeException;
+use Throwable;
 
+#[UniqueFor(86400)]
 class SendEvent implements ShouldBeUnique, ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
@@ -25,9 +28,7 @@ class SendEvent implements ShouldBeUnique, ShouldQueue
 
     public int $timeout = 15;
 
-    public int $uniqueFor = 86400;
-
-    public string $uniqueJobId;
+    private string $uniqueJobId;
 
     /**
      * @param  array<string, mixed>  $payload
@@ -52,6 +53,10 @@ class SendEvent implements ShouldBeUnique, ShouldQueue
             return;
         }
 
+        if ($this->dedupeKey !== null && self::wasDelivered($this->dedupeKey)) {
+            return;
+        }
+
         match ($this->method) {
             'capture' => PostHog::capture($this->payload),
             'identify' => PostHog::identify($this->payload),
@@ -64,11 +69,33 @@ class SendEvent implements ShouldBeUnique, ShouldQueue
         }
 
         if ($this->dedupeKey !== null) {
-            Cache::put(
-                self::deliveredKey($this->dedupeKey),
-                true,
-                now()->addYears(100),
-            );
+            self::markDelivered($this->dedupeKey);
+        }
+    }
+
+    public static function wasDelivered(string $dedupeKey): bool
+    {
+        try {
+            return Cache::has(self::deliveredKey($dedupeKey));
+        } catch (Throwable $exception) {
+            Log::warning('PostHog delivery dedupe lookup failed; treating as undelivered.', [
+                'dedupe_key' => $dedupeKey,
+                'exception' => $exception,
+            ]);
+
+            return false;
+        }
+    }
+
+    public static function markDelivered(string $dedupeKey): void
+    {
+        try {
+            Cache::forever(self::deliveredKey($dedupeKey), true);
+        } catch (Throwable $exception) {
+            Log::warning('PostHog delivery dedupe write failed.', [
+                'dedupe_key' => $dedupeKey,
+                'exception' => $exception,
+            ]);
         }
     }
 

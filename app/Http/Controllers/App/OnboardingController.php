@@ -57,9 +57,8 @@ class OnboardingController extends Controller
             ! $isPartial
             && $status['completed_at'] === null
             && $status['dismissed_at'] === null
-            && $user->account !== null
             && $user->isAccountOwner()
-            && PostHogService::isEnabled()
+            && $user->account !== null
         ) {
             $this->postHog->capture(
                 $user->id,

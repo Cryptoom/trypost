@@ -371,7 +371,7 @@ class ResolveOnboardingStatus
 
     private function captureCompletedStep(User $user, Account $account, string $step, bool $completed): void
     {
-        if (! $completed || ! PostHogService::isEnabled()) {
+        if (! $completed) {
             return;
         }
 

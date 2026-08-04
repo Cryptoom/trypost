@@ -186,10 +186,6 @@ class WelcomeController extends Controller
 
     public function subscriptionRequired(Request $request): InertiaResponse|RedirectResponse
     {
-        if (config('trypost.self_hosted')) {
-            return redirect()->route('app.calendar');
-        }
-
         $user = $request->user();
 
         if ($user->account?->hasAppAccess()) {
@@ -228,14 +224,11 @@ class WelcomeController extends Controller
 
     private function redirectIfUnavailable(Request $request): ?RedirectResponse
     {
-        if (config('trypost.self_hosted')) {
-            return redirect()->route('app.calendar');
-        }
-
         $user = $request->user();
 
         // Match EnsureAccountReady — generic-trial (no-card) users already have
         // app access and must not be sent through Stripe checkout again.
+        // Self-hosted always has app access, so welcome/checkout is skipped too.
         if ($user->account?->hasAppAccess()) {
             $status = $this->resolveOnboardingStatus->handle($user);
 

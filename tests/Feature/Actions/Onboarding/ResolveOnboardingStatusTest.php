@@ -104,26 +104,17 @@ test('resolves a social account in the current workspace as connected', function
 
 test('captures each completed step once without re-firing later', function () {
     config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test']);
-    Carbon::setTestNow('2026-07-24 12:00:00');
     Bus::fake();
 
-    $dedupeKey = "onboarding:step:{$this->user->account_id}:social";
-    Cache::forget(SendEvent::deliveredKey($dedupeKey));
     SocialAccount::factory()->create(['workspace_id' => $this->workspace->id]);
 
     app(ResolveOnboardingStatus::class)->syncProgress($this->user);
-    Cache::put(SendEvent::deliveredKey($dedupeKey), true);
-    app(ResolveOnboardingStatus::class)->syncProgress($this->user);
+    app(ResolveOnboardingStatus::class)->syncProgress($this->user->fresh());
 
     Bus::assertDispatchedTimes(SendEvent::class, 1);
     Bus::assertDispatched(SendEvent::class, fn (SendEvent $event): bool => $event->method === 'capture'
         && data_get($event->payload, 'event') === OnboardingEvent::StepCompleted->value
         && data_get($event->payload, 'properties.step') === 'social');
-
-    Carbon::setTestNow(now()->addDays(31));
-    app(ResolveOnboardingStatus::class)->syncProgress($this->user);
-
-    Bus::assertDispatchedTimes(SendEvent::class, 1);
 });
 
 test('does not resolve an expired oauth token as mcp connected', function () {

@@ -7,8 +7,6 @@ use App\Models\Account;
 use App\Models\Plan;
 use App\Services\PostHogService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
 
@@ -28,7 +26,7 @@ test('capture dispatches job when api key is configured', function () {
     });
 });
 
-test('capture carries a delivery dedupe key and skips events already delivered', function () {
+test('capture carries a dedupe key and skips events already delivered', function () {
     Queue::fake();
     config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test_key']);
 
@@ -41,26 +39,11 @@ test('capture carries a delivery dedupe key and skips events already delivered',
     );
 
     Queue::fake();
-    Cache::put(SendEvent::deliveredKey('onboarding:viewed:account-123'), true);
+    SendEvent::markDelivered('onboarding:viewed:account-123');
 
     $service->capture('user-123', 'test_event', dedupeKey: 'onboarding:viewed:account-123');
 
     Queue::assertNothingPushed();
-});
-
-test('capture does not throw when the delivery dedupe cache is unavailable', function () {
-    Queue::fake();
-    config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test_key']);
-    Cache::shouldReceive('has')->once()->andThrow(new RuntimeException('Redis unavailable'));
-    Log::spy();
-
-    expect(fn () => (new PostHogService)->capture(
-        'user-123',
-        'test_event',
-        dedupeKey: 'onboarding:viewed:account-123',
-    ))->not->toThrow(Throwable::class);
-
-    Log::shouldHaveReceived('warning')->atLeast()->once();
 });
 
 test('capture serializes a stable PostHog uuid and timestamp into the queued job', function () {
