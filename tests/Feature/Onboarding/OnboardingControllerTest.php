@@ -118,44 +118,9 @@ test('onboarding does not capture viewed during a partial reload', function () {
     );
 });
 
-test('onboarding viewed is captured once per account', function () {
-    $this->actingAs($this->user)
-        ->get(route('app.onboarding'))
-        ->assertOk();
-
+test('a member visit does not capture onboarding viewed', function () {
     Bus::fake();
 
-    $this->actingAs($this->user->fresh())
-        ->get(route('app.onboarding'))
-        ->assertOk();
-
-    Bus::assertNotDispatched(
-        SendEvent::class,
-        fn (SendEvent $event): bool => data_get($event->payload, 'event') === OnboardingEvent::Viewed->value,
-    );
-});
-
-test('disabled analytics does not consume the once-per-account viewed event', function () {
-    config(['services.posthog.enabled' => false]);
-
-    $this->actingAs($this->user)
-        ->get(route('app.onboarding'))
-        ->assertOk();
-
-    Bus::fake();
-    config(['services.posthog.enabled' => true]);
-
-    $this->actingAs($this->user->fresh())
-        ->get(route('app.onboarding'))
-        ->assertOk();
-
-    Bus::assertDispatched(
-        SendEvent::class,
-        fn (SendEvent $event): bool => data_get($event->payload, 'event') === OnboardingEvent::Viewed->value,
-    );
-});
-
-test('a member visit does not consume the owner onboarding viewed event', function () {
     $member = User::factory()->create([
         'account_id' => $this->user->account_id,
         'current_workspace_id' => $this->workspace->id,
@@ -177,8 +142,7 @@ test('a member visit does not consume the owner onboarding viewed event', functi
 
     Bus::assertDispatched(
         SendEvent::class,
-        fn (SendEvent $event): bool => data_get($event->payload, 'event') === OnboardingEvent::Viewed->value
-            && $event->dedupeKey === "onboarding:viewed:{$this->user->account_id}",
+        fn (SendEvent $event): bool => data_get($event->payload, 'event') === OnboardingEvent::Viewed->value,
     );
 });
 
@@ -213,7 +177,7 @@ test('owner can skip the mcp step', function () {
     Event::fake([OnboardingStatusUpdated::class]);
 
     $this->actingAs($this->user)
-        ->post(route('app.onboarding.steps.skip', 'mcp'))
+        ->post(route('app.onboarding.mcp.skip'))
         ->assertRedirect();
 
     expect($this->user->account->fresh()->onboarding_skipped_steps)->toBe(['mcp']);
@@ -238,7 +202,7 @@ test('skipping the last open step completes the onboarding', function () {
     ]));
 
     $this->actingAs($this->user)
-        ->post(route('app.onboarding.steps.skip', 'mcp'))
+        ->post(route('app.onboarding.mcp.skip'))
         ->assertRedirect();
 
     expect($this->user->account->fresh()->onboarding_completed_at?->equalTo(now()))->toBeTrue();
@@ -246,23 +210,11 @@ test('skipping the last open step completes the onboarding', function () {
     Bus::assertDispatched(SendEvent::class, fn (SendEvent $event): bool => data_get($event->payload, 'event') === OnboardingEvent::Completed->value);
 });
 
-test('required steps cannot be skipped', function () {
-    $this->actingAs($this->user)
-        ->post(route('app.onboarding.steps.skip', 'social'))
-        ->assertNotFound();
-
-    $this->actingAs($this->user->fresh())
-        ->post(route('app.onboarding.steps.skip', 'first_post'))
-        ->assertNotFound();
-
-    expect($this->user->account->fresh()->onboarding_skipped_steps)->toBeNull();
-});
-
 test('skipping an already connected step is a no-op', function () {
     AccessToken::withoutEvents(fn () => mcpAccessToken($this->user, mcpOauthClient()));
 
     $this->actingAs($this->user->fresh())
-        ->post(route('app.onboarding.steps.skip', 'mcp'))
+        ->post(route('app.onboarding.mcp.skip'))
         ->assertRedirect();
 
     expect($this->user->account->fresh()->onboarding_skipped_steps)->toBeNull();
@@ -270,12 +222,12 @@ test('skipping an already connected step is a no-op', function () {
 
 test('skipping the same step twice is a no-op', function () {
     $this->actingAs($this->user)
-        ->post(route('app.onboarding.steps.skip', 'mcp'));
+        ->post(route('app.onboarding.mcp.skip'));
 
     Bus::fake();
 
     $this->actingAs($this->user->fresh())
-        ->post(route('app.onboarding.steps.skip', 'mcp'))
+        ->post(route('app.onboarding.mcp.skip'))
         ->assertRedirect();
 
     expect($this->user->account->fresh()->onboarding_skipped_steps)->toBe(['mcp']);
@@ -284,20 +236,6 @@ test('skipping the same step twice is a no-op', function () {
         SendEvent::class,
         fn (SendEvent $event): bool => data_get($event->payload, 'event') === OnboardingEvent::StepSkipped->value,
     );
-});
-
-test('complete forgets a stale just-completed flag when already stamped', function () {
-    Carbon::setTestNow('2026-07-29 12:00:00');
-    $this->user->account->forceFill(['onboarding_completed_at' => now()])->save();
-
-    // Observer-style stamp left the flag behind; the explicit Continue must
-    // clear it so a later /onboarding visit redirects instead of showing ready.
-    $this->actingAs($this->user->fresh())
-        ->withSession([ResolveOnboardingStatus::JUST_COMPLETED_SESSION_KEY => true])
-        ->post(route('app.onboarding.complete'))
-        ->assertRedirect(route('app.calendar'));
-
-    expect(session()->get(ResolveOnboardingStatus::JUST_COMPLETED_SESSION_KEY))->toBeNull();
 });
 
 test('dismissed accounts are redirected away from onboarding index', function () {
@@ -332,11 +270,9 @@ test('completed accounts are redirected away from onboarding on full visits', fu
     );
 });
 
-test('partial reloads do not consume the just-completed session flag', function () {
+test('partial reloads keep the ready state after completion is stamped', function () {
     Carbon::setTestNow('2026-07-29 12:00:00');
 
-    // Incomplete visit first so reloadOnly has an Inertia page to follow up from
-    // without syncProgress auto-stamping (and pulling) the just-completed flag.
     $response = $this->actingAs($this->user->fresh())
         ->get(route('app.onboarding'))
         ->assertOk();
@@ -350,8 +286,7 @@ test('partial reloads do not consume the just-completed session flag', function 
         'user_id' => $this->user->id,
     ]));
 
-    expect(app(ResolveOnboardingStatus::class)->markCompleted($this->user->fresh()))->toBeTrue()
-        ->and(session()->get(ResolveOnboardingStatus::JUST_COMPLETED_SESSION_KEY))->toBeTrue();
+    expect(app(ResolveOnboardingStatus::class)->markCompleted($this->user->fresh()))->toBeTrue();
 
     $response->assertInertia(fn ($page) => $page
         ->reloadOnly(['status', 'accounts', 'onboardingResidual'], fn ($reload) => $reload
@@ -360,22 +295,13 @@ test('partial reloads do not consume the just-completed session flag', function 
         )
     );
 
-    // put() survives Echo/poll partials so a later full visit can show ready state.
-    expect(session()->get(ResolveOnboardingStatus::JUST_COMPLETED_SESSION_KEY))->toBeTrue();
-
+    // Full revisit after completion leaves for the calendar.
     $this->actingAs($this->user->fresh())
         ->get(route('app.onboarding'))
-        ->assertOk()
-        ->assertInertia(fn ($page) => $page
-            ->component('onboarding/Index', false)
-            ->where('status.all_complete', true)
-            ->where('status.completed_at', now()->toIso8601String())
-        );
-
-    expect(session()->get(ResolveOnboardingStatus::JUST_COMPLETED_SESSION_KEY))->toBeNull();
+        ->assertRedirect(route('app.calendar'));
 });
 
-test('completed accounts stay on onboarding after just-completed session flag', function () {
+test('same-request auto-stamp still shows the ready state', function () {
     Carbon::setTestNow('2026-07-29 12:00:00');
 
     AccessToken::withoutEvents(fn () => mcpAccessToken($this->user, mcpOauthClient()));
@@ -387,15 +313,10 @@ test('completed accounts stay on onboarding after just-completed session flag', 
         'user_id' => $this->user->id,
     ]));
 
-    // Stamp during an authenticated request (OAuth/observer path) so the flag is set.
-    $this->actingAs($this->user->fresh())
-        ->get(route('app.calendar'))
-        ->assertOk();
-
-    expect(app(ResolveOnboardingStatus::class)->markCompleted($this->user->fresh()))->toBeTrue();
-
     Bus::fake();
 
+    // Steps are done but completed_at is null — syncProgress stamps on this visit
+    // and still renders the ready state (wasAlreadyComplete was false).
     $this->actingAs($this->user->fresh())
         ->get(route('app.onboarding'))
         ->assertOk()
@@ -446,7 +367,7 @@ test('skip step after completion is a no-op', function () {
     Bus::fake();
 
     $this->actingAs($this->user->fresh())
-        ->post(route('app.onboarding.steps.skip', 'mcp'))
+        ->post(route('app.onboarding.mcp.skip'))
         ->assertRedirect();
 
     expect($this->user->account->fresh()->onboarding_skipped_steps)->toBeNull();
@@ -558,7 +479,7 @@ test('only the account owner can skip onboarding steps', function () {
     $member->update(['current_workspace_id' => $this->workspace->id]);
 
     $this->actingAs($member->fresh())
-        ->post(route('app.onboarding.steps.skip', 'mcp'))
+        ->post(route('app.onboarding.mcp.skip'))
         ->assertForbidden();
 
     expect($this->user->account->fresh()->onboarding_skipped_steps)->toBeNull();
@@ -668,7 +589,7 @@ test('unsubscribed accounts are redirected to welcome by middleware', function (
     $response->assertRedirect(route('app.welcome.persona'));
 })->with([
     'index' => ['app.onboarding', 'get'],
-    'skip step' => ['app.onboarding.steps.skip', 'post', 'mcp'],
+    'skip step' => ['app.onboarding.mcp.skip', 'post'],
     'complete' => ['app.onboarding.complete', 'post'],
 ]);
 
@@ -683,6 +604,6 @@ test('self hosted activation endpoints redirect to calendar', function (string $
     $response->assertRedirect(route('app.calendar'));
 })->with([
     'index' => ['app.onboarding', 'get'],
-    'skip step' => ['app.onboarding.steps.skip', 'post', 'mcp'],
+    'skip step' => ['app.onboarding.mcp.skip', 'post'],
     'complete' => ['app.onboarding.complete', 'post'],
 ]);

@@ -7,13 +7,13 @@ namespace App\Http\Controllers\App;
 use App\Actions\Onboarding\ResolveOnboardingStatus;
 use App\Enums\PostHog\OnboardingEvent;
 use App\Enums\SocialAccount\Platform as SocialPlatform;
-use App\Http\Requests\App\Onboarding\SkipOnboardingStepRequest;
 use App\Http\Resources\App\SocialAccountResource;
 use App\Services\PostHogService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
-use Inertia\Response;
+use Inertia\Response as InertiaResponse;
+use Symfony\Component\HttpFoundation\Response;
 
 class OnboardingController extends Controller
 {
@@ -22,7 +22,7 @@ class OnboardingController extends Controller
         private readonly PostHogService $postHog,
     ) {}
 
-    public function index(Request $request): Response|RedirectResponse
+    public function index(Request $request): InertiaResponse|RedirectResponse
     {
         if ($redirect = $this->redirectIfSelfHosted()) {
             return $redirect;
@@ -39,20 +39,14 @@ class OnboardingController extends Controller
             return redirect()->route('app.calendar');
         }
 
-        // Completed revisits leave — keep the ready state for Echo/poll partials and
-        // for the immediate full reload after OAuth stamps completion.
-        // The just-completed flag is session put (not flash) so partials never
-        // age it out; only full visits pull/consume it.
         $isPartial = $request->hasHeader('X-Inertia-Partial-Component');
-        $justCompleted = ! $isPartial
-            && (bool) $request->session()->pull(ResolveOnboardingStatus::JUST_COMPLETED_SESSION_KEY);
 
-        if ($wasAlreadyComplete && ! $justCompleted && ! $isPartial) {
+        // Full revisit after completion → calendar. Partials (Echo) and the same
+        // request that just stamped still render the ready state.
+        if ($wasAlreadyComplete && ! $isPartial) {
             return redirect()->route('app.calendar');
         }
 
-        // Once-per-account, and only while still incomplete after syncProgress —
-        // auto-stamp on this request must not also fire viewed.
         if (
             ! $isPartial
             && $status['completed_at'] === null
@@ -64,7 +58,6 @@ class OnboardingController extends Controller
                 $user->id,
                 OnboardingEvent::Viewed->value,
                 account: $user->account,
-                dedupeKey: "onboarding:viewed:{$user->account->id}",
             );
         }
 
@@ -84,13 +77,15 @@ class OnboardingController extends Controller
         ]);
     }
 
-    public function skipStep(SkipOnboardingStepRequest $request, string $step): RedirectResponse
+    public function skipMcp(Request $request): RedirectResponse
     {
         if ($redirect = $this->redirectIfSelfHosted()) {
             return $redirect;
         }
 
-        $this->resolveOnboardingStatus->skipStep($request->user(), $step);
+        abort_unless($request->user()->isAccountOwner(), Response::HTTP_FORBIDDEN);
+
+        $this->resolveOnboardingStatus->skipMcp($request->user());
 
         return back();
     }
@@ -104,11 +99,6 @@ class OnboardingController extends Controller
         $user = $request->user();
         $account = $user->account;
 
-        // The explicit Continue leaves for good — kill any stale just-completed
-        // flag, whichever path stamped completion (observer, syncProgress, or
-        // the markCompleted below).
-        $request->session()->forget(ResolveOnboardingStatus::JUST_COMPLETED_SESSION_KEY);
-
         // Already stamped (e.g. observer / syncProgress auto-complete) — just leave.
         if ($account?->onboarding_completed_at !== null) {
             return redirect()->route('app.calendar');
@@ -119,20 +109,13 @@ class OnboardingController extends Controller
             return redirect()->route('app.calendar');
         }
 
-        // Any teammate who finishes activation may stamp — observers/syncProgress
-        // already do the same. Steps are account-scoped.
         $status = $this->resolveOnboardingStatus->handle($user);
 
         if (! $status['all_complete']) {
             return redirect()->route('app.onboarding');
         }
 
-        // markCompleted broadcasts account-wide so residual banners clear immediately.
         $this->resolveOnboardingStatus->markCompleted($user);
-
-        // The explicit Continue already showed the ready state — the just-completed
-        // flag must not linger and resurface on a later visit.
-        $request->session()->forget(ResolveOnboardingStatus::JUST_COMPLETED_SESSION_KEY);
 
         return redirect()->route('app.calendar');
     }

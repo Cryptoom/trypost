@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Support\Billing\CashierCheckoutEnv;
 use Laravel\Cashier\Console\WebhookCommand;
 use Laravel\Cashier\Invoices\DompdfInvoiceRenderer;
 
@@ -141,7 +140,18 @@ return [
     |
     */
 
-    'trial_days' => CashierCheckoutEnv::trialDays(env('CASHIER_TRIAL_DAYS', 8)),
+    // Empty / missing env falls back to 8 (an empty string must not become 0).
+    'trial_days' => (static function (): int {
+        $value = env('CASHIER_TRIAL_DAYS', 8);
+
+        if ($value === null || $value === '') {
+            return 8;
+        }
+
+        $days = filter_var($value, FILTER_VALIDATE_INT);
+
+        return $days === false ? 8 : max(0, $days);
+    })(),
 
     /*
     |--------------------------------------------------------------------------
@@ -153,8 +163,16 @@ return [
     |
     */
 
-    'allow_promotion_codes' => CashierCheckoutEnv::allowPromotionCodes(
-        env('CASHIER_ALLOW_PROMOTION_CODES', true)
-    ),
+    // Empty / missing env falls back to true so `CASHIER_ALLOW_PROMOTION_CODES=`
+    // does not silently hide the field.
+    'allow_promotion_codes' => (static function (): bool {
+        $value = env('CASHIER_ALLOW_PROMOTION_CODES', true);
+
+        if ($value === null || $value === '') {
+            return true;
+        }
+
+        return filter_var($value, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE) ?? true;
+    })(),
 
 ];

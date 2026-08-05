@@ -1,9 +1,8 @@
 <script setup lang="ts">
-import { Head, router, useHttp, usePage, usePoll } from '@inertiajs/vue3';
+import { Head, router, usePage, usePoll } from '@inertiajs/vue3';
 import { IconCheck, IconLoader2 } from '@tabler/icons-vue';
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 
-import { acknowledgePurchase } from '@/actions/App/Http/Controllers/App/BillingController';
 import { Button } from '@/components/ui/button';
 import { useTracking } from '@/composables/useTracking';
 import { calendar, onboarding } from '@/routes/app';
@@ -25,22 +24,24 @@ const props = defineProps<{
     conversionResolved: boolean;
 }>();
 
-// Hold on the processing screen after firing purchase tracking so PostHog and
-// the ad pixels (Google/Meta via dataLayer → GTM) have time to send before we
-// navigate away — an immediate redirect can cut those requests off.
-const REDIRECT_DELAY_MS = 5000;
-// After this long without an active subscription, tell the user we are still
-// working instead of letting the spinner run silently forever.
+const REDIRECT_DELAY_MS = 3000;
 const SLOW_NOTICE_MS = 60000;
-// Escape hatch when conversion/plan never settles (Stripe outage, stuck open
-// session, delayed plan_id) — fire what we have and leave.
-const FORCE_CONTINUE_MS = 180000;
 
 const page = usePage();
 
 type Conversion = NonNullable<typeof props.conversion>;
 
-const sessionId = new URLSearchParams(window.location.search).get('session_id');
+// Server consumes conversion on first resolve — keep it for later polls.
+const conversion = ref<Conversion | null>(props.conversion ?? null);
+
+watch(
+    () => props.conversion,
+    (value) => {
+        if (value) {
+            conversion.value = value;
+        }
+    },
+);
 
 const { start, stop } = usePoll(
     2000,
@@ -57,18 +58,12 @@ const { start, stop } = usePoll(
 );
 
 const { trackPurchase } = useTracking();
-const purchaseAcknowledgement = useHttp({
-    session_id: sessionId ?? '',
-});
 
 const finishing = ref(false);
 const takingLong = ref(false);
-const forceContinue = ref(false);
 const recoveryAvailable = ref(false);
 let redirectTimer: ReturnType<typeof setTimeout> | null = null;
-let acknowledgementFallbackTimer: ReturnType<typeof setTimeout> | null = null;
 let slowNoticeTimer: ReturnType<typeof setTimeout> | null = null;
-let forceContinueTimer: ReturnType<typeof setTimeout> | null = null;
 
 const goNext = (): void => {
     window.location.assign(
@@ -80,95 +75,34 @@ const authPlan = computed(
     () => (page.props.auth as Auth | undefined)?.plan ?? null,
 );
 
-const firePurchaseTracking = (
-    plan: { name: string; interval: string } | null,
-): void => {
-    const conversion = props.conversion as Conversion | null | undefined;
-
-    if (!conversion) {
-        return;
-    }
-
-    trackPurchase(plan, conversion, props.persona ?? null);
-};
-
-const finishAfterDeliveryWindow = async (): Promise<void> => {
-    if (!sessionId || !props.conversion) {
-        goNext();
-
-        return;
-    }
-
-    let navigated = false;
-    const navigateOnce = () => {
-        if (navigated) {
-            return;
-        }
-
-        navigated = true;
-
-        if (acknowledgementFallbackTimer) {
-            clearTimeout(acknowledgementFallbackTimer);
-            acknowledgementFallbackTimer = null;
-        }
-
-        goNext();
-    };
-
-    acknowledgementFallbackTimer = setTimeout(navigateOnce, REDIRECT_DELAY_MS);
-
-    try {
-        await purchaseAcknowledgement.post(acknowledgePurchase.url());
-    } finally {
-        navigateOnce();
-    }
-};
-
-// A verified conversion is re-delivered by the server until this client fires
-// the transaction event with stable provider IDs and acknowledges it.
-const completePurchase = (options: { force?: boolean } = {}) => {
-    const force = options.force === true || forceContinue.value;
-
+const completePurchase = (): void => {
     if (finishing.value || !props.subscriptionActive) {
         return;
     }
 
-    if (!force) {
-        if (!authPlan.value || !props.conversionResolved) {
-            return;
-        }
-    }
-
+    // Subscription is the product gate — analytics must never hold a paying user.
     finishing.value = true;
     stop();
     router.cancelAll();
+    takingLong.value = false;
 
     if (slowNoticeTimer) {
         clearTimeout(slowNoticeTimer);
         slowNoticeTimer = null;
     }
 
-    if (forceContinueTimer) {
-        clearTimeout(forceContinueTimer);
-        forceContinueTimer = null;
-    }
-
-    takingLong.value = false;
-
-    // Always schedule navigation first — analytics must never strand a paying user.
-    redirectTimer = setTimeout(
-        () => void finishAfterDeliveryWindow(),
-        REDIRECT_DELAY_MS,
-    );
+    redirectTimer = setTimeout(goNext, REDIRECT_DELAY_MS);
 
     try {
-        firePurchaseTracking(authPlan.value);
+        if (conversion.value && authPlan.value) {
+            trackPurchase(authPlan.value, conversion.value, props.persona ?? null);
+        }
     } catch {
-        // Fail-open: redirect still runs via redirectTimer.
+        // Fail-open: redirect still runs.
     }
 };
 
-const continueNow = () => {
+const continueNow = (): void => {
     if (!props.subscriptionActive) {
         if (recoveryAvailable.value) {
             window.location.assign(referralSource.url());
@@ -189,18 +123,11 @@ const continueNow = () => {
         return;
     }
 
-    forceContinue.value = true;
-    completePurchase({ force: true });
+    completePurchase();
 };
 
 watch(
-    [
-        () => props.subscriptionActive,
-        authPlan,
-        () => props.conversionResolved,
-        () => props.conversion,
-        forceContinue,
-    ],
+    () => props.subscriptionActive,
     () => {
         completePurchase();
     },
@@ -216,18 +143,9 @@ onMounted(() => {
     slowNoticeTimer = setTimeout(() => {
         if (!finishing.value) {
             takingLong.value = true;
+            recoveryAvailable.value = !props.subscriptionActive;
         }
     }, SLOW_NOTICE_MS);
-
-    forceContinueTimer = setTimeout(() => {
-        if (!finishing.value && props.subscriptionActive) {
-            forceContinue.value = true;
-            completePurchase({ force: true });
-        } else if (!finishing.value) {
-            takingLong.value = true;
-            recoveryAvailable.value = true;
-        }
-    }, FORCE_CONTINUE_MS);
 });
 
 onUnmounted(() => {
@@ -235,16 +153,8 @@ onUnmounted(() => {
         clearTimeout(redirectTimer);
     }
 
-    if (acknowledgementFallbackTimer) {
-        clearTimeout(acknowledgementFallbackTimer);
-    }
-
     if (slowNoticeTimer) {
         clearTimeout(slowNoticeTimer);
-    }
-
-    if (forceContinueTimer) {
-        clearTimeout(forceContinueTimer);
     }
 });
 </script>
@@ -255,7 +165,6 @@ onUnmounted(() => {
     <section
         class="relative flex min-h-screen items-center justify-center overflow-hidden bg-background px-6"
     >
-        <!-- Dot pattern overlay -->
         <div
             class="pointer-events-none absolute inset-0 opacity-[0.06]"
             style="
@@ -268,7 +177,6 @@ onUnmounted(() => {
             "
         />
 
-        <!-- Soft violet glow blobs -->
         <div
             class="pointer-events-none absolute -top-24 -left-24 size-[440px] rounded-full bg-violet-200/50 blur-3xl"
         />
@@ -276,11 +184,9 @@ onUnmounted(() => {
             class="pointer-events-none absolute -right-24 -bottom-32 size-[440px] rounded-full bg-fuchsia-200/30 blur-3xl"
         />
 
-        <!-- Mockup window -->
         <div
             class="relative w-full max-w-md -rotate-1 overflow-hidden rounded-xl border-2 border-foreground bg-card shadow-xl"
         >
-            <!-- Title bar -->
             <div
                 class="flex items-center gap-3 border-b-2 border-foreground bg-muted px-4 py-2.5"
             >
@@ -315,7 +221,6 @@ onUnmounted(() => {
                 </span>
             </div>
 
-            <!-- Body -->
             <div
                 class="flex flex-col items-center gap-5 px-8 py-12 text-center"
             >

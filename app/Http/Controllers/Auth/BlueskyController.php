@@ -107,6 +107,10 @@ class BlueskyController extends SocialController
         } catch (ValidationException $e) {
             throw $e;
         } catch (\Exception $e) {
+            if ($this->isNetworkConflict($e)) {
+                return $this->networkTakenResponse($this->platform);
+            }
+
             Log::error('Bluesky connection error', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),

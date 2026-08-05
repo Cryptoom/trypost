@@ -70,11 +70,8 @@ Route::middleware(['auth'])->group(function () {
         ->middleware('throttle:6,1')
         ->name('app.welcome.referral-source.store');
     Route::get('billing/processing', [BillingController::class, 'processing'])
-        ->middleware('throttle:180,1')
-        ->name('app.billing.processing');
-    Route::post('billing/processing/acknowledge', [BillingController::class, 'acknowledgePurchase'])
         ->middleware('throttle:60,1')
-        ->name('app.billing.processing.acknowledge');
+        ->name('app.billing.processing');
 
     Route::get('workspaces/create', [WorkspaceController::class, 'create'])->name('app.workspaces.create');
     Route::post('workspaces', [WorkspaceController::class, 'store'])->name('app.workspaces.store');
@@ -157,7 +154,7 @@ Route::middleware(['auth'])->group(function () {
 // Routes that require account access and a current workspace
 Route::middleware(['auth', EnsureAccountReady::class, EnsureHasWorkspace::class])->group(function () {
     Route::get('onboarding', [OnboardingController::class, 'index'])->name('app.onboarding');
-    Route::post('onboarding/steps/{step}/skip', [OnboardingController::class, 'skipStep'])->name('app.onboarding.steps.skip');
+    Route::post('onboarding/mcp/skip', [OnboardingController::class, 'skipMcp'])->name('app.onboarding.mcp.skip');
     Route::post('onboarding/complete', [OnboardingController::class, 'complete'])->name('app.onboarding.complete');
 
     // Discord — live lookups for the composer (channel picker + mention autocomplete).

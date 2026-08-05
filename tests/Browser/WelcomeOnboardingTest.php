@@ -359,7 +359,7 @@ test('member without app access lands on the subscription required screen', func
     $page->assertVisible('@welcome-subscription-required');
 });
 
-test('purchase acknowledgement waits for analytics before navigating', function () {
+test('purchase tracking fires before navigating', function () {
     config(['trypost.self_hosted' => false]);
 
     $user = User::factory()->create();
@@ -381,16 +381,17 @@ test('purchase acknowledgement waits for analytics before navigating', function 
     subscribeAccount($account);
 
     $sessionId = 'cs_test_'.fake()->uuid();
-    Cache::put("checkout_verified:{$account->id}:{$sessionId}", [
-        'kind' => 'purchase',
-        'payload' => [
-            'kind' => 'purchase',
-            'value' => 10,
-            'currency' => 'USD',
-            'transaction_id' => $sessionId,
+    fakeStripeHttp([[
+        'body' => [
+            'id' => $sessionId,
+            'customer' => 'cus_test_123',
+            'status' => 'complete',
+            'payment_status' => 'paid',
+            'amount_total' => 1000,
+            'currency' => 'usd',
         ],
-        'verified_at' => now()->toIso8601String(),
-    ], now()->addDay());
+        'status' => 200,
+    ]]);
 
     test()->actingAs($user->fresh());
 
@@ -401,7 +402,8 @@ test('purchase acknowledgement waits for analytics before navigating', function 
     expect(data_get($initialProps, 'subscriptionActive'))->toBeTrue()
         ->and(data_get($initialProps, 'conversionResolved'))->toBeTrue()
         ->and(data_get($initialProps, 'conversion.transaction_id'))->toBe($sessionId)
-        ->and(data_get($initialProps, 'auth.plan'))->not->toBeNull();
+        ->and(data_get($initialProps, 'auth.plan'))->not->toBeNull()
+        ->and(Cache::has("checkout_tracked:{$account->id}:{$sessionId}"))->toBeTrue();
 
     $page->script('(async () => { await new Promise((resolve) => setTimeout(resolve, 500)); })()');
     $page->assertNoJavaScriptErrors();
@@ -410,13 +412,10 @@ test('purchase acknowledgement waits for analytics before navigating', function 
         'Array.isArray(window.dataLayer) && window.dataLayer.some((entry) => entry.event === "purchase")',
     );
 
-    expect($purchaseWasQueued)->toBeTrue()
-        ->and(Cache::has("checkout_tracked:{$account->id}:{$sessionId}"))->toBeFalse();
+    expect($purchaseWasQueued)->toBeTrue();
 
-    // REDIRECT_DELAY_MS (5s) + acknowledgement fallback (5s) + page load.
-    waitForPath($page, parse_url(route('app.calendar'), PHP_URL_PATH), 400);
-
-    expect(Cache::has("checkout_tracked:{$account->id}:{$sessionId}"))->toBeTrue();
+    // REDIRECT_DELAY_MS (3s) + page load.
+    waitForPath($page, parse_url(route('app.calendar'), PHP_URL_PATH), 200);
 });
 
 test('owner sees the residual in the mobile sidebar and it links to onboarding', function () {

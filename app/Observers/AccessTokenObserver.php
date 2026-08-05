@@ -12,14 +12,9 @@ class AccessTokenObserver
 {
     /**
      * OAuth MCP grants unlock the MCP onboarding step for the whole account.
-     * Broadcast to every workspace so teammates see the checklist update.
      */
     public function created(AccessToken $accessToken): void
     {
-        if ($accessToken->revoked) {
-            return;
-        }
-
         $this->broadcastIfMcpOAuth($accessToken);
     }
 
@@ -34,18 +29,17 @@ class AccessTokenObserver
 
     private function broadcastIfMcpOAuth(AccessToken $accessToken): void
     {
-        $user = User::query()
-            ->with(['account', 'currentWorkspace'])
-            ->find($accessToken->user_id);
+        // Ignore revocation mid-flight so disconnect still clears residual.
+        $looksLikeMcp = in_array('mcp:use', $accessToken->scopes ?? [], true)
+            && ! $accessToken->isPersonalAccessToken();
 
-        if (
-            $user === null
-            || ! $accessToken->isUsableMcpGrant(
-                $user,
-                $accessToken->workspace ?? $user->currentWorkspace,
-                ignoreRevocation: true,
-            )
-        ) {
+        if (! $looksLikeMcp) {
+            return;
+        }
+
+        $user = User::query()->with('account')->find($accessToken->user_id);
+
+        if ($user?->account === null) {
             return;
         }
 

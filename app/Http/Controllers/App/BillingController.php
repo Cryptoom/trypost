@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Http\Controllers\App;
 
 use App\Actions\Onboarding\ResolveOnboardingStatus;
-use App\Http\Requests\App\Billing\AcknowledgeCheckoutPurchaseRequest;
 use App\Models\Account;
 use App\Support\Billing\CheckoutPurchaseTracker;
 use Illuminate\Http\RedirectResponse;
@@ -37,10 +36,8 @@ class BillingController extends Controller
         $account = $user->account;
         $sessionId = $request->query('session_id');
 
-        // Verified purchase conversion for ad/analytics purchase events
-        // (PostHog + Meta/Google via GTM) — not a Stripe pixel. Stripe only
-        // proves the Checkout Session belongs to this account. Payload is
-        // re-delivered until the client acknowledges it.
+        // Verified purchase conversion for ad/analytics (PostHog + GTM).
+        // Consumed on first resolve — the client keeps it across polls.
         $conversion = null;
         $conversionResolved = true;
 
@@ -73,22 +70,6 @@ class BillingController extends Controller
             'conversion' => $conversion,
             'conversionResolved' => $conversionResolved,
         ]);
-    }
-
-    public function acknowledgePurchase(AcknowledgeCheckoutPurchaseRequest $request): Response
-    {
-        if (! config('trypost.self_hosted')) {
-            $account = $request->user()->account;
-
-            if ($account !== null) {
-                $this->checkoutPurchaseTracker->acknowledge(
-                    $account,
-                    (string) data_get($request->validated(), 'session_id'),
-                );
-            }
-        }
-
-        return response()->noContent();
     }
 
     public function index(Request $request): InertiaResponse|RedirectResponse

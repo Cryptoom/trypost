@@ -298,5 +298,5 @@ test('does not treat oauth tokens with a revoked client as personal access token
     $token = $token->fresh();
 
     expect($token->isPersonalAccessToken())->toBeFalse()
-        ->and($token->isMcpOAuthGrant())->toBeFalse();
+        ->and($token->isActiveMcpGrant())->toBeFalse();
 });

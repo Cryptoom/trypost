@@ -7,7 +7,6 @@ use App\Enums\SocialAccount\Status;
 use App\Exceptions\SocialAccount\NetworkAlreadyConnectedException;
 use App\Models\SocialAccount;
 use App\Models\Workspace;
-use Illuminate\Database\QueryException;
 
 beforeEach(function () {
     config()->set('trypost.self_hosted', false);
@@ -26,24 +25,6 @@ test('blocks a second account of the same network', function () {
         'platform' => Platform::Instagram,
         'platform_user_id' => 'ig-b',
     ]))->toThrow(NetworkAlreadyConnectedException::class);
-});
-
-test('database constraint blocks concurrent duplicate network inserts', function () {
-    SocialAccount::withoutEvents(fn () => SocialAccount::factory()->create([
-        'workspace_id' => $this->workspace->id,
-        'platform' => Platform::Instagram,
-        'network' => Platform::Instagram->network(),
-        'platform_user_id' => 'ig-a',
-    ]));
-
-    expect(fn () => SocialAccount::withoutEvents(
-        fn () => SocialAccount::factory()->create([
-            'workspace_id' => $this->workspace->id,
-            'platform' => Platform::InstagramFacebook,
-            'network' => Platform::InstagramFacebook->network(),
-            'platform_user_id' => 'ig-b',
-        ]),
-    ))->toThrow(QueryException::class);
 });
 
 test('collapses platform variants into one network', function () {
@@ -141,31 +122,4 @@ test('blocks a same-id account connected via a different network variant', funct
         'platform' => Platform::InstagramFacebook,
         'platform_user_id' => 'shared-ig-id',
     ]))->toThrow(NetworkAlreadyConnectedException::class);
-});
-
-test('legacy null-network duplicates do not throw on token refresh updates', function () {
-    $primary = SocialAccount::withoutEvents(fn () => SocialAccount::factory()->create([
-        'workspace_id' => $this->workspace->id,
-        'platform' => Platform::Instagram,
-        'network' => Platform::Instagram->network(),
-        'platform_user_id' => 'ig-primary',
-        'status' => Status::Connected,
-    ]));
-
-    $legacy = SocialAccount::withoutEvents(fn () => SocialAccount::factory()->create([
-        'workspace_id' => $this->workspace->id,
-        'platform' => Platform::InstagramFacebook,
-        'network' => null,
-        'platform_user_id' => 'ig-legacy',
-        'status' => Status::Connected,
-    ]));
-
-    $legacy->forceFill([
-        'access_token' => 'refreshed-token',
-        'status' => Status::Connected,
-    ])->save();
-
-    expect($legacy->fresh()->network)->toBeNull()
-        ->and($primary->fresh()->network)->toBe(Platform::Instagram->network())
-        ->and($legacy->fresh()->access_token)->toBe('refreshed-token');
 });

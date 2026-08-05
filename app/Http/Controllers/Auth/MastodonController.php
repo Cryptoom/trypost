@@ -206,6 +206,10 @@ class MastodonController extends SocialController
 
             return $this->popupCallback(true, __('accounts.popup_callback.connected'), $this->platform->value);
         } catch (\Exception $e) {
+            if ($this->isNetworkConflict($e)) {
+                return $this->networkTakenResponse($this->platform);
+            }
+
             Log::error('Mastodon callback error', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),

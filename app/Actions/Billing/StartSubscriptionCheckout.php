@@ -7,7 +7,6 @@ namespace App\Actions\Billing;
 use App\Models\Account;
 use App\Support\Billing\CheckoutConversionData;
 use App\Support\Billing\ConfigureSubscriptionCheckout;
-use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
@@ -19,12 +18,6 @@ class StartSubscriptionCheckout
 {
     private const PENDING_SESSION_TTL_HOURS = 24;
 
-    private const LOCK_SECONDS = 180;
-
-    private const LOCK_WAIT_SECONDS = 15;
-
-    public const CREATED_HEADER = 'X-TryPost-Checkout-Created';
-
     /**
      * Create a Stripe Checkout session for the given price and return an Inertia
      * redirect to it. Quantity tracks the account's workspace count. Trial days
@@ -34,87 +27,61 @@ class StartSubscriptionCheckout
     {
         $cacheKey = self::pendingCacheKey($account, $priceId);
 
-        try {
-            return Cache::lock("{$cacheKey}:lock", self::LOCK_SECONDS)->block(
-                self::LOCK_WAIT_SECONDS,
-                function () use ($account, $priceId, $cancelUrl, $cacheKey): Response {
-                    $account->refresh();
+        $account->refresh();
 
-                    if ($account->hasAppAccess()) {
-                        self::forgetPending($cacheKey);
+        if ($account->hasAppAccess()) {
+            self::forgetPending($cacheKey);
 
-                        return $this->location(route('app.billing.processing'), created: false);
-                    }
-
-                    $pending = $this->resolvePendingCheckout($account, $cacheKey);
-
-                    if (data_get($pending, 'kind') === 'reuse') {
-                        return $this->location((string) data_get($pending, 'url'), created: false);
-                    }
-
-                    // Paid/complete session whose webhook has not landed yet —
-                    // never mint a second Checkout (double-subscription risk).
-                    if (data_get($pending, 'kind') === 'processing') {
-                        $sessionId = (string) data_get($pending, 'session_id');
-
-                        return $this->location(
-                            route('app.billing.processing', ['session_id' => $sessionId]),
-                            created: false,
-                        );
-                    }
-
-                    $account->createOrGetStripeCustomer([
-                        'email' => $account->stripeEmail(),
-                        'name' => $account->stripeName(),
-                    ]);
-
-                    $subscription = $account->newSubscription(Account::SUBSCRIPTION_NAME, $priceId)
-                        ->quantity(max(1, $account->workspaces()->count()));
-                    $trialDays = ConfigureSubscriptionCheckout::checkoutTrialDays($account);
-
-                    ConfigureSubscriptionCheckout::apply($subscription, $account);
-
-                    $session = $subscription->checkout([
-                        'success_url' => route('app.billing.processing').'?session_id={CHECKOUT_SESSION_ID}',
-                        'cancel_url' => $cancelUrl,
-                        'client_reference_id' => (string) $account->id,
-                        'metadata' => [
-                            'trypost_purpose' => CheckoutConversionData::PURPOSE,
-                            'trypost_account_id' => (string) $account->id,
-                            'trypost_price_id' => $priceId,
-                            'trypost_trial_days' => (string) $trialDays,
-                        ],
-                    ]);
-
-                    try {
-                        Cache::put(
-                            $cacheKey,
-                            [
-                                'url' => $session->url,
-                                'session_id' => $session->id,
-                            ],
-                            now()->addHours(self::PENDING_SESSION_TTL_HOURS),
-                        );
-                    } catch (Throwable $exception) {
-                        Log::warning('Stripe Checkout session could not be cached.', [
-                            'account_id' => $account->id,
-                            'session_id' => $session->id,
-                            'exception' => $exception,
-                        ]);
-                    }
-
-                    return $this->location($session->url, created: true);
-                },
-            );
-        } catch (LockTimeoutException) {
-            // 429 (not 409): Inertia uses 409 for external X-Inertia-Location redirects.
-            abort(Response::HTTP_TOO_MANY_REQUESTS, 'Checkout creation is already in progress.');
+            return $this->location(route('app.billing.processing'));
         }
+
+        $pending = $this->resolvePendingCheckout($account, $cacheKey);
+
+        if (data_get($pending, 'kind') === 'reuse') {
+            return $this->location((string) data_get($pending, 'url'));
+        }
+
+        // Paid/complete session whose webhook has not landed yet —
+        // never mint a second Checkout (double-subscription risk).
+        if (data_get($pending, 'kind') === 'processing') {
+            $sessionId = (string) data_get($pending, 'session_id');
+
+            return $this->location(
+                route('app.billing.processing', ['session_id' => $sessionId]),
+            );
+        }
+
+        $account->createOrGetStripeCustomer([
+            'email' => $account->stripeEmail(),
+            'name' => $account->stripeName(),
+        ]);
+
+        $subscription = $account->newSubscription(Account::SUBSCRIPTION_NAME, $priceId)
+            ->quantity(max(1, $account->workspaces()->count()));
+        $trialDays = ConfigureSubscriptionCheckout::checkoutTrialDays($account);
+
+        ConfigureSubscriptionCheckout::apply($subscription, $account);
+
+        $session = $subscription->checkout([
+            'success_url' => route('app.billing.processing').'?session_id={CHECKOUT_SESSION_ID}',
+            'cancel_url' => $cancelUrl,
+            'client_reference_id' => (string) $account->id,
+            'metadata' => [
+                'trypost_purpose' => CheckoutConversionData::PURPOSE,
+                'trypost_account_id' => (string) $account->id,
+                'trypost_price_id' => $priceId,
+                'trypost_trial_days' => (string) $trialDays,
+            ],
+        ]);
+
+        $this->rememberPending($cacheKey, (string) $session->url, (string) $session->id);
+
+        return $this->location($session->url);
     }
 
     public static function pendingCacheKey(Account $account, string $priceId): string
     {
-        return "billing:checkout:{$account->id}:".hash('sha256', $priceId);
+        return "billing:checkout:{$account->id}:{$priceId}";
     }
 
     /**
@@ -124,14 +91,11 @@ class StartSubscriptionCheckout
     {
         $pending = Cache::get($cacheKey);
 
-        // Legacy string entries from before session-id verification — drop them.
-        if (is_string($pending) && $pending !== '') {
-            self::forgetPending($cacheKey);
-
-            return ['kind' => 'none'];
-        }
-
         if (! is_array($pending)) {
+            if ($pending !== null) {
+                self::forgetPending($cacheKey);
+            }
+
             return ['kind' => 'none'];
         }
 
@@ -168,7 +132,10 @@ class StartSubscriptionCheckout
         }
 
         if ($status === 'complete') {
-            self::forgetPending($cacheKey);
+            // Keep the pending entry until hasAppAccess() clears it. Forgetting
+            // here lets a second checkout attempt mint another Stripe session
+            // while the webhook is still catching up (double-subscription risk).
+            $this->rememberPending($cacheKey, $url, $sessionId);
 
             return ['kind' => 'processing', 'session_id' => $sessionId];
         }
@@ -177,6 +144,26 @@ class StartSubscriptionCheckout
         self::forgetPending($cacheKey);
 
         return ['kind' => 'none'];
+    }
+
+    private function rememberPending(string $cacheKey, string $url, string $sessionId): void
+    {
+        try {
+            Cache::put(
+                $cacheKey,
+                [
+                    'url' => $url,
+                    'session_id' => $sessionId,
+                ],
+                now()->addHours(self::PENDING_SESSION_TTL_HOURS),
+            );
+        } catch (Throwable $exception) {
+            Log::warning('Stripe Checkout pending session could not be re-cached.', [
+                'cache_key' => $cacheKey,
+                'session_id' => $sessionId,
+                'exception' => $exception,
+            ]);
+        }
     }
 
     private static function forgetPending(string $cacheKey): void
@@ -191,11 +178,8 @@ class StartSubscriptionCheckout
         }
     }
 
-    private function location(string $url, bool $created): Response
+    private function location(string $url): Response
     {
-        $response = Inertia::location($url);
-        $response->headers->set(self::CREATED_HEADER, $created ? '1' : '0');
-
-        return $response;
+        return Inertia::location($url);
     }
 }

@@ -92,16 +92,13 @@ class AccessToken extends Token
     }
 
     /**
-     * Whether this token belongs to an MCP OAuth client (not a personal access
-     * API key) and is unexpired. Intentionally ignores `revoked`: the observer
-     * needs a stable answer while a revoke is mid-flight so it can broadcast
-     * the disconnect. Use the `activeMcpOAuth` scope for "currently usable".
+     * Whether this is a non-revoked, unexpired MCP OAuth grant with mcp:use.
      */
-    public function isMcpOAuthGrant(): bool
+    public function isActiveMcpGrant(): bool
     {
         $this->loadMissing('client');
 
-        if ($this->client === null || $this->client->revoked || $this->client->hasGrantType('personal_access')) {
+        if ($this->revoked) {
             return false;
         }
 
@@ -109,19 +106,22 @@ class AccessToken extends Token
             return false;
         }
 
-        return true;
+        if (! in_array('mcp:use', $this->scopes ?? [], true)) {
+            return false;
+        }
+
+        return $this->client !== null
+            && ! $this->client->revoked
+            && ! $this->client->hasGrantType('personal_access');
     }
 
-    public function isUsableMcpGrant(
-        ?User $user = null,
-        ?Workspace $workspace = null,
-        bool $ignoreRevocation = false,
-    ): bool {
-        if (
-            ! $this->isMcpOAuthGrant()
-            || (! $ignoreRevocation && $this->revoked)
-            || ! in_array('mcp:use', $this->scopes ?? [], true)
-        ) {
+    /**
+     * Whether this MCP grant can actually use the product (active token + a
+     * workspace the owner can create posts in). Used by the onboarding checklist.
+     */
+    public function isUsableMcpGrant(?User $user = null, ?Workspace $workspace = null): bool
+    {
+        if (! $this->isActiveMcpGrant()) {
             return false;
         }
 

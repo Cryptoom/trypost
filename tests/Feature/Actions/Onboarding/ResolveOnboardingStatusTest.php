@@ -583,10 +583,10 @@ test('residual does not query step state in self hosted mode', function () {
         || str_contains($sql, 'posts')))->toBeEmpty();
 });
 
-test('skipStep marks an optional step as skipped without completing the checklist', function () {
+test('skipMcp marks the optional MCP step as skipped without completing the checklist', function () {
     Carbon::setTestNow('2026-07-24 12:00:00');
 
-    expect(app(ResolveOnboardingStatus::class)->skipStep($this->user, 'mcp'))->toBeTrue();
+    expect(app(ResolveOnboardingStatus::class)->skipMcp($this->user))->toBeTrue();
 
     $status = app(ResolveOnboardingStatus::class)->handle($this->user->fresh());
 
@@ -596,7 +596,7 @@ test('skipStep marks an optional step as skipped without completing the checklis
         ->and($this->user->account->fresh()->onboarding_completed_at)->toBeNull();
 });
 
-test('skipStep completes the checklist when the skipped step was the last open one', function () {
+test('skipMcp completes the checklist when MCP was the last open step', function () {
     Carbon::setTestNow('2026-07-24 12:00:00');
 
     SocialAccount::withoutEvents(fn () => SocialAccount::factory()->create([
@@ -607,7 +607,7 @@ test('skipStep completes the checklist when the skipped step was the last open o
         'user_id' => $this->user->id,
     ]));
 
-    expect(app(ResolveOnboardingStatus::class)->skipStep($this->user, 'mcp'))->toBeTrue();
+    expect(app(ResolveOnboardingStatus::class)->skipMcp($this->user))->toBeTrue();
 
     expect($this->user->account->fresh()->onboarding_completed_at?->equalTo(now()))->toBeTrue();
 
@@ -619,12 +619,10 @@ test('skipStep completes the checklist when the skipped step was the last open o
         ->and($status['all_complete'])->toBeTrue();
 });
 
-test('skipStep refuses required steps and steps already done', function () {
+test('skipMcp refuses when MCP is already connected or already skipped', function () {
     mcpAccessToken($this->user, mcpOauthClient());
 
-    expect(app(ResolveOnboardingStatus::class)->skipStep($this->user, 'social'))->toBeFalse()
-        ->and(app(ResolveOnboardingStatus::class)->skipStep($this->user, 'first_post'))->toBeFalse()
-        ->and(app(ResolveOnboardingStatus::class)->skipStep($this->user->fresh(), 'mcp'))->toBeFalse();
+    expect(app(ResolveOnboardingStatus::class)->skipMcp($this->user->fresh()))->toBeFalse();
 
     expect($this->user->account->fresh()->onboarding_skipped_steps)->toBeNull();
 });
@@ -634,7 +632,7 @@ test('residual counts a skipped step as done', function () {
         'workspace_id' => $this->workspace->id,
     ]));
 
-    app(ResolveOnboardingStatus::class)->skipStep($this->user, 'mcp');
+    app(ResolveOnboardingStatus::class)->skipMcp($this->user);
 
     expect(app(ResolveOnboardingStatus::class)->residual($this->user->fresh()))->toBe([
         'completed' => 2,
@@ -643,7 +641,7 @@ test('residual counts a skipped step as done', function () {
 });
 
 test('connecting the mcp step after skipping it prefers Complete over Skipped', function () {
-    app(ResolveOnboardingStatus::class)->skipStep($this->user, 'mcp');
+    app(ResolveOnboardingStatus::class)->skipMcp($this->user);
 
     mcpAccessToken($this->user, mcpOauthClient());
 
@@ -668,7 +666,7 @@ test('connecting mcp after a skipped step completed onboarding replaces the skip
         'user_id' => $this->user->id,
     ]));
 
-    expect(app(ResolveOnboardingStatus::class)->skipStep($this->user, 'mcp'))->toBeTrue()
+    expect(app(ResolveOnboardingStatus::class)->skipMcp($this->user))->toBeTrue()
         ->and($this->user->account->fresh()->onboarding_completed_at)->not->toBeNull();
 
     mcpAccessToken($this->user, mcpOauthClient());

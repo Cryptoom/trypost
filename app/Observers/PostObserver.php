@@ -26,19 +26,10 @@ class PostObserver
             return;
         }
 
-        // Only the account's first post unlocks the onboarding step — later
-        // creates would just spam Echo reloads while activation is still open.
-        $isFirstPost = Post::query()
-            ->whereIn('workspace_id', $account->workspaces()->select('id'))
-            ->whereKeyNot($post->id)
-            ->doesntExist();
-
-        if ($isFirstPost) {
-            OnboardingStatusUpdated::dispatchForWorkspace(
-                $post->workspace_id,
-                $this->actorFor($post),
-            );
-        }
+        OnboardingStatusUpdated::dispatchForWorkspace(
+            $post->workspace_id,
+            $this->actorFor($post),
+        );
     }
 
     public function deleted(Post $post): void
@@ -49,17 +40,10 @@ class PostObserver
             return;
         }
 
-        // The step only flips when the account's last post disappears.
-        $accountHasPosts = Post::query()
-            ->whereIn('workspace_id', $account->workspaces()->select('id'))
-            ->exists();
-
-        if (! $accountHasPosts) {
-            OnboardingStatusUpdated::dispatchForWorkspace(
-                $post->workspace_id,
-                $this->actorFor($post),
-            );
-        }
+        OnboardingStatusUpdated::dispatchForWorkspace(
+            $post->workspace_id,
+            $this->actorFor($post),
+        );
     }
 
     /**

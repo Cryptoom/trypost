@@ -13,6 +13,7 @@ use App\Models\User;
 use App\Models\Workspace;
 use App\Services\PostHogService;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Cache;
 
 class ResolveOnboardingStatus
 {
@@ -27,17 +28,6 @@ class ResolveOnboardingStatus
         'social' => 'social_connected',
         'first_post' => 'first_post_created',
     ];
-
-    /** Steps the owner may skip — required steps must be completed for real. */
-    public const SKIPPABLE_STEPS = ['mcp'];
-
-    /**
-     * Session key set when onboarding is stamped so the next full visit can
-     * show the ready state instead of redirecting to the calendar. Uses put
-     * (not flash) so Echo/poll partials do not age it out before a post-OAuth
-     * full reload.
-     */
-    public const JUST_COMPLETED_SESSION_KEY = 'onboarding_just_completed';
 
     public function __construct(
         private readonly PostHogService $postHog,
@@ -63,6 +53,7 @@ class ResolveOnboardingStatus
         $skippedSteps = $account?->onboarding_skipped_steps ?? [];
 
         if ($account?->onboarding_completed_at !== null) {
+            // Preserve skip vs real MCP completion for the ready UI badge.
             $mcpConnected = ! in_array('mcp', $skippedSteps, true)
                 || $this->accountHasMcpConnection($account);
             $effectiveSkippedSteps = $mcpConnected
@@ -188,12 +179,7 @@ class ResolveOnboardingStatus
             return false;
         }
 
-        $account->forceFill([
-            'onboarding_completed_at' => $completedAt,
-            'updated_at' => $completedAt,
-        ]);
-        $account->syncOriginalAttribute('onboarding_completed_at');
-        $account->syncOriginalAttribute('updated_at');
+        $account->refresh();
 
         if (PostHogService::isEnabled()) {
             $this->postHog->capture(
@@ -207,39 +193,27 @@ class ResolveOnboardingStatus
         // banners account-wide — not only the explicit complete() action.
         OnboardingStatusUpdated::broadcastForAccount($account);
 
-        // Lets the next full Inertia visit (e.g. OAuth popup → router.reload)
-        // show the ready state instead of bouncing straight to calendar.
-        if (request()->hasSession()) {
-            request()->session()->put(self::JUST_COMPLETED_SESSION_KEY, true);
-        }
-
         return true;
     }
 
     /**
-     * Mark an optional step as skipped, then stamp completion when that was
-     * the last open step. Returns false when the step cannot be skipped
-     * (unknown, required, already done, already skipped, or onboarding over).
+     * Skip the optional MCP step, then stamp completion when it was the last open step.
      */
-    public function skipStep(User $user, string $step): bool
+    public function skipMcp(User $user): bool
     {
         $account = $user->account;
 
-        if ($account === null
-            || ! in_array($step, self::SKIPPABLE_STEPS, true)
-            || $account->hasFinishedOnboarding()
-        ) {
+        if ($account === null || $account->hasFinishedOnboarding()) {
             return false;
         }
 
         $status = $this->handle($user);
-        $statusKey = self::STEPS[$step];
 
-        if ($status[$statusKey] || in_array($step, $status['skipped_steps'], true)) {
+        if ($status['mcp_connected'] || in_array('mcp', $status['skipped_steps'], true)) {
             return false;
         }
 
-        $skippedSteps = [...$status['skipped_steps'], $step];
+        $skippedSteps = [...$status['skipped_steps'], 'mcp'];
 
         $updated = Account::query()
             ->whereKey($account->id)
@@ -254,19 +228,17 @@ class ResolveOnboardingStatus
             return false;
         }
 
-        $account->forceFill(['onboarding_skipped_steps' => $skippedSteps]);
-        $account->syncOriginalAttribute('onboarding_skipped_steps');
+        $account->refresh();
 
         if (PostHogService::isEnabled()) {
             $this->postHog->capture(
                 $user->id,
                 OnboardingEvent::StepSkipped->value,
-                ['step' => $step],
+                ['step' => 'mcp'],
                 $account,
             );
         }
 
-        // markCompleted already broadcasts account-wide when it stamps.
         $completed = $this->handle($user)['all_complete'] && $this->markCompleted($user);
 
         if (! $completed) {
@@ -375,12 +347,16 @@ class ResolveOnboardingStatus
             return;
         }
 
+        // One capture per account/step — replaces the former PostHog job dedupe.
+        if (! Cache::add("onboarding:step:{$account->id}:{$step}", true)) {
+            return;
+        }
+
         $this->postHog->capture(
             $user->id,
             OnboardingEvent::StepCompleted->value,
             ['step' => $step],
             $account,
-            dedupeKey: "onboarding:step:{$account->id}:{$step}",
         );
     }
 }

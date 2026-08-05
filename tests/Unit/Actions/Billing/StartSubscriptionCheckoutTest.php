@@ -72,8 +72,6 @@ test('reuses the pending checkout session and stamps its purpose', function () {
 
     expect($firstLocation)->toBe('https://checkout.stripe.test/session')
         ->and($secondLocation)->toBe('https://checkout.stripe.test/session');
-    expect($first->headers->get(StartSubscriptionCheckout::CREATED_HEADER))->toBe('1')
-        ->and($second->headers->get(StartSubscriptionCheckout::CREATED_HEADER))->toBe('0');
 
     $checkoutCreates = collect($stripe->requests)
         ->filter(fn (array $request): bool => $request['method'] === 'post'
@@ -91,7 +89,7 @@ test('reuses the pending checkout session and stamps its purpose', function () {
         ->and(data_get($params, 'success_url'))->toContain('{CHECKOUT_SESSION_ID}');
 });
 
-test('routes a completed checkout session to processing instead of minting another', function () {
+test('routes a completed checkout session to processing and keeps pending until app access', function () {
     $user = User::factory()->create();
     $account = $user->account;
     Workspace::factory()->create([
@@ -99,8 +97,9 @@ test('routes a completed checkout session to processing instead of minting anoth
         'user_id' => $user->id,
     ]);
     $completedSessionId = 'cs_test_'.fake()->uuid();
+    $pendingKey = StartSubscriptionCheckout::pendingCacheKey($account, 'price_monthly_test');
     Cache::put(
-        StartSubscriptionCheckout::pendingCacheKey($account, 'price_monthly_test'),
+        $pendingKey,
         [
             'url' => 'https://checkout.stripe.test/stale',
             'session_id' => $completedSessionId,
@@ -118,19 +117,39 @@ test('routes a completed checkout session to processing instead of minting anoth
             ],
             'status' => 200,
         ],
+        [
+            'body' => [
+                'id' => $completedSessionId,
+                'object' => 'checkout.session',
+                'url' => 'https://checkout.stripe.test/stale',
+                'status' => 'complete',
+            ],
+            'status' => 200,
+        ],
     ]);
 
-    $response = app(StartSubscriptionCheckout::class)->redirect(
+    $action = app(StartSubscriptionCheckout::class);
+    $first = $action->redirect(
         $account,
         'price_monthly_test',
         route('app.welcome.referral-source'),
     );
-    $location = $response->headers->get('X-Inertia-Location')
-        ?? $response->headers->get('Location');
+    $second = $action->redirect(
+        $account->fresh(),
+        'price_monthly_test',
+        route('app.welcome.referral-source'),
+    );
 
-    expect($location)->toBe(route('app.billing.processing', ['session_id' => $completedSessionId]))
-        ->and($response->headers->get(StartSubscriptionCheckout::CREATED_HEADER))->toBe('0')
-        ->and(Cache::has(StartSubscriptionCheckout::pendingCacheKey($account, 'price_monthly_test')))->toBeFalse();
+    $firstLocation = $first->headers->get('X-Inertia-Location')
+        ?? $first->headers->get('Location');
+    $secondLocation = $second->headers->get('X-Inertia-Location')
+        ?? $second->headers->get('Location');
+    $processingUrl = route('app.billing.processing', ['session_id' => $completedSessionId]);
+
+    expect($firstLocation)->toBe($processingUrl)
+        ->and($secondLocation)->toBe($processingUrl)
+        ->and(Cache::has($pendingKey))->toBeTrue()
+        ->and(Cache::get($pendingKey)['session_id'])->toBe($completedSessionId);
 
     $creates = collect($stripe->requests)
         ->filter(fn (array $request): bool => $request['method'] === 'post'
@@ -194,8 +213,7 @@ test('mints a fresh checkout when the pending session expired', function () {
     $location = $response->headers->get('X-Inertia-Location')
         ?? $response->headers->get('Location');
 
-    expect($location)->toBe('https://checkout.stripe.test/fresh')
-        ->and($response->headers->get(StartSubscriptionCheckout::CREATED_HEADER))->toBe('1');
+    expect($location)->toBe('https://checkout.stripe.test/fresh');
 
     $creates = collect($stripe->requests)
         ->filter(fn (array $request): bool => $request['method'] === 'post'

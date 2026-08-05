@@ -26,13 +26,8 @@ class PostHogService
         string $event,
         array $properties = [],
         ?Account $account = null,
-        ?string $dedupeKey = null,
     ): void {
         if (! self::isEnabled()) {
-            return;
-        }
-
-        if ($dedupeKey !== null && SendEvent::wasDelivered($dedupeKey)) {
             return;
         }
 
@@ -50,7 +45,7 @@ class PostHogService
             $payload['properties']['plan'] = $account->plan?->name;
         }
 
-        $this->dispatch('capture', $payload, $dedupeKey);
+        $this->dispatch('capture', $payload);
     }
 
     /**
@@ -87,10 +82,10 @@ class PostHogService
     /**
      * @param  array<string, mixed>  $payload
      */
-    private function dispatch(string $method, array $payload, ?string $dedupeKey = null): void
+    private function dispatch(string $method, array $payload): void
     {
         try {
-            SendEvent::dispatch($method, $payload, $dedupeKey);
+            SendEvent::dispatch($method, $payload);
         } catch (Throwable $e) {
             Log::warning('PostHogService: failed to dispatch event', ['method' => $method, 'error' => $e->getMessage()]);
         }

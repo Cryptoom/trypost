@@ -26,26 +26,6 @@ test('capture dispatches job when api key is configured', function () {
     });
 });
 
-test('capture carries a dedupe key and skips events already delivered', function () {
-    Queue::fake();
-    config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test_key']);
-
-    $service = new PostHogService;
-    $service->capture('user-123', 'test_event', dedupeKey: 'onboarding:viewed:account-123');
-
-    Queue::assertPushed(
-        SendEvent::class,
-        fn (SendEvent $job): bool => $job->dedupeKey === 'onboarding:viewed:account-123',
-    );
-
-    Queue::fake();
-    SendEvent::markDelivered('onboarding:viewed:account-123');
-
-    $service->capture('user-123', 'test_event', dedupeKey: 'onboarding:viewed:account-123');
-
-    Queue::assertNothingPushed();
-});
-
 test('capture serializes a stable PostHog uuid and timestamp into the queued job', function () {
     Queue::fake();
     config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test_key']);

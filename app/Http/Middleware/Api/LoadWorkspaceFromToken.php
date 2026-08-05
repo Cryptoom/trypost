@@ -47,9 +47,15 @@ class LoadWorkspaceFromToken
             return response()->json(['message' => 'Workspace access denied.'], Response::HTTP_FORBIDDEN);
         }
 
-        if ($context !== 'mcp') {
-            // Positive PAT check — do not infer "not OAuth" from isMcpOAuthGrant(),
-            // which returns false for revoked/missing clients.
+        if ($context === 'mcp') {
+            if (! $token->isActiveMcpGrant() || ! $authenticatedToken->can('mcp:use')) {
+                return response()->json(['message' => 'MCP OAuth authorization required.'], Response::HTTP_FORBIDDEN);
+            }
+
+            if (! $user->can('createPost', $workspace)) {
+                return response()->json(['message' => 'Insufficient workspace permissions.'], Response::HTTP_FORBIDDEN);
+            }
+        } else {
             if (! $token->isPersonalAccessToken()) {
                 return response()->json(['message' => 'Personal access token required.'], Response::HTTP_FORBIDDEN);
             }
@@ -57,18 +63,6 @@ class LoadWorkspaceFromToken
             if (! $user->can('manageTeam', $workspace)) {
                 return response()->json(['message' => 'Insufficient workspace permissions.'], Response::HTTP_FORBIDDEN);
             }
-        }
-
-        if ($token->isMcpOAuthGrant() && ! $authenticatedToken->can('mcp:use')) {
-            return response()->json(['message' => 'MCP OAuth authorization required.'], Response::HTTP_FORBIDDEN);
-        }
-
-        if ($context === 'mcp' && ! $token->isUsableMcpGrant($user, $workspace)) {
-            return response()->json(['message' => 'MCP OAuth authorization required.'], Response::HTTP_FORBIDDEN);
-        }
-
-        if ($token->isMcpOAuthGrant() && ! $user->can('createPost', $workspace)) {
-            return response()->json(['message' => 'Insufficient workspace permissions.'], Response::HTTP_FORBIDDEN);
         }
 
         // Match web access (EnsureAccountReady): Stripe subscription OR generic

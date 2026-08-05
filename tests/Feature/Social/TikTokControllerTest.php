@@ -144,3 +144,41 @@ test('tiktok callback handles oauth errors gracefully', function () {
     $response->assertInertia(fn (AssertableInertia $page) => $page->where('success', false));
     $response->assertInertia(fn (AssertableInertia $page) => $page->where('message', 'Error connecting account. Please try again.'));
 });
+
+test('tiktok callback shows network_taken when the network is already connected', function () {
+    config()->set('trypost.self_hosted', false);
+
+    SocialAccount::factory()->tiktok()->create([
+        'workspace_id' => $this->workspace->id,
+        'platform_user_id' => 'existing-tiktok',
+    ]);
+
+    session(['social_connect_workspace' => $this->workspace->id]);
+
+    $socialiteUser = Mockery::mock(SocialiteUser::class);
+    $socialiteUser->shouldReceive('getId')->andReturn('tiktok-new');
+    $socialiteUser->shouldReceive('getNickname')->andReturn('newtiktoker');
+    $socialiteUser->shouldReceive('getName')->andReturn('New TikTok User');
+    $socialiteUser->shouldReceive('getAvatar')->andReturn(null);
+    $socialiteUser->token = 'test-access-token';
+    $socialiteUser->refreshToken = 'test-refresh-token';
+    $socialiteUser->expiresIn = 86400;
+    $socialiteUser->approvedScopes = ['user.info.basic', 'user.info.profile', 'video.publish'];
+
+    $socialiteMock = Mockery::mock();
+    $socialiteMock->shouldReceive('scopes')->andReturn($socialiteMock);
+    $socialiteMock->shouldReceive('user')->andReturn($socialiteUser);
+
+    Socialite::shouldReceive('driver')
+        ->with('tiktok')
+        ->andReturn($socialiteMock);
+
+    $response = $this->actingAs($this->user)->get(route('app.social.tiktok.callback'));
+
+    $response->assertOk();
+    $response->assertInertia(fn (AssertableInertia $page) => $page->component('accounts/PopupCallback'));
+    $response->assertInertia(fn (AssertableInertia $page) => $page->where('success', false));
+    $response->assertInertia(fn (AssertableInertia $page) => $page->where('message', __('accounts.popup_callback.network_taken')));
+
+    expect($this->workspace->socialAccounts()->where('platform', Platform::TikTok)->count())->toBe(1);
+});

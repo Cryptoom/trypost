@@ -11,8 +11,8 @@ use Stripe\Exception\InvalidRequestException;
 use Throwable;
 
 /**
- * Verifies Stripe Checkout Sessions for purchase analytics and re-delivers the
- * conversion payload until the client acknowledges it or the cache expires.
+ * Verifies a Stripe Checkout Session belongs to the account and returns a
+ * one-shot conversion payload for client-side purchase tracking.
  */
 final class CheckoutPurchaseTracker
 {
@@ -33,7 +33,6 @@ final class CheckoutPurchaseTracker
             ];
         }
 
-        $verifiedKey = $this->verifiedKey($account->id, $sessionId);
         $trackedKey = $this->trackedKey($account->id, $sessionId);
 
         if (Cache::has($trackedKey)) {
@@ -43,18 +42,11 @@ final class CheckoutPurchaseTracker
             ];
         }
 
-        $verified = Cache::get($verifiedKey);
-
-        if (is_array($verified)) {
-            return $this->deliver($verified, $trackedKey);
-        }
-
         try {
             $session = $account->stripe()->checkout->sessions->retrieve($sessionId);
-            $expectedCustomer = (string) $account->stripe_id;
             $classification = CheckoutConversionData::classify(
                 $session,
-                $expectedCustomer,
+                (string) $account->stripe_id,
                 true,
                 $account->plan?->stripe_monthly_price_id,
             );
@@ -68,8 +60,9 @@ final class CheckoutPurchaseTracker
 
             if (
                 $classification['outcome'] === CheckoutConversionData::OUTCOME_TERMINAL
+                || $classification['payload'] === null
             ) {
-                $this->markEmpty($verifiedKey);
+                Cache::add($trackedKey, true, $this->expiresAt());
 
                 return [
                     'conversion' => null,
@@ -77,30 +70,21 @@ final class CheckoutPurchaseTracker
                 ];
             }
 
+            /** @var array{kind: 'purchase'|'trial', value: float, currency: string, transaction_id: string} $payload */
             $payload = $classification['payload'];
 
-            if ($payload === null) {
-                $this->markEmpty($verifiedKey);
+            // Consume on first delivery — the client keeps the prop in memory for polls.
+            Cache::add($trackedKey, true, $this->expiresAt());
 
-                return [
-                    'conversion' => null,
-                    'conversionResolved' => true,
-                ];
-            }
-
-            $verified = [
-                'kind' => 'purchase',
-                'payload' => $payload,
-                'verified_at' => now()->toIso8601String(),
+            return [
+                'conversion' => [
+                    ...$payload,
+                    'verified_at' => now()->toIso8601String(),
+                ],
+                'conversionResolved' => true,
             ];
-
-            Cache::add($verifiedKey, $verified, $this->expiresAt());
-
-            $cached = Cache::get($verifiedKey);
-
-            return $this->deliver(is_array($cached) ? $cached : $verified, $trackedKey);
         } catch (InvalidRequestException) {
-            $this->markEmpty($verifiedKey);
+            Cache::add($trackedKey, true, $this->expiresAt());
 
             return [
                 'conversion' => null,
@@ -112,87 +96,6 @@ final class CheckoutPurchaseTracker
                 'conversionResolved' => false,
             ];
         }
-    }
-
-    public function acknowledge(Account $account, string $sessionId): bool
-    {
-        if ($sessionId === '') {
-            return false;
-        }
-
-        $verified = Cache::get($this->verifiedKey($account->id, $sessionId));
-        $payload = is_array($verified) ? data_get($verified, 'payload') : null;
-
-        if (
-            data_get($verified, 'kind') !== 'purchase'
-            || ! is_array($payload)
-            || data_get($payload, 'transaction_id') !== $sessionId
-        ) {
-            return false;
-        }
-
-        return Cache::add(
-            $this->trackedKey($account->id, $sessionId),
-            true,
-            $this->expiresAt(),
-        );
-    }
-
-    /**
-     * @return array{
-     *     conversion: array{kind: 'purchase'|'trial', value: float, currency: string, transaction_id: string, verified_at: string}|null,
-     *     conversionResolved: bool
-     * }
-     */
-    private function deliver(array $verified, string $trackedKey): array
-    {
-        if (Cache::has($trackedKey) || data_get($verified, 'kind') !== 'purchase') {
-            return [
-                'conversion' => null,
-                'conversionResolved' => true,
-            ];
-        }
-
-        $payload = data_get($verified, 'payload');
-
-        if (! is_array($payload)) {
-            return [
-                'conversion' => null,
-                'conversionResolved' => true,
-            ];
-        }
-
-        $verifiedAt = data_get($verified, 'verified_at');
-
-        if (! is_string($verifiedAt) || $verifiedAt === '') {
-            return [
-                'conversion' => null,
-                'conversionResolved' => true,
-            ];
-        }
-
-        /** @var array{kind: 'purchase'|'trial', value: float, currency: string, transaction_id: string} $payload */
-        return [
-            'conversion' => [
-                ...$payload,
-                'verified_at' => $verifiedAt,
-            ],
-            'conversionResolved' => true,
-        ];
-    }
-
-    private function markEmpty(string $verifiedKey): void
-    {
-        Cache::add($verifiedKey, [
-            'kind' => 'empty',
-            'payload' => null,
-            'verified_at' => now()->toIso8601String(),
-        ], $this->expiresAt());
-    }
-
-    private function verifiedKey(int|string $accountId, string $sessionId): string
-    {
-        return "checkout_verified:{$accountId}:{$sessionId}";
     }
 
     private function trackedKey(int|string $accountId, string $sessionId): string

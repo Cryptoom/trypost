@@ -213,7 +213,7 @@ test('billing processing completes already satisfied onboarding before redirecti
     expect($this->account->fresh()->onboarding_completed_at)->not->toBeNull();
 });
 
-test('billing processing re-delivers conversion until the client acknowledges', function () {
+test('billing processing delivers conversion once then suppresses it', function () {
     config(['trypost.self_hosted' => false]);
 
     $sessionId = 'cs_test_'.fake()->uuid();
@@ -230,30 +230,14 @@ test('billing processing re-delivers conversion until the client acknowledges', 
         'status' => 200,
     ]]);
 
-    $first = $this->actingAs($this->user->fresh())
-        ->get(route('app.billing.processing', ['session_id' => $sessionId]));
-    $first->assertOk();
-    $first->assertInertia(fn ($page) => $page
-        ->where('conversion.value', 10)
-        ->where('conversion.transaction_id', $sessionId)
-        ->where('conversionResolved', true)
-    );
-
-    // Refresh before JS ack still re-delivers — crash-before-pixel recovery.
-    $second = $this->actingAs($this->user->fresh())
-        ->get(route('app.billing.processing', ['session_id' => $sessionId]));
-    $second->assertOk();
-    $second->assertInertia(fn ($page) => $page
-        ->where('conversion.value', 10)
-        ->where('conversionResolved', true)
-    );
-
-    // Stripe is only hit once — verified payload is cached.
-    expect($stripe->calls)->toBe(1);
-
     $this->actingAs($this->user->fresh())
-        ->post(route('app.billing.processing.acknowledge'), ['session_id' => $sessionId])
-        ->assertNoContent();
+        ->get(route('app.billing.processing', ['session_id' => $sessionId]))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('conversion.value', 10)
+            ->where('conversion.transaction_id', $sessionId)
+            ->where('conversionResolved', true)
+        );
 
     $this->actingAs($this->user->fresh())
         ->get(route('app.billing.processing', ['session_id' => $sessionId]))
@@ -262,9 +246,11 @@ test('billing processing re-delivers conversion until the client acknowledges', 
             ->where('conversion', null)
             ->where('conversionResolved', true)
         );
+
+    expect($stripe->calls)->toBe(1);
 });
 
-test('only the account owner can acknowledge checkout purchase tracking', function () {
+test('only the account owner receives checkout purchase conversion', function () {
     config(['trypost.self_hosted' => false]);
 
     $sessionId = 'cs_test_'.fake()->uuid();
@@ -281,10 +267,6 @@ test('only the account owner can acknowledge checkout purchase tracking', functi
         'status' => 200,
     ]]);
 
-    $this->actingAs($this->user->fresh())
-        ->get(route('app.billing.processing', ['session_id' => $sessionId]))
-        ->assertOk();
-
     $member = User::factory()->create([
         'account_id' => $this->account->id,
         'current_workspace_id' => $this->workspace->id,
@@ -298,10 +280,6 @@ test('only the account owner can acknowledge checkout purchase tracking', functi
             ->where('conversion', null)
             ->where('conversionResolved', true)
         );
-
-    $this->actingAs($member->fresh())
-        ->post(route('app.billing.processing.acknowledge'), ['session_id' => $sessionId])
-        ->assertForbidden();
 
     $this->actingAs($this->user->fresh())
         ->get(route('app.billing.processing', ['session_id' => $sessionId]))

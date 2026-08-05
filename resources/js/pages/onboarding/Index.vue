@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Head, Link, router, useForm, usePage, usePoll } from '@inertiajs/vue3';
+import { Head, Link, router, useForm, usePage } from '@inertiajs/vue3';
 import { IconCheck, IconCopy } from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
 import { computed, nextTick, ref, watch } from 'vue';
@@ -16,7 +16,7 @@ import AppLayout from '@/layouts/AppLayout.vue';
 import { copyToClipboard } from '@/lib/utils';
 import { calendar } from '@/routes/app';
 import { complete } from '@/routes/app/onboarding';
-import { skip as skipStepRoute } from '@/routes/app/onboarding/steps';
+import { skip as skipMcpRoute } from '@/routes/app/onboarding/mcp';
 import { create as createPost } from '@/routes/app/posts';
 
 interface OnboardingStatus {
@@ -53,46 +53,22 @@ const socialConnectedElsewhere = computed(
         !props.accounts.some((account) => account.status === 'connected'),
 );
 
-const skipStepForm = useForm({});
+const skipMcpForm = useForm({});
 const completeForm = useForm({});
 
 const onboardingReloadOnly = ['status', 'accounts', 'onboardingResidual'];
 
-// Echo is the fast path; slow poll covers MCP clients when Reverb is down.
 useWorkspaceEcho('.onboarding.status.updated', () => {
     router.reload({ only: onboardingReloadOnly });
 });
 
-const { start: startOnboardingPoll, stop: stopOnboardingPoll } = usePoll(
-    5000,
-    { only: onboardingReloadOnly },
-    { autoStart: false },
-);
-
 watch(
-    () => ({
-        allComplete: props.status.all_complete,
-        completedAt: props.status.completed_at,
-        dismissedAt: props.status.dismissed_at,
-    }),
-    ({ allComplete, completedAt, dismissedAt }) => {
-        // Dismissed (legacy backfill) — leave the checklist.
+    () => props.status.dismissed_at,
+    (dismissedAt) => {
         if (dismissedAt) {
-            stopOnboardingPoll();
             router.visit(calendar.url());
-
-            return;
         }
-
-        if (allComplete || completedAt) {
-            stopOnboardingPoll();
-
-            return;
-        }
-
-        startOnboardingPoll();
     },
-    { immediate: true },
 );
 
 const copySamplePrompt = (): void => {
@@ -102,9 +78,9 @@ const copySamplePrompt = (): void => {
 const isStepSkipped = (step: string): boolean =>
     props.status.skipped_steps.includes(step);
 
-const skipStep = (step: string): void => {
-    if (!skipStepForm.processing) {
-        skipStepForm.submit(skipStepRoute(step));
+const skipMcp = (): void => {
+    if (!skipMcpForm.processing) {
+        skipMcpForm.submit(skipMcpRoute());
     }
 };
 
@@ -114,8 +90,7 @@ const continueToTryPost = (): void => {
     }
 };
 
-// Bring the ready section into view when the last step completes via Echo/poll
-// — it mounts at the bottom of a long page and is easy to miss on mobile.
+// Bring the ready section into view when the last step completes via Echo.
 const readySection = ref<HTMLElement | null>(null);
 
 watch(
@@ -201,9 +176,9 @@ watch(
                             <button
                                 type="button"
                                 class="text-sm font-semibold text-muted-foreground underline-offset-4 transition-colors hover:text-foreground hover:underline"
-                                :disabled="skipStepForm.processing"
+                                :disabled="skipMcpForm.processing"
                                 data-testid="onboarding-mcp-skip"
-                                @click="skipStep('mcp')"
+                                @click="skipMcp"
                             >
                                 {{ $t('onboarding.skip_step') }}
                             </button>

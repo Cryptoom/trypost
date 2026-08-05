@@ -30,7 +30,7 @@ final class ConfigureSubscriptionCheckout
             $subscription->trialDays($trialDays);
         }
 
-        if (CashierCheckoutEnv::allowPromotionCodes(config('cashier.allow_promotion_codes'))) {
+        if (config('cashier.allow_promotion_codes')) {
             $subscription->allowPromotionCodes();
         }
 

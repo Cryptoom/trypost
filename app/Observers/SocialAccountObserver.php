@@ -12,7 +12,6 @@ use App\Jobs\PostHog\SyncAccountUsage;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Services\PostHogService;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 
 class SocialAccountObserver
@@ -20,75 +19,35 @@ class SocialAccountObserver
     /**
      * Enforce one connected account per social network per workspace. Variants
      * of the same network (LinkedIn profile/page, Instagram standalone/Facebook)
-     * collapse via Platform::network(). Reconnecting an existing account goes
-     * through updateOrCreate's update path and never reaches this hook. Bypassed
-     * in self-hosted mode, which has no per-workspace limits.
+     * collapse via Platform::networkPlatformValues(). Reconnecting an existing
+     * account goes through updateOrCreate's update path and never reaches this
+     * hook. Bypassed in self-hosted mode, which has no per-workspace limits.
      */
     public function creating(SocialAccount $socialAccount): void
     {
-        $this->prepareNetwork($socialAccount);
-    }
-
-    public function updating(SocialAccount $socialAccount): void
-    {
-        $this->prepareNetwork($socialAccount);
+        $this->assertUniqueWithinNetwork($socialAccount);
     }
 
     public function created(SocialAccount $socialAccount): void
     {
         $this->syncUsage($socialAccount);
 
-        $account = $socialAccount->workspace?->account;
-
-        if (
-            $account === null
-            || $account->hasFinishedOnboarding()
-            || $socialAccount->status !== Status::Connected
-        ) {
+        if ($socialAccount->status !== Status::Connected) {
             return;
         }
 
-        // Only the account's first connection unlocks the onboarding step.
-        $isFirstConnection = SocialAccount::query()
-            ->whereIn('workspace_id', $account->workspaces()->select('id'))
-            ->whereKeyNot($socialAccount->id)
-            ->where('status', Status::Connected)
-            ->doesntExist();
-
-        if ($isFirstConnection) {
-            OnboardingStatusUpdated::dispatchForWorkspace(
-                $socialAccount->workspace_id,
-                $this->actorFor($socialAccount),
-            );
-        }
+        $this->broadcastOnboardingStatus($socialAccount);
     }
 
     public function deleted(SocialAccount $socialAccount): void
     {
         $this->syncUsage($socialAccount);
 
-        $account = $socialAccount->workspace?->account;
-
-        if (
-            $account === null
-            || $account->hasFinishedOnboarding()
-            || $socialAccount->status !== Status::Connected
-        ) {
+        if ($socialAccount->status !== Status::Connected) {
             return;
         }
 
-        // The step only flips when the account's last connection disappears.
-        $accountHasConnections = SocialAccount::query()
-            ->whereIn('workspace_id', $account->workspaces()->select('id'))
-            ->where('status', Status::Connected)
-            ->exists();
-
-        if (! $accountHasConnections) {
-            OnboardingStatusUpdated::dispatchForWorkspace(
-                $socialAccount->workspace_id,
-                $this->actorFor($socialAccount),
-            );
-        }
+        $this->broadcastOnboardingStatus($socialAccount);
     }
 
     public function updated(SocialAccount $socialAccount): void
@@ -104,19 +63,38 @@ class SocialAccountObserver
             return;
         }
 
-        $account = $socialAccount->workspace?->account;
+        $this->broadcastOnboardingStatus($socialAccount);
+    }
 
-        if ($account === null || $account->hasFinishedOnboarding()) {
+    private function assertUniqueWithinNetwork(SocialAccount $socialAccount): void
+    {
+        if (config('trypost.self_hosted')) {
             return;
         }
 
-        $otherConnectedAccountExists = SocialAccount::query()
-            ->whereIn('workspace_id', $account->workspaces()->select('id'))
-            ->whereKeyNot($socialAccount->id)
-            ->where('status', Status::Connected)
+        $platform = $socialAccount->platform;
+
+        if (! $platform instanceof Platform) {
+            return;
+        }
+
+        $conflict = SocialAccount::query()
+            ->where('workspace_id', $socialAccount->workspace_id)
+            ->whereIn('platform', $platform->networkPlatformValues())
             ->exists();
 
-        if ($otherConnectedAccountExists) {
+        if (! $conflict) {
+            return;
+        }
+
+        throw new NetworkAlreadyConnectedException($platform);
+    }
+
+    private function broadcastOnboardingStatus(SocialAccount $socialAccount): void
+    {
+        $account = $socialAccount->workspace?->account;
+
+        if ($account === null || $account->hasFinishedOnboarding()) {
             return;
         }
 
@@ -139,46 +117,6 @@ class SocialAccountObserver
         }
 
         return $user;
-    }
-
-    private function prepareNetwork(SocialAccount $socialAccount): void
-    {
-        if (config('trypost.self_hosted')) {
-            $socialAccount->network = null;
-
-            return;
-        }
-
-        $platform = $socialAccount->platform;
-
-        if (! $platform instanceof Platform) {
-            return;
-        }
-
-        $socialAccount->network = $platform->network();
-
-        $conflict = SocialAccount::query()
-            ->where('workspace_id', $socialAccount->workspace_id)
-            ->where('network', $socialAccount->network)
-            ->when(
-                $socialAccount->exists,
-                fn (Builder $query): Builder => $query->whereKeyNot($socialAccount->id),
-            )
-            ->exists();
-
-        if (! $conflict) {
-            return;
-        }
-
-        // Legacy duplicates left with network=null by the backfill must not throw
-        // during token refresh / status updates — keep the null and move on.
-        if ($socialAccount->exists) {
-            $socialAccount->network = $socialAccount->getRawOriginal('network');
-
-            return;
-        }
-
-        throw new NetworkAlreadyConnectedException($platform);
     }
 
     private function syncUsage(SocialAccount $socialAccount): void

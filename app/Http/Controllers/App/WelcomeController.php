@@ -149,13 +149,12 @@ class WelcomeController extends Controller
             $user->account,
         );
 
-        return $this->startCheckout($request, $checkout, $postHog);
+        return $this->startCheckout($request, $checkout);
     }
 
     private function startCheckout(
         Request $request,
         StartSubscriptionCheckout $checkout,
-        PostHogService $postHog,
     ): Response|RedirectResponse {
         $user = $request->user();
         $plan = Plan::where('slug', Slug::Workspace)->firstOrFail();
@@ -163,25 +162,11 @@ class WelcomeController extends Controller
 
         abort_if($priceId === null, Response::HTTP_INTERNAL_SERVER_ERROR, 'Monthly price is not configured.');
 
-        $response = $checkout->redirect(
+        return $checkout->redirect(
             $user->account,
             $priceId,
             route('app.welcome.referral-source'),
         );
-
-        if ($response->headers->get(StartSubscriptionCheckout::CREATED_HEADER) !== '0') {
-            $postHog->capture(
-                $user->id,
-                WelcomeEvent::CheckoutStarted->value,
-                [
-                    'plan_name' => $plan->name,
-                    'interval' => 'monthly',
-                ],
-                $user->account,
-            );
-        }
-
-        return $response;
     }
 
     public function subscriptionRequired(Request $request): InertiaResponse|RedirectResponse
