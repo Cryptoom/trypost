@@ -5,6 +5,7 @@ import LinkCard from "@/components/posts/previews/LinkCard.vue";
 import VideoPreview from "@/components/posts/previews/VideoPreview.vue";
 import { useLinkCard } from '@/composables/useLinkCard';
 import { isVideoMedia } from '@/composables/useMedia';
+import date from '@/date';
 import type { MediaItem } from '@/types/media';
 
 interface SocialAccount {
@@ -19,11 +20,13 @@ interface Props {
     socialAccount: SocialAccount;
     content: string;
     media: MediaItem[];
+    postedAt?: string | null;
 }
 
 const props = defineProps<Props>();
 
 const username = computed(() => props.socialAccount.username || 'username');
+const postedAtLabel = computed(() => date.formatXPreview(props.postedAt));
 
 const { card: linkCard, loading: linkCardLoading } = useLinkCard(
     toRef(props, 'content'),
@@ -127,7 +130,7 @@ const { card: linkCard, loading: linkCardLoading } = useLinkCard(
 
                 <!-- Timestamp & Views -->
                 <div class="mt-3 text-[15px] text-[#536471] dark:text-[#71767b]">
-                    <span>4:21 PM · Jan 20, 2026</span>
+                    <span>{{ postedAtLabel }}</span>
                     <span class="mx-1">·</span>
                     <span class="text-[#0f1419] dark:text-[#e7e9ea] font-bold">3.5M</span>
                     <span> Views</span>

@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { IconDots, IconPhoto } from '@tabler/icons-vue';
+import { trans } from 'laravel-vue-i18n';
 import { computed } from 'vue';
 
 import PostMediaPreview from '@/components/posts/previews/PostMediaPreview.vue';
+import date from '@/date';
 import type { MediaItem } from '@/types/media';
 
 interface SocialAccount {
@@ -23,9 +25,14 @@ interface Props {
     maxLength?: number;
     isValid?: boolean;
     validationMessage?: string;
+    postedAt?: string | null;
 }
 
 const props = defineProps<Props>();
+
+const postedAtLabel = computed(() =>
+    date.formatFacebookPreview(props.postedAt, trans('common.just_now')),
+);
 
 // Content type helpers
 const isReel = computed(() => props.contentType === 'facebook_reel');
@@ -116,7 +123,7 @@ const displayName = computed(() => props.socialAccount.display_name || props.soc
                             <div class="flex flex-col min-w-0">
                                 <span class="text-[13px] font-semibold leading-tight">{{ displayName }}</span>
                                 <div class="flex items-center gap-1 text-[11px] text-[#65676b] dark:text-[#b0b3b8]">
-                                    <span>Just now</span>
+                                    <span>{{ postedAtLabel }}</span>
                                     <span>·</span>
                                     <!-- Globe icon -->
                                     <svg class="w-3 h-3" viewBox="0 0 16 16" fill="currentColor">

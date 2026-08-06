@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { toRef } from 'vue';
+import { computed, toRef } from 'vue';
 
 import LinkCard from "@/components/posts/previews/LinkCard.vue";
 import VideoPreview from "@/components/posts/previews/VideoPreview.vue";
 import { useLinkCard } from '@/composables/useLinkCard';
 import { isVideoMedia } from '@/composables/useMedia';
+import date from '@/date';
 import type { MediaItem } from '@/types/media';
 
 interface SocialAccount {
@@ -19,9 +20,12 @@ interface Props {
     socialAccount: SocialAccount;
     content: string;
     media: MediaItem[];
+    postedAt?: string | null;
 }
 
 const props = defineProps<Props>();
+
+const postedAtLabel = computed(() => date.formatBlueskyPreview(props.postedAt));
 
 const { card: linkCard, loading: linkCardLoading } = useLinkCard(
     toRef(props, 'content'),
@@ -117,7 +121,7 @@ const { card: linkCard, loading: linkCardLoading } = useLinkCard(
 
                 <!-- Timestamp -->
                 <div class="mt-3 text-[13px] text-neutral-500 dark:text-[#7b8d9e]">
-                    4:18 PM · Jan 21, 2026
+                    {{ postedAtLabel }}
                 </div>
             </div>
 

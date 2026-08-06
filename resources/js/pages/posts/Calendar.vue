@@ -87,12 +87,12 @@ const weekdayNames = computed(() => {
     return names;
 });
 
+const formatDayMonth = (day: dayjs.Dayjs): string => day.format('D MMMM');
+
 // Day view computed
 const currentDay = computed(() => dayjs(props.currentDay));
 
-const dayHeaderTitle = computed(() => {
-    return currentDay.value.format('dddd, D [de] MMMM [de] YYYY');
-});
+const dayHeaderTitle = computed(() => currentDay.value.format('LL'));
 
 const dayPosts = computed(() => {
     const dateKey = currentDay.value.format('YYYY-MM-DD');
@@ -117,18 +117,22 @@ const weekHeaderTitle = computed(() => {
     const start = weekStart.value;
     const end = weekStart.value.add(6, 'day');
 
-    if (start.month() === end.month()) {
-        return `${start.format('MMMM D')} - ${end.format('D, YYYY')}`;
+    // Day-first tokens so locales like pt-BR stay "3–9 de agosto", not "August 3–9".
+    if (start.isSame(end, 'month')) {
+        return `${start.format('D')}–${end.format('D MMMM YYYY')}`;
     }
-    return `${start.format('MMM D')} - ${end.format('MMM D, YYYY')}`;
+
+    if (start.isSame(end, 'year')) {
+        return `${start.format('D MMM')} – ${end.format('D MMMM YYYY')}`;
+    }
+
+    return `${start.format('ll')} – ${end.format('ll')}`;
 });
 
 // Month view computed
 const monthDate = computed(() => dayjs(props.currentMonth));
 
-const monthHeaderTitle = computed(() => {
-    return monthDate.value.format('MMMM YYYY');
-});
+const monthHeaderTitle = computed(() => monthDate.value.format('MMMM YYYY'));
 
 const calendarDays = computed(() => {
     const start = monthDate.value.startOf('month').startOf('week');
@@ -392,7 +396,7 @@ const formatTime = (scheduledAt: string): string => {
                             class="mt-1 text-sm font-bold capitalize"
                             :class="isToday(day) ? 'text-foreground' : 'text-foreground/80'"
                         >
-                            {{ day.format('D/MMMM') }}
+                            {{ formatDayMonth(day) }}
                         </span>
                     </div>
 

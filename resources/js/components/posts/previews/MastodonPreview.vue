@@ -1,6 +1,9 @@
 <script setup lang="ts">
+import { computed } from 'vue';
+
 import VideoPreview from "@/components/posts/previews/VideoPreview.vue";
 import { isVideoMedia } from '@/composables/useMedia';
+import date from '@/date';
 import type { MediaItem } from '@/types/media';
 
 interface SocialAccount {
@@ -15,9 +18,12 @@ interface Props {
     socialAccount: SocialAccount;
     content: string;
     media: MediaItem[];
+    postedAt?: string | null;
 }
 
-defineProps<Props>();
+const props = defineProps<Props>();
+
+const postedAtLabel = computed(() => date.formatMastodonPreview(props.postedAt));
 </script>
 
 <template>
@@ -78,7 +84,7 @@ defineProps<Props>();
 
                 <!-- Timestamp -->
                 <div class="text-[14px] text-[#606984] dark:text-[#9baec8] mb-2">
-                    <span>Jan 21, 2026, 04:30 PM</span>
+                    <span>{{ postedAtLabel }}</span>
                     <span class="mx-1.5">·</span>
                     <svg class="inline h-4 w-4 align-text-bottom" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                         stroke-width="2">
