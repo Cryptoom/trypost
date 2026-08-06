@@ -8,6 +8,9 @@ return [
     'create_workspace' => 'إنشاء مساحة عمل',
     'create_post' => 'إنشاء منشور',
     'profile' => 'الملف الشخصي',
+    'my_account' => 'حسابي',
+    'account_settings' => 'الحساب والفوترة',
+    'workspace_settings' => 'إعدادات مساحة العمل',
     'log_out' => 'تسجيل الخروج',
 
     'workspace' => 'مساحة العمل: :name',

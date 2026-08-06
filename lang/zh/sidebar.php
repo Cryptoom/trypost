@@ -8,6 +8,9 @@ return [
     'create_workspace' => '创建工作区',
     'create_post' => '创建帖子',
     'profile' => '个人资料',
+    'my_account' => '我的账户',
+    'account_settings' => '账户与账单',
+    'workspace_settings' => '工作区设置',
     'log_out' => '退出登录',
 
     'workspace' => '工作区：:name',

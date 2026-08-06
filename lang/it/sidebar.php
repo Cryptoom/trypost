@@ -8,6 +8,9 @@ return [
     'create_workspace' => 'Crea workspace',
     'create_post' => 'Crea post',
     'profile' => 'Profilo',
+    'my_account' => 'Il mio account',
+    'account_settings' => 'Account e fatturazione',
+    'workspace_settings' => 'Impostazioni workspace',
     'log_out' => 'Esci',
 
     'workspace' => 'Workspace: :name',
