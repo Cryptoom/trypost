@@ -16,6 +16,7 @@ import {
     IconLifebuoy,
     IconPencil,
     IconPhoto,
+    IconPlugConnected,
     IconSelector,
     IconTag,
 } from '@tabler/icons-vue';
@@ -53,6 +54,7 @@ import { index as assets } from '@/routes/app/assets';
 import { index as automations } from '@/routes/app/automations';
 import { portal } from '@/routes/app/billing';
 import { index as labels } from '@/routes/app/labels';
+import { index as mcp } from '@/routes/app/mcp';
 import { index as signatures } from '@/routes/app/signatures';
 import type { NavItem, User } from '@/types';
 
@@ -162,6 +164,11 @@ const workspaceNavItems = computed<NavItem[]>(() => [
               },
           ]
         : []),
+    {
+        title: trans('sidebar.workspace.mcp'),
+        href: mcp.url(),
+        icon: IconPlugConnected,
+    },
 ]);
 
 const bottomNavItems = computed(() => [
