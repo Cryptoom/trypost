@@ -391,6 +391,27 @@ enum Platform: string
     }
 
     /**
+     * Connectable platforms shaped for Inertia account/onboarding grids.
+     * Sorted alphabetically by label (ASC, case-insensitive).
+     *
+     * @return list<array{value: string, label: string, color: string, network: string}>
+     */
+    public static function connectableOptions(): array
+    {
+        return collect(self::cases())
+            ->filter(fn (self $platform): bool => $platform->isConnectable())
+            ->sortBy(fn (self $platform): string => mb_strtolower($platform->label()))
+            ->map(fn (self $platform): array => [
+                'value' => $platform->value,
+                'label' => $platform->label(),
+                'color' => $platform->color(),
+                'network' => $platform->network(),
+            ])
+            ->values()
+            ->all();
+    }
+
+    /**
      * Static, platform-specific data exposed to the frontend (e.g. TikTok privacy options,
      * compliance URLs). Returns an empty array for platforms with no extra config.
      *

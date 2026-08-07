@@ -2,16 +2,21 @@
 import { Head, useForm } from '@inertiajs/vue3';
 import {
     IconArticle,
+    IconBrandGithub,
     IconBrandInstagram,
     IconBrandLinkedin,
     IconBrandProducthunt,
     IconBrandReddit,
+    IconBrandThreads,
     IconBrandTiktokFilled,
     IconBrandXFilled,
+    IconBrandYcombinator,
     IconBrandYoutubeFilled,
     IconCheck,
     IconDots,
+    IconListSearch,
     IconSparkles,
+    IconUser,
     IconUsers,
 } from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
@@ -73,6 +78,11 @@ const sourceMeta: Record<string, SourceMeta> = {
         iconClass: 'text-white',
         badge: 'bg-gradient-to-br from-[#f9ce34] via-[#ee2a7b] to-[#6228d7]',
     },
+    threads: {
+        icon: IconBrandThreads,
+        iconClass: 'text-white',
+        badge: 'bg-black',
+    },
     reddit: {
         icon: IconBrandReddit,
         iconClass: 'text-white',
@@ -83,6 +93,21 @@ const sourceMeta: Record<string, SourceMeta> = {
         iconClass: 'text-[#FF6154]',
         badge: 'bg-white',
     },
+    github: {
+        icon: IconBrandGithub,
+        iconClass: 'text-white',
+        badge: 'bg-black',
+    },
+    hacker_news: {
+        icon: IconBrandYcombinator,
+        iconClass: 'text-white',
+        badge: 'bg-[#FF6600]',
+    },
+    directories: {
+        icon: IconListSearch,
+        iconClass: 'text-sky-800',
+        badge: 'bg-sky-100',
+    },
     ai_assistant: {
         icon: IconSparkles,
         iconClass: 'text-violet-700',
@@ -92,6 +117,11 @@ const sourceMeta: Record<string, SourceMeta> = {
         icon: IconUsers,
         iconClass: 'text-emerald-700',
         badge: 'bg-emerald-100',
+    },
+    founder: {
+        icon: IconUser,
+        iconClass: 'text-orange-800',
+        badge: 'bg-orange-100',
     },
     blog: {
         icon: IconArticle,

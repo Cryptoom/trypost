@@ -167,22 +167,103 @@ test('passport approve route has no mcp create-post role gate', function () {
     expect($middleware)->not->toContain('EnsureCanAuthorizeMcp');
 });
 
-/**
- * @return array<string, string>
- */
-function oauthAuthorizeQuery(string $clientId, string $redirectUri = 'https://client.example/callback'): array
-{
-    $verifier = Str::random(64);
-    $challenge = rtrim(strtr(base64_encode(hash('sha256', $verifier, true)), '+/', '-_'), '=');
+test('guests are redirected to login before an unknown oauth client is rejected', function () {
+    $unknownClientId = (string) Str::uuid();
 
-    return [
-        'client_id' => $clientId,
-        'redirect_uri' => $redirectUri,
-        'response_type' => 'code',
-        'scope' => 'mcp:use',
-        'state' => 'test-state',
-        'code_challenge' => $challenge,
-        'code_challenge_method' => 'S256',
-        'prompt' => 'consent',
-    ];
-}
+    $this->get(route('passport.authorizations.authorize', oauthAuthorizeQuery($unknownClientId)))
+        ->assertRedirect(route('login'));
+});
+
+test('guests are redirected to login before consent for a registered oauth client', function () {
+    $clientId = mcpOauthClient('Guest Login Agent');
+    DB::table('oauth_clients')->where('id', $clientId)->update([
+        'redirect_uris' => json_encode(['https://client.example/callback']),
+    ]);
+
+    $this->get(route('passport.authorizations.authorize', oauthAuthorizeQuery($clientId)))
+        ->assertRedirect(route('login'));
+});
+
+test('authenticated users still receive invalid_client for an unknown oauth client', function () {
+    $user = User::factory()->create();
+    $unknownClientId = (string) Str::uuid();
+
+    $this->actingAs($user)
+        ->getJson(route('passport.authorizations.authorize', oauthAuthorizeQuery($unknownClientId)))
+        ->assertUnauthorized()
+        ->assertJson([
+            'error' => 'invalid_client',
+        ]);
+});
+
+test('browser requests render an inertia error page for an unknown oauth client', function () {
+    $user = User::factory()->create();
+    $unknownClientId = (string) Str::uuid();
+
+    $this->actingAs($user)
+        ->get(route('passport.authorizations.authorize', oauthAuthorizeQuery($unknownClientId)))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('mcp/AuthorizeError')
+            ->where('error', 'invalid_client')
+            ->where('errorDescription', 'Client authentication failed'));
+});
+
+test('post-login redirect to authorize renders inertia instead of raw oauth json', function () {
+    $unknownClientId = (string) Str::uuid();
+    $user = User::factory()->create();
+
+    $this->get(route('passport.authorizations.authorize', oauthAuthorizeQuery($unknownClientId)))
+        ->assertRedirect(route('login'));
+
+    $login = $this->post(route('login.store'), [
+        'email' => $user->email,
+        'password' => 'password',
+    ]);
+
+    $login->assertRedirect();
+
+    $this->get($login->headers->get('Location'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('mcp/AuthorizeError')
+            ->where('error', 'invalid_client'));
+});
+
+test('prompt=none guests receive login_required redirect instead of an inertia error page', function () {
+    $redirectUri = 'https://client.example/callback';
+    $clientId = mcpOauthClient('Silent Auth Guest');
+    DB::table('oauth_clients')->where('id', $clientId)->update([
+        'redirect_uris' => json_encode([$redirectUri]),
+    ]);
+
+    $response = $this->get(route(
+        'passport.authorizations.authorize',
+        oauthAuthorizeQuery($clientId, $redirectUri, prompt: 'none'),
+    ));
+
+    $response->assertRedirect();
+    expect($response->headers->get('Location'))
+        ->toStartWith($redirectUri)
+        ->toContain('error=login_required');
+});
+
+test('prompt=none authenticated users receive consent_required redirect instead of an inertia error page', function () {
+    $user = User::factory()->create();
+    $redirectUri = 'https://client.example/callback';
+    $clientId = mcpOauthClient('Silent Auth User');
+    DB::table('oauth_clients')->where('id', $clientId)->update([
+        'redirect_uris' => json_encode([$redirectUri]),
+    ]);
+
+    $response = $this->actingAs($user)
+        ->get(route(
+            'passport.authorizations.authorize',
+            oauthAuthorizeQuery($clientId, $redirectUri, prompt: 'none'),
+        ));
+
+    $response->assertRedirect();
+    expect($response->headers->get('Location'))
+        ->toStartWith($redirectUri)
+        ->toContain('error=consent_required');
+});

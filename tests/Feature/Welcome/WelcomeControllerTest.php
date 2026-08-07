@@ -170,6 +170,11 @@ test('referral source renders after prior steps are complete', function () {
         ->assertInertia(fn ($page) => $page
             ->component('welcome/ReferralSource', false)
             ->has('sources', count(ReferralSource::cases()))
+            ->where('sources', fn ($sources): bool => collect($sources)->contains(ReferralSource::GitHub->value)
+                && collect($sources)->contains(ReferralSource::Threads->value)
+                && collect($sources)->contains(ReferralSource::HackerNews->value)
+                && collect($sources)->contains(ReferralSource::Directories->value)
+                && collect($sources)->contains(ReferralSource::Founder->value))
             ->where('plan.name', $plan->name)
             ->where('plan.interval', 'monthly')
         );
@@ -279,7 +284,7 @@ test('welcome steps redirect to calendar in self hosted mode', function (string 
 test('old onboarding icp routes are not registered', function (string $routeName) {
     expect(Route::has($routeName))->toBeFalse();
 })->with([
-    'root' => 'app.onboarding',
+    // `app.onboarding` is reused for the post-subscription activation checklist.
     'store' => 'app.onboarding.store',
     'goals' => 'app.onboarding.goals',
     'goals store' => 'app.onboarding.goals.store',
