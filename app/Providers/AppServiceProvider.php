@@ -53,7 +53,6 @@ use Laravel\Cashier\Cashier;
 use Laravel\Cashier\Events\WebhookReceived;
 use Laravel\Nightwatch\Facades\Nightwatch;
 use Laravel\Nightwatch\Records\CacheEvent;
-use Laravel\Passport\Passport;
 use Laravel\Socialite\Facades\Socialite;
 use Laravel\Socialite\Two\GoogleProvider;
 use PostHog\PostHog;
@@ -94,24 +93,6 @@ class AppServiceProvider extends ServiceProvider
         Cashier::useSubscriptionModel(Subscription::class);
         Cashier::useSubscriptionItemModel(SubscriptionItem::class);
         Cashier::keepPastDueSubscriptionsActive();
-
-        $this->configurePassport();
-    }
-
-    protected function configurePassport(): void
-    {
-        Passport::useTokenModel(AccessToken::class);
-
-        // API keys may omit an application expiry ("never"). Passport still
-        // embeds a JWT `exp`, so keep that far ahead and enforce optional
-        // `oauth_access_tokens.expires_at` in LoadWorkspaceFromToken.
-        Passport::personalAccessTokensExpireIn(now()->addYears(100));
-
-        Passport::tokensCan([
-            'mcp:use' => 'Use MCP server',
-        ]);
-
-        Passport::authorizationView('mcp.authorize');
     }
 
     protected function configureMorphMap(): void
