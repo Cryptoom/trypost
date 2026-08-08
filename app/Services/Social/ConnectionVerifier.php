@@ -319,7 +319,7 @@ class ConnectionVerifier
                 'grant_type' => 'th_refresh_token',
                 'access_token' => $account->access_token,
             ]),
-            GraphError::indicatesInvalidToken(...),
+            fn (?array $body) => ! GraphError::isTransient($body),
         );
 
         $data = $response->json();
@@ -341,7 +341,7 @@ class ConnectionVerifier
                 'grant_type' => 'ig_refresh_token',
                 'access_token' => $account->access_token,
             ]),
-            GraphError::indicatesInvalidToken(...),
+            fn (?array $body) => ! GraphError::isTransient($body),
         );
 
         $data = $response->json();
@@ -415,13 +415,11 @@ class ConnectionVerifier
             'access_token' => $account->access_token,
         ]);
 
-        $body = $response->json() ?? [];
-
-        if (GraphError::indicatesInvalidToken($body)) {
-            throw new TokenExpiredException('Instagram access token is invalid or expired');
+        if ($response->successful()) {
+            return true;
         }
 
-        return $response->successful();
+        throw GraphError::classifyVerifyFailure($response, 'Instagram');
     }
 
     private function verifyFacebook(SocialAccount $account): bool
@@ -431,13 +429,11 @@ class ConnectionVerifier
             'access_token' => $account->access_token,
         ]);
 
-        $body = $response->json() ?? [];
-
-        if (GraphError::indicatesInvalidToken($body)) {
-            throw new TokenExpiredException('Facebook access token is invalid or expired');
+        if ($response->successful()) {
+            return true;
         }
 
-        return $response->successful();
+        throw GraphError::classifyVerifyFailure($response, 'Facebook');
     }
 
     private function verifyThreads(SocialAccount $account): bool
@@ -447,13 +443,11 @@ class ConnectionVerifier
             'access_token' => $account->access_token,
         ]);
 
-        $body = $response->json() ?? [];
-
-        if (GraphError::indicatesInvalidToken($body)) {
-            throw new TokenExpiredException('Threads access token is invalid or expired');
+        if ($response->successful()) {
+            return true;
         }
 
-        return $response->successful();
+        throw GraphError::classifyVerifyFailure($response, 'Threads');
     }
 
     private function verifyTikTok(SocialAccount $account): bool
