@@ -86,6 +86,10 @@ class HandleInertiaRequests extends Middleware
      * Never defer on Passport consent *views*: Inertia deferred props re-request the
      * same URL, Passport rotates `authToken` on every authorize hit, and approve then
      * fails with InvalidAuthTokenException against the stale token still on the page.
+     *
+     * Social OAuth popup close pages set `onboardingProgress` to false in
+     * `SocialController::popupCallback()` so a deferred reload does not re-hit the
+     * select route after the connect session was cleared.
      */
     private function onboardingProgress(Request $request, ?User $user): DeferProp|false
     {
