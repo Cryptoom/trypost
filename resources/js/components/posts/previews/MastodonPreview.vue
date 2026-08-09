@@ -2,6 +2,7 @@
 import { computed } from 'vue';
 
 import VideoPreview from "@/components/posts/previews/VideoPreview.vue";
+import { getInitials } from '@/composables/useInitials';
 import { isVideoMedia } from '@/composables/useMedia';
 import date from '@/date';
 import type { MediaItem } from '@/types/media';
@@ -11,6 +12,7 @@ interface SocialAccount {
     platform: string;
     display_name: string;
     username: string;
+    display_label: string;
     avatar_url: string | null;
 }
 
@@ -36,14 +38,14 @@ const postedAtLabel = computed(() => date.formatMastodonPreview(props.postedAt))
                 <!-- Author -->
                 <div class="flex items-center gap-3 mb-3">
                     <img v-if="socialAccount.avatar_url" :src="socialAccount.avatar_url"
-                        :alt="socialAccount.display_name" class="h-10 w-10 rounded-full object-cover" />
+                        :alt="socialAccount.display_label" class="h-10 w-10 rounded-full object-cover" />
                     <div v-else
                         class="h-10 w-10 rounded-full bg-gradient-to-br from-[#6364ff] to-[#563acc] flex items-center justify-center text-white font-semibold">
-                        {{ socialAccount.display_name?.charAt(0) }}
+                        {{ getInitials(socialAccount.display_label) }}
                     </div>
                     <div class="flex-1 min-w-0">
                         <div class="font-bold text-[15px]">
-                            {{ socialAccount.display_name }}
+                            {{ socialAccount.display_label }}
                         </div>
                         <div class="text-[14px] text-[#606984] dark:text-[#9baec8] truncate">
                             @{{ socialAccount.username || 'user' }}@mastodon.social

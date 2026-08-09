@@ -3,6 +3,7 @@ import { IconPhoto, IconStack2 } from '@tabler/icons-vue';
 import { computed } from 'vue';
 
 import VideoPreview from "@/components/posts/previews/VideoPreview.vue";
+import { getInitials } from '@/composables/useInitials';
 import { isVideoMedia } from '@/composables/useMedia';
 import type { MediaItem } from '@/types/media';
 
@@ -11,6 +12,7 @@ interface SocialAccount {
     platform: string;
     display_name: string;
     username: string;
+    display_label: string;
     avatar_url: string | null;
 }
 
@@ -145,14 +147,14 @@ const pinLink = computed(() => (props.meta?.link as string | undefined) || '');
                             <img
                                 v-if="socialAccount.avatar_url"
                                 :src="socialAccount.avatar_url"
-                                :alt="socialAccount.display_name"
+                                :alt="socialAccount.display_label"
                                 class="h-6 w-6 rounded-full object-cover"
                             />
                             <div v-else class="h-6 w-6 rounded-full bg-[#e60023] flex items-center justify-center text-white font-semibold text-[10px]">
-                                {{ socialAccount.display_name?.charAt(0) }}
+                                {{ getInitials(socialAccount.display_label) }}
                             </div>
                             <span class="text-[12px] font-medium text-[#111111] dark:text-[#e0e0e0] truncate">
-                                {{ socialAccount.display_name }}
+                                {{ socialAccount.display_label }}
                             </span>
                         </div>
                     </div>

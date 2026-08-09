@@ -3,6 +3,7 @@ import { trans } from 'laravel-vue-i18n';
 import { computed } from 'vue';
 
 import VideoPreview from '@/components/posts/previews/VideoPreview.vue';
+import { getInitials } from '@/composables/useInitials';
 import { isVideoMedia } from '@/composables/useMedia';
 import date from '@/date';
 import type { MediaItem } from '@/types/media';
@@ -12,6 +13,7 @@ interface SocialAccount {
     platform: string;
     display_name: string;
     username: string;
+    display_label: string;
     avatar_url: string | null;
 }
 
@@ -58,19 +60,19 @@ const postedAtLabel = computed(() =>
                 <img
                     v-if="socialAccount.avatar_url"
                     :src="socialAccount.avatar_url"
-                    :alt="socialAccount.display_name"
+                    :alt="socialAccount.display_label"
                     class="h-10 w-10 shrink-0 rounded-full object-cover"
                 />
                 <div
                     v-else
                     class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#5865F2] font-semibold text-white"
                 >
-                    {{ socialAccount.display_name?.charAt(0) }}
+                    {{ getInitials(socialAccount.display_label) }}
                 </div>
 
                 <div class="min-w-0 flex-1">
                     <div class="flex items-baseline gap-2">
-                        <span class="text-[15px] font-medium text-[#060607]">{{ socialAccount.display_name || 'TryPost' }}</span>
+                        <span class="text-[15px] font-medium text-[#060607]">{{ socialAccount.display_label }}</span>
                         <span class="rounded bg-[#5865F2] px-1 text-[10px] font-bold uppercase tracking-wide text-white">Bot</span>
                         <span class="text-[11px] text-[#5c5e66]">{{ postedAtLabel }}</span>
                     </div>
