@@ -166,6 +166,16 @@ return [
             'title_max' => 'Tytuł nie może być dłuższy niż 100 znaków.',
             'link_max' => 'Link docelowy nie może być dłuższy niż 2048 znaków.',
         ],
+        'x' => [
+            'thread' => 'Wątek',
+            'add_tweet' => 'Dodaj tweeta',
+            'tweet_n' => 'Tweet :n',
+            'remove_tweet' => 'Usuń tweeta',
+            'tweet_placeholder' => 'Napisz kolejnego tweeta…',
+            'thread_limit_reached' => 'Wątek może zawierać maksymalnie :max dodatkowych tweetów.',
+            'segment_required' => 'Usuń puste tweety przed zaplanowaniem.',
+            'segment_exceeds_limit' => 'Tweet :n jest za długi o :over znaków (maks. :limit).',
+        ],
         'discord' => [
             'settings' => 'Ustawienia Discord',
             'posting_to' => 'Publikowanie na',

@@ -166,6 +166,16 @@ return [
             'title_max' => 'Le titre ne peut pas dépasser 100 caractères.',
             'link_max' => 'Le lien de destination ne peut pas dépasser 2048 caractères.',
         ],
+        'x' => [
+            'thread' => 'Fil',
+            'add_tweet' => 'Ajouter un tweet',
+            'tweet_n' => 'Tweet :n',
+            'remove_tweet' => 'Supprimer le tweet',
+            'tweet_placeholder' => 'Écrivez le prochain tweet…',
+            'thread_limit_reached' => 'Un fil peut contenir jusqu’à :max tweets supplémentaires.',
+            'segment_required' => 'Supprimez les tweets vides avant de planifier.',
+            'segment_exceeds_limit' => 'Le tweet :n est trop long de :over caractères (max :limit).',
+        ],
         'discord' => [
             'settings' => 'Paramètres Discord',
             'posting_to' => 'Publier sur',

@@ -369,3 +369,68 @@ test('create post rejects invalid Pinterest destination link', function () {
 
     $response->assertHasErrors();
 });
+
+test('create post persists X thread_segments meta', function () {
+    $x = SocialAccount::factory()->x()->create(['workspace_id' => $this->workspace->id]);
+
+    $response = TryPostServer::actingAs($this->user)
+        ->tool(CreatePostTool::class, [
+            'content' => 'Main tweet',
+            'platforms' => [[
+                'social_account_id' => $x->id,
+                'content_type' => ContentType::XPost->value,
+                'meta' => ['thread_segments' => ['Second tweet', 'Third tweet']],
+            ]],
+        ]);
+
+    $response->assertOk();
+
+    $meta = PostPlatform::where('social_account_id', $x->id)->sole()->meta;
+
+    expect(data_get($meta, 'thread_segments.0'))->toBe('Second tweet')
+        ->and(data_get($meta, 'thread_segments.1'))->toBe('Third tweet');
+});
+
+test('update post merges X thread_segments meta', function () {
+    $x = SocialAccount::factory()->x()->create(['workspace_id' => $this->workspace->id]);
+    $post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+        'status' => PostStatus::Draft,
+    ]);
+    $platform = PostPlatform::factory()->x()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $x->id,
+        'enabled' => true,
+        'meta' => [],
+    ]);
+
+    $response = TryPostServer::actingAs($this->user)
+        ->tool(UpdatePostTool::class, [
+            'post_id' => $post->id,
+            'platforms' => [[
+                'id' => $platform->id,
+                'meta' => ['thread_segments' => ['Second tweet']],
+            ]],
+        ]);
+
+    $response->assertOk();
+
+    expect(data_get($platform->fresh()->meta, 'thread_segments.0'))->toBe('Second tweet');
+});
+
+test('create post rejects an X thread segment that exceeds the character limit', function () {
+    $x = SocialAccount::factory()->x()->create(['workspace_id' => $this->workspace->id]);
+
+    $response = TryPostServer::actingAs($this->user)
+        ->tool(CreatePostTool::class, [
+            'content' => 'Main tweet',
+            'platforms' => [[
+                'social_account_id' => $x->id,
+                'content_type' => ContentType::XPost->value,
+                'meta' => ['thread_segments' => [str_repeat('a', 281)]],
+            ]],
+        ]);
+
+    $response->assertHasErrors();
+});

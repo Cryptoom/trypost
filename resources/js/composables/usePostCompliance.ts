@@ -234,13 +234,34 @@ export const usePostCompliance = (opts: UsePostComplianceOptions) => {
             .map((p) => ({ platform: p.platform, limit: p.maxLength, over: len - p.maxLength }));
     });
 
+    // X thread segments each have their own limit, distinct from the main
+    // content's — checked per selected X platform against its own maxLength.
+    const threadSegmentOverflows = computed(() => {
+        const overflows: { platform: string; index: number; limit: number; over: number }[] = [];
+        for (const pp of selectedPlatforms.value) {
+            if (pp.platform !== Platform.X) continue;
+            const maxLength = pp.social_account_id ? platformConfigs[pp.social_account_id]?.maxContentLength : null;
+            if (typeof maxLength !== 'number' || maxLength <= 0) continue;
+            const segments = platformMeta.value[pp.id]?.thread_segments;
+            if (!Array.isArray(segments)) continue;
+            segments.forEach((segment: string, index: number) => {
+                const len = typeof segment === 'string' ? segment.length : 0;
+                if (len > maxLength) {
+                    overflows.push({ platform: pp.platform, index, limit: maxLength, over: len - maxLength });
+                }
+            });
+        }
+        return overflows;
+    });
+
     const canSchedule = computed(() => {
         const mediaValid = selectedPlatformIds.value.every((id) => !platformIssues.value[id]);
         const metaValid = platformMetaResults.value.every((r) => r.valid);
         return mediaValid
             && metaValid
             && hasContentOrMedia.value
-            && contentLengthOverflows.value.length === 0;
+            && contentLengthOverflows.value.length === 0
+            && threadSegmentOverflows.value.length === 0;
     });
 
     const postActionTooltip = computed(() => {
@@ -256,7 +277,13 @@ export const usePostCompliance = (opts: UsePostComplianceOptions) => {
             over: String(overflow.over),
         }));
 
-        const combined = [...mediaReasons, ...lengthReasons].join('\n');
+        const threadReasons = threadSegmentOverflows.value.map((overflow) => trans('posts.form.x.segment_exceeds_limit', {
+            n: String(overflow.index + 2),
+            limit: String(overflow.limit),
+            over: String(overflow.over),
+        }));
+
+        const combined = [...mediaReasons, ...lengthReasons, ...threadReasons].join('\n');
         if (combined) return combined;
 
         const metaTooltipKey = platformMetaResults.value.find((r) => r.tooltipKey)?.tooltipKey;

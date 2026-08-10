@@ -8,6 +8,7 @@ import InstagramSettings from '@/components/posts/editor/InstagramSettings.vue';
 import LinkedInSettings from '@/components/posts/editor/LinkedInSettings.vue';
 import PinterestSettings from '@/components/posts/editor/PinterestSettings.vue';
 import TikTokSettings from '@/components/posts/editor/TikTokSettings.vue';
+import XThreadSettings from '@/components/posts/editor/XThreadSettings.vue';
 import { Avatar } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -174,6 +175,16 @@ const selectedChannels = computed(() => props.channels.filter((channel) => isSel
                 v-else-if="channel.platform === Platform.Discord"
                 :social-account="channel.socialAccount"
                 :meta="channel.meta"
+                :disabled="disabled"
+                :preview-only="previewOnly"
+                @update:meta="emit('update:meta', channel.id, $event)"
+            />
+            <XThreadSettings
+                v-else-if="channel.platform === Platform.X"
+                :social-account="channel.socialAccount"
+                :meta="channel.meta"
+                :max-length="channel.maxContentLength ?? 280"
+                :max-segments="channel.maxThreadSegments ?? 0"
                 :disabled="disabled"
                 :preview-only="previewOnly"
                 @update:meta="emit('update:meta', channel.id, $event)"

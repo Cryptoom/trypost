@@ -35,8 +35,6 @@ class XPublisher
     {
         $this->validateContentLength($postPlatform);
 
-        $content = $postPlatform->post->content ? app(ContentSanitizer::class)->sanitize($postPlatform->post->content, $postPlatform->platform) : null;
-
         $account = $postPlatform->socialAccount;
 
         if ($account->needsProactiveTokenRefresh()) {
@@ -45,60 +43,164 @@ class XPublisher
 
         $this->accessToken = $account->access_token;
 
-        $data = [];
+        $segments = data_get($postPlatform->meta, 'thread_segments', []);
 
-        if (! empty($content)) {
-            $data['text'] = $content;
-        }
+        // A retried/rescheduled job re-runs publish() from scratch. If the root
+        // tweet already went out on a prior attempt (recorded before a later
+        // thread segment failed), reuse its id instead of posting it again.
+        $existingRoot = ! empty($segments) ? data_get($postPlatform->meta, 'thread_root_published') : null;
 
-        $mediaIds = [];
-        $media = $postPlatform->post->mediaItems;
+        if ($existingRoot) {
+            $tweetId = data_get($existingRoot, 'id');
+        } else {
+            $content = $postPlatform->post->content ? app(ContentSanitizer::class)->sanitize($postPlatform->post->content, $postPlatform->platform) : null;
 
-        if ($media->isNotEmpty()) {
-            foreach ($media as $mediaItem) {
-                $uploadedMedia = $this->uploadMedia($mediaItem);
+            $data = [];
 
-                // v2 API returns data.id, v1 returns media_id
-                $mediaId = data_get($uploadedMedia, 'data.id', data_get($uploadedMedia, 'media_id'));
-                if ($mediaId) {
-                    // X expects media_ids as strings in the tweets payload.
-                    $mediaIds[] = (string) $mediaId;
-                    $this->uploadAltText((string) $mediaId, $mediaItem);
+            if (! empty($content)) {
+                $data['text'] = $content;
+            }
+
+            $mediaIds = [];
+            $media = $postPlatform->post->mediaItems;
+
+            if ($media->isNotEmpty()) {
+                foreach ($media as $mediaItem) {
+                    $uploadedMedia = $this->uploadMedia($mediaItem);
+
+                    // v2 API returns data.id, v1 returns media_id
+                    $mediaId = data_get($uploadedMedia, 'data.id', data_get($uploadedMedia, 'media_id'));
+                    if ($mediaId) {
+                        // X expects media_ids as strings in the tweets payload.
+                        $mediaIds[] = (string) $mediaId;
+                        $this->uploadAltText((string) $mediaId, $mediaItem);
+                    }
                 }
+            }
+
+            if (! empty($mediaIds)) {
+                $data['media'] = [
+                    'media_ids' => $mediaIds,
+                ];
+            }
+
+            if (empty($content) && empty($mediaIds)) {
+                throw new XPublishException(
+                    userMessage: 'X posts require either text or media. Please add content to your post.',
+                    category: ErrorCategory::MediaFormat,
+                );
+            }
+
+            $response = $this->getHttpClient()
+                ->post("{$this->baseUrl}/tweets", $data);
+
+            if ($response->failed()) {
+                Log::error('X post creation failed', [
+                    'status' => $response->status(),
+                    'body' => $this->redactResponseBody($response->body()),
+                ]);
+                $this->handleApiError($response);
+            }
+
+            $responseData = $response->json();
+            $tweetId = $responseData['data']['id'] ?? null;
+
+            if ($tweetId && ! empty($segments)) {
+                $postPlatform->update(['meta' => [
+                    ...($postPlatform->meta ?? []),
+                    'thread_root_published' => [
+                        'id' => $tweetId,
+                        'url' => "https://x.com/{$account->username}/status/{$tweetId}",
+                    ],
+                ]]);
             }
         }
 
-        if (! empty($mediaIds)) {
-            $data['media'] = [
-                'media_ids' => $mediaIds,
-            ];
+        if ($tweetId && ! empty($segments)) {
+            $this->publishThreadSegments($postPlatform, $tweetId, $segments);
         }
-
-        if (empty($content) && empty($mediaIds)) {
-            throw new XPublishException(
-                userMessage: 'X posts require either text or media. Please add content to your post.',
-                category: ErrorCategory::MediaFormat,
-            );
-        }
-
-        $response = $this->getHttpClient()
-            ->post("{$this->baseUrl}/tweets", $data);
-
-        if ($response->failed()) {
-            Log::error('X post creation failed', [
-                'status' => $response->status(),
-                'body' => $this->redactResponseBody($response->body()),
-            ]);
-            $this->handleApiError($response);
-        }
-
-        $responseData = $response->json();
-        $tweetId = $responseData['data']['id'] ?? null;
 
         return [
             'id' => $tweetId ?? 'unknown',
             'url' => $tweetId ? "https://x.com/{$account->username}/status/{$tweetId}" : null,
         ];
+    }
+
+    /**
+     * Posts each additional thread segment as a reply to the previous tweet
+     * (starting from the root tweet), building a visible X thread. Already
+     * published segments (from a prior attempt) are skipped and each new
+     * result is persisted immediately, so a mid-thread failure or job retry
+     * resumes without reposting or duplicating tweets.
+     *
+     * @param  array<int, string>  $segments
+     */
+    private function publishThreadSegments(PostPlatform $postPlatform, string $rootTweetId, array $segments): void
+    {
+        $published = data_get($postPlatform->meta, 'thread_segments_published', []);
+        $previousId = $published !== [] ? data_get(end($published), 'id', $rootTweetId) : $rootTweetId;
+        $total = count($segments);
+
+        foreach (array_values($segments) as $index => $segment) {
+            if (array_key_exists($index, $published)) {
+                $previousId = data_get($published[$index], 'id', $previousId);
+
+                continue;
+            }
+
+            if ($postPlatform->platform->contentOverflow($segment) > 0) {
+                throw new XPublishException(
+                    userMessage: "Thread partially posted ({$index}/{$total}) — tweet ".($index + 1)." exceeds X's ".$postPlatform->platform->maxContentLength().'-character limit.',
+                    category: ErrorCategory::ContentPolicy,
+                );
+            }
+
+            $sanitized = app(ContentSanitizer::class)->sanitize($segment, $postPlatform->platform);
+
+            $response = $this->getHttpClient()->post("{$this->baseUrl}/tweets", [
+                'text' => $sanitized,
+                'reply' => ['in_reply_to_tweet_id' => $previousId],
+            ]);
+
+            if ($response->failed()) {
+                Log::error('X thread segment creation failed', [
+                    'status' => $response->status(),
+                    'body' => $this->redactResponseBody($response->body()),
+                    'segment_index' => $index,
+                ]);
+
+                try {
+                    $this->handleApiError($response);
+                } catch (XPublishException $e) {
+                    throw new XPublishException(
+                        userMessage: "Thread partially posted ({$index}/{$total}) — tweet ".($index + 1)." failed: {$e->userMessage}",
+                        category: $e->category,
+                        platformErrorCode: $e->platformErrorCode,
+                        rawResponse: $e->rawResponse,
+                    );
+                }
+            }
+
+            $segmentId = data_get($response->json(), 'data.id');
+
+            if (! $segmentId) {
+                throw new XPublishException(
+                    userMessage: "Thread partially posted ({$index}/{$total}) — X did not return an id for tweet ".($index + 1).'.',
+                    category: ErrorCategory::ServerError,
+                );
+            }
+
+            $published[$index] = [
+                'id' => $segmentId,
+                'url' => $segmentId ? "https://x.com/{$postPlatform->socialAccount->username}/status/{$segmentId}" : null,
+            ];
+
+            // Persist after every segment (not just at the end) so progress
+            // survives a crash/timeout on a later segment.
+            $postPlatform->update(['meta' => [...($postPlatform->meta ?? []), 'thread_segments_published' => $published]]);
+
+            $previousId = $segmentId ?? $previousId;
+        }
     }
 
     private function getHttpClient(): PendingRequest

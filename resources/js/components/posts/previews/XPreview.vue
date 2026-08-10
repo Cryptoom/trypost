@@ -22,6 +22,7 @@ interface Props {
     socialAccount: SocialAccount;
     content: string;
     media: MediaItem[];
+    meta?: Record<string, any>;
     postedAt?: string | null;
 }
 
@@ -29,6 +30,7 @@ const props = defineProps<Props>();
 
 const username = computed(() => props.socialAccount.username || 'username');
 const postedAtLabel = computed(() => date.formatXPreview(props.postedAt));
+const threadSegments = computed<string[]>(() => (Array.isArray(props.meta?.thread_segments) ? (props.meta!.thread_segments as string[]) : []));
 
 const { card: linkCard, loading: linkCardLoading } = useLinkCard(
     toRef(props, 'content'),
@@ -136,6 +138,34 @@ const { card: linkCard, loading: linkCardLoading } = useLinkCard(
                     <span class="mx-1">·</span>
                     <span class="text-[#0f1419] dark:text-[#e7e9ea] font-bold">3.5M</span>
                     <span> Views</span>
+                </div>
+            </div>
+
+            <!-- Thread — additional tweets posted as sequential replies -->
+            <div v-if="threadSegments.length > 0" class="mt-3">
+                <div v-for="(segment, index) in threadSegments" :key="index" class="flex gap-2.5 px-4 py-2">
+                    <!-- Connector line + avatar column -->
+                    <div class="flex flex-shrink-0 flex-col items-center">
+                        <div class="w-0.5 flex-1 bg-[#cfd9de] dark:bg-[#2f3336]"></div>
+                        <img v-if="socialAccount.avatar_url" :src="socialAccount.avatar_url"
+                            :alt="socialAccount.display_label" class="h-8 w-8 rounded-full object-cover" />
+                        <div v-else
+                            class="h-8 w-8 rounded-full bg-[#1d9bf0] flex items-center justify-center text-white text-xs font-bold">
+                            {{ getInitials(socialAccount.display_label) }}
+                        </div>
+                        <div class="w-0.5 flex-1 bg-[#cfd9de] dark:bg-[#2f3336]"></div>
+                    </div>
+                    <div class="min-w-0 flex-1 pt-1">
+                        <div class="flex items-center gap-1">
+                            <span class="font-bold text-[15px] text-[#0f1419] dark:text-[#e7e9ea] truncate">
+                                {{ socialAccount.display_label }}
+                            </span>
+                            <span class="text-[14px] text-[#536471] dark:text-[#71767b]">@{{ username }}</span>
+                        </div>
+                        <div class="mt-0.5 text-[15px] text-[#0f1419] dark:text-[#e7e9ea] whitespace-pre-wrap leading-[20px]">
+                            {{ segment }}
+                        </div>
+                    </div>
                 </div>
             </div>
 

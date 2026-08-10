@@ -53,6 +53,8 @@ interface PlatformConfig {
     allowedMediaTypes: string[];
     supportsTextOnly: boolean;
     requiresContent: boolean;
+    supportsThread: boolean;
+    maxThreadSegments: number;
     publishConfig: Record<string, any>;
 }
 
@@ -91,6 +93,12 @@ const emit = defineEmits<{
 
 const getPublishConfig = (pp: PostPlatform): Record<string, any> | null =>
     pp.social_account_id ? props.platformConfigs[pp.social_account_id]?.publishConfig ?? null : null;
+
+const getMaxContentLength = (pp: PostPlatform): number | null =>
+    pp.social_account_id ? props.platformConfigs[pp.social_account_id]?.maxContentLength ?? null : null;
+
+const getMaxThreadSegments = (pp: PostPlatform): number | null =>
+    pp.social_account_id ? props.platformConfigs[pp.social_account_id]?.maxThreadSegments ?? null : null;
 
 const getCreatorInfo = (pp: PostPlatform): TikTokCreatorInfo | null =>
     pp.social_account_id ? props.tiktokCreatorInfos?.[pp.social_account_id] ?? null : null;
@@ -151,6 +159,8 @@ const channels = computed<Channel[]>(() =>
         creatorInfo: getCreatorInfo(pp),
         boards: getBoards(pp),
         boardsTruncated: boardsTruncated(pp),
+        maxContentLength: getMaxContentLength(pp),
+        maxThreadSegments: getMaxThreadSegments(pp),
     })),
 );
 </script>

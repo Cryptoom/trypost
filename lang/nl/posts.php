@@ -166,6 +166,16 @@ return [
             'title_max' => 'Titel mag niet langer zijn dan 100 tekens.',
             'link_max' => 'Bestemmingslink mag niet langer zijn dan 2048 tekens.',
         ],
+        'x' => [
+            'thread' => 'Thread',
+            'add_tweet' => 'Tweet toevoegen',
+            'tweet_n' => 'Tweet :n',
+            'remove_tweet' => 'Tweet verwijderen',
+            'tweet_placeholder' => 'Schrijf de volgende tweet…',
+            'thread_limit_reached' => 'Een thread kan tot :max extra tweets bevatten.',
+            'segment_required' => 'Verwijder lege tweets voordat je plant.',
+            'segment_exceeds_limit' => 'Tweet :n is :over tekens te lang (max :limit).',
+        ],
         'discord' => [
             'settings' => 'Discord-instellingen',
             'posting_to' => 'Posten naar',

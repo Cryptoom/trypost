@@ -42,4 +42,6 @@ export interface Channel {
     creatorInfo?: ChannelTikTokCreatorInfo | null;
     boards?: PinterestBoard[];
     boardsTruncated?: boolean;
+    maxContentLength?: number | null;
+    maxThreadSegments?: number | null;
 }

@@ -166,6 +166,16 @@ return [
             'title_max' => 'Title may not be longer than 100 characters.',
             'link_max' => 'Destination link may not be longer than 2048 characters.',
         ],
+        'x' => [
+            'thread' => 'Thread',
+            'add_tweet' => 'Add tweet',
+            'tweet_n' => 'Tweet :n',
+            'remove_tweet' => 'Remove tweet',
+            'tweet_placeholder' => 'Write the next tweet…',
+            'thread_limit_reached' => 'A thread can have up to :max additional tweets.',
+            'segment_required' => 'Remove empty tweets before scheduling.',
+            'segment_exceeds_limit' => 'Tweet :n is too long by :over chars (max :limit).',
+        ],
         'discord' => [
             'settings' => 'Discord Settings',
             'posting_to' => 'Posting to',

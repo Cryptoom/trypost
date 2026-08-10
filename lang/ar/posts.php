@@ -166,6 +166,16 @@ return [
             'title_max' => 'يجب ألا يتجاوز العنوان 100 حرفًا.',
             'link_max' => 'يجب ألا يتجاوز رابط الوجهة 2048 حرفًا.',
         ],
+        'x' => [
+            'thread' => 'سلسلة',
+            'add_tweet' => 'إضافة تغريدة',
+            'tweet_n' => 'تغريدة :n',
+            'remove_tweet' => 'إزالة التغريدة',
+            'tweet_placeholder' => 'اكتب التغريدة التالية…',
+            'thread_limit_reached' => 'يمكن أن تحتوي السلسلة على :max تغريدة إضافية كحد أقصى.',
+            'segment_required' => 'أزل التغريدات الفارغة قبل الجدولة.',
+            'segment_exceeds_limit' => 'التغريدة :n طويلة جدًا بمقدار :over حرفًا (الحد الأقصى :limit).',
+        ],
         'discord' => [
             'settings' => 'إعدادات Discord',
             'posting_to' => 'النشر إلى',

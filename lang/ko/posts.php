@@ -166,6 +166,16 @@ return [
             'title_max' => '제목은 100자를 초과할 수 없습니다.',
             'link_max' => '목적지 링크는 2048자를 초과할 수 없습니다.',
         ],
+        'x' => [
+            'thread' => '스레드',
+            'add_tweet' => '트윗 추가',
+            'tweet_n' => '트윗 :n',
+            'remove_tweet' => '트윗 삭제',
+            'tweet_placeholder' => '다음 트윗을 입력하세요…',
+            'thread_limit_reached' => '스레드에는 최대 :max개의 추가 트윗을 포함할 수 있습니다.',
+            'segment_required' => '예약하기 전에 빈 트윗을 삭제하세요.',
+            'segment_exceeds_limit' => '트윗 :n이(가) :over자 초과했습니다(최대 :limit자).',
+        ],
         'discord' => [
             'settings' => 'Discord 설정',
             'posting_to' => '게시 대상',

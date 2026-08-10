@@ -168,6 +168,16 @@ return [
             'title_max' => 'Der Titel darf höchstens 100 Zeichen lang sein.',
             'link_max' => 'Der Ziel-Link darf höchstens 2048 Zeichen lang sein.',
         ],
+        'x' => [
+            'thread' => 'Thread',
+            'add_tweet' => 'Tweet hinzufügen',
+            'tweet_n' => 'Tweet :n',
+            'remove_tweet' => 'Tweet entfernen',
+            'tweet_placeholder' => 'Schreibe den nächsten Tweet…',
+            'thread_limit_reached' => 'Ein Thread kann bis zu :max zusätzliche Tweets enthalten.',
+            'segment_required' => 'Entferne leere Tweets vor der Planung.',
+            'segment_exceeds_limit' => 'Tweet :n ist um :over Zeichen zu lang (max. :limit).',
+        ],
         'discord' => [
             'settings' => 'Discord-Einstellungen',
             'posting_to' => 'Veröffentlichen auf',

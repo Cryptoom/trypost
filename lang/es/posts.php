@@ -166,6 +166,16 @@ return [
             'title_max' => 'El título no puede tener más de 100 caracteres.',
             'link_max' => 'El enlace de destino no puede tener más de 2048 caracteres.',
         ],
+        'x' => [
+            'thread' => 'Hilo',
+            'add_tweet' => 'Añadir tuit',
+            'tweet_n' => 'Tuit :n',
+            'remove_tweet' => 'Eliminar tuit',
+            'tweet_placeholder' => 'Escribe el siguiente tuit…',
+            'thread_limit_reached' => 'Un hilo puede tener hasta :max tuits adicionales.',
+            'segment_required' => 'Elimina los tuits vacíos antes de programar.',
+            'segment_exceeds_limit' => 'El tuit :n es demasiado largo por :over caracteres (máx. :limit).',
+        ],
         'discord' => [
             'settings' => 'Configuración de Discord',
             'posting_to' => 'Publicando en',

@@ -166,6 +166,16 @@ return [
             'title_max' => '标题不能超过 100 个字符。',
             'link_max' => '目标链接不能超过 2048 个字符。',
         ],
+        'x' => [
+            'thread' => '推文串',
+            'add_tweet' => '添加推文',
+            'tweet_n' => '推文 :n',
+            'remove_tweet' => '删除推文',
+            'tweet_placeholder' => '输入下一条推文…',
+            'thread_limit_reached' => '一个推文串最多可包含 :max 条附加推文。',
+            'segment_required' => '安排发布前请删除空推文。',
+            'segment_exceeds_limit' => '推文 :n 超出 :over 个字符(最多 :limit 个)。',
+        ],
         'discord' => [
             'settings' => 'Discord 设置',
             'posting_to' => '发布到',

@@ -25,6 +25,8 @@ class PlatformConfigResource extends JsonResource
             'allowedMediaTypes' => array_map(fn ($type) => $type->value, $this->platform->allowedMediaTypes()),
             'supportsTextOnly' => $this->platform->supportsTextOnly(),
             'requiresContent' => $this->platform->requiresContent(),
+            'supportsThread' => $this->platform->supportsThread(),
+            'maxThreadSegments' => $this->platform->maxThreadSegments(),
             'publishConfig' => $this->platform->publishConfig(),
         ];
     }

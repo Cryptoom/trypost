@@ -168,6 +168,16 @@ return [
             'title_max' => 'Başlık en fazla 100 karakter olabilir.',
             'link_max' => 'Hedef bağlantısı en fazla 2048 karakter olabilir.',
         ],
+        'x' => [
+            'thread' => 'Konu zinciri',
+            'add_tweet' => 'Tweet ekle',
+            'tweet_n' => 'Tweet :n',
+            'remove_tweet' => 'Tweeti kaldır',
+            'tweet_placeholder' => 'Sonraki tweeti yazın…',
+            'thread_limit_reached' => 'Bir zincir en fazla :max ek tweet içerebilir.',
+            'segment_required' => 'Zamanlamadan önce boş tweetleri kaldırın.',
+            'segment_exceeds_limit' => 'Tweet :n, :over karakter fazla (maks. :limit).',
+        ],
         'discord' => [
             'settings' => 'Discord Ayarları',
             'posting_to' => 'Şuraya paylaşılıyor',

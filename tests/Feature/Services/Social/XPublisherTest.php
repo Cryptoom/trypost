@@ -1166,3 +1166,125 @@ test('x publisher fails when tweet rejects invalid media ids', function () {
     expect(fn () => $this->publisher->publish($this->postPlatform))
         ->toThrow(XPublishException::class, 'X rejected the attached media');
 });
+
+test('x publisher posts a thread as sequential replies', function () {
+    $this->postPlatform->update([
+        'meta' => ['thread_segments' => ['Second tweet', 'Third tweet']],
+    ]);
+
+    Http::fake([
+        'https://api.x.com/2/tweets' => Http::sequence()
+            ->push(['data' => ['id' => 'root-1', 'text' => 'Hello from X!']], 200)
+            ->push(['data' => ['id' => 'seg-1', 'text' => 'Second tweet']], 200)
+            ->push(['data' => ['id' => 'seg-2', 'text' => 'Third tweet']], 200),
+    ]);
+
+    $result = $this->publisher->publish($this->postPlatform);
+
+    expect($result['id'])->toBe('root-1');
+
+    Http::assertSent(fn ($request) => str_contains($request->url(), '/2/tweets')
+        && $request['text'] === 'Second tweet'
+        && data_get($request->data(), 'reply.in_reply_to_tweet_id') === 'root-1');
+
+    Http::assertSent(fn ($request) => str_contains($request->url(), '/2/tweets')
+        && $request['text'] === 'Third tweet'
+        && data_get($request->data(), 'reply.in_reply_to_tweet_id') === 'seg-1');
+
+    $this->postPlatform->refresh();
+    $published = $this->postPlatform->meta['thread_segments_published'];
+
+    expect($published)->toHaveCount(2);
+    expect($published[0]['id'])->toBe('seg-1');
+    expect($published[0]['url'])->toBe('https://x.com/testuser/status/seg-1');
+    expect($published[1]['id'])->toBe('seg-2');
+});
+
+test('x publisher resumes a thread without reposting already-published segments', function () {
+    $this->postPlatform->update([
+        'meta' => [
+            'thread_segments' => ['Second tweet', 'Third tweet'],
+            'thread_root_published' => ['id' => 'root-1', 'url' => 'https://x.com/testuser/status/root-1'],
+            'thread_segments_published' => [
+                0 => ['id' => 'seg-1', 'url' => 'https://x.com/testuser/status/seg-1'],
+            ],
+        ],
+    ]);
+
+    Http::fake([
+        'https://api.x.com/2/tweets' => Http::response(['data' => ['id' => 'seg-2']], 200),
+    ]);
+
+    $result = $this->publisher->publish($this->postPlatform);
+
+    expect($result['id'])->toBe('root-1');
+
+    // Only the remaining segment is posted — no root repost, no repost of segment 0.
+    Http::assertSentCount(1);
+    Http::assertSent(fn ($request) => $request['text'] === 'Third tweet'
+        && data_get($request->data(), 'reply.in_reply_to_tweet_id') === 'seg-1');
+
+    $this->postPlatform->refresh();
+    expect($this->postPlatform->meta['thread_segments_published'])->toHaveCount(2);
+});
+
+test('x publisher preserves already-published segments when a later segment fails', function () {
+    $this->postPlatform->update([
+        'meta' => ['thread_segments' => ['Second tweet', 'Third tweet', 'Fourth tweet']],
+    ]);
+
+    Http::fake([
+        'https://api.x.com/2/tweets' => Http::sequence()
+            ->push(['data' => ['id' => 'root-1']], 200)
+            ->push(['data' => ['id' => 'seg-1']], 200)
+            ->push([
+                'title' => 'Invalid Request',
+                'detail' => 'Duplicate content.',
+                'type' => 'https://api.x.com/2/problems/invalid-request',
+            ], 400),
+    ]);
+
+    expect(fn () => $this->publisher->publish($this->postPlatform))
+        ->toThrow(XPublishException::class, 'Thread partially posted (1/3)');
+
+    $this->postPlatform->refresh();
+    $published = $this->postPlatform->meta['thread_segments_published'];
+
+    expect($published)->toHaveCount(1);
+    expect($published[0]['id'])->toBe('seg-1');
+    expect($this->postPlatform->meta['thread_root_published']['id'])->toBe('root-1');
+});
+
+test('x publisher does not repost the root tweet when retried after a mid-thread failure', function () {
+    $this->postPlatform->update([
+        'meta' => [
+            'thread_segments' => ['Second tweet'],
+            'thread_root_published' => ['id' => 'root-1', 'url' => 'https://x.com/testuser/status/root-1'],
+        ],
+    ]);
+
+    Http::fake([
+        'https://api.x.com/2/tweets' => Http::response(['data' => ['id' => 'seg-1']], 200),
+    ]);
+
+    $this->publisher->publish($this->postPlatform);
+
+    Http::assertSentCount(1);
+    Http::assertSent(fn ($request) => data_get($request->data(), 'reply.in_reply_to_tweet_id') === 'root-1');
+});
+
+test('x publisher rejects a thread segment that exceeds the character limit before calling the api', function () {
+    $this->postPlatform->update([
+        'meta' => ['thread_segments' => [str_repeat('a', 281)]],
+    ]);
+
+    Http::fake([
+        'https://api.x.com/2/tweets' => Http::sequence()
+            ->push(['data' => ['id' => 'root-1']], 200),
+    ]);
+
+    expect(fn () => $this->publisher->publish($this->postPlatform))
+        ->toThrow(XPublishException::class, "exceeds X's 280-character limit");
+
+    Http::assertSentCount(1);
+});

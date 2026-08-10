@@ -389,3 +389,71 @@ it('rejects non-http Pinterest links', function () {
             'platforms.0.meta.link' => __('posts.form.pinterest.link_invalid'),
         ]);
 });
+
+it('persists X thread_segments meta on store', function () {
+    $x = SocialAccount::factory()->x()->create(['workspace_id' => $this->workspace->id]);
+
+    $this->withHeaders($this->headers)
+        ->postJson(route('api.posts.store'), [
+            'content' => 'Main tweet',
+            'platforms' => [[
+                'social_account_id' => $x->id,
+                'content_type' => ContentType::XPost->value,
+                'meta' => ['thread_segments' => ['Second tweet', 'Third tweet']],
+            ]],
+        ])
+        ->assertCreated();
+
+    $meta = PostPlatform::where('social_account_id', $x->id)->sole()->meta;
+
+    expect(data_get($meta, 'thread_segments.0'))->toBe('Second tweet')
+        ->and(data_get($meta, 'thread_segments.1'))->toBe('Third tweet');
+});
+
+it('rejects an empty X thread segment on store', function () {
+    $x = SocialAccount::factory()->x()->create(['workspace_id' => $this->workspace->id]);
+
+    $this->withHeaders($this->headers)
+        ->postJson(route('api.posts.store'), [
+            'content' => 'Main tweet',
+            'platforms' => [[
+                'social_account_id' => $x->id,
+                'content_type' => ContentType::XPost->value,
+                'meta' => ['thread_segments' => ['']],
+            ]],
+        ])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['platforms.0.meta.thread_segments.0']);
+});
+
+it('rejects an X thread segment that exceeds the character limit on store', function () {
+    $x = SocialAccount::factory()->x()->create(['workspace_id' => $this->workspace->id]);
+
+    $this->withHeaders($this->headers)
+        ->postJson(route('api.posts.store'), [
+            'content' => 'Main tweet',
+            'platforms' => [[
+                'social_account_id' => $x->id,
+                'content_type' => ContentType::XPost->value,
+                'meta' => ['thread_segments' => [str_repeat('a', 281)]],
+            ]],
+        ])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['platforms.0.meta.thread_segments.0']);
+});
+
+it('rejects an X thread with more segments than the platform allows on store', function () {
+    $x = SocialAccount::factory()->x()->create(['workspace_id' => $this->workspace->id]);
+
+    $this->withHeaders($this->headers)
+        ->postJson(route('api.posts.store'), [
+            'content' => 'Main tweet',
+            'platforms' => [[
+                'social_account_id' => $x->id,
+                'content_type' => ContentType::XPost->value,
+                'meta' => ['thread_segments' => array_fill(0, Platform::X->maxThreadSegments() + 1, 'tweet')],
+            ]],
+        ])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['platforms.0.meta.thread_segments']);
+});

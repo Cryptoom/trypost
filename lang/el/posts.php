@@ -166,6 +166,16 @@ return [
             'title_max' => 'Ο τίτλος δεν μπορεί να υπερβαίνει τους 100 χαρακτήρες.',
             'link_max' => 'Ο σύνδεσμος προορισμού δεν μπορεί να υπερβαίνει τους 2048 χαρακτήρες.',
         ],
+        'x' => [
+            'thread' => 'Νήμα',
+            'add_tweet' => 'Προσθήκη tweet',
+            'tweet_n' => 'Tweet :n',
+            'remove_tweet' => 'Αφαίρεση tweet',
+            'tweet_placeholder' => 'Γράψτε το επόμενο tweet…',
+            'thread_limit_reached' => 'Ένα νήμα μπορεί να έχει έως :max επιπλέον tweets.',
+            'segment_required' => 'Αφαιρέστε τα κενά tweets πριν τον προγραμματισμό.',
+            'segment_exceeds_limit' => 'Το tweet :n είναι πολύ μεγάλο κατά :over χαρακτήρες (μέγ. :limit).',
+        ],
         'discord' => [
             'settings' => 'Ρυθμίσεις Discord',
             'posting_to' => 'Δημοσίευση σε',

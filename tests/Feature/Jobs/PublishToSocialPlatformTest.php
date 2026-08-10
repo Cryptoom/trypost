@@ -13,6 +13,7 @@ use App\Events\PostPlatformStatusUpdated;
 use App\Exceptions\PlatformUnavailableException;
 use App\Exceptions\Social\ErrorCategory;
 use App\Exceptions\Social\LinkedInPublishException;
+use App\Exceptions\Social\XPublishException;
 use App\Exceptions\TokenExpiredException;
 use App\Jobs\PublishToSocialPlatform;
 use App\Jobs\SendNotification;
@@ -25,6 +26,7 @@ use App\Services\Social\ConnectionVerifier;
 use App\Services\Social\LinkedInPagePublisher;
 use App\Services\Social\LinkedInPublisher;
 use App\Services\Social\PinterestPublisher;
+use App\Services\Social\XPublisher;
 use Carbon\Carbon;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Support\Facades\Bus;
@@ -1024,4 +1026,68 @@ test('publish to social platform saves error context on token expired', function
     expect($this->postPlatform->error_context)->toBeArray();
     expect($this->postPlatform->error_context['category'])->toBe('token_expired');
     expect($this->postPlatform->error_context['platform_error_code'])->toBe('190');
+});
+
+test('publish to social platform marks an X thread post published like any single post', function () {
+    Event::fake();
+
+    $xAccount = SocialAccount::factory()->x()->create(['workspace_id' => $this->workspace->id]);
+    $xPost = Post::factory()->scheduled()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+    ]);
+    $xPlatform = PostPlatform::factory()->x()->create([
+        'post_id' => $xPost->id,
+        'social_account_id' => $xAccount->id,
+        'enabled' => true,
+        'meta' => ['thread_segments' => ['Second tweet', 'Third tweet']],
+    ]);
+
+    $publisher = Mockery::mock(XPublisher::class);
+    $publisher->shouldReceive('publish')->andReturn([
+        'id' => 'root-1',
+        'url' => 'https://x.com/testuser/status/root-1',
+    ]);
+    $this->app->instance(XPublisher::class, $publisher);
+
+    (new PublishToSocialPlatform($xPlatform))->handle();
+
+    $xPlatform->refresh();
+    expect($xPlatform->status)->toBe(PlatformStatus::Published);
+    expect($xPlatform->platform_post_id)->toBe('root-1');
+
+    // A thread is still exactly one PostPlatform row, so the multi-platform
+    // status rollup (Post::status) behaves exactly like a single-tweet post.
+    $xPost->refresh();
+    expect($xPost->status)->toBe(PostStatus::Published);
+});
+
+test('publish to social platform marks the whole platform failed with progress context when a thread segment fails', function () {
+    Event::fake();
+
+    $xAccount = SocialAccount::factory()->x()->create(['workspace_id' => $this->workspace->id]);
+    $xPost = Post::factory()->scheduled()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+    ]);
+    $xPlatform = PostPlatform::factory()->x()->create([
+        'post_id' => $xPost->id,
+        'social_account_id' => $xAccount->id,
+        'enabled' => true,
+        'meta' => ['thread_segments' => ['Second tweet', 'Third tweet']],
+    ]);
+
+    $publisher = Mockery::mock(XPublisher::class);
+    $publisher->shouldReceive('publish')->andThrow(new XPublishException(
+        userMessage: 'Thread partially posted (1/2) — tweet 2 failed: rate limited.',
+        category: ErrorCategory::RateLimit,
+    ));
+    $this->app->instance(XPublisher::class, $publisher);
+
+    (new PublishToSocialPlatform($xPlatform))->handle();
+
+    $xPlatform->refresh();
+    expect($xPlatform->status)->toBe(PlatformStatus::Failed);
+    expect($xPlatform->error_message)->toContain('Thread partially posted (1/2)');
+    expect($xPlatform->error_context['category'])->toBe('rate_limit');
 });

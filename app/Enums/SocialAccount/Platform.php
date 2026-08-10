@@ -295,6 +295,31 @@ enum Platform: string
     }
 
     /**
+     * Whether this platform supports posting a thread — a chain of additional
+     * posts published as sequential replies to the main post.
+     */
+    public function supportsThread(): bool
+    {
+        return match ($this) {
+            self::X => true,
+            default => false,
+        };
+    }
+
+    /**
+     * Maximum number of additional thread segments allowed beyond the main
+     * post, for platforms where `supportsThread()` is true. 0 when threads
+     * aren't supported.
+     */
+    public function maxThreadSegments(): int
+    {
+        return match ($this) {
+            self::X => 24,
+            default => 0,
+        };
+    }
+
+    /**
      * Whether this platform refreshes by extending the access_token itself
      * (Instagram/Threads long-lived tokens) instead of exchanging a separate
      * refresh_token. Extension-model tokens cannot be refreshed once expired,

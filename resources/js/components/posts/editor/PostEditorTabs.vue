@@ -96,7 +96,7 @@ defineExpose({
     <Tabs v-model="activeTab" class="h-full flex flex-col">
         <TabsList class="mx-4 mt-4 hidden w-fit shrink-0 self-start lg:inline-flex">
             <TabsTrigger value="preview">{{ $t('posts.edit.tabs.preview') }}</TabsTrigger>
-            <TabsTrigger value="schedule">{{ $t('posts.edit.tabs.channels') }}</TabsTrigger>
+            <TabsTrigger value="schedule" data-testid="tab-schedule">{{ $t('posts.edit.tabs.channels') }}</TabsTrigger>
             <TabsTrigger value="comments">{{ $t('posts.edit.tabs.comments') }}</TabsTrigger>
         </TabsList>
 

@@ -119,7 +119,7 @@ class UpdatePostTool extends Tool
                 ->items($schema->object(fn ($p) => [
                     'id' => $p->string()->required()->description('UUID of the post_platform row (from get-post-tool / list-posts-tool).'),
                     'content_type' => $p->string()->description('New content_type for this platform.'),
-                    'meta' => $p->object()->description('Per-platform metadata override. Instagram/Facebook: aspect_ratio. TikTok: privacy_level (required to publish) + flags. Pinterest: board_id (required to publish — call ListPinterestBoardsTool first), title (≤100), link (destination URL). Pin description comes from the post content. Discord: channel_id (required to publish — call ListDiscordChannelsTool first), mentions, embeds. Merged with existing meta.'),
+                    'meta' => $p->object()->description('Per-platform metadata override. Instagram/Facebook: aspect_ratio. TikTok: privacy_level (required to publish) + flags. Pinterest: board_id (required to publish — call ListPinterestBoardsTool first), title (≤100), link (destination URL). Pin description comes from the post content. Discord: channel_id (required to publish — call ListDiscordChannelsTool first), mentions, embeds. X: thread_segments (array of up to 24 additional tweets, each ≤280 chars, published as sequential replies after the main tweet). Merged with existing meta.'),
                 ]))
                 ->description('Platforms to enable for publishing. Any platform NOT listed will be disabled. Pass an empty array to disable all.'),
         ];

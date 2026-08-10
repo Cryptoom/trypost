@@ -166,6 +166,16 @@ return [
             'title_max' => 'タイトルは100文字以内にしてください。',
             'link_max' => 'リンク先URLは2048文字以内にしてください。',
         ],
+        'x' => [
+            'thread' => 'スレッド',
+            'add_tweet' => 'ツイートを追加',
+            'tweet_n' => 'ツイート :n',
+            'remove_tweet' => 'ツイートを削除',
+            'tweet_placeholder' => '次のツイートを入力…',
+            'thread_limit_reached' => 'スレッドに追加できるツイートは最大 :max 件です。',
+            'segment_required' => '予約する前に空のツイートを削除してください。',
+            'segment_exceeds_limit' => 'ツイート :n が :over 文字超過しています(最大 :limit 文字)。',
+        ],
         'discord' => [
             'settings' => 'Discord 設定',
             'posting_to' => '投稿先',

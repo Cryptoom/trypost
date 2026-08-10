@@ -64,6 +64,10 @@ class PostPlatformMetaRules
             'platforms.*.meta.title' => ['sometimes', 'nullable', 'string', 'max:100'],
             'platforms.*.meta.link' => ['sometimes', 'nullable', 'url:http,https', 'max:2048'],
 
+            // X — additional tweets published as sequential replies to the main post
+            'platforms.*.meta.thread_segments' => ['sometimes', 'nullable', 'array', 'max:'.Platform::X->maxThreadSegments()],
+            'platforms.*.meta.thread_segments.*' => ['required', 'string', 'min:1', 'max:'.Platform::X->maxContentLength()],
+
             // Discord
             'platforms.*.meta.channel_id' => ['sometimes', 'nullable', 'string'],
             'platforms.*.meta.channel_name' => ['sometimes', 'nullable', 'string'],
