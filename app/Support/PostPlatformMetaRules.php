@@ -76,6 +76,22 @@ class PostPlatformMetaRules
             'platforms.*.meta.embeds.*.url' => ['sometimes', 'nullable', 'url'],
             'platforms.*.meta.embeds.*.image' => ['sometimes', 'nullable', 'url'],
             'platforms.*.meta.embeds.*.color' => ['sometimes', 'nullable', 'string', 'regex:/^#?[0-9A-Fa-f]{6}$/'],
+
+            // Google Business Profile
+            'platforms.*.meta.topic_type' => ['sometimes', 'nullable', 'string', Rule::in(['STANDARD', 'EVENT', 'OFFER'])],
+            'platforms.*.meta.call_to_action' => ['sometimes', 'nullable', 'array'],
+            'platforms.*.meta.call_to_action.action_type' => ['sometimes', 'nullable', 'string', Rule::in(['NONE', 'BOOK', 'ORDER', 'SHOP', 'LEARN_MORE', 'SIGN_UP', 'GET_OFFER', 'CALL'])],
+            'platforms.*.meta.call_to_action.url' => ['required_unless:platforms.*.meta.call_to_action.action_type,NONE,CALL', 'nullable', 'url:http,https', 'max:2048'],
+            'platforms.*.meta.event' => ['sometimes', 'nullable', 'array'],
+            'platforms.*.meta.event.title' => ['sometimes', 'nullable', 'string', 'max:100'],
+            'platforms.*.meta.event.start_date' => ['sometimes', 'nullable', 'date'],
+            'platforms.*.meta.event.end_date' => ['sometimes', 'nullable', 'date', 'after_or_equal:platforms.*.meta.event.start_date'],
+            'platforms.*.meta.event.start_time' => ['sometimes', 'nullable', 'date_format:H:i'],
+            'platforms.*.meta.event.end_time' => ['sometimes', 'nullable', 'date_format:H:i'],
+            'platforms.*.meta.offer' => ['sometimes', 'nullable', 'array'],
+            'platforms.*.meta.offer.coupon_code' => ['sometimes', 'nullable', 'string', 'max:58'],
+            'platforms.*.meta.offer.redeem_online_url' => ['sometimes', 'nullable', 'url:http,https', 'max:2048'],
+            'platforms.*.meta.offer.terms_conditions' => ['sometimes', 'nullable', 'string', 'max:5000'],
         ];
     }
 
@@ -103,6 +119,8 @@ class PostPlatformMetaRules
         return [
             'platforms.*.meta.title' => __('posts.form.pinterest.title'),
             'platforms.*.meta.link' => __('posts.form.pinterest.link'),
+            'platforms.*.meta.event.title' => __('posts.form.google_business.event_title'),
+            'platforms.*.meta.call_to_action.url' => __('posts.form.google_business.cta_url'),
         ];
     }
 
@@ -166,6 +184,15 @@ class PostPlatformMetaRules
             $platform === Platform::TikTok && blank(data_get($meta, 'privacy_level')) => ['privacy_level', trans('posts.form.tiktok.privacy_required')],
             $platform === Platform::Pinterest && blank(data_get($meta, 'board_id')) => ['board_id', trans('posts.form.pinterest.board_required')],
             $platform === Platform::Discord && blank(data_get($meta, 'channel_id')) => ['channel_id', trans('posts.form.discord.channel_required')],
+            $platform === Platform::GoogleBusiness
+                && data_get($meta, 'topic_type', 'STANDARD') === 'EVENT'
+                && blank(data_get($meta, 'event.title')) => ['event.title', trans('posts.form.google_business.event_title_required')],
+            $platform === Platform::GoogleBusiness
+                && data_get($meta, 'topic_type', 'STANDARD') === 'EVENT'
+                && blank(data_get($meta, 'event.start_date')) => ['event.start_date', trans('posts.form.google_business.event_start_date_required')],
+            $platform === Platform::GoogleBusiness
+                && data_get($meta, 'topic_type', 'STANDARD') === 'EVENT'
+                && blank(data_get($meta, 'event.end_date')) => ['event.end_date', trans('posts.form.google_business.event_end_date_required')],
             default => null,
         };
     }
