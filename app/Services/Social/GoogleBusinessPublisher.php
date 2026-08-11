@@ -9,7 +9,6 @@ use App\Enums\Workspace\ContentLanguage;
 use App\Exceptions\Social\ErrorCategory;
 use App\Exceptions\Social\GoogleBusinessPublishException;
 use App\Models\PostPlatform;
-use App\Models\SocialAccount;
 use App\Services\Social\Concerns\HasSocialHttpClient;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Client\Response;
@@ -92,18 +91,6 @@ class GoogleBusinessPublisher
         }
 
         return $locations;
-    }
-
-    /**
-     * @return list<array{id: string, account_name: string, location_name: string, title: string, address: ?string}>
-     */
-    public function getLocations(SocialAccount $account): array
-    {
-        if ($account->needsProactiveTokenRefresh()) {
-            app(ConnectionVerifier::class)->refreshToken($account);
-        }
-
-        return $this->fetchLocations($account->access_token);
     }
 
     /**
