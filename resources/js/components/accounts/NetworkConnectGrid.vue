@@ -121,6 +121,11 @@ const platformTheme: Record<
         rotate: 'rotate-1',
         image: '/images/accounts/discord.png',
     },
+    google_business: {
+        bg: 'bg-blue-100',
+        rotate: 'rotate-2',
+        image: '/images/accounts/google_business.png',
+    },
 };
 
 const themeFor = (value: string) =>
