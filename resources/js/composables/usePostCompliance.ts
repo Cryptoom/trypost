@@ -65,6 +65,27 @@ const PLATFORM_META_RULES: Record<string, MetaRule> = {
         valid: Boolean(meta.channel_id),
         tooltipKey: meta.channel_id ? null : 'posts.form.discord.channel_required',
     }),
+    // Mirrors PostPlatformMetaRules::requiredMetaViolation()'s Google Business
+    // arms, including their check order.
+    [Platform.GoogleBusiness]: (meta) => {
+        const isEvent = (meta.topic_type ?? 'STANDARD') === 'EVENT';
+        const ctaActionType = meta.call_to_action?.action_type ?? 'NONE';
+        const ctaNeedsUrl = !['NONE', 'CALL'].includes(ctaActionType);
+        let tooltipKey: string | null = null;
+        if (isEvent && !meta.event?.title) {
+            tooltipKey = 'posts.form.google_business.event_title_required';
+        } else if (isEvent && !meta.event?.start_date) {
+            tooltipKey = 'posts.form.google_business.event_start_date_required';
+        } else if (isEvent && !meta.event?.end_date) {
+            tooltipKey = 'posts.form.google_business.event_end_date_required';
+        } else if (ctaNeedsUrl && !meta.call_to_action?.url) {
+            tooltipKey = 'posts.form.google_business.cta_url_required';
+        }
+        return {
+            valid: tooltipKey === null,
+            tooltipKey,
+        };
+    },
 };
 
 /**
