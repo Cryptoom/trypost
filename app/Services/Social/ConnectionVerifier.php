@@ -8,6 +8,7 @@ use App\Enums\SocialAccount\Platform;
 use App\Exceptions\PlatformUnavailableException;
 use App\Exceptions\Social\BlueskyPublishException;
 use App\Exceptions\Social\DiscordPublishException;
+use App\Exceptions\Social\ErrorCategory;
 use App\Exceptions\Social\GoogleBusinessPublishException;
 use App\Exceptions\Social\LinkedInPublishException;
 use App\Exceptions\Social\MastodonPublishException;
@@ -671,7 +672,14 @@ class ConnectionVerifier
 
     private function verifyGoogleBusiness(SocialAccount $account): bool
     {
-        $locationName = data_get($account->meta, 'location_name');
+        $locationName = (string) data_get($account->meta, 'location_name');
+
+        if (blank($locationName)) {
+            throw new GoogleBusinessPublishException(
+                userMessage: 'This Google Business Profile account has no location configured. Please reconnect it.',
+                category: ErrorCategory::Permission,
+            );
+        }
 
         $response = Http::withToken($account->access_token)
             ->get(config('trypost.platforms.google_business.business_information_api')."/{$locationName}", [
