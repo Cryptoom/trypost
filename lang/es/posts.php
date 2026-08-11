@@ -550,6 +550,10 @@ return [
             'label' => 'Mensaje',
             'description' => 'Mensaje a un canal de Discord con multimedia y embeds opcionales',
         ],
+        'google_business_post' => [
+            'label' => 'Publicación',
+            'description' => 'Aparece en tu Perfil Empresarial en Búsqueda y Mapas',
+        ],
     ],
 
     'platforms' => [

@@ -550,6 +550,10 @@ return [
             'label' => 'メッセージ',
             'description' => 'メディアと埋め込み（任意）付きの Discord チャンネルへのメッセージ',
         ],
+        'google_business_post' => [
+            'label' => '投稿',
+            'description' => 'ビジネス プロフィールに検索とマップで表示されます',
+        ],
     ],
 
     'platforms' => [

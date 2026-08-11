@@ -550,6 +550,10 @@ return [
             'label' => 'Bericht',
             'description' => 'Bericht naar een Discord-kanaal met optionele media en embeds',
         ],
+        'google_business_post' => [
+            'label' => 'Bericht',
+            'description' => 'Wordt weergegeven in je Bedrijfsprofiel in Zoeken en Kaarten',
+        ],
     ],
 
     'platforms' => [

@@ -550,6 +550,10 @@ return [
             'label' => '메시지',
             'description' => '선택적 미디어 및 임베드가 있는 Discord 채널 메시지',
         ],
+        'google_business_post' => [
+            'label' => '게시물',
+            'description' => '비즈니스 프로필에 검색 및 지도에 표시됩니다',
+        ],
     ],
 
     'platforms' => [

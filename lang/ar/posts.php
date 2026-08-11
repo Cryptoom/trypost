@@ -550,6 +550,10 @@ return [
             'label' => 'رسالة',
             'description' => 'رسالة إلى قناة Discord مع وسائط وتضمينات اختيارية',
         ],
+        'google_business_post' => [
+            'label' => 'منشور',
+            'description' => 'يظهر على ملفك التجاري في البحث والخرائط',
+        ],
     ],
 
     'platforms' => [

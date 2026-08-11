@@ -552,6 +552,10 @@ return [
             'label' => 'Nachricht',
             'description' => 'Nachricht an einen Discord-Kanal mit optionalen Medien & Embeds',
         ],
+        'google_business_post' => [
+            'label' => 'Beitrag',
+            'description' => 'Wird in deinem Geschäftsprofil in Suche und Karten angezeigt',
+        ],
     ],
 
     'platforms' => [

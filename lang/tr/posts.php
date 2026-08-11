@@ -552,6 +552,10 @@ return [
             'label' => 'Mesaj',
             'description' => 'İsteğe bağlı medya ve yerleştirmeler içeren Discord kanalına mesaj',
         ],
+        'google_business_post' => [
+            'label' => 'Gönderi',
+            'description' => 'İşletme Profilinde Arama ve Haritalar\'da görünür',
+        ],
     ],
 
     'platforms' => [

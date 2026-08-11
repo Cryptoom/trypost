@@ -550,6 +550,10 @@ return [
             'label' => 'Wiadomość',
             'description' => 'Wiadomość na kanale Discord z opcjonalnymi multimediami i osadzeniami',
         ],
+        'google_business_post' => [
+            'label' => 'Post',
+            'description' => 'Pojawia się w twoim Profilu Biznesowym w Wyszukiwaniu i Mapach',
+        ],
     ],
 
     'platforms' => [

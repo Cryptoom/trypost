@@ -550,6 +550,10 @@ return [
             'label' => '消息',
             'description' => '发送到 Discord 频道的消息，可附带媒体和嵌入内容',
         ],
+        'google_business_post' => [
+            'label' => '帖子',
+            'description' => '在搜索和地图中显示在您的商业资料中',
+        ],
     ],
 
     'platforms' => [
