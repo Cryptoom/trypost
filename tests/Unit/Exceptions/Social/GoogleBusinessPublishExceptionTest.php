@@ -32,6 +32,16 @@ test('not found maps to the content policy category', function () {
     expect($exception->category)->toBe(ErrorCategory::ContentPolicy);
 });
 
+test('invalid argument maps to the content policy category', function () {
+    $response = Http::response(['error' => ['status' => 'INVALID_ARGUMENT', 'message' => 'Invalid post format']], 400);
+    $fakeResponse = Http::fake(['*' => $response])->post('https://mybusinessaccountmanagement.googleapis.com/test');
+
+    $exception = GoogleBusinessPublishException::fromApiResponse($fakeResponse);
+
+    expect($exception->category)->toBe(ErrorCategory::ContentPolicy)
+        ->and($exception->userMessage)->toBe('Invalid post format');
+});
+
 test('resource exhausted maps to the rate limit category', function () {
     $response = Http::response(['error' => ['status' => 'RESOURCE_EXHAUSTED', 'message' => 'slow down']], 429);
     $fakeResponse = Http::fake(['*' => $response])->post('https://mybusinessaccountmanagement.googleapis.com/test');
