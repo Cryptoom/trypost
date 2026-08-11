@@ -7,6 +7,7 @@ namespace App\Services\Social;
 use App\Models\SocialAccount;
 use App\Services\Social\Concerns\HasSocialHttpClient;
 use Carbon\CarbonInterface;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
 class GoogleBusinessAnalytics
@@ -34,6 +35,14 @@ class GoogleBusinessAnalytics
         $since ??= now()->subDays(7);
         $until ??= now();
 
+        $cacheKey = "analytics:google_business:{$account->id}:{$since->format('Y-m-d')}:{$until->format('Y-m-d')}";
+        $cacheTtl = app()->isProduction() ? 3600 : 1;
+
+        return Cache::remember($cacheKey, $cacheTtl, fn () => $this->fetchMetricsFromApi($account, $since, $until));
+    }
+
+    private function fetchMetricsFromApi(SocialAccount $account, CarbonInterface $since, CarbonInterface $until): array
+    {
         if ($account->needsProactiveTokenRefresh()) {
             app(ConnectionVerifier::class)->refreshToken($account);
         }

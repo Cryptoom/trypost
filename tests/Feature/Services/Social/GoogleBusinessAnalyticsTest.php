@@ -132,6 +132,30 @@ test('the analytics show endpoint returns google business metrics', function () 
         ->and(collect($metrics)->firstWhere('label', __('analytics.metrics.website_clicks'))['value'])->toBe(7);
 });
 
+test('caches the metrics so a repeated call within the window does not hit the api again', function () {
+    Http::fake([
+        config('trypost.platforms.google_business.performance_api').'/*' => Http::response([
+            'multiDailyMetricTimeSeries' => [
+                [
+                    'dailyMetricTimeSeries' => [
+                        [
+                            'dailyMetric' => 'WEBSITE_CLICKS',
+                            'timeSeries' => ['datedValues' => [['value' => '9']]],
+                        ],
+                    ],
+                ],
+            ],
+        ], 200),
+    ]);
+
+    $first = $this->analytics->getMetrics($this->socialAccount);
+    $second = $this->analytics->getMetrics($this->socialAccount);
+
+    expect($second)->toBe($first);
+
+    Http::assertSentCount(1);
+});
+
 test('returns empty array on api failure', function () {
     Http::fake([
         config('trypost.platforms.google_business.performance_api').'/*' => Http::response([], 500),
