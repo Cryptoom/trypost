@@ -310,6 +310,7 @@ test('select creates the social account for the chosen location', function () {
 test('select fails with an unknown location id', function () {
     session([
         'social_connect_workspace' => $this->workspace->id,
+        'social_reconnect_id' => 'some-account-id',
         'google_business_oauth' => [
             'access_token' => 'access-token',
             'refresh_token' => 'refresh-token',
@@ -330,7 +331,9 @@ test('select fails with an unknown location id', function () {
         ->where('message', __('accounts.popup_callback.location_not_found'))
     );
 
-    expect($this->workspace->socialAccounts()->where('platform', Platform::GoogleBusiness)->exists())->toBeFalse();
+    expect($this->workspace->socialAccounts()->where('platform', Platform::GoogleBusiness)->exists())->toBeFalse()
+        ->and(session('google_business_oauth'))->toBeNull()
+        ->and(session('social_reconnect_id'))->toBeNull();
 });
 
 test('select fails with expired session', function () {

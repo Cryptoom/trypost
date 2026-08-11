@@ -153,6 +153,8 @@ class GoogleBusinessController extends SocialController
                 ->firstWhere('id', $request->validated('location_id'));
 
             if (! $selectedLocation) {
+                session()->forget(['google_business_oauth', 'social_reconnect_id']);
+
                 return $this->popupCallback(false, __('accounts.popup_callback.location_not_found'), $this->platform->value);
             }
 
@@ -163,19 +165,14 @@ class GoogleBusinessController extends SocialController
 
                 if ($existingAccount) {
                     $existingAccount->update([
+                        ...$this->locationAttributes(
+                            $selectedLocation,
+                            data_get($oauthData, 'access_token'),
+                            data_get($oauthData, 'refresh_token'),
+                            data_get($oauthData, 'expires_in'),
+                            data_get($oauthData, 'user_id'),
+                        ),
                         'platform_user_id' => data_get($selectedLocation, 'id'),
-                        'username' => data_get($selectedLocation, 'title'),
-                        'display_name' => data_get($selectedLocation, 'title'),
-                        'access_token' => data_get($oauthData, 'access_token'),
-                        'refresh_token' => data_get($oauthData, 'refresh_token'),
-                        'token_expires_at' => data_get($oauthData, 'expires_in') ? now()->addSeconds(data_get($oauthData, 'expires_in')) : null,
-                        'scopes' => $this->scopes,
-                        'meta' => [
-                            'location_id' => data_get($selectedLocation, 'id'),
-                            'account_name' => data_get($selectedLocation, 'account_name'),
-                            'location_name' => data_get($selectedLocation, 'location_name'),
-                            'google_user_id' => data_get($oauthData, 'user_id'),
-                        ],
                     ]);
                     $existingAccount->markAsConnected();
 
@@ -216,23 +213,37 @@ class GoogleBusinessController extends SocialController
                 'platform_user_id' => data_get($location, 'id'),
             ],
             [
-                'username' => data_get($location, 'title'),
-                'display_name' => data_get($location, 'title'),
-                'access_token' => $accessToken,
-                'refresh_token' => $refreshToken,
-                'token_expires_at' => $expiresIn ? now()->addSeconds($expiresIn) : null,
-                'scopes' => $this->scopes,
+                ...$this->locationAttributes($location, $accessToken, $refreshToken, $expiresIn, $googleUserId),
                 'status' => Status::Connected,
                 'error_message' => null,
                 'disconnected_at' => null,
-                'meta' => [
-                    'location_id' => data_get($location, 'id'),
-                    'account_name' => data_get($location, 'account_name'),
-                    'location_name' => data_get($location, 'location_name'),
-                    'google_user_id' => $googleUserId,
-                ],
             ],
         );
+    }
+
+    /**
+     * The social account attributes derived from a picked location and its OAuth
+     * tokens. Shared by the fresh-connect and reconnect paths so both store the
+     * same shape.
+     *
+     * @return array<string, mixed>
+     */
+    private function locationAttributes(array $location, string $accessToken, ?string $refreshToken, ?int $expiresIn, ?string $googleUserId): array
+    {
+        return [
+            'username' => data_get($location, 'title'),
+            'display_name' => data_get($location, 'title'),
+            'access_token' => $accessToken,
+            'refresh_token' => $refreshToken,
+            'token_expires_at' => $expiresIn ? now()->addSeconds($expiresIn) : null,
+            'scopes' => $this->scopes,
+            'meta' => [
+                'location_id' => data_get($location, 'id'),
+                'account_name' => data_get($location, 'account_name'),
+                'location_name' => data_get($location, 'location_name'),
+                'google_user_id' => $googleUserId,
+            ],
+        ];
     }
 
     private function redirectToGoogle(): Response
