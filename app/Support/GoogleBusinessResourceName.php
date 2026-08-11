@@ -23,4 +23,18 @@ class GoogleBusinessResourceName
 
         return 'https://business.google.com/locations/'.end($segments);
     }
+
+    /**
+     * The full `accounts/{account}/locations/{location}` name the v4 Local Posts
+     * API needs, built from an account name and the short `locations/{location}`
+     * name the v1 Business Information API returns.
+     */
+    public static function toFullLocationName(string $accountName, string $shortLocationName): string
+    {
+        $locationId = str_starts_with($shortLocationName, 'locations/')
+            ? substr($shortLocationName, strlen('locations/'))
+            : $shortLocationName;
+
+        return "{$accountName}/locations/{$locationId}";
+    }
 }

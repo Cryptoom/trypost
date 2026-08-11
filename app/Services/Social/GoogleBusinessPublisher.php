@@ -282,12 +282,9 @@ class GoogleBusinessPublisher
 
             foreach (data_get($data, 'locations', []) as $location) {
                 $shortName = (string) data_get($location, 'name');
-                $numericId = str_starts_with($shortName, 'locations/')
-                    ? substr($shortName, strlen('locations/'))
-                    : $shortName;
 
                 $locations[] = [
-                    'id' => "{$accountName}/locations/{$numericId}",
+                    'id' => GoogleBusinessResourceName::toFullLocationName($accountName, $shortName),
                     'account_name' => $accountName,
                     'location_name' => $shortName,
                     'title' => (string) data_get($location, 'title'),
