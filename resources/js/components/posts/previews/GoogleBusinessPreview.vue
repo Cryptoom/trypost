@@ -3,6 +3,7 @@ import { trans } from 'laravel-vue-i18n';
 import { computed } from 'vue';
 
 import { getInitials } from '@/composables/useInitials';
+import { googleBusinessCtaLabelKey } from '@/lib/googleBusiness';
 import type { MediaItem } from '@/types/media';
 
 interface SocialAccount {
@@ -24,21 +25,9 @@ interface Props {
 const props = defineProps<Props>();
 
 const ctaLabel = computed(() => {
-    const type = props.meta?.call_to_action?.action_type;
+    const labelKey = googleBusinessCtaLabelKey(props.meta?.call_to_action?.action_type);
 
-    if (!type || type === 'NONE') return null;
-
-    const labelKeys: Record<string, string> = {
-        BOOK: 'posts.form.google_business.cta.book',
-        ORDER: 'posts.form.google_business.cta.order',
-        SHOP: 'posts.form.google_business.cta.shop',
-        LEARN_MORE: 'posts.form.google_business.cta.learn_more',
-        SIGN_UP: 'posts.form.google_business.cta.sign_up',
-        GET_OFFER: 'posts.form.google_business.cta.get_offer',
-        CALL: 'posts.form.google_business.cta.call',
-    };
-
-    return labelKeys[type] ? trans(labelKeys[type]) : null;
+    return labelKey ? trans(labelKey) : null;
 });
 </script>
 

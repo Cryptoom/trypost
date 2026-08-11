@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { usePageErrors } from '@/composables/usePageErrors';
 import { getPlatformLogo } from '@/composables/usePlatformLogo';
-import { GOOGLE_BUSINESS_EVENT_TOPIC_TYPES } from '@/lib/googleBusiness';
+import { GOOGLE_BUSINESS_CTA_OPTIONS, GOOGLE_BUSINESS_EVENT_TOPIC_TYPES } from '@/lib/googleBusiness';
 
 interface SocialAccount {
     id: string;
@@ -43,17 +43,6 @@ const topicTypes = [
     { value: 'STANDARD', labelKey: 'posts.form.google_business.topic_type.standard' },
     { value: 'EVENT', labelKey: 'posts.form.google_business.topic_type.event' },
     { value: 'OFFER', labelKey: 'posts.form.google_business.topic_type.offer' },
-] as const;
-
-const ctaOptions = [
-    { value: 'NONE', labelKey: 'posts.form.google_business.cta_none' },
-    { value: 'BOOK', labelKey: 'posts.form.google_business.cta.book' },
-    { value: 'ORDER', labelKey: 'posts.form.google_business.cta.order' },
-    { value: 'SHOP', labelKey: 'posts.form.google_business.cta.shop' },
-    { value: 'LEARN_MORE', labelKey: 'posts.form.google_business.cta.learn_more' },
-    { value: 'SIGN_UP', labelKey: 'posts.form.google_business.cta.sign_up' },
-    { value: 'GET_OFFER', labelKey: 'posts.form.google_business.cta.get_offer' },
-    { value: 'CALL', labelKey: 'posts.form.google_business.cta.call' },
 ] as const;
 
 const topicType = computed<string>({
@@ -214,7 +203,7 @@ const ctaUrlError = findError('call_to_action.url');
                     class="w-full rounded-lg border-2 border-foreground/30 bg-card px-3 py-2 text-sm font-medium text-foreground disabled:cursor-not-allowed disabled:opacity-50"
                     :disabled="disabled || previewOnly"
                 >
-                    <option v-for="option in ctaOptions" :key="option.value" :value="option.value">{{ $t(option.labelKey) }}</option>
+                    <option v-for="option in GOOGLE_BUSINESS_CTA_OPTIONS" :key="option.value" :value="option.value">{{ $t(option.labelKey) }}</option>
                 </select>
             </div>
 
