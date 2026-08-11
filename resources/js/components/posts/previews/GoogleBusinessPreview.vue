@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { trans } from 'laravel-vue-i18n';
 import { computed } from 'vue';
 
 import { getInitials } from '@/composables/useInitials';
@@ -27,17 +28,17 @@ const ctaLabel = computed(() => {
 
     if (!type || type === 'NONE') return null;
 
-    const labels: Record<string, string> = {
-        BOOK: 'Book',
-        ORDER: 'Order online',
-        SHOP: 'Buy',
-        LEARN_MORE: 'Learn more',
-        SIGN_UP: 'Sign up',
-        GET_OFFER: 'Redeem offer',
-        CALL: 'Call now',
+    const labelKeys: Record<string, string> = {
+        BOOK: 'posts.form.google_business.cta.book',
+        ORDER: 'posts.form.google_business.cta.order',
+        SHOP: 'posts.form.google_business.cta.shop',
+        LEARN_MORE: 'posts.form.google_business.cta.learn_more',
+        SIGN_UP: 'posts.form.google_business.cta.sign_up',
+        GET_OFFER: 'posts.form.google_business.cta.get_offer',
+        CALL: 'posts.form.google_business.cta.call',
     };
 
-    return labels[type] ?? null;
+    return labelKeys[type] ? trans(labelKeys[type]) : null;
 });
 </script>
 
