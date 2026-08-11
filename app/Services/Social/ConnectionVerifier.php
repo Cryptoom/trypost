@@ -671,10 +671,10 @@ class ConnectionVerifier
 
     private function verifyGoogleBusiness(SocialAccount $account): bool
     {
-        $locationId = data_get($account->meta, 'location_id');
+        $locationName = data_get($account->meta, 'location_name');
 
         $response = Http::withToken($account->access_token)
-            ->get(config('trypost.platforms.google_business.business_information_api')."/{$locationId}", [
+            ->get(config('trypost.platforms.google_business.business_information_api')."/{$locationName}", [
                 'readMask' => 'name',
             ]);
 

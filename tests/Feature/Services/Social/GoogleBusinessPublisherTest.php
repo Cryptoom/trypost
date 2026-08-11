@@ -154,7 +154,7 @@ test('fetchLocations flattens accounts and locations across pages', function () 
         ], 200),
         config('trypost.platforms.google_business.business_information_api').'/accounts/111/locations*' => Http::response([
             'locations' => [
-                ['name' => 'accounts/111/locations/222', 'title' => 'Downtown Store', 'storefrontAddress' => ['addressLines' => ['123 Main St'], 'locality' => 'Springfield']],
+                ['name' => 'locations/222', 'title' => 'Downtown Store', 'storefrontAddress' => ['addressLines' => ['123 Main St'], 'locality' => 'Springfield']],
             ],
         ], 200),
     ]);
@@ -165,7 +165,7 @@ test('fetchLocations flattens accounts and locations across pages', function () 
     expect($locations[0])->toMatchArray([
         'id' => 'accounts/111/locations/222',
         'account_name' => 'accounts/111',
-        'location_name' => 'accounts/111/locations/222',
+        'location_name' => 'locations/222',
         'title' => 'Downtown Store',
         'address' => '123 Main St, Springfield',
     ]);

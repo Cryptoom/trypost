@@ -77,6 +77,10 @@ class GoogleBusinessPublisher
     }
 
     /**
+     * `id` is the full `accounts/{id}/locations/{id}` name the v4 Local Posts API
+     * needs as its parent; `location_name` is the short `locations/{id}` name the
+     * v1 Business Information and Performance APIs expect.
+     *
      * @return list<array{id: string, account_name: string, location_name: string, title: string, address: ?string}>
      */
     public function fetchLocations(string $accessToken): array
@@ -103,7 +107,7 @@ class GoogleBusinessPublisher
     }
 
     /**
-     * @return array{id: string, account_name: string, location_name: string, title: string, address: ?string}
+     * @return array<string, mixed> The Local Post request body.
      */
     private function buildPayload(PostPlatform $postPlatform, string $content): array
     {
@@ -203,7 +207,7 @@ class GoogleBusinessPublisher
     }
 
     /**
-     * Google's `locations/{id}` full resource name → the bare numeric id used
+     * Full `accounts/{id}/locations/{id}` resource name → the bare numeric id used
      * in the dashboard link, matching postiz's synthesized URL shape.
      */
     private function shortLocationId(string $locationId): string
@@ -276,10 +280,15 @@ class GoogleBusinessPublisher
             $data = $response->json() ?? [];
 
             foreach (data_get($data, 'locations', []) as $location) {
+                $shortName = (string) data_get($location, 'name');
+                $numericId = str_starts_with($shortName, 'locations/')
+                    ? substr($shortName, strlen('locations/'))
+                    : $shortName;
+
                 $locations[] = [
-                    'id' => (string) data_get($location, 'name'),
+                    'id' => "{$accountName}/locations/{$numericId}",
                     'account_name' => $accountName,
-                    'location_name' => (string) data_get($location, 'name'),
+                    'location_name' => $shortName,
                     'title' => (string) data_get($location, 'title'),
                     'address' => $this->formatAddress(data_get($location, 'storefrontAddress')),
                 ];

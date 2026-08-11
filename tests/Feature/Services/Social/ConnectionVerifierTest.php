@@ -9,6 +9,7 @@ use App\Models\SocialAccount;
 use App\Services\Social\ConnectionVerifier;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Str;
 
 test('verifies account without refresh when token is not expired', function () {
     Http::fake([
@@ -1201,14 +1202,18 @@ test('mastodon verify throws TokenExpiredException on a bare 403 from verify_cre
     Http::assertSentCount(1);
 });
 
-test('verify succeeds for a healthy google business token', function () {
+test('verify calls the business information api with the short location name', function () {
     $account = SocialAccount::factory()->googleBusiness()->create();
 
     Http::fake([
-        config('trypost.platforms.google_business.business_information_api').'/*' => Http::response(['name' => $account->meta['location_id']], 200),
+        config('trypost.platforms.google_business.business_information_api').'/*' => Http::response(['name' => $account->meta['location_name']], 200),
     ]);
 
     expect(app(ConnectionVerifier::class)->verify($account))->toBeTrue();
+
+    $expectedUrl = config('trypost.platforms.google_business.business_information_api')."/{$account->meta['location_name']}";
+
+    Http::assertSent(fn ($request) => Str::before($request->url(), '?') === $expectedUrl);
 });
 
 test('verify throws token expired for a dead google business token', function () {
