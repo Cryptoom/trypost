@@ -51,5 +51,10 @@ return [
         'video_views' => '動画再生数',
         'videos' => '動画',
         'views' => '再生数',
+        'website_clicks' => 'Website clicks',
+        'call_clicks' => 'Call clicks',
+        'direction_requests' => 'Direction requests',
+        'desktop_map_impressions' => 'Desktop map impressions',
+        'mobile_map_impressions' => 'Mobile map impressions',
     ],
 ];

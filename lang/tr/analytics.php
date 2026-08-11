@@ -53,5 +53,10 @@ return [
         'video_views' => 'Video Görüntülemeleri',
         'videos' => 'Videolar',
         'views' => 'Görüntülemeler',
+        'website_clicks' => 'Website clicks',
+        'call_clicks' => 'Call clicks',
+        'direction_requests' => 'Direction requests',
+        'desktop_map_impressions' => 'Desktop map impressions',
+        'mobile_map_impressions' => 'Mobile map impressions',
     ],
 ];

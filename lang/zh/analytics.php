@@ -51,5 +51,10 @@ return [
         'video_views' => '视频观看量',
         'videos' => '视频',
         'views' => '观看量',
+        'website_clicks' => 'Website clicks',
+        'call_clicks' => 'Call clicks',
+        'direction_requests' => 'Direction requests',
+        'desktop_map_impressions' => 'Desktop map impressions',
+        'mobile_map_impressions' => 'Mobile map impressions',
     ],
 ];
