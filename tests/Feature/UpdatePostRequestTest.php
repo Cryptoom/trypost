@@ -768,6 +768,7 @@ test('publishing a google business offer post round-trips topic_type and offer m
                     'content_type' => ContentType::GoogleBusinessPost->value,
                     'meta' => [
                         'topic_type' => 'OFFER',
+                        'event' => ['title' => 'Summer Sale', 'start_date' => '2026-09-01', 'end_date' => '2026-09-30'],
                         'offer' => ['coupon_code' => 'SAVE10'],
                     ],
                 ],
@@ -779,5 +780,32 @@ test('publishing a google business offer post round-trips topic_type and offer m
     $meta = $postPlatform->fresh()->meta;
 
     expect(data_get($meta, 'topic_type'))->toBe('OFFER')
+        ->and(data_get($meta, 'event.title'))->toBe('Summer Sale')
         ->and(data_get($meta, 'offer.coupon_code'))->toBe('SAVE10');
+});
+
+test('publishing a google business offer post requires the event title', function () {
+    $account = SocialAccount::factory()->googleBusiness()->create(['workspace_id' => $this->workspace->id]);
+    $postPlatform = PostPlatform::factory()->googleBusiness()->create([
+        'post_id' => $this->post->id,
+        'social_account_id' => $account->id,
+        'meta' => [],
+    ]);
+
+    $response = $this->actingAs($this->user)
+        ->put(route('app.posts.update', $this->post), [
+            'status' => Status::Publishing->value,
+            'platforms' => [
+                [
+                    'id' => $postPlatform->id,
+                    'content_type' => ContentType::GoogleBusinessPost->value,
+                    'meta' => [
+                        'topic_type' => 'OFFER',
+                        'offer' => ['coupon_code' => 'SAVE10'],
+                    ],
+                ],
+            ],
+        ]);
+
+    $response->assertSessionHasErrors('platforms.0.meta.event.title');
 });

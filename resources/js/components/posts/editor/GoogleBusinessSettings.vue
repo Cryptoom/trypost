@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { usePageErrors } from '@/composables/usePageErrors';
 import { getPlatformLogo } from '@/composables/usePlatformLogo';
+import { GOOGLE_BUSINESS_EVENT_TOPIC_TYPES } from '@/lib/googleBusiness';
 
 interface SocialAccount {
     id: string;
@@ -67,6 +68,8 @@ const ctaActionType = computed<string>({
 });
 
 const showCtaUrl = computed(() => ctaActionType.value !== 'NONE' && ctaActionType.value !== 'CALL');
+
+const showEventFields = computed(() => GOOGLE_BUSINESS_EVENT_TOPIC_TYPES.includes(topicType.value));
 
 const ctaUrl = computed<string>({
     get: () => props.meta?.call_to_action?.url || '',
@@ -160,7 +163,7 @@ const ctaUrlError = findError('.meta.call_to_action.url');
                 </div>
             </div>
 
-            <div v-if="topicType === 'EVENT'" class="grid grid-cols-2 gap-3">
+            <div v-if="showEventFields" class="grid grid-cols-2 gap-3">
                 <div class="col-span-2 space-y-2">
                     <p class="text-[11px] font-black uppercase tracking-widest text-foreground/60">{{ $t('posts.form.google_business.event_title') }}</p>
                     <Input v-model="eventTitle" type="text" :placeholder="$t('posts.form.google_business.event_title_placeholder')" :disabled="disabled || previewOnly" :class="eventTitleError ? 'border-rose-500' : undefined" />

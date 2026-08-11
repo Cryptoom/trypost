@@ -4,6 +4,7 @@ import { computed, type ComputedRef, type Ref } from 'vue';
 import { getMediaItemIssue, getMediaValidationWarning } from '@/composables/useMedia';
 import { getMediaRulesForContentType } from '@/composables/useMediaRules';
 import { getPlatformLabel } from '@/composables/usePlatformLogo';
+import { GOOGLE_BUSINESS_EVENT_TOPIC_TYPES } from '@/lib/googleBusiness';
 import { ContentType } from '@/types/content-type';
 import type { MediaItem } from '@/types/media';
 import { Platform } from '@/types/platform';
@@ -68,15 +69,15 @@ const PLATFORM_META_RULES: Record<string, MetaRule> = {
     // Mirrors PostPlatformMetaRules::requiredMetaViolation()'s Google Business
     // arms, including their check order.
     [Platform.GoogleBusiness]: (meta) => {
-        const isEvent = (meta.topic_type ?? 'STANDARD') === 'EVENT';
+        const needsEvent = GOOGLE_BUSINESS_EVENT_TOPIC_TYPES.includes(meta.topic_type ?? 'STANDARD');
         const ctaActionType = meta.call_to_action?.action_type ?? 'NONE';
         const ctaNeedsUrl = !['NONE', 'CALL'].includes(ctaActionType);
         let tooltipKey: string | null = null;
-        if (isEvent && !meta.event?.title) {
+        if (needsEvent && !meta.event?.title) {
             tooltipKey = 'posts.form.google_business.event_title_required';
-        } else if (isEvent && !meta.event?.start_date) {
+        } else if (needsEvent && !meta.event?.start_date) {
             tooltipKey = 'posts.form.google_business.event_start_date_required';
-        } else if (isEvent && !meta.event?.end_date) {
+        } else if (needsEvent && !meta.event?.end_date) {
             tooltipKey = 'posts.form.google_business.event_end_date_required';
         } else if (ctaNeedsUrl && !meta.call_to_action?.url) {
             tooltipKey = 'posts.form.google_business.cta_url_required';

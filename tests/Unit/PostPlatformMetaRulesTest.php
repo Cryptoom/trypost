@@ -60,6 +60,33 @@ test('google business event topic type with all fields present has no violation'
     expect($violation)->toBeNull();
 });
 
+test('google business offer topic type requires event title, start date, and end date to publish', function () {
+    $method = new ReflectionMethod(PostPlatformMetaRules::class, 'requiredMetaViolation');
+
+    expect($method->invoke(null, Platform::GoogleBusiness, ['topic_type' => 'OFFER'])[0])->toBe('event.title');
+
+    expect($method->invoke(null, Platform::GoogleBusiness, [
+        'topic_type' => 'OFFER',
+        'event' => ['title' => 'Summer Sale'],
+    ])[0])->toBe('event.start_date');
+
+    expect($method->invoke(null, Platform::GoogleBusiness, [
+        'topic_type' => 'OFFER',
+        'event' => ['title' => 'Summer Sale', 'start_date' => '2026-09-01'],
+    ])[0])->toBe('event.end_date');
+});
+
+test('google business offer topic type with all event fields present has no violation', function () {
+    $violation = (new ReflectionMethod(PostPlatformMetaRules::class, 'requiredMetaViolation'))
+        ->invoke(null, Platform::GoogleBusiness, [
+            'topic_type' => 'OFFER',
+            'event' => ['title' => 'Summer Sale', 'start_date' => '2026-09-01', 'end_date' => '2026-09-30'],
+            'offer' => ['coupon_code' => 'SUMMER20'],
+        ]);
+
+    expect($violation)->toBeNull();
+});
+
 test('google business meta rules validate topic_type and call_to_action shape', function () {
     $rules = PostPlatformMetaRules::rules();
 

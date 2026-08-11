@@ -32,6 +32,14 @@ class PostPlatformMetaRules
     ];
 
     /**
+     * Google Business Profile topic types whose Local Post requires an `event`
+     * object — Google mandates it for OFFER just as much as for EVENT.
+     *
+     * @var array<int, string>
+     */
+    public const GOOGLE_BUSINESS_EVENT_TOPIC_TYPES = ['EVENT', 'OFFER'];
+
+    /**
      * Validation rules for `platforms.*.meta` and all its per-platform sub-keys.
      * Spread into a FormRequest/MCP tool rule set as the complete meta contract.
      *
@@ -185,13 +193,13 @@ class PostPlatformMetaRules
             $platform === Platform::Pinterest && blank(data_get($meta, 'board_id')) => ['board_id', trans('posts.form.pinterest.board_required')],
             $platform === Platform::Discord && blank(data_get($meta, 'channel_id')) => ['channel_id', trans('posts.form.discord.channel_required')],
             $platform === Platform::GoogleBusiness
-                && data_get($meta, 'topic_type', 'STANDARD') === 'EVENT'
+                && in_array(data_get($meta, 'topic_type', 'STANDARD'), self::GOOGLE_BUSINESS_EVENT_TOPIC_TYPES, true)
                 && blank(data_get($meta, 'event.title')) => ['event.title', trans('posts.form.google_business.event_title_required')],
             $platform === Platform::GoogleBusiness
-                && data_get($meta, 'topic_type', 'STANDARD') === 'EVENT'
+                && in_array(data_get($meta, 'topic_type', 'STANDARD'), self::GOOGLE_BUSINESS_EVENT_TOPIC_TYPES, true)
                 && blank(data_get($meta, 'event.start_date')) => ['event.start_date', trans('posts.form.google_business.event_start_date_required')],
             $platform === Platform::GoogleBusiness
-                && data_get($meta, 'topic_type', 'STANDARD') === 'EVENT'
+                && in_array(data_get($meta, 'topic_type', 'STANDARD'), self::GOOGLE_BUSINESS_EVENT_TOPIC_TYPES, true)
                 && blank(data_get($meta, 'event.end_date')) => ['event.end_date', trans('posts.form.google_business.event_end_date_required')],
             $platform === Platform::GoogleBusiness
                 && ! in_array(data_get($meta, 'call_to_action.action_type', 'NONE'), ['NONE', 'CALL'], true)

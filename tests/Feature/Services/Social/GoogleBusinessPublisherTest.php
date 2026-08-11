@@ -112,6 +112,34 @@ test('builds an event payload for EVENT topic type', function () {
     });
 });
 
+test('builds both an event and an offer payload for OFFER topic type', function () {
+    Http::fake([
+        config('trypost.platforms.google_business.local_posts_api').'/*' => Http::response(['name' => 'x'], 200),
+    ]);
+
+    $this->postPlatform->update([
+        'meta' => [
+            'topic_type' => 'OFFER',
+            'event' => ['title' => 'Summer Sale', 'start_date' => '2026-09-01', 'end_date' => '2026-09-30'],
+            'offer' => ['coupon_code' => 'SUMMER20'],
+        ],
+    ]);
+
+    $this->publisher->publish($this->postPlatform->fresh());
+
+    Http::assertSent(function ($request) {
+        return data_get($request->data(), 'topicType') === 'OFFER'
+            && data_get($request->data(), 'event') === [
+                'title' => 'Summer Sale',
+                'schedule' => [
+                    'startDate' => ['year' => 2026, 'month' => 9, 'day' => 1],
+                    'endDate' => ['year' => 2026, 'month' => 9, 'day' => 30],
+                ],
+            ]
+            && data_get($request->data(), 'offer') === ['couponCode' => 'SUMMER20'];
+    });
+});
+
 test('rejects video media for google business posts', function () {
     $this->post->update([
         'media' => [[

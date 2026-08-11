@@ -141,7 +141,7 @@ class GoogleBusinessPublisher
             ]];
         }
 
-        if ($topicType === 'EVENT') {
+        if (in_array($topicType, ['EVENT', 'OFFER'], true)) {
             $payload['event'] = $this->buildEvent($postPlatform);
         }
 
@@ -156,6 +156,10 @@ class GoogleBusinessPublisher
         return $payload;
     }
 
+    /**
+     * The v4 Local Posts API requires `event` for both the EVENT and OFFER topic
+     * types, so both read the same `meta.event.*` fields.
+     */
     private function buildEvent(PostPlatform $postPlatform): array
     {
         $schedule = [
