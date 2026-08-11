@@ -151,6 +151,15 @@ class GoogleBusinessPublisher
      */
     private function buildEvent(PostPlatform $postPlatform): array
     {
+        $title = (string) data_get($postPlatform->meta, 'event.title');
+
+        if (blank($title)) {
+            throw new GoogleBusinessPublishException(
+                userMessage: 'This Google Business Profile post needs an event title. Please add one and try again.',
+                category: ErrorCategory::ContentPolicy,
+            );
+        }
+
         $startDate = (string) data_get($postPlatform->meta, 'event.start_date');
         $endDate = (string) data_get($postPlatform->meta, 'event.end_date');
 
@@ -175,7 +184,7 @@ class GoogleBusinessPublisher
         }
 
         return [
-            'title' => (string) data_get($postPlatform->meta, 'event.title'),
+            'title' => $title,
             'schedule' => $schedule,
         ];
     }
