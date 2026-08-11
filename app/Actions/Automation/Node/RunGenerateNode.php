@@ -114,8 +114,8 @@ class RunGenerateNode
             workspace: $workspace,
             promptTokens: $generatorResponse->usage->promptTokens,
             completionTokens: $generatorResponse->usage->completionTokens,
-            provider: (string) config('ai.default'),
-            model: (string) config('ai.default_text_model'),
+            provider: (string) $generatorResponse->meta->provider,
+            model: (string) $generatorResponse->meta->model,
             metadata: ['agent' => 'post_generator', 'format' => $format->value, 'source' => 'automation'],
         );
 
@@ -196,28 +196,28 @@ class RunGenerateNode
                 workspace: $workspace,
                 promptTokens: $response->usage->promptTokens,
                 completionTokens: $response->usage->completionTokens,
-                provider: (string) config('ai.default'),
-                model: (string) config('ai.default_text_model'),
+                provider: (string) $response->meta->provider,
+                model: (string) $response->meta->model,
                 metadata: ['agent' => 'post_humanizer', 'format' => $format->value, 'source' => 'automation'],
             );
 
             if ($format->isCarousel()) {
-                $structured['caption'] = data_get($humanized, 'caption', $structured['caption'] ?? '');
-                $originalSlides = $structured['slides'] ?? [];
+                $structured['caption'] = data_get($humanized, 'caption', data_get($structured, 'caption', ''));
+                $originalSlides = data_get($structured, 'slides', []);
                 $humanizedSlides = data_get($humanized, 'slides', []);
 
                 foreach ($originalSlides as $i => $slide) {
                     if (isset($humanizedSlides[$i])) {
-                        $originalSlides[$i]['title'] = data_get($humanizedSlides[$i], 'title', $slide['title'] ?? '');
-                        $originalSlides[$i]['body'] = data_get($humanizedSlides[$i], 'body', $slide['body'] ?? '');
+                        $originalSlides[$i]['title'] = data_get($humanizedSlides[$i], 'title', data_get($slide, 'title', ''));
+                        $originalSlides[$i]['body'] = data_get($humanizedSlides[$i], 'body', data_get($slide, 'body', ''));
                     }
                 }
 
                 $structured['slides'] = $originalSlides;
             } else {
-                $structured['content'] = data_get($humanized, 'content', $structured['content'] ?? '');
-                $structured['image_title'] = data_get($humanized, 'image_title', $structured['image_title'] ?? '');
-                $structured['image_body'] = data_get($humanized, 'image_body', $structured['image_body'] ?? '');
+                $structured['content'] = data_get($humanized, 'content', data_get($structured, 'content', ''));
+                $structured['image_title'] = data_get($humanized, 'image_title', data_get($structured, 'image_title', ''));
+                $structured['image_body'] = data_get($humanized, 'image_body', data_get($structured, 'image_body', ''));
             }
         } catch (Throwable $e) {
             Log::warning('RunGenerateNode: PostContentHumanizer failed, using generator output as-is', [

@@ -11,7 +11,6 @@ use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Ai\Attributes\Temperature;
 use Laravel\Ai\Contracts\Agent;
 use Laravel\Ai\Contracts\HasStructuredOutput;
-use Laravel\Ai\Enums\Lab;
 use Laravel\Ai\Promptable;
 
 /**
@@ -45,9 +44,9 @@ class PostContentHumanizer implements Agent, HasStructuredOutput
             'brand_voice_traits' => $this->applyBrandVoice ? ($this->workspace->brand_voice_traits ?? []) : [],
             'content_language' => $this->workspace->content_language,
             'format' => $this->format->value,
-            'hard_max_chars' => $budget['hard_max_chars'],
-            'target_chars' => $budget['target_chars'],
-            'platform_label' => $budget['platform_label'],
+            'hard_max_chars' => data_get($budget, 'hard_max_chars'),
+            'target_chars' => data_get($budget, 'target_chars'),
+            'platform_label' => data_get($budget, 'platform_label'),
         ])->render();
     }
 
@@ -71,19 +70,5 @@ class PostContentHumanizer implements Agent, HasStructuredOutput
             'image_title' => $schema->string()->description('The humanized image overlay title.')->required(),
             'image_body' => $schema->string()->description('The humanized image overlay body.')->required(),
         ];
-    }
-
-    public function provider(): Lab
-    {
-        return match (config('ai.default')) {
-            'openai' => Lab::OpenAI,
-            'anthropic' => Lab::Anthropic,
-            default => Lab::Gemini,
-        };
-    }
-
-    public function model(): string
-    {
-        return config('ai.default_text_model');
     }
 }
