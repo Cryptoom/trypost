@@ -1200,3 +1200,41 @@ test('mastodon verify throws TokenExpiredException on a bare 403 from verify_cre
 
     Http::assertSentCount(1);
 });
+
+test('verify succeeds for a healthy google business token', function () {
+    $account = SocialAccount::factory()->googleBusiness()->create();
+
+    Http::fake([
+        config('trypost.platforms.google_business.business_information_api').'/*' => Http::response(['name' => $account->meta['location_id']], 200),
+    ]);
+
+    expect(app(ConnectionVerifier::class)->verify($account))->toBeTrue();
+});
+
+test('verify throws token expired for a dead google business token', function () {
+    $account = SocialAccount::factory()->googleBusiness()->create();
+
+    Http::fake([
+        config('trypost.platforms.google_business.business_information_api').'/*' => Http::response(['error' => ['status' => 'UNAUTHENTICATED']], 401),
+        config('trypost.platforms.google_business.oauth_api').'/token' => Http::response(['error' => 'invalid_grant'], 400),
+    ]);
+
+    expect(fn () => app(ConnectionVerifier::class)->verify($account))->toThrow(TokenExpiredException::class);
+});
+
+test('refreshToken exchanges the refresh token for a new access token', function () {
+    $account = SocialAccount::factory()->googleBusiness()->create([
+        'refresh_token' => 'refresh-abc',
+    ]);
+
+    Http::fake([
+        config('trypost.platforms.google_business.oauth_api').'/token' => Http::response([
+            'access_token' => 'new-access-token',
+            'expires_in' => 3600,
+        ], 200),
+    ]);
+
+    app(ConnectionVerifier::class)->refreshToken($account);
+
+    expect($account->fresh()->access_token)->toBe('new-access-token');
+});
