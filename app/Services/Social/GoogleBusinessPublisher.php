@@ -151,9 +151,19 @@ class GoogleBusinessPublisher
      */
     private function buildEvent(PostPlatform $postPlatform): array
     {
+        $startDate = (string) data_get($postPlatform->meta, 'event.start_date');
+        $endDate = (string) data_get($postPlatform->meta, 'event.end_date');
+
+        if (blank($startDate) || blank($endDate)) {
+            throw new GoogleBusinessPublishException(
+                userMessage: 'This Google Business Profile post needs an event start and end date. Please add them and try again.',
+                category: ErrorCategory::ContentPolicy,
+            );
+        }
+
         $schedule = [
-            'startDate' => $this->formatDate((string) data_get($postPlatform->meta, 'event.start_date')),
-            'endDate' => $this->formatDate((string) data_get($postPlatform->meta, 'event.end_date')),
+            'startDate' => $this->formatDate($startDate),
+            'endDate' => $this->formatDate($endDate),
         ];
 
         if (filled(data_get($postPlatform->meta, 'event.start_time'))) {

@@ -74,6 +74,42 @@ test('an explicitly null topic_type publishes as STANDARD', function () {
         && ! isset($request['event']));
 });
 
+test('a blank event start date throws instead of silently publishing today', function () {
+    Http::fake([
+        config('trypost.platforms.google_business.local_posts_api').'/*' => Http::response(['name' => 'x'], 200),
+    ]);
+
+    $this->postPlatform->update([
+        'meta' => [
+            'topic_type' => 'EVENT',
+            'event' => ['title' => 'Grand Opening', 'start_date' => '', 'end_date' => '2026-09-02'],
+        ],
+    ]);
+
+    expect(fn () => $this->publisher->publish($this->postPlatform->fresh()))
+        ->toThrow(GoogleBusinessPublishException::class);
+
+    Http::assertNothingSent();
+});
+
+test('a missing event end date throws instead of silently publishing today', function () {
+    Http::fake([
+        config('trypost.platforms.google_business.local_posts_api').'/*' => Http::response(['name' => 'x'], 200),
+    ]);
+
+    $this->postPlatform->update([
+        'meta' => [
+            'topic_type' => 'OFFER',
+            'event' => ['title' => 'Summer Sale', 'start_date' => '2026-09-01', 'end_date' => null],
+        ],
+    ]);
+
+    expect(fn () => $this->publisher->publish($this->postPlatform->fresh()))
+        ->toThrow(GoogleBusinessPublishException::class);
+
+    Http::assertNothingSent();
+});
+
 test('includes a call to action when configured', function () {
     Http::fake([
         config('trypost.platforms.google_business.local_posts_api').'/*' => Http::response(['name' => 'x'], 200),
