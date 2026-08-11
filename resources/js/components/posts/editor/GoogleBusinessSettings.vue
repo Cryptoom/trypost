@@ -21,6 +21,8 @@ interface SocialAccount {
 
 interface Props {
     socialAccount: SocialAccount | null;
+    /** This panel's position in the submitted `platforms` array — see findError. */
+    platformIndex: number;
     meta: Record<string, any>;
     disabled?: boolean;
     previewOnly?: boolean;
@@ -105,16 +107,17 @@ const offerCouponCode = offerField('coupon_code');
 const offerRedeemUrl = offerField('redeem_online_url');
 const offerTerms = offerField('terms_conditions');
 
-// Surface backend validation errors keyed by platform index
-// (`platforms.0.meta.*`). Suffix match avoids threading the index through props.
+// Backend validation errors are keyed `platforms.{index}.meta.*`. Matching the
+// full key keeps a location's error off the other locations' panels when a post
+// targets more than one Google Business Profile.
 const errors = usePageErrors();
-const findError = (suffix: string) => computed<string | undefined>(
-    () => Object.entries(errors.value).find(([key]) => key.endsWith(suffix))?.[1],
+const findError = (field: string) => computed<string | undefined>(
+    () => errors.value[`platforms.${props.platformIndex}.meta.${field}`],
 );
-const eventTitleError = findError('.meta.event.title');
-const eventStartDateError = findError('.meta.event.start_date');
-const eventEndDateError = findError('.meta.event.end_date');
-const ctaUrlError = findError('.meta.call_to_action.url');
+const eventTitleError = findError('event.title');
+const eventStartDateError = findError('event.start_date');
+const eventEndDateError = findError('event.end_date');
+const ctaUrlError = findError('call_to_action.url');
 </script>
 
 <template>

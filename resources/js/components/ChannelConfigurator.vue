@@ -40,6 +40,9 @@ const emit = defineEmits<{
 
 const isSelected = (id: string): boolean => props.selectedIds.includes(id);
 
+// Order matches the `platforms` array the editor submits (both filter the same
+// post_platforms list by the same selection), so a settings panel's position
+// here is the `platforms.{index}.*` index its backend errors are keyed by.
 const selectedChannels = computed(() => props.channels.filter((channel) => isSelected(channel.id)));
 </script>
 
@@ -111,7 +114,7 @@ const selectedChannels = computed(() => props.channels.filter((channel) => isSel
 
         <slot />
 
-        <template v-for="channel in selectedChannels" :key="channel.id">
+        <template v-for="(channel, index) in selectedChannels" :key="channel.id">
             <InstagramSettings
                 v-if="channel.platform === Platform.Instagram || channel.platform === Platform.InstagramFacebook"
                 :social-account="channel.socialAccount"
@@ -182,6 +185,7 @@ const selectedChannels = computed(() => props.channels.filter((channel) => isSel
             <GoogleBusinessSettings
                 v-else-if="channel.platform === Platform.GoogleBusiness"
                 :social-account="channel.socialAccount"
+                :platform-index="index"
                 :meta="channel.meta"
                 :disabled="disabled"
                 :preview-only="previewOnly"
