@@ -389,3 +389,42 @@ it('rejects non-http Pinterest links', function () {
             'platforms.0.meta.link' => __('posts.form.pinterest.link_invalid'),
         ]);
 });
+
+it('persists Google Business topic_type and offer meta on store', function () {
+    $googleBusiness = SocialAccount::factory()->googleBusiness()->create(['workspace_id' => $this->workspace->id]);
+
+    $this->withHeaders($this->headers)
+        ->postJson(route('api.posts.store'), [
+            'content' => 'Big sale this week',
+            'platforms' => [[
+                'social_account_id' => $googleBusiness->id,
+                'content_type' => ContentType::GoogleBusinessPost->value,
+                'meta' => [
+                    'topic_type' => 'OFFER',
+                    'offer' => ['coupon_code' => 'SAVE10'],
+                ],
+            ]],
+        ])
+        ->assertCreated();
+
+    $meta = PostPlatform::where('social_account_id', $googleBusiness->id)->sole()->meta;
+
+    expect(data_get($meta, 'topic_type'))->toBe('OFFER')
+        ->and(data_get($meta, 'offer.coupon_code'))->toBe('SAVE10');
+});
+
+it('rejects publishing a Google Business event post without event fields', function () {
+    $googleBusiness = SocialAccount::factory()->googleBusiness()->create(['workspace_id' => $this->workspace->id]);
+    $post = Post::factory()->create(['workspace_id' => $this->workspace->id, 'user_id' => $this->user->id]);
+    $platform = PostPlatform::factory()->googleBusiness()->create([
+        'post_id' => $post->id, 'social_account_id' => $googleBusiness->id, 'enabled' => true, 'meta' => [],
+    ]);
+
+    $this->withHeaders($this->headers)
+        ->putJson(route('api.posts.update', $post), [
+            'status' => PostStatus::Publishing->value,
+            'platforms' => [['id' => $platform->id, 'meta' => ['topic_type' => 'EVENT']]],
+        ])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['platforms.0.meta.event.title']);
+});
