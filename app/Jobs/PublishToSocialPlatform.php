@@ -21,6 +21,7 @@ use App\Services\Social\BlueskyPublisher;
 use App\Services\Social\ConnectionVerifier;
 use App\Services\Social\Discord\DiscordPublisher;
 use App\Services\Social\FacebookPublisher;
+use App\Services\Social\GoogleBusinessPublisher;
 use App\Services\Social\InstagramPublisher;
 use App\Services\Social\LinkedInPagePublisher;
 use App\Services\Social\LinkedInPublisher;
@@ -275,7 +276,7 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
             : 'An unexpected error occurred while publishing. Please try again.';
     }
 
-    private function getPublisher(): LinkedInPublisher|LinkedInPagePublisher|XPublisher|TikTokPublisher|YouTubePublisher|FacebookPublisher|InstagramPublisher|ThreadsPublisher|PinterestPublisher|BlueskyPublisher|MastodonPublisher|TelegramPublisher|DiscordPublisher
+    private function getPublisher(): LinkedInPublisher|LinkedInPagePublisher|XPublisher|TikTokPublisher|YouTubePublisher|FacebookPublisher|InstagramPublisher|ThreadsPublisher|PinterestPublisher|BlueskyPublisher|MastodonPublisher|TelegramPublisher|DiscordPublisher|GoogleBusinessPublisher
     {
         return match ($this->postPlatform->platform) {
             SocialPlatform::LinkedIn => app(LinkedInPublisher::class),
@@ -291,6 +292,7 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
             SocialPlatform::Mastodon => app(MastodonPublisher::class),
             SocialPlatform::Telegram => app(TelegramPublisher::class),
             SocialPlatform::Discord => app(DiscordPublisher::class),
+            SocialPlatform::GoogleBusiness => app(GoogleBusinessPublisher::class),
         };
     }
 

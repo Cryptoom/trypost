@@ -1025,3 +1025,23 @@ test('publish to social platform saves error context on token expired', function
     expect($this->postPlatform->error_context['category'])->toBe('token_expired');
     expect($this->postPlatform->error_context['platform_error_code'])->toBe('190');
 });
+
+test('dispatches google business posts to GoogleBusinessPublisher', function () {
+    $account = SocialAccount::factory()->googleBusiness()->create([
+        'workspace_id' => $this->workspace->id,
+        'token_expires_at' => now()->addHour(),
+    ]);
+    $postPlatform = PostPlatform::factory()->googleBusiness()->create([
+        'post_id' => $this->post->id,
+        'social_account_id' => $account->id,
+        'meta' => ['topic_type' => 'STANDARD'],
+    ]);
+
+    Http::fake([
+        config('trypost.platforms.google_business.local_posts_api').'/*' => Http::response(['name' => 'accounts/1/locations/2/localPosts/3'], 200),
+    ]);
+
+    (new PublishToSocialPlatform($postPlatform))->handle();
+
+    expect($postPlatform->fresh()->status)->toBe(PlatformStatus::Published);
+});
