@@ -134,6 +134,16 @@ test('google business call_to_action with action_type NONE has no url violation'
     expect($violation)->toBeNull();
 });
 
+test('google business call_to_action with an explicitly null action_type has no url violation', function () {
+    $violation = (new ReflectionMethod(PostPlatformMetaRules::class, 'requiredMetaViolation'))
+        ->invoke(null, Platform::GoogleBusiness, [
+            'topic_type' => 'STANDARD',
+            'call_to_action' => ['action_type' => null],
+        ]);
+
+    expect($violation)->toBeNull();
+});
+
 test('google business call_to_action with url-needing action type and a url has no violation', function () {
     $violation = (new ReflectionMethod(PostPlatformMetaRules::class, 'requiredMetaViolation'))
         ->invoke(null, Platform::GoogleBusiness, [

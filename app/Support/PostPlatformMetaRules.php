@@ -202,7 +202,7 @@ class PostPlatformMetaRules
                 && in_array(data_get($meta, 'topic_type', 'STANDARD'), self::GOOGLE_BUSINESS_EVENT_TOPIC_TYPES, true)
                 && blank(data_get($meta, 'event.end_date')) => ['event.end_date', trans('posts.form.google_business.event_end_date_required')],
             $platform === Platform::GoogleBusiness
-                && ! in_array(data_get($meta, 'call_to_action.action_type', 'NONE'), ['NONE', 'CALL'], true)
+                && ! in_array(data_get($meta, 'call_to_action.action_type') ?? 'NONE', ['NONE', 'CALL'], true)
                 && blank(data_get($meta, 'call_to_action.url')) => ['call_to_action.url', trans('posts.form.google_business.cta_url_required')],
             default => null,
         };

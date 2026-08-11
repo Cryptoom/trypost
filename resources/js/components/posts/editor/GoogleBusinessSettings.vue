@@ -147,7 +147,7 @@ const ctaUrlError = findError('call_to_action.url');
                         :class="topicType === type.value
                             ? 'border-foreground bg-violet-100 text-foreground shadow-2xs'
                             : 'border-foreground/30 text-foreground/70 hover:border-foreground hover:text-foreground'"
-                        :disabled="disabled"
+                        :disabled="disabled || previewOnly"
                         @click="topicType = type.value"
                     >
                         {{ $t(type.labelKey) }}
