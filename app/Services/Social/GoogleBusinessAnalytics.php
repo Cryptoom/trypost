@@ -38,22 +38,14 @@ class GoogleBusinessAnalytics
             app(ConnectionVerifier::class)->refreshToken($account);
         }
 
-        $locationId = (string) data_get($account->meta, 'location_id');
+        $locationName = (string) data_get($account->meta, 'location_name');
 
-        if (blank($locationId)) {
+        if (blank($locationName)) {
             return [];
         }
 
         $response = $this->socialHttp()->withToken($account->access_token)
-            ->get("{$this->baseUrl}/{$locationId}:fetchMultiDailyMetricsTimeSeries", [
-                'dailyMetrics' => array_keys(self::METRICS),
-                'dailyRange.start_date.year' => $since->format('Y'),
-                'dailyRange.start_date.month' => $since->format('n'),
-                'dailyRange.start_date.day' => $since->format('j'),
-                'dailyRange.end_date.year' => $until->format('Y'),
-                'dailyRange.end_date.month' => $until->format('n'),
-                'dailyRange.end_date.day' => $until->format('j'),
-            ]);
+            ->get("{$this->baseUrl}/{$locationName}:fetchMultiDailyMetricsTimeSeries?{$this->buildQuery($since, $until)}");
 
         if ($response->failed()) {
             Log::warning('Google Business Profile analytics fetch failed', [
@@ -84,5 +76,29 @@ class GoogleBusinessAnalytics
             ->map(fn (string $labelKey, string $metric) => ['label' => __($labelKey), 'value' => $totals[$metric]])
             ->values()
             ->all();
+    }
+
+    /**
+     * Google expects `dailyMetrics` as repeated scalar params, which
+     * `http_build_query` (and therefore the HTTP client's array query support)
+     * would encode as `dailyMetrics[0]=...` instead.
+     */
+    private function buildQuery(CarbonInterface $since, CarbonInterface $until): string
+    {
+        $metrics = implode('&', array_map(
+            fn (string $metric): string => 'dailyMetrics='.urlencode($metric),
+            array_keys(self::METRICS),
+        ));
+
+        $range = http_build_query([
+            'dailyRange.start_date.year' => $since->format('Y'),
+            'dailyRange.start_date.month' => $since->format('n'),
+            'dailyRange.start_date.day' => $since->format('j'),
+            'dailyRange.end_date.year' => $until->format('Y'),
+            'dailyRange.end_date.month' => $until->format('n'),
+            'dailyRange.end_date.day' => $until->format('j'),
+        ]);
+
+        return "{$metrics}&{$range}";
     }
 }

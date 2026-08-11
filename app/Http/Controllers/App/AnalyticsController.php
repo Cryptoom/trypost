@@ -8,6 +8,7 @@ use App\Enums\SocialAccount\Platform;
 use App\Http\Controllers\Controller;
 use App\Models\SocialAccount;
 use App\Services\Social\FacebookAnalytics;
+use App\Services\Social\GoogleBusinessAnalytics;
 use App\Services\Social\InstagramAnalytics;
 use App\Services\Social\LinkedInPageAnalytics;
 use App\Services\Social\PinterestAnalytics;
@@ -36,6 +37,7 @@ class AnalyticsController extends Controller
         Platform::Pinterest,
         Platform::YouTube,
         Platform::Telegram,
+        Platform::GoogleBusiness,
     ];
 
     public function index(Request $request): Response
@@ -82,6 +84,7 @@ class AnalyticsController extends Controller
             Platform::Pinterest => app(PinterestAnalytics::class)->getMetrics($account, $since, $until),
             Platform::YouTube => app(YouTubeAnalytics::class)->getMetrics($account, $since, $until),
             Platform::Telegram => app(TelegramAnalytics::class)->getMetrics($account),
+            Platform::GoogleBusiness => app(GoogleBusinessAnalytics::class)->getMetrics($account, $since, $until),
             default => [],
         };
 

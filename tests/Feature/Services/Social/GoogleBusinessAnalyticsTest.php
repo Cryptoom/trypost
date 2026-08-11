@@ -2,18 +2,34 @@
 
 declare(strict_types=1);
 
+use App\Enums\SocialAccount\Platform;
+use App\Enums\SocialAccount\Status as AccountStatus;
+use App\Enums\UserWorkspace\Role;
+use App\Models\Account;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Services\Social\GoogleBusinessAnalytics;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Str;
 
 beforeEach(function () {
     $this->user = User::factory()->create();
     $this->workspace = Workspace::factory()->create(['user_id' => $this->user->id]);
+    $this->workspace->members()->attach($this->user->id, ['role' => Role::Member->value]);
+    $this->user->account->subscriptions()->create([
+        'type' => Account::SUBSCRIPTION_NAME,
+        'stripe_id' => 'sub_test_'.fake()->uuid(),
+        'stripe_status' => 'active',
+        'stripe_price' => 'price_123',
+    ]);
+    $this->user->update(['current_workspace_id' => $this->workspace->id]);
+
     $this->socialAccount = SocialAccount::factory()->googleBusiness()->create([
         'workspace_id' => $this->workspace->id,
         'token_expires_at' => now()->addHour(),
+        'status' => AccountStatus::Connected,
+        'is_active' => true,
     ]);
     $this->analytics = new GoogleBusinessAnalytics;
 });
@@ -45,6 +61,75 @@ test('fetches the five performance metrics for the account location', function (
 
     $websiteClicks = collect($metrics)->firstWhere('label', __('analytics.metrics.website_clicks'));
     expect($websiteClicks['value'])->toBe(15);
+});
+
+test('requests the short location resource name with repeated dailyMetrics params', function () {
+    Http::fake([
+        config('trypost.platforms.google_business.performance_api').'/*' => Http::response(['multiDailyMetricTimeSeries' => []], 200),
+    ]);
+
+    $this->analytics->getMetrics($this->socialAccount);
+
+    $expectedUrl = config('trypost.platforms.google_business.performance_api')
+        ."/{$this->socialAccount->meta['location_name']}:fetchMultiDailyMetricsTimeSeries";
+
+    Http::assertSent(function ($request) use ($expectedUrl) {
+        $query = (string) parse_url($request->url(), PHP_URL_QUERY);
+
+        return Str::before($request->url(), '?') === $expectedUrl
+            && Str::contains($query, 'dailyMetrics=WEBSITE_CLICKS')
+            && Str::contains($query, 'dailyMetrics=CALL_CLICKS')
+            && Str::contains($query, 'dailyMetrics=BUSINESS_IMPRESSIONS_MOBILE_MAPS')
+            && ! Str::contains($query, 'dailyMetrics%5B')
+            && ! Str::contains($query, 'dailyMetrics[');
+    });
+});
+
+test('returns empty array when the account has no location', function () {
+    Http::fake();
+
+    $this->socialAccount->update(['meta' => ['location_id' => 'accounts/1/locations/2']]);
+
+    expect($this->analytics->getMetrics($this->socialAccount->fresh()))->toBe([]);
+
+    Http::assertNothingSent();
+});
+
+test('google business is listed on the analytics page', function () {
+    $response = $this->actingAs($this->user)->get(route('app.analytics'));
+
+    $response->assertOk();
+
+    $accounts = $response->original->getData()['page']['props']['accounts'];
+
+    expect(collect($accounts)->firstWhere('platform', Platform::GoogleBusiness->value))->not->toBeNull();
+});
+
+test('the analytics show endpoint returns google business metrics', function () {
+    Http::fake([
+        config('trypost.platforms.google_business.performance_api').'/*' => Http::response([
+            'multiDailyMetricTimeSeries' => [
+                [
+                    'dailyMetricTimeSeries' => [
+                        [
+                            'dailyMetric' => 'WEBSITE_CLICKS',
+                            'timeSeries' => ['datedValues' => [['value' => '7']]],
+                        ],
+                    ],
+                ],
+            ],
+        ], 200),
+    ]);
+
+    $response = $this->actingAs($this->user)
+        ->getJson(route('app.analytics.show', $this->socialAccount));
+
+    $response->assertOk()->assertJsonCount(5, 'metrics');
+
+    $metrics = $response->json('metrics');
+
+    expect(collect($metrics)->pluck('label')->filter())->toHaveCount(5)
+        ->and(collect($metrics)->firstWhere('label', __('analytics.metrics.website_clicks'))['value'])->toBe(7);
 });
 
 test('returns empty array on api failure', function () {
