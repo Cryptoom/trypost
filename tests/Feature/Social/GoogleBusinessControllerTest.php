@@ -107,6 +107,7 @@ test('google business callback shows the location picker when multiple locations
     expect($this->workspace->socialAccounts()->where('platform', Platform::GoogleBusiness)->exists())->toBeFalse();
     expect(session('google_business_oauth'))->not->toBeNull();
     expect(data_get(session('google_business_oauth'), 'access_token'))->toBe('access-token');
+    expect(data_get(session('google_business_oauth'), 'locations'))->toHaveCount(2);
 });
 
 test('google business callback forwards the reconnect id into the picker session', function () {
@@ -216,6 +217,61 @@ test('google business callback fails with expired session', function () {
     );
 });
 
+test('select location renders the picker from the session without refetching locations', function () {
+    session([
+        'social_connect_workspace' => $this->workspace->id,
+        'google_business_oauth' => [
+            'access_token' => 'access-token',
+            'refresh_token' => 'refresh-token',
+            'expires_in' => 3600,
+            'user_id' => 'gid-1',
+            'locations' => [
+                ['id' => 'accounts/1/locations/2', 'account_name' => 'accounts/1', 'location_name' => 'locations/2', 'title' => 'Downtown Store', 'address' => null],
+                ['id' => 'accounts/1/locations/3', 'account_name' => 'accounts/1', 'location_name' => 'locations/3', 'title' => 'Uptown Store', 'address' => null],
+            ],
+        ],
+    ]);
+
+    $this->mock(GoogleBusinessPublisher::class, function ($mock) {
+        $mock->shouldNotReceive('fetchLocations');
+    });
+
+    $response = $this->actingAs($this->user)->get(route('app.social.google-business.select-location'));
+
+    $response->assertOk();
+    $response->assertInertia(fn (AssertableInertia $page) => $page
+        ->component('accounts/GoogleBusinessLocationSelect')
+        ->has('locations', 2)
+    );
+});
+
+test('select location fails for a user who cannot manage the workspace accounts', function () {
+    $outsider = User::factory()->create();
+
+    session([
+        'social_connect_workspace' => $this->workspace->id,
+        'google_business_oauth' => [
+            'access_token' => 'access-token',
+            'refresh_token' => 'refresh-token',
+            'expires_in' => 3600,
+            'user_id' => 'gid-1',
+            'locations' => [
+                ['id' => 'accounts/1/locations/2', 'account_name' => 'accounts/1', 'location_name' => 'locations/2', 'title' => 'Downtown Store', 'address' => null],
+                ['id' => 'accounts/1/locations/3', 'account_name' => 'accounts/1', 'location_name' => 'locations/3', 'title' => 'Uptown Store', 'address' => null],
+            ],
+        ],
+    ]);
+
+    $response = $this->actingAs($outsider)->get(route('app.social.google-business.select-location'));
+
+    $response->assertOk();
+    $response->assertInertia(fn (AssertableInertia $page) => $page
+        ->component('accounts/PopupCallback')
+        ->where('success', false)
+        ->where('message', __('accounts.popup_callback.workspace_not_found'))
+    );
+});
+
 test('select creates the social account for the chosen location', function () {
     session([
         'social_connect_workspace' => $this->workspace->id,
@@ -224,14 +280,15 @@ test('select creates the social account for the chosen location', function () {
             'refresh_token' => 'refresh-token',
             'expires_in' => 3600,
             'user_id' => 'gid-1',
+            'locations' => [
+                ['id' => 'accounts/1/locations/2', 'account_name' => 'accounts/1', 'location_name' => 'locations/2', 'title' => 'Downtown Store', 'address' => null],
+                ['id' => 'accounts/1/locations/3', 'account_name' => 'accounts/1', 'location_name' => 'locations/3', 'title' => 'Uptown Store', 'address' => null],
+            ],
         ],
     ]);
 
     $this->mock(GoogleBusinessPublisher::class, function ($mock) {
-        $mock->shouldReceive('fetchLocations')->once()->with('access-token')->andReturn([
-            ['id' => 'accounts/1/locations/2', 'account_name' => 'accounts/1', 'location_name' => 'locations/2', 'title' => 'Downtown Store', 'address' => null],
-            ['id' => 'accounts/1/locations/3', 'account_name' => 'accounts/1', 'location_name' => 'locations/3', 'title' => 'Uptown Store', 'address' => null],
-        ]);
+        $mock->shouldNotReceive('fetchLocations');
     });
 
     $response = $this->actingAs($this->user)
@@ -258,14 +315,11 @@ test('select fails with an unknown location id', function () {
             'refresh_token' => 'refresh-token',
             'expires_in' => 3600,
             'user_id' => 'gid-1',
+            'locations' => [
+                ['id' => 'accounts/1/locations/2', 'account_name' => 'accounts/1', 'location_name' => 'locations/2', 'title' => 'Downtown Store', 'address' => null],
+            ],
         ],
     ]);
-
-    $this->mock(GoogleBusinessPublisher::class, function ($mock) {
-        $mock->shouldReceive('fetchLocations')->once()->andReturn([
-            ['id' => 'accounts/1/locations/2', 'account_name' => 'accounts/1', 'location_name' => 'locations/2', 'title' => 'Downtown Store', 'address' => null],
-        ]);
-    });
 
     $response = $this->actingAs($this->user)
         ->post(route('app.social.google-business.select'), ['location_id' => 'accounts/1/locations/nope']);
@@ -308,14 +362,11 @@ test('select reconnects an existing account when a reconnect id is present', fun
             'expires_in' => 3600,
             'user_id' => 'gid-1',
             'reconnect_id' => $existingAccount->id,
+            'locations' => [
+                ['id' => 'accounts/1/locations/2', 'account_name' => 'accounts/1', 'location_name' => 'locations/2', 'title' => 'Downtown Store', 'address' => null],
+            ],
         ],
     ]);
-
-    $this->mock(GoogleBusinessPublisher::class, function ($mock) {
-        $mock->shouldReceive('fetchLocations')->once()->with('new-access-token')->andReturn([
-            ['id' => 'accounts/1/locations/2', 'account_name' => 'accounts/1', 'location_name' => 'locations/2', 'title' => 'Downtown Store', 'address' => null],
-        ]);
-    });
 
     $response = $this->actingAs($this->user)
         ->post(route('app.social.google-business.select'), ['location_id' => 'accounts/1/locations/2']);

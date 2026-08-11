@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Auth;
 use App\Enums\SocialAccount\Platform as SocialPlatform;
 use App\Enums\SocialAccount\Status;
 use App\Exceptions\SocialAccount\NetworkAlreadyConnectedException;
+use App\Http\Requests\Auth\SelectGoogleBusinessLocationRequest;
 use App\Models\Workspace;
 use App\Services\Social\GoogleBusinessPublisher;
 use Illuminate\Http\RedirectResponse;
@@ -85,6 +86,7 @@ class GoogleBusinessController extends SocialController
                     'expires_in' => $socialUser->expiresIn,
                     'user_id' => $socialUser->getId(),
                     'reconnect_id' => $reconnectId,
+                    'locations' => $locations,
                 ],
             ]);
 
@@ -112,11 +114,11 @@ class GoogleBusinessController extends SocialController
 
         $workspace = Workspace::find($workspaceId);
 
-        if (! $workspace) {
+        if (! $workspace || ! $request->user()->can('manageAccounts', $workspace)) {
             return $this->popupCallback(false, __('accounts.popup_callback.workspace_not_found'), $this->platform->value);
         }
 
-        $locations = $this->publisher->fetchLocations(data_get($oauthData, 'access_token'));
+        $locations = data_get($oauthData, 'locations', []);
 
         if (empty($locations)) {
             $this->forgetSocialConnectSession();
@@ -131,12 +133,8 @@ class GoogleBusinessController extends SocialController
         ]);
     }
 
-    public function select(Request $request): InertiaResponse
+    public function select(SelectGoogleBusinessLocationRequest $request): InertiaResponse
     {
-        $request->validate([
-            'location_id' => 'required|string',
-        ]);
-
         $oauthData = session('google_business_oauth');
         $workspaceId = session('social_connect_workspace');
 
@@ -151,8 +149,8 @@ class GoogleBusinessController extends SocialController
         }
 
         try {
-            $locations = $this->publisher->fetchLocations(data_get($oauthData, 'access_token'));
-            $selectedLocation = collect($locations)->firstWhere('id', $request->location_id);
+            $selectedLocation = collect(data_get($oauthData, 'locations'))
+                ->firstWhere('id', $request->validated('location_id'));
 
             if (! $selectedLocation) {
                 return $this->popupCallback(false, __('accounts.popup_callback.location_not_found'), $this->platform->value);
