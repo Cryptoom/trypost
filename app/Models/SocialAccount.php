@@ -146,6 +146,9 @@ class SocialAccount extends Model
                         ? rtrim((string) data_get($this->meta, 'instance'), '/')."/@{$username}"
                         : null,
                     SocialPlatform::Telegram => $username ? "https://t.me/{$username}" : null,
+                    SocialPlatform::GoogleBusiness => data_get($this->meta, 'location_id')
+                        ? 'https://business.google.com/locations/'.last(explode('/', (string) data_get($this->meta, 'location_id')))
+                        : null,
                     default => null,
                 };
             },
