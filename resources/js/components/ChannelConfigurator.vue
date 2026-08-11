@@ -4,6 +4,7 @@ import { computed } from 'vue';
 
 import DiscordSettings from '@/components/posts/editor/DiscordSettings.vue';
 import FacebookSettings from '@/components/posts/editor/FacebookSettings.vue';
+import GoogleBusinessSettings from '@/components/posts/editor/GoogleBusinessSettings.vue';
 import InstagramSettings from '@/components/posts/editor/InstagramSettings.vue';
 import LinkedInSettings from '@/components/posts/editor/LinkedInSettings.vue';
 import PinterestSettings from '@/components/posts/editor/PinterestSettings.vue';
@@ -172,6 +173,14 @@ const selectedChannels = computed(() => props.channels.filter((channel) => isSel
             />
             <DiscordSettings
                 v-else-if="channel.platform === Platform.Discord"
+                :social-account="channel.socialAccount"
+                :meta="channel.meta"
+                :disabled="disabled"
+                :preview-only="previewOnly"
+                @update:meta="emit('update:meta', channel.id, $event)"
+            />
+            <GoogleBusinessSettings
+                v-else-if="channel.platform === Platform.GoogleBusiness"
                 :social-account="channel.socialAccount"
                 :meta="channel.meta"
                 :disabled="disabled"
