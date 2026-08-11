@@ -61,6 +61,19 @@ test('publishes a standard post with the workspace content language', function (
     });
 });
 
+test('an explicitly null topic_type publishes as STANDARD', function () {
+    Http::fake([
+        config('trypost.platforms.google_business.local_posts_api').'/*' => Http::response(['name' => 'x'], 200),
+    ]);
+
+    $this->postPlatform->update(['meta' => ['topic_type' => null]]);
+
+    $this->publisher->publish($this->postPlatform->fresh());
+
+    Http::assertSent(fn ($request) => data_get($request->data(), 'topicType') === 'STANDARD'
+        && ! isset($request['event']));
+});
+
 test('includes a call to action when configured', function () {
     Http::fake([
         config('trypost.platforms.google_business.local_posts_api').'/*' => Http::response(['name' => 'x'], 200),

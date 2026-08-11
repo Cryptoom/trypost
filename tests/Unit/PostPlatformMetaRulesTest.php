@@ -134,6 +134,16 @@ test('google business call_to_action with action_type NONE has no url violation'
     expect($violation)->toBeNull();
 });
 
+test('google business meta with an explicitly null topic_type defaults to STANDARD', function () {
+    $reflection = new ReflectionMethod(PostPlatformMetaRules::class, 'requiredMetaViolation');
+
+    $explicitNull = $reflection->invoke(null, Platform::GoogleBusiness, ['topic_type' => null]);
+    $missing = $reflection->invoke(null, Platform::GoogleBusiness, []);
+
+    expect($explicitNull)->toBeNull()
+        ->and($missing)->toBeNull();
+});
+
 test('google business call_to_action with an explicitly null action_type has no url violation', function () {
     $violation = (new ReflectionMethod(PostPlatformMetaRules::class, 'requiredMetaViolation'))
         ->invoke(null, Platform::GoogleBusiness, [

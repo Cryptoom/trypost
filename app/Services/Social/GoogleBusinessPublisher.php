@@ -11,6 +11,7 @@ use App\Exceptions\Social\GoogleBusinessPublishException;
 use App\Models\PostPlatform;
 use App\Services\Social\Concerns\HasSocialHttpClient;
 use App\Support\GoogleBusinessResourceName;
+use App\Support\PostPlatformMetaRules;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Log;
@@ -100,7 +101,7 @@ class GoogleBusinessPublisher
     private function buildPayload(PostPlatform $postPlatform, string $content): array
     {
         $languageCode = $postPlatform->post->workspace->content_language ?? ContentLanguage::DEFAULT->value;
-        $topicType = (string) data_get($postPlatform->meta, 'topic_type', 'STANDARD');
+        $topicType = (string) (data_get($postPlatform->meta, 'topic_type') ?? 'STANDARD');
 
         $payload = [
             'languageCode' => $languageCode,
@@ -129,7 +130,7 @@ class GoogleBusinessPublisher
             ]];
         }
 
-        if (in_array($topicType, ['EVENT', 'OFFER'], true)) {
+        if (in_array($topicType, PostPlatformMetaRules::GOOGLE_BUSINESS_EVENT_TOPIC_TYPES, true)) {
             $payload['event'] = $this->buildEvent($postPlatform);
         }
 
