@@ -11,6 +11,7 @@ use App\Enums\SocialAccount\Status;
 use App\Jobs\SendNotification;
 use App\Mail\AccountDisconnected;
 use App\Observers\SocialAccountObserver;
+use App\Support\GoogleBusinessResourceName;
 use Database\Factories\SocialAccountFactory;
 use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Builder;
@@ -147,7 +148,7 @@ class SocialAccount extends Model
                         : null,
                     SocialPlatform::Telegram => $username ? "https://t.me/{$username}" : null,
                     SocialPlatform::GoogleBusiness => data_get($this->meta, 'location_id')
-                        ? 'https://business.google.com/locations/'.last(explode('/', (string) data_get($this->meta, 'location_id')))
+                        ? GoogleBusinessResourceName::dashboardUrl((string) data_get($this->meta, 'location_id'))
                         : null,
                     default => null,
                 };

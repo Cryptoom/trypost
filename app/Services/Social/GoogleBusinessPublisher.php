@@ -10,6 +10,7 @@ use App\Exceptions\Social\ErrorCategory;
 use App\Exceptions\Social\GoogleBusinessPublishException;
 use App\Models\PostPlatform;
 use App\Services\Social\Concerns\HasSocialHttpClient;
+use App\Support\GoogleBusinessResourceName;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Log;
@@ -71,7 +72,7 @@ class GoogleBusinessPublisher
 
         return [
             'id' => $postName,
-            'url' => 'https://business.google.com/locations/'.$this->shortLocationId($locationId),
+            'url' => GoogleBusinessResourceName::dashboardUrl($locationId),
         ];
     }
 
@@ -195,17 +196,6 @@ class GoogleBusinessPublisher
         $carbon = CarbonImmutable::parse($time);
 
         return ['hours' => (int) $carbon->format('G'), 'minutes' => (int) $carbon->format('i'), 'seconds' => 0, 'nanos' => 0];
-    }
-
-    /**
-     * Full `accounts/{id}/locations/{id}` resource name → the bare numeric id used
-     * in the dashboard link, matching postiz's synthesized URL shape.
-     */
-    private function shortLocationId(string $locationId): string
-    {
-        $segments = explode('/', $locationId);
-
-        return end($segments);
     }
 
     /**
