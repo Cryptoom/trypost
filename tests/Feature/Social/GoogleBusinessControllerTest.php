@@ -109,6 +109,35 @@ test('google business callback shows the location picker when multiple locations
     expect(data_get(session('google_business_oauth'), 'access_token'))->toBe('access-token');
 });
 
+test('google business callback forwards the reconnect id into the picker session', function () {
+    session([
+        'social_connect_workspace' => $this->workspace->id,
+        'social_reconnect_id' => 'existing-account-id',
+    ]);
+
+    $socialiteUser = Mockery::mock(SocialiteUser::class);
+    $socialiteUser->shouldReceive('getId')->andReturn('gid-1');
+    $socialiteUser->token = 'access-token';
+    $socialiteUser->refreshToken = 'refresh-token';
+    $socialiteUser->expiresIn = 3600;
+
+    Socialite::shouldReceive('driver')->with('google-business')->andReturn(
+        Mockery::mock()->shouldReceive('user')->andReturn($socialiteUser)->getMock()
+    );
+
+    $this->mock(GoogleBusinessPublisher::class, function ($mock) {
+        $mock->shouldReceive('fetchLocations')->once()->andReturn([
+            ['id' => 'accounts/1/locations/2', 'account_name' => 'accounts/1', 'location_name' => 'locations/2', 'title' => 'Downtown Store', 'address' => null],
+            ['id' => 'accounts/1/locations/3', 'account_name' => 'accounts/1', 'location_name' => 'locations/3', 'title' => 'Uptown Store', 'address' => null],
+        ]);
+    });
+
+    $this->actingAs($this->user)->get(route('app.social.google-business.callback'))
+        ->assertRedirect(route('app.social.google-business.select-location'));
+
+    expect(data_get(session('google_business_oauth'), 'reconnect_id'))->toBe('existing-account-id');
+});
+
 test('google business callback fails when no locations are found', function () {
     session(['social_connect_workspace' => $this->workspace->id]);
 

@@ -61,6 +61,8 @@ class GoogleBusinessController extends SocialController
             return $this->popupCallback(false, __('accounts.popup_callback.workspace_not_found'), $this->platform->value);
         }
 
+        $reconnectId = session('social_reconnect_id');
+
         try {
             $socialUser = Socialite::driver($this->driver)->user();
 
@@ -82,6 +84,7 @@ class GoogleBusinessController extends SocialController
                     'refresh_token' => $socialUser->refreshToken,
                     'expires_in' => $socialUser->expiresIn,
                     'user_id' => $socialUser->getId(),
+                    'reconnect_id' => $reconnectId,
                 ],
             ]);
 
