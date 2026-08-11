@@ -208,6 +208,7 @@ return [
             ],
             'cta_url' => 'Link przycisku',
             'cta_url_placeholder' => 'https://example.com',
+            'cta_url_required' => 'Wpisz link dla tego przycisku lub wybierz "Bez przycisku".',
             'event_title' => 'Tytuł wydarzenia',
             'event_title_placeholder' => 'Letnia wyprzedaż',
             'event_title_required' => 'Wpisz tytuł wydarzenia.',

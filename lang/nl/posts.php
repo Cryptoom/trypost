@@ -208,6 +208,7 @@ return [
             ],
             'cta_url' => 'Koppelinformatie voor knop',
             'cta_url_placeholder' => 'https://example.com',
+            'cta_url_required' => 'Voer een link in voor deze knop, of kies "Geen knop".',
             'event_title' => 'Evenementtitel',
             'event_title_placeholder' => 'Zomeruitverkoop',
             'event_title_required' => 'Voer een evenementtitel in.',

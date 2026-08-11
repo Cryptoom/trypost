@@ -208,6 +208,7 @@ return [
             ],
             'cta_url' => 'رابط الزر',
             'cta_url_placeholder' => 'https://example.com',
+            'cta_url_required' => 'أدخل رابطًا لهذا الزر، أو اختر "بدون زر".',
             'event_title' => 'عنوان الحدث',
             'event_title_placeholder' => 'عرض الصيف',
             'event_title_required' => 'أدخل عنوان الحدث.',

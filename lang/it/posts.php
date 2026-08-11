@@ -208,6 +208,7 @@ return [
             ],
             'cta_url' => 'Link del pulsante',
             'cta_url_placeholder' => 'https://example.com',
+            'cta_url_required' => 'Inserisci un link per questo pulsante, oppure scegli "Nessun pulsante".',
             'event_title' => 'Titolo evento',
             'event_title_placeholder' => 'Saldi estivi',
             'event_title_required' => 'Inserisci un titolo evento.',

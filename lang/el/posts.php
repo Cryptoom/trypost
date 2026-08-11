@@ -208,6 +208,7 @@ return [
             ],
             'cta_url' => 'Σύνδεσμος κουμπιού',
             'cta_url_placeholder' => 'https://example.com',
+            'cta_url_required' => 'Εισάγετε έναν σύνδεσμο για αυτό το κουμπί ή επιλέξτε "Χωρίς κουμπί".',
             'event_title' => 'Τίτλος εκδήλωσης',
             'event_title_placeholder' => 'Θερινή έκπτωση',
             'event_title_required' => 'Εισάγετε τίτλο εκδήλωσης.',

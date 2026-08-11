@@ -210,6 +210,7 @@ return [
             ],
             'cta_url' => 'Schaltflächenlink',
             'cta_url_placeholder' => 'https://example.com',
+            'cta_url_required' => 'Gib einen Link für diese Schaltfläche ein oder wähle "Keine Schaltfläche".',
             'event_title' => 'Veranstaltungstitel',
             'event_title_placeholder' => 'Sommerverkauf',
             'event_title_required' => 'Gib einen Veranstaltungstitel ein.',

@@ -208,6 +208,7 @@ return [
             ],
             'cta_url' => 'Посилання кнопки',
             'cta_url_placeholder' => 'https://example.com',
+            'cta_url_required' => 'Введіть посилання для цієї кнопки або виберіть "Без кнопки".',
             'event_title' => 'Назва події',
             'event_title_placeholder' => 'Літній розпродаж',
             'event_title_required' => 'Введіть назву події.',

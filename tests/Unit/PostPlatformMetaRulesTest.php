@@ -70,3 +70,60 @@ test('google business meta rules validate topic_type and call_to_action shape', 
     expect($rules)->toHaveKey('platforms.*.meta.event.title');
     expect($rules)->toHaveKey('platforms.*.meta.offer.coupon_code');
 });
+
+test('google business call_to_action.url rule is unconditional, not required_unless', function () {
+    $rules = PostPlatformMetaRules::rules();
+
+    expect($rules['platforms.*.meta.call_to_action.url'])->toBe(['sometimes', 'nullable', 'url:http,https', 'max:2048']);
+});
+
+test('google business call_to_action with a url-needing action type and no url requires a violation', function () {
+    $violation = (new ReflectionMethod(PostPlatformMetaRules::class, 'requiredMetaViolation'))
+        ->invoke(null, Platform::GoogleBusiness, [
+            'topic_type' => 'STANDARD',
+            'call_to_action' => ['action_type' => 'BOOK'],
+        ]);
+
+    expect($violation)->not->toBeNull();
+    expect($violation[0])->toBe('call_to_action.url');
+});
+
+test('google business call_to_action with action_type CALL has no url violation', function () {
+    $violation = (new ReflectionMethod(PostPlatformMetaRules::class, 'requiredMetaViolation'))
+        ->invoke(null, Platform::GoogleBusiness, [
+            'topic_type' => 'STANDARD',
+            'call_to_action' => ['action_type' => 'CALL'],
+        ]);
+
+    expect($violation)->toBeNull();
+});
+
+test('google business call_to_action with action_type NONE has no url violation', function () {
+    $violation = (new ReflectionMethod(PostPlatformMetaRules::class, 'requiredMetaViolation'))
+        ->invoke(null, Platform::GoogleBusiness, [
+            'topic_type' => 'STANDARD',
+            'call_to_action' => ['action_type' => 'NONE'],
+        ]);
+
+    expect($violation)->toBeNull();
+});
+
+test('google business call_to_action with url-needing action type and a url has no violation', function () {
+    $violation = (new ReflectionMethod(PostPlatformMetaRules::class, 'requiredMetaViolation'))
+        ->invoke(null, Platform::GoogleBusiness, [
+            'topic_type' => 'STANDARD',
+            'call_to_action' => ['action_type' => 'BOOK', 'url' => 'https://example.com/book'],
+        ]);
+
+    expect($violation)->toBeNull();
+});
+
+test('non google business platform is never checked against call_to_action requirements', function () {
+    $violation = (new ReflectionMethod(PostPlatformMetaRules::class, 'requiredMetaViolation'))
+        ->invoke(null, Platform::Pinterest, [
+            'board_id' => 'some-board',
+            'call_to_action' => ['action_type' => 'BOOK'],
+        ]);
+
+    expect($violation)->toBeNull();
+});

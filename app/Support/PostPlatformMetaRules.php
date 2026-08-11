@@ -81,7 +81,7 @@ class PostPlatformMetaRules
             'platforms.*.meta.topic_type' => ['sometimes', 'nullable', 'string', Rule::in(['STANDARD', 'EVENT', 'OFFER'])],
             'platforms.*.meta.call_to_action' => ['sometimes', 'nullable', 'array'],
             'platforms.*.meta.call_to_action.action_type' => ['sometimes', 'nullable', 'string', Rule::in(['NONE', 'BOOK', 'ORDER', 'SHOP', 'LEARN_MORE', 'SIGN_UP', 'GET_OFFER', 'CALL'])],
-            'platforms.*.meta.call_to_action.url' => ['required_unless:platforms.*.meta.call_to_action.action_type,NONE,CALL', 'nullable', 'url:http,https', 'max:2048'],
+            'platforms.*.meta.call_to_action.url' => ['sometimes', 'nullable', 'url:http,https', 'max:2048'],
             'platforms.*.meta.event' => ['sometimes', 'nullable', 'array'],
             'platforms.*.meta.event.title' => ['sometimes', 'nullable', 'string', 'max:100'],
             'platforms.*.meta.event.start_date' => ['sometimes', 'nullable', 'date'],
@@ -193,6 +193,9 @@ class PostPlatformMetaRules
             $platform === Platform::GoogleBusiness
                 && data_get($meta, 'topic_type', 'STANDARD') === 'EVENT'
                 && blank(data_get($meta, 'event.end_date')) => ['event.end_date', trans('posts.form.google_business.event_end_date_required')],
+            $platform === Platform::GoogleBusiness
+                && ! in_array(data_get($meta, 'call_to_action.action_type', 'NONE'), ['NONE', 'CALL'], true)
+                && blank(data_get($meta, 'call_to_action.url')) => ['call_to_action.url', trans('posts.form.google_business.cta_url_required')],
             default => null,
         };
     }

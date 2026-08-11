@@ -208,6 +208,7 @@ return [
             ],
             'cta_url' => '버튼 링크',
             'cta_url_placeholder' => 'https://example.com',
+            'cta_url_required' => '이 버튼의 링크를 입력하거나 "버튼 없음"을 선택하세요.',
             'event_title' => '이벤트 제목',
             'event_title_placeholder' => '여름 세일',
             'event_title_required' => '이벤트 제목을 입력하세요.',

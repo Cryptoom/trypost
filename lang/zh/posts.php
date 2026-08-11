@@ -208,6 +208,7 @@ return [
             ],
             'cta_url' => '按钮链接',
             'cta_url_placeholder' => 'https://example.com',
+            'cta_url_required' => '请输入此按钮的链接，或选择"无按钮"。',
             'event_title' => '活动标题',
             'event_title_placeholder' => '夏季促销',
             'event_title_required' => '请输入活动标题。',

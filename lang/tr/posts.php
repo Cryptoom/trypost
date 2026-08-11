@@ -210,6 +210,7 @@ return [
             ],
             'cta_url' => 'Düğme bağlantısı',
             'cta_url_placeholder' => 'https://example.com',
+            'cta_url_required' => 'Bu düğme için bir bağlantı girin veya "Düğme yok" seçeneğini seçin.',
             'event_title' => 'Etkinlik başlığı',
             'event_title_placeholder' => 'Yaz indirimi',
             'event_title_required' => 'Bir etkinlik başlığı girin.',

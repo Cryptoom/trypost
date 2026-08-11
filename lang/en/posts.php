@@ -208,6 +208,7 @@ return [
             ],
             'cta_url' => 'Button link',
             'cta_url_placeholder' => 'https://example.com',
+            'cta_url_required' => 'Enter a link for this button, or choose "No button".',
             'event_title' => 'Event title',
             'event_title_placeholder' => 'Summer sale',
             'event_title_required' => 'Enter an event title.',

@@ -208,6 +208,7 @@ return [
             ],
             'cta_url' => 'Ссылка кнопки',
             'cta_url_placeholder' => 'https://example.com',
+            'cta_url_required' => 'Введите ссылку для этой кнопки или выберите "Без кнопки".',
             'event_title' => 'Название события',
             'event_title_placeholder' => 'Летняя распродажа',
             'event_title_required' => 'Введите название события.',

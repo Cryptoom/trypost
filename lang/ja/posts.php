@@ -208,6 +208,7 @@ return [
             ],
             'cta_url' => 'ボタンリンク',
             'cta_url_placeholder' => 'https://example.com',
+            'cta_url_required' => 'このボタンのリンクを入力するか、「ボタンなし」を選択してください。',
             'event_title' => 'イベントタイトル',
             'event_title_placeholder' => '夏のセール',
             'event_title_required' => 'イベントタイトルを入力してください。',
