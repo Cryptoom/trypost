@@ -2,11 +2,18 @@
 
 declare(strict_types=1);
 
+use App\Models\Account;
+use App\Models\Invite;
 use App\Models\User;
+use App\Models\Workspace;
 use Laravel\Socialite\Facades\Socialite;
 use Laravel\Socialite\Two\User as SocialiteUser;
 
-beforeEach(fn () => config()->set('trypost.self_hosted', false));
+beforeEach(fn () => config([
+    'trypost.self_hosted' => false,
+    'trypost.google_auth_enabled' => true,
+    'trypost.github_auth_enabled' => true,
+]));
 
 test('email registration saves utm parameters from the register page query string', function () {
     $utms = [
@@ -24,7 +31,7 @@ test('email registration saves utm parameters from the register page query strin
         'email' => 'utm@example.com',
         'password' => 'Password123!',
     ])
-        ->assertRedirect(route('register.success', $utms, absolute: false));
+        ->assertRedirect(route('app.welcome', absolute: false));
 
     $this->assertDatabaseHas('users', [
         'email' => 'utm@example.com',
@@ -32,13 +39,13 @@ test('email registration saves utm parameters from the register page query strin
     ]);
 });
 
-test('email registration without utm parameters saves null utm columns and redirects without query string', function () {
+test('email registration without utm parameters saves null utm columns', function () {
     $this->post(route('register.store'), [
         'name' => 'No UTM User',
         'email' => 'no-utm@example.com',
         'password' => 'Password123!',
     ])
-        ->assertRedirect(route('register.success', absolute: false));
+        ->assertRedirect(route('app.welcome', absolute: false));
 
     $this->assertDatabaseHas('users', [
         'email' => 'no-utm@example.com',
@@ -50,7 +57,7 @@ test('email registration without utm parameters saves null utm columns and redir
     ]);
 });
 
-test('email registration strips non-utm query params from the success redirect', function () {
+test('email registration ignores non-utm query params', function () {
     $this->get(route('register', [
         'utm_source' => 'peerlist',
         'foo' => 'bar',
@@ -61,8 +68,12 @@ test('email registration strips non-utm query params from the success redirect',
         'name' => 'Strip Test',
         'email' => 'strip@example.com',
         'password' => 'Password123!',
-    ])
-        ->assertRedirect(route('register.success', ['utm_source' => 'peerlist'], absolute: false));
+    ]);
+
+    $this->assertDatabaseHas('users', [
+        'email' => 'strip@example.com',
+        'utm_source' => 'peerlist',
+    ]);
 });
 
 test('google registration saves utm parameters captured before the oauth round-trip', function () {
@@ -87,7 +98,7 @@ test('google registration saves utm parameters captured before the oauth round-t
         ->andReturn($socialiteUser);
 
     $this->get(route('auth.google.callback'))
-        ->assertRedirect(route('register.success', $utms, absolute: false));
+        ->assertRedirect(route('app.welcome', absolute: false));
 
     $this->assertDatabaseHas('users', [
         'email' => 'google-utm@example.com',
@@ -115,7 +126,7 @@ test('utm parameters captured on the register page survive a google oauth round-
         ->andReturn($socialiteUser);
 
     $this->get(route('auth.google.callback'))
-        ->assertRedirect(route('register.success', $utms, absolute: false));
+        ->assertRedirect(route('app.welcome', absolute: false));
 
     $this->assertDatabaseHas('users', [
         'email' => 'cross-flow@example.com',
@@ -149,16 +160,30 @@ test('existing google user login consumes the utm session so utms do not leak to
     expect(session()->get('attribution_parameters'))->toBeNull();
 });
 
-test('invitation registration does not include utm parameters in its redirect', function () {
-    $this->get(route('register', ['utm_source' => 'email']));
+test('invitation registration redirects to the invite page instead of app.welcome', function () {
+    $account = Account::factory()->create();
+    $owner = User::factory()->create(['account_id' => $account->id]);
+    $account->update(['owner_id' => $owner->id]);
+    $workspace = Workspace::factory()->create([
+        'account_id' => $account->id,
+        'user_id' => $owner->id,
+    ]);
+    $invite = Invite::factory()->create([
+        'account_id' => $account->id,
+        'invited_by' => $owner->id,
+        'email' => 'invited@example.com',
+        'workspaces' => [$workspace->id],
+    ]);
+
+    $this->get(route('register', ['utm_source' => 'email', 'invite' => $invite->id]));
 
     $this->post(route('register.store'), [
         'name' => 'Invited User',
         'email' => 'invited@example.com',
         'password' => 'Password123!',
-        'redirect' => '/invites/some-token',
+        'invite' => $invite->id,
     ])
-        ->assertRedirect('/invites/some-token');
+        ->assertRedirect(route('app.invites.show', $invite));
 });
 
 test('utm values longer than 255 characters are truncated before being stored', function () {
@@ -234,7 +259,7 @@ test('github registration saves utm parameters captured before the oauth round-t
         ->andReturn($socialiteUser);
 
     $this->get(route('auth.github.callback'))
-        ->assertRedirect(route('register.success', $utms, absolute: false));
+        ->assertRedirect(route('app.welcome', absolute: false));
 
     $this->assertDatabaseHas('users', [
         'email' => 'github-utm@example.com',

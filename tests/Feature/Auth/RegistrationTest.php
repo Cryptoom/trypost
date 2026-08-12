@@ -9,6 +9,24 @@ use App\Models\Workspace;
 
 beforeEach(fn () => config()->set('trypost.self_hosted', false));
 
+function createTestInvite(string $email): Invite
+{
+    $account = Account::factory()->create();
+    $owner = User::factory()->create(['account_id' => $account->id]);
+    $account->update(['owner_id' => $owner->id]);
+    $workspace = Workspace::factory()->create([
+        'account_id' => $account->id,
+        'user_id' => $owner->id,
+    ]);
+
+    return Invite::factory()->create([
+        'account_id' => $account->id,
+        'invited_by' => $owner->id,
+        'email' => $email,
+        'workspaces' => [$workspace->id],
+    ]);
+}
+
 test('registration screen can be rendered', function () {
     $response = $this->get(route('register'));
 
@@ -24,7 +42,7 @@ test('new users can register', function () {
 
     $response->assertSessionHasNoErrors();
     $this->assertAuthenticated();
-    $response->assertRedirect(route('register.success', absolute: false));
+    $response->assertRedirect(route('app.welcome', absolute: false));
 });
 
 test('new users get a default workspace on registration', function () {
@@ -75,7 +93,6 @@ test('new users registering via invite have verified email automatically', funct
         'email' => 'test@example.com',
         'password' => 'Password123!',
         'invite' => $invite->id,
-        'redirect' => route('app.invites.show', $invite),
     ]);
 
     $user = User::where('email', 'test@example.com')->first();
@@ -106,9 +123,10 @@ test('register POST returns 404 when self_hosted and no pending invite in sessio
 
 test('register page renders when self_hosted but session has pending invite', function () {
     config()->set('trypost.self_hosted', true);
+    $invite = createTestInvite('invitee@example.com');
 
     $response = $this
-        ->withSession(['pending_invite_id' => 'invite-abc'])
+        ->withSession(['pending_invite_id' => $invite->id])
         ->get(route('register'));
 
     $response->assertOk();
@@ -116,17 +134,19 @@ test('register page renders when self_hosted but session has pending invite', fu
 
 test('register page renders when self_hosted with invite query param and persists it to session', function () {
     config()->set('trypost.self_hosted', true);
+    $invite = createTestInvite('invitee@example.com');
 
-    $response = $this->get(route('register', ['invite' => 'invite-xyz']));
+    $response = $this->get(route('register', ['invite' => $invite->id]));
 
     $response->assertOk();
-    $response->assertSessionHas('pending_invite_id', 'invite-xyz');
+    $response->assertSessionHas('pending_invite_id', $invite->id);
 });
 
 test('signup clears pending_invite_id from session', function () {
     config()->set('trypost.self_hosted', true);
+    $invite = createTestInvite('invitee@example.com');
 
-    $this->withSession(['pending_invite_id' => 'invite-abc'])
+    $this->withSession(['pending_invite_id' => $invite->id])
         ->post(route('register.store'), [
             'name' => 'Invitee',
             'email' => 'invitee@example.com',
@@ -139,8 +159,9 @@ test('signup clears pending_invite_id from session', function () {
 
 test('register POST passes when self_hosted with invite query param even without prior session', function () {
     config()->set('trypost.self_hosted', true);
+    $invite = createTestInvite('invitee@example.com');
 
-    $response = $this->post(route('register.store', ['invite' => 'invite-xyz']), [
+    $response = $this->post(route('register.store', ['invite' => $invite->id]), [
         'name' => 'Invitee',
         'email' => 'invitee@example.com',
         'password' => 'Password123!',

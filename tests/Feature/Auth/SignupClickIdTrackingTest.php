@@ -6,7 +6,11 @@ use App\Models\User;
 use Laravel\Socialite\Facades\Socialite;
 use Laravel\Socialite\Two\User as SocialiteUser;
 
-beforeEach(fn () => config()->set('trypost.self_hosted', false));
+beforeEach(fn () => config([
+    'trypost.self_hosted' => false,
+    'trypost.google_auth_enabled' => true,
+    'trypost.github_auth_enabled' => true,
+]));
 
 test('email registration saves ad click ids from the register page query string', function () {
     $clickIds = [
@@ -25,7 +29,7 @@ test('email registration saves ad click ids from the register page query string'
         'email' => 'click@example.com',
         'password' => 'Password123!',
     ])
-        ->assertRedirect(route('register.success', $clickIds, absolute: false));
+        ->assertRedirect(route('app.welcome', absolute: false));
 
     $this->assertDatabaseHas('users', [
         'email' => 'click@example.com',
@@ -85,7 +89,7 @@ test('google registration saves ad click ids captured before the oauth round-tri
         ->andReturn($socialiteUser);
 
     $this->get(route('auth.google.callback'))
-        ->assertRedirect(route('register.success', $clickIds, absolute: false));
+        ->assertRedirect(route('app.welcome', absolute: false));
 
     $this->assertDatabaseHas('users', [
         'email' => 'google-click@example.com',
@@ -114,7 +118,7 @@ test('github registration saves ad click ids captured before the oauth round-tri
         ->andReturn($socialiteUser);
 
     $this->get(route('auth.github.callback'))
-        ->assertRedirect(route('register.success', $clickIds, absolute: false));
+        ->assertRedirect(route('app.welcome', absolute: false));
 
     $this->assertDatabaseHas('users', [
         'email' => 'github-click@example.com',

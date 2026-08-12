@@ -6,6 +6,7 @@ namespace App\Http\Controllers\App;
 
 use App\Actions\Billing\StartSubscriptionCheckout;
 use App\Enums\Plan\Slug;
+use App\Enums\PostHog\CheckoutEvent;
 use App\Enums\PostHog\WelcomeEvent;
 use App\Enums\User\Goal;
 use App\Enums\User\Persona;
@@ -144,24 +145,25 @@ class WelcomeController extends Controller
             $user->account,
         );
 
-        return $this->startCheckout($request, $checkout);
-    }
-
-    private function startCheckout(
-        Request $request,
-        StartSubscriptionCheckout $checkout,
-    ): Response|RedirectResponse {
-        $user = $request->user();
         $plan = Plan::where('slug', Slug::Workspace)->firstOrFail();
         $priceId = $plan->stripe_monthly_price_id;
 
         abort_if($priceId === null, Response::HTTP_INTERNAL_SERVER_ERROR, 'Monthly price is not configured.');
 
-        return $checkout->redirect(
+        $response = $checkout->redirect(
             $user->account,
             $priceId,
             route('app.welcome.referral-source'),
         );
+
+        $postHog->capture(
+            $user->id,
+            CheckoutEvent::Started->value,
+            ['plan_name' => $plan->name, 'interval' => 'monthly'],
+            $user->account,
+        );
+
+        return $response;
     }
 
     public function subscriptionRequired(Request $request): InertiaResponse|RedirectResponse

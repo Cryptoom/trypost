@@ -25,7 +25,6 @@ class RegisteredUserController extends Controller
 
         return Inertia::render('auth/Register', [
             'email' => $request->query('email'),
-            'redirect' => $request->query('redirect'),
             'invite' => $request->query('invite'),
         ]);
     }
@@ -33,12 +32,13 @@ class RegisteredUserController extends Controller
     public function store(RegisterRequest $request): RedirectResponse
     {
         $attributionParameters = $this->retrieveAttributionParameters();
+        $invite = $request->invite();
 
         $user = CreateUser::execute([
             'name' => $request->validated('name'),
             'email' => $request->validated('email'),
             'password' => $request->validated('password'),
-            'is_invite' => $request->isInviteRegistration(),
+            'is_invite' => $invite !== null,
             'registration_ip' => $request->ip(),
         ], $attributionParameters);
 
@@ -48,14 +48,10 @@ class RegisteredUserController extends Controller
 
         $request->session()->forget('pending_invite_id');
 
-        if ($redirect = $request->input('redirect')) {
-            if (str_starts_with($redirect, '/') && ! str_starts_with($redirect, '//')) {
-                return redirect($redirect);
-            }
+        if ($invite) {
+            return redirect()->route('app.invites.show', $invite);
         }
 
-        session()->flash('auth_provider', 'email');
-
-        return redirect()->route('register.success', $attributionParameters);
+        return redirect()->route('app.welcome');
     }
 }

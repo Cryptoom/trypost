@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\App\Settings;
 
+use App\Enums\Auth\SocialAuthProvider;
 use App\Http\Controllers\App\Controller;
 use App\Http\Requests\App\Settings\AuthenticationPasswordRequest;
 use App\Models\User;
@@ -18,8 +19,6 @@ use Laravel\Socialite\Facades\Socialite;
 
 class AuthenticationController extends Controller
 {
-    private const array PROVIDERS = ['google', 'github'];
-
     public function edit(Request $request): Response
     {
         $user = $request->user();
@@ -66,33 +65,36 @@ class AuthenticationController extends Controller
 
     public function connectProvider(string $provider): RedirectResponse
     {
-        abort_unless(in_array($provider, self::PROVIDERS, true), 404);
+        $socialProvider = SocialAuthProvider::tryFrom($provider);
 
-        return match ($provider) {
-            'google' => Socialite::driver('google-auth')->redirect(),
-            'github' => Socialite::driver('github')->scopes(['read:user', 'user:email'])->redirect(),
+        abort_unless($socialProvider?->isEnabled(), 404);
+
+        return match ($socialProvider) {
+            SocialAuthProvider::Google => Socialite::driver('google-auth')->redirect(),
+            SocialAuthProvider::GitHub => Socialite::driver('github')->scopes(['read:user', 'user:email'])->redirect(),
         };
     }
 
     public function disconnectProvider(Request $request, string $provider): RedirectResponse
     {
-        abort_unless(in_array($provider, self::PROVIDERS, true), 404);
+        $socialProvider = SocialAuthProvider::tryFrom($provider);
+
+        abort_unless($socialProvider !== null, 404);
 
         $user = $request->user();
-        $column = "{$provider}_id";
 
-        if (! $user->{$column}) {
+        if (! $user->isConnectedTo($socialProvider)) {
             return back();
         }
 
-        if (! $this->canDisconnect($user, $provider)) {
+        if (! $this->canDisconnect($user, $socialProvider)) {
             return back()->with('flash.error', __('settings.authentication.providers.flash_cannot_disconnect'));
         }
 
-        $user->update([$column => null]);
+        $user->update(["{$socialProvider->value}_id" => null]);
 
         return back()->with('flash.success', __('settings.authentication.providers.flash_disconnected', [
-            'provider' => ucfirst($provider),
+            'provider' => $socialProvider->label(),
         ]));
     }
 
@@ -124,37 +126,22 @@ class AuthenticationController extends Controller
      */
     private function getConnectedAccounts(User $user): array
     {
-        $labels = [
-            'google' => 'Google',
-            'github' => 'GitHub',
-        ];
-
-        return collect(self::PROVIDERS)->map(fn (string $provider) => [
-            'provider' => $provider,
-            'label' => $labels[$provider],
-            'connected' => (bool) $user->{"{$provider}_id"},
-            'can_disconnect' => $user->{"{$provider}_id"} && $this->canDisconnect($user, $provider),
+        return collect(SocialAuthProvider::cases())->map(fn (SocialAuthProvider $provider) => [
+            'provider' => $provider->value,
+            'label' => $provider->label(),
+            'connected' => $user->isConnectedTo($provider),
+            'can_disconnect' => $user->isConnectedTo($provider) && $this->canDisconnect($user, $provider),
         ])->values()->all();
     }
 
-    private function canDisconnect(User $user, string $provider): bool
+    private function canDisconnect(User $user, SocialAuthProvider $provider): bool
     {
-        $remainingMethods = 0;
-
         if ($user->password) {
-            $remainingMethods++;
+            return true;
         }
 
-        foreach (self::PROVIDERS as $other) {
-            if ($other === $provider) {
-                continue;
-            }
-
-            if ($user->{"{$other}_id"}) {
-                $remainingMethods++;
-            }
-        }
-
-        return $remainingMethods > 0;
+        return collect(SocialAuthProvider::cases())
+            ->filter(fn (SocialAuthProvider $other) => $other !== $provider)
+            ->contains(fn (SocialAuthProvider $other) => $user->isConnectedTo($other));
     }
 }

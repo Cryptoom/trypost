@@ -5,6 +5,9 @@ declare(strict_types=1);
 use App\Enums\Plan\Slug;
 use App\Enums\PostHog\BillingEvent;
 use App\Jobs\PostHog\TrackBilling;
+use App\Jobs\PostHog\TrackCheckoutCompleted;
+use App\Jobs\PostHog\TrackTrialConverted;
+use App\Jobs\PostHog\TrackTrialStarted;
 use App\Listeners\StripeEventListener;
 use App\Models\Account;
 use App\Models\Plan;
@@ -216,6 +219,32 @@ test('TrackBilling is not dispatched when PostHog is disabled', function () {
     Bus::assertNotDispatched(TrackBilling::class);
 });
 
+test('TrackBilling is not dispatched when PostHog is disabled in production', function () {
+    app()->detectEnvironment(fn () => 'production');
+    config(['services.posthog.enabled' => false, 'services.posthog.api_key' => null]);
+    Bus::fake([TrackBilling::class]);
+
+    $this->listener->handle(new WebhookReceived([
+        'type' => 'customer.subscription.created',
+        'data' => ['object' => ['customer' => 'cus_test123', 'id' => 'sub_123']],
+    ]));
+
+    Bus::assertNotDispatched(TrackBilling::class);
+});
+
+test('TrackBilling is dispatched in the local environment even when PostHog is disabled', function () {
+    app()->detectEnvironment(fn () => 'local');
+    config(['services.posthog.enabled' => false, 'services.posthog.api_key' => null]);
+    Bus::fake([TrackBilling::class]);
+
+    $this->listener->handle(new WebhookReceived([
+        'type' => 'customer.subscription.created',
+        'data' => ['object' => ['customer' => 'cus_test123', 'id' => 'sub_123']],
+    ]));
+
+    Bus::assertDispatched(TrackBilling::class);
+});
+
 test('TrackBilling is not dispatched when api key is missing', function () {
     config(['services.posthog.api_key' => null]);
     Bus::fake([TrackBilling::class]);
@@ -386,4 +415,351 @@ test('subscription created forwards a null previous plan when account had none',
         TrackBilling::class,
         fn ($job) => $job->event === BillingEvent::Created && $job->previousPlan === null,
     );
+});
+
+// ========================================
+// checkout.completed / trial.started tracking
+// ========================================
+
+test('subscription created dispatches TrackCheckoutCompleted when status is active', function () {
+    Bus::fake([TrackCheckoutCompleted::class, TrackTrialStarted::class]);
+
+    $this->listener->handle(new WebhookReceived([
+        'type' => 'customer.subscription.created',
+        'data' => ['object' => [
+            'customer' => 'cus_test123',
+            'id' => 'sub_123',
+            'status' => 'active',
+            'items' => ['data' => [['price' => ['id' => 'price_workspace_monthly']]]],
+        ]],
+    ]));
+
+    Bus::assertDispatched(
+        TrackCheckoutCompleted::class,
+        fn ($job) => $job->accountId === (string) $this->account->id,
+    );
+    Bus::assertNotDispatched(TrackTrialStarted::class);
+});
+
+test('subscription created dispatches TrackTrialStarted when status is trialing', function () {
+    Bus::fake([TrackCheckoutCompleted::class, TrackTrialStarted::class]);
+
+    $this->listener->handle(new WebhookReceived([
+        'type' => 'customer.subscription.created',
+        'data' => ['object' => [
+            'customer' => 'cus_test123',
+            'id' => 'sub_123',
+            'status' => 'trialing',
+            'trial_end' => now()->addDays(8)->timestamp,
+            'items' => ['data' => [['price' => ['id' => 'price_workspace_monthly']]]],
+        ]],
+    ]));
+
+    Bus::assertDispatched(
+        TrackTrialStarted::class,
+        fn ($job) => $job->accountId === (string) $this->account->id,
+    );
+    Bus::assertNotDispatched(TrackCheckoutCompleted::class);
+});
+
+test('subscription created dispatches neither job for a status we do not track', function () {
+    Bus::fake([TrackCheckoutCompleted::class, TrackTrialStarted::class]);
+
+    $this->listener->handle(new WebhookReceived([
+        'type' => 'customer.subscription.created',
+        'data' => ['object' => [
+            'customer' => 'cus_test123',
+            'id' => 'sub_123',
+            'status' => 'incomplete',
+            'items' => ['data' => [['price' => ['id' => 'price_workspace_monthly']]]],
+        ]],
+    ]));
+
+    Bus::assertNotDispatched(TrackCheckoutCompleted::class);
+    Bus::assertNotDispatched(TrackTrialStarted::class);
+});
+
+test('subscription updated and deleted do not dispatch TrackCheckoutCompleted or TrackTrialStarted', function (string $type) {
+    Bus::fake([TrackCheckoutCompleted::class, TrackTrialStarted::class]);
+
+    $this->listener->handle(new WebhookReceived([
+        'type' => $type,
+        'data' => ['object' => ['customer' => 'cus_test123', 'id' => 'sub_123', 'status' => 'active']],
+    ]));
+
+    Bus::assertNotDispatched(TrackCheckoutCompleted::class);
+    Bus::assertNotDispatched(TrackTrialStarted::class);
+})->with([
+    'updated' => 'customer.subscription.updated',
+    'deleted' => 'customer.subscription.deleted',
+]);
+
+test('TrackCheckoutCompleted is not dispatched when PostHog is disabled', function () {
+    config(['services.posthog.enabled' => false]);
+    Bus::fake([TrackCheckoutCompleted::class]);
+
+    $this->listener->handle(new WebhookReceived([
+        'type' => 'customer.subscription.created',
+        'data' => ['object' => [
+            'customer' => 'cus_test123',
+            'id' => 'sub_123',
+            'status' => 'active',
+            'items' => ['data' => [['price' => ['id' => 'price_workspace_monthly']]]],
+        ]],
+    ]));
+
+    Bus::assertNotDispatched(TrackCheckoutCompleted::class);
+});
+
+test('TrackCheckoutCompleted and TrackTrialStarted are not dispatched when PostHog is disabled in production', function () {
+    app()->detectEnvironment(fn () => 'production');
+    config(['services.posthog.enabled' => false, 'services.posthog.api_key' => null]);
+    Bus::fake([TrackCheckoutCompleted::class, TrackTrialStarted::class]);
+
+    $this->listener->handle(new WebhookReceived([
+        'type' => 'customer.subscription.created',
+        'data' => ['object' => [
+            'customer' => 'cus_test123',
+            'id' => 'sub_123',
+            'status' => 'active',
+            'items' => ['data' => [['price' => ['id' => 'price_workspace_monthly']]]],
+        ]],
+    ]));
+
+    Bus::assertNotDispatched(TrackCheckoutCompleted::class);
+    Bus::assertNotDispatched(TrackTrialStarted::class);
+});
+
+test('TrackCheckoutCompleted is dispatched in the local environment even when PostHog is disabled', function () {
+    app()->detectEnvironment(fn () => 'local');
+    config(['services.posthog.enabled' => false, 'services.posthog.api_key' => null]);
+    Bus::fake([TrackCheckoutCompleted::class]);
+
+    $this->listener->handle(new WebhookReceived([
+        'type' => 'customer.subscription.created',
+        'data' => ['object' => [
+            'customer' => 'cus_test123',
+            'id' => 'sub_123',
+            'status' => 'active',
+            'items' => ['data' => [['price' => ['id' => 'price_workspace_monthly']]]],
+        ]],
+    ]));
+
+    Bus::assertDispatched(TrackCheckoutCompleted::class);
+});
+
+// ========================================
+// trial.converted tracking
+// ========================================
+
+test('subscription updated dispatches TrackTrialConverted when trialing transitions to active', function () {
+    Bus::fake([TrackTrialConverted::class]);
+
+    $this->listener->handle(new WebhookReceived([
+        'type' => 'customer.subscription.updated',
+        'data' => [
+            'object' => [
+                'customer' => 'cus_test123',
+                'id' => 'sub_123',
+                'status' => 'active',
+                'items' => ['data' => [['price' => ['id' => 'price_workspace_monthly']]]],
+            ],
+            'previous_attributes' => ['status' => 'trialing'],
+        ],
+    ]));
+
+    Bus::assertDispatched(
+        TrackTrialConverted::class,
+        fn ($job) => $job->accountId === (string) $this->account->id,
+    );
+});
+
+test('subscription updated dispatches TrackTrialConverted when a trial recovers from a failed first charge', function () {
+    Bus::fake([TrackTrialConverted::class]);
+    $trialEnd = now()->subDay()->timestamp;
+
+    $this->listener->handle(new WebhookReceived([
+        'type' => 'customer.subscription.updated',
+        'data' => [
+            'object' => [
+                'customer' => 'cus_test123',
+                'id' => 'sub_123',
+                'status' => 'active',
+                'trial_end' => $trialEnd,
+                'items' => ['data' => [[
+                    'price' => ['id' => 'price_workspace_monthly'],
+                    'current_period_start' => $trialEnd,
+                ]]],
+            ],
+            'previous_attributes' => ['status' => 'past_due'],
+        ],
+    ]));
+
+    Bus::assertDispatched(
+        TrackTrialConverted::class,
+        fn ($job) => $job->accountId === (string) $this->account->id,
+    );
+});
+
+test('subscription updated does not dispatch TrackTrialConverted for a past_due recovery on a subscription that never had a trial', function () {
+    Bus::fake([TrackTrialConverted::class]);
+
+    $this->listener->handle(new WebhookReceived([
+        'type' => 'customer.subscription.updated',
+        'data' => [
+            'object' => ['customer' => 'cus_test123', 'id' => 'sub_123', 'status' => 'active'],
+            'previous_attributes' => ['status' => 'past_due'],
+        ],
+    ]));
+
+    Bus::assertNotDispatched(TrackTrialConverted::class);
+});
+
+test('subscription updated does not dispatch TrackTrialConverted for a later, unrelated past_due recovery on a long-converted subscription', function () {
+    Bus::fake([TrackTrialConverted::class]);
+
+    // trial_end is set (Stripe never clears it), but current_period_start is
+    // months ahead of it — this is a routine card-decline-then-recovery on an
+    // already-converted subscription, not the trial's own first charge retry.
+    $trialEnd = now()->subMonths(6)->timestamp;
+    $currentPeriodStart = now()->subDays(3)->timestamp;
+
+    $this->listener->handle(new WebhookReceived([
+        'type' => 'customer.subscription.updated',
+        'data' => [
+            'object' => [
+                'customer' => 'cus_test123',
+                'id' => 'sub_123',
+                'status' => 'active',
+                'trial_end' => $trialEnd,
+                'items' => ['data' => [[
+                    'price' => ['id' => 'price_workspace_monthly'],
+                    'current_period_start' => $currentPeriodStart,
+                ]]],
+            ],
+            'previous_attributes' => ['status' => 'past_due'],
+        ],
+    ]));
+
+    Bus::assertNotDispatched(TrackTrialConverted::class);
+});
+
+test('subscription updated does not dispatch TrackTrialConverted when the new status is not active', function () {
+    Bus::fake([TrackTrialConverted::class]);
+
+    $this->listener->handle(new WebhookReceived([
+        'type' => 'customer.subscription.updated',
+        'data' => [
+            'object' => ['customer' => 'cus_test123', 'id' => 'sub_123', 'status' => 'past_due'],
+            'previous_attributes' => ['status' => 'trialing'],
+        ],
+    ]));
+
+    Bus::assertNotDispatched(TrackTrialConverted::class);
+});
+
+test('TrackTrialConverted is not dispatched when PostHog is disabled', function () {
+    config(['services.posthog.enabled' => false]);
+    Bus::fake([TrackTrialConverted::class]);
+
+    $this->listener->handle(new WebhookReceived([
+        'type' => 'customer.subscription.updated',
+        'data' => [
+            'object' => ['customer' => 'cus_test123', 'id' => 'sub_123', 'status' => 'active'],
+            'previous_attributes' => ['status' => 'trialing'],
+        ],
+    ]));
+
+    Bus::assertNotDispatched(TrackTrialConverted::class);
+});
+
+test('TrackTrialConverted is not dispatched when PostHog is disabled in production', function () {
+    app()->detectEnvironment(fn () => 'production');
+    config(['services.posthog.enabled' => false, 'services.posthog.api_key' => null]);
+    Bus::fake([TrackTrialConverted::class]);
+
+    $this->listener->handle(new WebhookReceived([
+        'type' => 'customer.subscription.updated',
+        'data' => [
+            'object' => ['customer' => 'cus_test123', 'id' => 'sub_123', 'status' => 'active'],
+            'previous_attributes' => ['status' => 'trialing'],
+        ],
+    ]));
+
+    Bus::assertNotDispatched(TrackTrialConverted::class);
+});
+
+test('TrackTrialConverted is dispatched in the local environment even when PostHog is disabled', function () {
+    app()->detectEnvironment(fn () => 'local');
+    config(['services.posthog.enabled' => false, 'services.posthog.api_key' => null]);
+    Bus::fake([TrackTrialConverted::class]);
+
+    $this->listener->handle(new WebhookReceived([
+        'type' => 'customer.subscription.updated',
+        'data' => [
+            'object' => ['customer' => 'cus_test123', 'id' => 'sub_123', 'status' => 'active'],
+            'previous_attributes' => ['status' => 'trialing'],
+        ],
+    ]));
+
+    Bus::assertDispatched(TrackTrialConverted::class);
+});
+
+// ========================================
+// Idempotency (Stripe webhook redelivery)
+// ========================================
+
+test('redelivering the same stripe event id only processes it once', function () {
+    Bus::fake([TrackTrialConverted::class]);
+
+    $payload = [
+        'id' => 'evt_test_redelivered',
+        'type' => 'customer.subscription.updated',
+        'data' => [
+            'object' => ['customer' => 'cus_test123', 'id' => 'sub_123', 'status' => 'active'],
+            'previous_attributes' => ['status' => 'trialing'],
+        ],
+    ];
+
+    $this->listener->handle(new WebhookReceived($payload));
+    $this->listener->handle(new WebhookReceived($payload));
+
+    Bus::assertDispatchedTimes(TrackTrialConverted::class, 1);
+});
+
+test('two different stripe event ids are both processed', function () {
+    Bus::fake([TrackTrialConverted::class]);
+
+    $this->listener->handle(new WebhookReceived([
+        'id' => 'evt_test_first',
+        'type' => 'customer.subscription.updated',
+        'data' => [
+            'object' => ['customer' => 'cus_test123', 'id' => 'sub_123', 'status' => 'active'],
+            'previous_attributes' => ['status' => 'trialing'],
+        ],
+    ]));
+    $this->listener->handle(new WebhookReceived([
+        'id' => 'evt_test_second',
+        'type' => 'customer.subscription.updated',
+        'data' => [
+            'object' => ['customer' => 'cus_test123', 'id' => 'sub_123', 'status' => 'active'],
+            'previous_attributes' => ['status' => 'trialing'],
+        ],
+    ]));
+
+    Bus::assertDispatchedTimes(TrackTrialConverted::class, 2);
+});
+
+test('an event without an id is still processed (no idempotency key available)', function () {
+    Bus::fake([TrackTrialConverted::class]);
+
+    $this->listener->handle(new WebhookReceived([
+        'type' => 'customer.subscription.updated',
+        'data' => [
+            'object' => ['customer' => 'cus_test123', 'id' => 'sub_123', 'status' => 'active'],
+            'previous_attributes' => ['status' => 'trialing'],
+        ],
+    ]));
+
+    Bus::assertDispatchedTimes(TrackTrialConverted::class, 1);
 });
