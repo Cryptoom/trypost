@@ -708,7 +708,8 @@ test('publish job releases an overlapping execution for the same platform', func
     $lock = Cache::lock($middleware->getLockKey($runningJob), $runningJob->timeout + 60);
     $handled = false;
 
-    expect($lock->get())->toBeTrue();
+    expect($middleware->getLockKey($runningJob))->toBe($middleware->getLockKey($overlappingJob))
+        ->and($lock->get())->toBeTrue();
 
     try {
         $middleware->handle($overlappingJob, function () use (&$handled): void {
@@ -720,6 +721,12 @@ test('publish job releases an overlapping execution for the same platform', func
 
     expect($handled)->toBeFalse();
     $overlappingJob->assertReleased(60);
+
+    $middleware->handle($overlappingJob, function () use (&$handled): void {
+        $handled = true;
+    });
+
+    expect($handled)->toBeTrue();
 });
 
 test('publish job unique lock drops a duplicate dispatch for the same platform attempt', function () {
@@ -808,23 +815,30 @@ test('failed hook prunes pending TikTok photo derivatives', function () {
     ]);
 });
 
-test('inactive TikTok account prunes derivatives from a resumable photo publish', function () {
+test('terminal TikTok account guards prune derivatives from a resumable photo publish', function (string $guard) {
     Event::fake();
     Mail::fake();
     Storage::fake();
 
-    $path = 'social-tiktok-photos/pending-inactive.jpg';
+    $path = 'social-tiktok-photos/pending-'.str_replace('_', '-', $guard).'.jpg';
     Storage::put($path, 'image');
+
+    $accountAttributes = match ($guard) {
+        'inactive' => ['is_active' => false],
+        'disconnected' => ['status' => AccountStatus::Disconnected],
+        'token_expired' => ['status' => AccountStatus::TokenExpired],
+        'missing_scopes' => ['scopes' => []],
+    };
     $account = SocialAccount::factory()->tiktok()->create([
         'workspace_id' => $this->workspace->id,
-        'is_active' => false,
+        ...$accountAttributes,
     ]);
     $platform = PostPlatform::factory()->tiktok()->create([
         'post_id' => $this->post->id,
         'social_account_id' => $account->id,
         'status' => PlatformStatus::Retrying,
         'error_context' => [
-            'tiktok_publish_id' => 'publish-inactive',
+            'tiktok_publish_id' => "publish-{$guard}",
             'tiktok_derivative_paths' => [$path],
         ],
     ]);
@@ -832,10 +846,32 @@ test('inactive TikTok account prunes derivatives from a resumable photo publish'
     (new PublishToSocialPlatform($platform))->handle();
 
     Storage::assertMissing($path);
-    expect($platform->fresh()->status)->toBe(PlatformStatus::Failed)
-        ->and($platform->fresh()->error_message)->toBe(__('posts.errors.account_inactive'))
-        ->and($platform->fresh()->error_context['tiktok_publish_id'] ?? null)->toBe('publish-inactive');
-});
+    $platform->refresh();
+
+    expect($platform->status)->toBe(PlatformStatus::Failed)
+        ->and($platform->error_context['tiktok_publish_id'] ?? null)->toBe("publish-{$guard}");
+
+    if ($guard === 'missing_scopes') {
+        expect($platform->error_message)->toBe('Missing permissions: video.publish. Please reconnect your account.')
+            ->and($platform->error_context['category'] ?? null)->toBe('permission')
+            ->and($platform->error_context['missing_scopes'] ?? null)->toBe(['video.publish']);
+
+        return;
+    }
+
+    $translationKey = match ($guard) {
+        'inactive' => 'posts.errors.account_inactive',
+        'disconnected' => 'posts.errors.account_disconnected',
+        'token_expired' => 'posts.errors.account_token_expired',
+    };
+
+    expect($platform->error_message)->toBe(__($translationKey));
+})->with([
+    'inactive account' => 'inactive',
+    'disconnected account' => 'disconnected',
+    'expired token' => 'token_expired',
+    'missing publish scopes' => 'missing_scopes',
+]);
 
 test('pinterest media status 401 marks the account token expired and notifies to reconnect', function () {
     Event::fake();

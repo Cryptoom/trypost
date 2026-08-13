@@ -442,6 +442,69 @@ test('instagram publisher can publish carousel with videos', function () {
     expect($result['id'])->toBe('carousel-mix-123456789');
 });
 
+test('instagram publisher resumes a processing carousel child without recreating child containers', function () {
+    $this->post->update([
+        'media' => [
+            [
+                'id' => 'test-media-image',
+                'path' => 'media/2026-01/test-image.jpg',
+                'url' => 'https://example.com/media/2026-01/test-image.jpg',
+                'mime_type' => 'image/jpeg',
+                'original_filename' => 'test.jpg',
+            ],
+            [
+                'id' => 'test-media-video',
+                'path' => 'media/2026-01/test-video.mp4',
+                'url' => 'https://example.com/media/2026-01/test-video.mp4',
+                'mime_type' => 'video/mp4',
+                'original_filename' => 'test.mp4',
+            ],
+        ],
+    ]);
+
+    Http::fake([
+        'https://graph.instagram.com/v25.0/ig_123456789/media' => Http::sequence()
+            ->push(['id' => 'child-1'], 200)
+            ->push(['id' => 'child-2'], 200)
+            ->push(['id' => 'carousel-container-123'], 200),
+        'https://graph.instagram.com/v25.0/child-2*' => Http::sequence()
+            ->push(['status_code' => 'IN_PROGRESS'], 200)
+            ->push(['status_code' => 'FINISHED'], 200),
+        'https://graph.instagram.com/v25.0/carousel-container-123*' => Http::response([
+            'status_code' => 'FINISHED',
+        ], 200),
+        'https://graph.instagram.com/v25.0/ig_123456789/media_publish' => Http::response([
+            'id' => 'carousel-resumed-123456789',
+        ], 200),
+        'https://graph.instagram.com/v25.0/carousel-resumed-123456789*' => Http::response([
+            'permalink' => 'https://www.instagram.com/p/CAROUSELRESUMED/',
+        ], 200),
+    ]);
+
+    try {
+        $this->publisher->publish($this->postPlatform);
+        test()->fail('Expected the processing carousel child to be rescheduled.');
+    } catch (PlatformUnavailableException $exception) {
+        expect($exception->context)->toBe([
+            'instagram_workflow' => [
+                'stage' => 'carousel_children',
+                'child_container_ids' => ['child-1', 'child-2'],
+                'processing_child_container_ids' => ['child-2'],
+            ],
+        ])->and($exception->retryDelaySeconds)->toBe(10)
+            ->and($exception->maxRetries)->toBe(90);
+
+        $this->postPlatform->update(['error_context' => $exception->context]);
+    }
+
+    $result = $this->publisher->publish($this->postPlatform->fresh());
+
+    expect($result['id'])->toBe('carousel-resumed-123456789')
+        ->and(collect(Http::recorded())->filter(
+            fn (array $pair) => $pair[0]->method() === 'POST' && str_ends_with($pair[0]->url(), '/ig_123456789/media')
+        ))->toHaveCount(3);
+});
+
 test('instagram publisher throws exception on api error', function () {
     $this->post->update([
         'media' => [
