@@ -208,6 +208,7 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
     {
         $retryCount = (int) data_get($this->postPlatform->error_context, 'retry_count', 0) + 1;
         $context = [
+            ...$e->context,
             'category' => 'platform_unavailable',
             'http_status' => $e->httpStatus,
             'retry_count' => $retryCount,

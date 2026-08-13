@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
+use App\Exceptions\PlatformUnavailableException;
 use App\Exceptions\Social\InstagramPublishException;
 use App\Exceptions\TokenExpiredException;
 use App\Models\Post;
@@ -15,6 +16,7 @@ use App\Services\Media\MediaOptimizer;
 use App\Services\Social\InstagramPublisher;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Sleep;
 use Intervention\Image\Drivers\Gd\Driver;
 use Intervention\Image\ImageManager;
 
@@ -27,6 +29,8 @@ function fakeJpegBytes(int $width = 1200, int $height = 800): string
 }
 
 beforeEach(function () {
+    Sleep::fake();
+
     $this->user = User::factory()->create();
     $this->workspace = Workspace::factory()->create(['user_id' => $this->user->id]);
 
@@ -624,6 +628,29 @@ test('instagram publisher waits for media processing', function () {
     $result = $this->publisher->publish($this->postPlatform);
 
     expect($result['id'])->toBe('media-123456789');
+});
+
+test('instagram publisher does not publish a container that never finishes processing', function () {
+    $this->post->update([
+        'media' => [[
+            'id' => 'test-media-id',
+            'path' => 'media/2026-01/test-image.jpg',
+            'url' => 'https://example.com/media/2026-01/test-image.jpg',
+            'mime_type' => 'image/jpeg',
+            'original_filename' => 'test.jpg',
+        ]],
+    ]);
+
+    Http::fake([
+        'https://graph.instagram.com/v25.0/ig_123456789/media' => Http::response(['id' => 'container-123']),
+        'https://graph.instagram.com/v25.0/container-123*' => Http::response(['status_code' => 'IN_PROGRESS']),
+    ]);
+
+    expect(fn () => $this->publisher->publish($this->postPlatform))
+        ->toThrow(PlatformUnavailableException::class, 'Instagram is still processing container container-123');
+
+    Sleep::assertSleptTimes(30);
+    Http::assertNotSent(fn ($request) => str_contains($request->url(), '/media_publish'));
 });
 
 test('instagram publisher throws exception when all carousel items fail', function () {

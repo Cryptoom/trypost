@@ -7,16 +7,20 @@ namespace App\Exceptions;
 use Exception;
 
 /**
- * Raised when a social platform's API is unreachable or returning a server
- * error during a token verify/refresh. Distinct from TokenExpiredException
- * because the account's token is not provably invalid — the platform is
- * just down. Callers should retry later instead of disconnecting the user.
+ * Raised when a social platform operation is temporarily unavailable or still
+ * processing. Distinct from TokenExpiredException because the account's token
+ * is not provably invalid. Callers should retry later instead of disconnecting
+ * the user or reporting a definitive publish failure.
  */
 class PlatformUnavailableException extends Exception
 {
+    /**
+     * @param  array<string, mixed>  $context
+     */
     public function __construct(
         string $message = 'Platform API is unavailable',
         public ?int $httpStatus = null,
+        public array $context = [],
     ) {
         parent::__construct($message);
     }

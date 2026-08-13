@@ -20,6 +20,7 @@ use Exception;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Sleep;
 use RuntimeException;
 use Throwable;
 
@@ -477,8 +478,6 @@ class BlueskyPublisher
     private function pollVideoJob(string $statusToken, string $jobId, CarbonInterface $deadline): ?array
     {
         $statusUrl = (string) config('trypost.platforms.bluesky.video_service').'/xrpc/'.BlueskyLexicon::VIDEO_GET_JOB_STATUS;
-        $intervalSeconds = (int) config('trypost.platforms.bluesky.video_poll_seconds');
-
         // Processing usually finishes within seconds. State is checked before
         // sleeping so an already-complete job returns at once. The attempt cap
         // and the wall-clock deadline both bound the loop.
@@ -514,12 +513,21 @@ class BlueskyPublisher
                 return null;
             }
 
-            sleep($intervalSeconds);
+            Sleep::for($this->videoPollDelaySeconds($attempt))->seconds();
         }
 
         Log::error('Bluesky video processing timed out', ['jobId' => $jobId]);
 
         return null;
+    }
+
+    private function videoPollDelaySeconds(int $attempt): int
+    {
+        $initialSeconds = max(0, (int) config('trypost.platforms.bluesky.video_poll_seconds'));
+        $maxSeconds = max($initialSeconds, (int) config('trypost.platforms.bluesky.video_poll_max_seconds'));
+        $multiplier = 2 ** intdiv($attempt, 3);
+
+        return min($initialSeconds * $multiplier, $maxSeconds);
     }
 
     /**

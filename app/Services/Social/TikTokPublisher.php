@@ -6,6 +6,7 @@ namespace App\Services\Social;
 
 use App\DataTransferObjects\MediaItem;
 use App\Enums\SocialAccount\Platform;
+use App\Exceptions\PlatformUnavailableException;
 use App\Exceptions\Social\ErrorCategory;
 use App\Exceptions\Social\TikTokPublishException;
 use App\Models\PostPlatform;
@@ -17,12 +18,17 @@ use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Sleep;
 use Illuminate\Support\Str;
 use Throwable;
 
 class TikTokPublisher
 {
     use HasSocialHttpClient;
+
+    private const int PUBLISH_STATUS_MAX_ATTEMPTS = 30;
+
+    private const int PUBLISH_STATUS_POLL_SECONDS = 10;
 
     private const PHOTO_DERIVATIVE_DIRECTORY = 'social-tiktok-photos';
 
@@ -48,6 +54,12 @@ class TikTokPublisher
         }
 
         $this->accessToken = $account->access_token;
+
+        $pendingPublishId = data_get($postPlatform->error_context, 'tiktok_publish_id');
+
+        if (is_string($pendingPublishId) && $pendingPublishId !== '') {
+            return $this->completePublish($postPlatform, $pendingPublishId);
+        }
 
         $media = $postPlatform->post->mediaItems;
 
@@ -195,13 +207,7 @@ class TikTokPublisher
         }
 
         // Wait for processing and get final status
-        $statusData = $this->waitForPublishStatus($publishId);
-        $postId = data_get($statusData, 'publicaly_available_post_id.0');
-
-        return [
-            'id' => $postId ?? $publishId,
-            'url' => $this->buildTikTokUrl($postPlatform->socialAccount, $postId),
-        ];
+        return $this->completePublish($postPlatform, $publishId);
     }
 
     private function publishPhotos(PostPlatform $postPlatform, $mediaCollection, ?string $content): array
@@ -269,13 +275,7 @@ class TikTokPublisher
             }
 
             // Wait for processing and get final status
-            $statusData = $this->waitForPublishStatus($publishId);
-            $postId = data_get($statusData, 'publicaly_available_post_id.0');
-
-            return [
-                'id' => $postId ?? $publishId,
-                'url' => $this->buildTikTokUrl($postPlatform->socialAccount, $postId),
-            ];
+            return $this->completePublish($postPlatform, $publishId);
         } finally {
             $this->pruneDerivatives($derivatives);
         }
@@ -386,10 +386,10 @@ class TikTokPublisher
         }
     }
 
-    private function waitForPublishStatus(string $publishId, int $maxAttempts = 20): array
+    private function waitForPublishStatus(string $publishId): array
     {
-        for ($i = 0; $i < $maxAttempts; $i++) {
-            sleep(3);
+        for ($i = 0; $i < self::PUBLISH_STATUS_MAX_ATTEMPTS; $i++) {
+            Sleep::for(self::PUBLISH_STATUS_POLL_SECONDS)->seconds();
 
             $response = $this->getHttpClient()
                 ->post("{$this->baseUrl}/post/publish/status/fetch/", [
@@ -420,9 +420,27 @@ class TikTokPublisher
             // PROCESSING_UPLOAD, PROCESSING_DOWNLOAD, SENDING_TO_USER_INBOX - continue waiting
         }
 
-        Log::warning('TikTok publish status timeout, returning publish_id anyway');
+        Log::warning('TikTok publish status timed out', [
+            'publish_id' => $publishId,
+            'attempts' => self::PUBLISH_STATUS_MAX_ATTEMPTS,
+            'poll_seconds' => self::PUBLISH_STATUS_POLL_SECONDS,
+        ]);
 
-        return ['publish_id' => $publishId];
+        throw new PlatformUnavailableException(
+            message: "TikTok is still processing publish_id {$publishId}",
+            context: ['tiktok_publish_id' => $publishId],
+        );
+    }
+
+    private function completePublish(PostPlatform $postPlatform, string $publishId): array
+    {
+        $statusData = $this->waitForPublishStatus($publishId);
+        $postId = data_get($statusData, 'publicaly_available_post_id.0');
+
+        return [
+            'id' => $postId ?? $publishId,
+            'url' => $this->buildTikTokUrl($postPlatform->socialAccount, $postId),
+        ];
     }
 
     private function buildTikTokUrl(SocialAccount $account, ?string $postId = null): ?string

@@ -6,6 +6,7 @@ namespace App\Services\Social;
 
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
+use App\Exceptions\PlatformUnavailableException;
 use App\Exceptions\Social\ErrorCategory;
 use App\Exceptions\Social\InstagramPublishException;
 use App\Exceptions\Social\SocialPublishException;
@@ -14,6 +15,7 @@ use App\Services\Social\Concerns\CropsImageForAspectRatio;
 use App\Services\Social\Concerns\HasSocialHttpClient;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Sleep;
 
 class InstagramPublisher
 {
@@ -343,7 +345,7 @@ class InstagramPublisher
             ]);
 
             if ($statusResponse->failed()) {
-                sleep(5);
+                Sleep::for(5)->seconds();
 
                 continue;
             }
@@ -361,10 +363,14 @@ class InstagramPublisher
                 );
             }
 
-            sleep(5);
+            Sleep::for(5)->seconds();
         }
 
-        Log::warning('Instagram media processing timeout, proceeding anyway');
+        Log::warning('Instagram media processing timed out', ['container_id' => $containerId]);
+
+        throw new PlatformUnavailableException(
+            message: "Instagram is still processing container {$containerId}",
+        );
     }
 
     private function handleApiError(Response $response): never

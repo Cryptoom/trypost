@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
+use App\Exceptions\PlatformUnavailableException;
 use App\Exceptions\Social\TikTokPublishException;
 use App\Exceptions\TokenExpiredException;
 use App\Models\Post;
@@ -15,8 +16,11 @@ use App\Services\Media\MediaOptimizer;
 use App\Services\Social\TikTokPublisher;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Sleep;
 
 beforeEach(function () {
+    Sleep::fake();
+
     $this->user = User::factory()->create();
     $this->workspace = Workspace::factory()->create(['user_id' => $this->user->id]);
 
@@ -85,6 +89,56 @@ test('tiktok publisher can publish video', function () {
     Http::assertSent(function ($request) {
         return str_contains($request->url(), '/post/publish/video/init/');
     });
+});
+
+test('tiktok publisher does not report success before processing completes', function () {
+    $this->post->update([
+        'media' => [[
+            'id' => 'test-media-video',
+            'path' => 'media/2026-01/test-video.mp4',
+            'url' => 'https://example.com/media/2026-01/test-video.mp4',
+            'mime_type' => 'video/mp4',
+            'original_filename' => 'test-video.mp4',
+        ]],
+    ]);
+
+    Http::fake([
+        $this->api.'/post/publish/video/init/' => Http::response(['data' => ['publish_id' => 'pub_processing']]),
+        $this->api.'/post/publish/status/fetch/' => Http::response(['data' => ['status' => 'PROCESSING_DOWNLOAD']]),
+    ]);
+
+    expect(fn () => $this->publisher->publish($this->postPlatform))
+        ->toThrow(function (PlatformUnavailableException $exception): void {
+            expect($exception->context)->toBe(['tiktok_publish_id' => 'pub_processing']);
+        });
+
+    Sleep::assertSleptTimes(30);
+    Http::assertSentCount(31);
+});
+
+test('tiktok publisher resumes an existing publish without creating a duplicate', function () {
+    $this->postPlatform->update([
+        'error_context' => ['tiktok_publish_id' => 'pub_existing'],
+    ]);
+
+    Http::fake([
+        $this->api.'/post/publish/status/fetch/' => Http::response([
+            'data' => [
+                'status' => 'PUBLISH_COMPLETE',
+                'publicaly_available_post_id' => ['video_123'],
+            ],
+        ]),
+    ]);
+
+    $result = $this->publisher->publish($this->postPlatform->fresh());
+
+    expect($result)->toBe([
+        'id' => 'video_123',
+        'url' => 'https://www.tiktok.com/@tiktoker/video/video_123',
+    ]);
+
+    Http::assertSentCount(1);
+    Http::assertNotSent(fn ($request) => str_contains($request->url(), '/init/'));
 });
 
 test('tiktok publisher can publish photos', function () {

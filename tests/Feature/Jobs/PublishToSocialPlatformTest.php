@@ -263,7 +263,11 @@ test('publish reschedules platform unavailable retry via Bus dispatch (not marke
 
     $publisher = Mockery::mock(LinkedInPublisher::class);
     $publisher->shouldReceive('publish')->andThrow(
-        new PlatformUnavailableException('LinkedIn API returned 503 during token refresh', 503)
+        new PlatformUnavailableException(
+            'LinkedIn API returned 503 during token refresh',
+            503,
+            ['operation_id' => 'operation-123'],
+        )
     );
 
     $this->app->instance(LinkedInPublisher::class, $publisher);
@@ -277,6 +281,7 @@ test('publish reschedules platform unavailable retry via Bus dispatch (not marke
     expect($this->postPlatform->error_context['category'] ?? null)->toBe('platform_unavailable');
     expect($this->postPlatform->error_context['http_status'] ?? null)->toBe(503);
     expect($this->postPlatform->error_context['retry_count'] ?? null)->toBe(1);
+    expect($this->postPlatform->error_context['operation_id'] ?? null)->toBe('operation-123');
     expect($this->postPlatform->error_message)->toBe(__('posts.errors.platform_unavailable'));
     expect($this->postPlatform->error_context['detail'] ?? null)->toContain('LinkedIn API returned 503');
     expect($this->socialAccount->status)->toBe(AccountStatus::Connected);
