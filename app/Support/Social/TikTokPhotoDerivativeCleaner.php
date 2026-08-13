@@ -7,6 +7,7 @@ namespace App\Support\Social;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Throwable;
 
 class TikTokPhotoDerivativeCleaner
 {
@@ -42,7 +43,7 @@ class TikTokPhotoDerivativeCleaner
 
         try {
             Storage::delete($derivativePaths);
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             Log::warning('Failed to prune TikTok photo derivatives', [
                 'post_platform_id' => $postPlatformId,
                 'error' => $e->getMessage(),

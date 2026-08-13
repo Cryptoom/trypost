@@ -37,6 +37,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Queue\Middleware\WithoutOverlapping;
 use Illuminate\Support\Facades\Log;
+use Throwable;
 
 class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
 {
@@ -150,7 +151,7 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
                     } catch (PlatformUnavailableException $refreshError) {
                         $this->rescheduleForRetry($refreshError);
                         break;
-                    } catch (\Throwable $refreshError) {
+                    } catch (Throwable $refreshError) {
                         Log::error('Token refresh failed during publish retry', [
                             'post_platform_id' => $this->postPlatform->id,
                             'platform' => $this->postPlatform->platform->value,
@@ -185,7 +186,7 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
                     'raw_response' => $e->context()['raw_response'],
                 ]);
                 break;
-            } catch (\Throwable $e) {
+            } catch (Throwable $e) {
                 Log::error('Failed to publish to social platform', [
                     'post_platform_id' => $this->postPlatform->id,
                     'platform' => $this->postPlatform->platform->value,
@@ -316,7 +317,7 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
      * A user-safe failure message: only our own publish exceptions are shown
      * verbatim; anything else is genericized so internals never reach the email.
      */
-    private function safeFailureMessage(\Throwable $e): string
+    private function safeFailureMessage(Throwable $e): string
     {
         return $e instanceof SocialPublishException
             ? $e->userMessage
@@ -373,7 +374,7 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
         $this->notify($post, PostPlatformStatus::Failed);
     }
 
-    public function failed(?\Throwable $exception): void
+    public function failed(?Throwable $exception): void
     {
         Log::error('PublishToSocialPlatform job failed permanently', [
             'post_platform_id' => $this->postPlatform->id,
