@@ -16,11 +16,8 @@ use App\Services\Media\MediaOptimizer;
 use App\Services\Social\TikTokPublisher;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Sleep;
 
 beforeEach(function () {
-    Sleep::fake();
-
     $this->user = User::factory()->create();
     $this->workspace = Workspace::factory()->create(['user_id' => $this->user->id]);
 
@@ -109,11 +106,12 @@ test('tiktok publisher does not report success before processing completes', fun
 
     expect(fn () => $this->publisher->publish($this->postPlatform))
         ->toThrow(function (PlatformUnavailableException $exception): void {
-            expect($exception->context)->toBe(['tiktok_publish_id' => 'pub_processing']);
+            expect($exception->context)->toBe(['tiktok_publish_id' => 'pub_processing'])
+                ->and($exception->retryDelaySeconds)->toBe(30)
+                ->and($exception->maxRetries)->toBe(120);
         });
 
-    Sleep::assertSleptTimes(30);
-    Http::assertSentCount(31);
+    Http::assertSentCount(2);
 });
 
 test('tiktok publisher resumes an existing publish without creating a duplicate', function () {
@@ -138,6 +136,38 @@ test('tiktok publisher resumes an existing publish without creating a duplicate'
     ]);
 
     Http::assertSentCount(1);
+    Http::assertNotSent(fn ($request) => str_contains($request->url(), '/init/'));
+});
+
+test('tiktok publisher keeps photo derivatives while pending and prunes them on completion', function () {
+    Storage::fake();
+    $derivativePath = 'social-tiktok-photos/pending.jpg';
+    Storage::put($derivativePath, 'image');
+
+    $this->postPlatform->update([
+        'error_context' => [
+            'tiktok_publish_id' => 'pub_existing',
+            'tiktok_derivative_paths' => [$derivativePath],
+        ],
+    ]);
+
+    Http::fake([
+        $this->api.'/post/publish/status/fetch/' => Http::sequence()
+            ->push(['data' => ['status' => 'PROCESSING_DOWNLOAD']])
+            ->push(['data' => ['status' => 'PUBLISH_COMPLETE', 'publicaly_available_post_id' => ['video_123']]]),
+    ]);
+
+    expect(fn () => $this->publisher->publish($this->postPlatform->fresh()))
+        ->toThrow(function (PlatformUnavailableException $exception) use ($derivativePath): void {
+            expect($exception->context['tiktok_derivative_paths'] ?? null)->toBe([$derivativePath]);
+        });
+
+    Storage::assertExists($derivativePath);
+
+    $result = $this->publisher->publish($this->postPlatform->fresh());
+
+    expect($result['id'])->toBe('video_123');
+    Storage::assertMissing($derivativePath);
     Http::assertNotSent(fn ($request) => str_contains($request->url(), '/init/'));
 });
 

@@ -18,7 +18,6 @@ use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Sleep;
 use Illuminate\Support\Str;
 use Throwable;
 
@@ -26,11 +25,11 @@ class TikTokPublisher
 {
     use HasSocialHttpClient;
 
-    private const int PUBLISH_STATUS_MAX_ATTEMPTS = 30;
-
-    private const int PUBLISH_STATUS_POLL_SECONDS = 10;
-
     private const PHOTO_DERIVATIVE_DIRECTORY = 'social-tiktok-photos';
+
+    private const int STATUS_RETRY_DELAY_SECONDS = 30;
+
+    private const int STATUS_MAX_RETRIES = 120;
 
     private string $baseUrl;
 
@@ -58,7 +57,13 @@ class TikTokPublisher
         $pendingPublishId = data_get($postPlatform->error_context, 'tiktok_publish_id');
 
         if (is_string($pendingPublishId) && $pendingPublishId !== '') {
-            return $this->completePublish($postPlatform, $pendingPublishId);
+            $derivatives = data_get($postPlatform->error_context, 'tiktok_derivative_paths', []);
+
+            return $this->completePublishWithCleanup(
+                $postPlatform,
+                $pendingPublishId,
+                is_array($derivatives) ? array_values(array_filter($derivatives, 'is_string')) : [],
+            );
         }
 
         $media = $postPlatform->post->mediaItems;
@@ -274,10 +279,18 @@ class TikTokPublisher
                 );
             }
 
-            // Wait for processing and get final status
-            return $this->completePublish($postPlatform, $publishId);
-        } finally {
+            $result = $this->completePublish($postPlatform, $publishId);
             $this->pruneDerivatives($derivatives);
+
+            return $result;
+        } catch (PlatformUnavailableException $e) {
+            $e->context['tiktok_derivative_paths'] = $derivatives;
+
+            throw $e;
+        } catch (Throwable $e) {
+            $this->pruneDerivatives($derivatives);
+
+            throw $e;
         }
     }
 
@@ -388,48 +401,65 @@ class TikTokPublisher
 
     private function waitForPublishStatus(string $publishId): array
     {
-        for ($i = 0; $i < self::PUBLISH_STATUS_MAX_ATTEMPTS; $i++) {
-            Sleep::for(self::PUBLISH_STATUS_POLL_SECONDS)->seconds();
+        $response = $this->getHttpClient()
+            ->post("{$this->baseUrl}/post/publish/status/fetch/", [
+                'publish_id' => $publishId,
+            ]);
 
-            $response = $this->getHttpClient()
-                ->post("{$this->baseUrl}/post/publish/status/fetch/", [
-                    'publish_id' => $publishId,
-                ]);
-
-            if ($response->failed()) {
-                Log::warning('TikTok status check failed', [
-                    'attempt' => $i,
-                    'body' => $this->redactResponseBody($response->body()),
-                ]);
-
-                continue;
+        if ($response->failed()) {
+            if ($response->status() !== 429 && $response->status() < 500) {
+                $this->handleApiError($response);
             }
 
-            $data = $response->json();
-            $status = data_get($data, 'data.status', 'UNKNOWN');
-
-            if ($status === 'PUBLISH_COMPLETE') {
-                return data_get($data, 'data', []);
-            }
-
-            if (in_array($status, ['FAILED', 'PUBLISH_FAILED'])) {
-                $failReason = data_get($data, 'data.fail_reason', 'Unknown error');
-                throw TikTokPublishException::fromFailReason($failReason, json_encode($data));
-            }
-
-            // PROCESSING_UPLOAD, PROCESSING_DOWNLOAD, SENDING_TO_USER_INBOX - continue waiting
+            throw $this->pendingPublishException($publishId, $response->status());
         }
 
-        Log::warning('TikTok publish status timed out', [
-            'publish_id' => $publishId,
-            'attempts' => self::PUBLISH_STATUS_MAX_ATTEMPTS,
-            'poll_seconds' => self::PUBLISH_STATUS_POLL_SECONDS,
-        ]);
+        $data = $response->json();
+        $status = data_get($data, 'data.status', 'UNKNOWN');
 
-        throw new PlatformUnavailableException(
+        if ($status === 'PUBLISH_COMPLETE') {
+            return data_get($data, 'data', []);
+        }
+
+        if (in_array($status, ['FAILED', 'PUBLISH_FAILED'], true)) {
+            $failReason = data_get($data, 'data.fail_reason', 'Unknown error');
+            throw TikTokPublishException::fromFailReason($failReason, json_encode($data));
+        }
+
+        throw $this->pendingPublishException($publishId);
+    }
+
+    private function pendingPublishException(string $publishId, ?int $httpStatus = null): PlatformUnavailableException
+    {
+        return new PlatformUnavailableException(
             message: "TikTok is still processing publish_id {$publishId}",
+            httpStatus: $httpStatus,
             context: ['tiktok_publish_id' => $publishId],
+            retryDelaySeconds: self::STATUS_RETRY_DELAY_SECONDS,
+            maxRetries: self::STATUS_MAX_RETRIES,
         );
+    }
+
+    /**
+     * @param  list<string>  $derivatives
+     * @return array<string, mixed>
+     */
+    private function completePublishWithCleanup(PostPlatform $postPlatform, string $publishId, array $derivatives): array
+    {
+        try {
+            $result = $this->completePublish($postPlatform, $publishId);
+            $this->pruneDerivatives($derivatives);
+
+            return $result;
+        } catch (PlatformUnavailableException $e) {
+            $e->context['tiktok_derivative_paths'] = $derivatives;
+
+            throw $e;
+        } catch (Throwable $e) {
+            $this->pruneDerivatives($derivatives);
+
+            throw $e;
+        }
     }
 
     private function completePublish(PostPlatform $postPlatform, string $publishId): array

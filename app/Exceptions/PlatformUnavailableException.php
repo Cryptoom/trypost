@@ -21,6 +21,8 @@ class PlatformUnavailableException extends Exception
         string $message = 'Platform API is unavailable',
         public ?int $httpStatus = null,
         public array $context = [],
+        public ?int $retryDelaySeconds = null,
+        public ?int $maxRetries = null,
     ) {
         parent::__construct($message);
     }

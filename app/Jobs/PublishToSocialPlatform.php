@@ -35,6 +35,7 @@ use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 
 class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
 {
@@ -207,6 +208,8 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
     private function rescheduleForRetry(PlatformUnavailableException $e): void
     {
         $retryCount = (int) data_get($this->postPlatform->error_context, 'retry_count', 0) + 1;
+        $maxRetries = $e->maxRetries ?? self::MAX_PLATFORM_UNAVAILABLE_RETRIES;
+        $retryDelaySeconds = $e->retryDelaySeconds ?? 600;
         $context = [
             ...$e->context,
             'category' => 'platform_unavailable',
@@ -215,12 +218,14 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
             'detail' => $e->getMessage(),
         ];
 
-        if ($retryCount > self::MAX_PLATFORM_UNAVAILABLE_RETRIES) {
+        if ($retryCount > $maxRetries) {
             Log::warning('Publish retries exhausted: platform unavailable', [
                 'post_platform_id' => $this->postPlatform->id,
                 'platform' => $this->postPlatform->platform->value,
                 ...$context,
             ]);
+
+            $this->cleanupExhaustedRetryResources($context);
 
             $this->postPlatform->markAsFailed(
                 __('posts.errors.platform_unavailable_exhausted'),
@@ -230,7 +235,7 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
             return;
         }
 
-        $nextAttemptAt = now()->addMinutes(10);
+        $nextAttemptAt = now()->addSeconds($retryDelaySeconds);
 
         Log::warning('Publish rescheduled: platform unavailable', [
             'post_platform_id' => $this->postPlatform->id,
@@ -250,6 +255,40 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
         ]);
 
         self::dispatch($this->postPlatform, $retryCount)->delay($nextAttemptAt);
+    }
+
+    /**
+     * @param  array<string, mixed>  $context
+     */
+    private function cleanupExhaustedRetryResources(array $context): void
+    {
+        if ($this->postPlatform->platform !== SocialPlatform::TikTok) {
+            return;
+        }
+
+        $paths = data_get($context, 'tiktok_derivative_paths', []);
+
+        if (! is_array($paths) || $paths === []) {
+            return;
+        }
+
+        $derivativePaths = array_values(array_filter(
+            $paths,
+            fn (mixed $path): bool => is_string($path) && str_starts_with($path, 'social-tiktok-photos/'),
+        ));
+
+        if ($derivativePaths === []) {
+            return;
+        }
+
+        try {
+            Storage::delete($derivativePaths);
+        } catch (\Throwable $e) {
+            Log::warning('Failed to prune TikTok photo derivatives after retries exhausted', [
+                'post_platform_id' => $this->postPlatform->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
 
     private function isTerminal(): bool

@@ -16,7 +16,6 @@ use App\Services\Media\MediaOptimizer;
 use App\Services\Social\InstagramPublisher;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Sleep;
 use Intervention\Image\Drivers\Gd\Driver;
 use Intervention\Image\ImageManager;
 
@@ -29,8 +28,6 @@ function fakeJpegBytes(int $width = 1200, int $height = 800): string
 }
 
 beforeEach(function () {
-    Sleep::fake();
-
     $this->user = User::factory()->create();
     $this->workspace = Workspace::factory()->create(['user_id' => $this->user->id]);
 
@@ -596,7 +593,7 @@ test('instagram publisher handles media processing error', function () {
         ->toThrow(Exception::class, 'Instagram media processing failed');
 });
 
-test('instagram publisher waits for media processing', function () {
+test('instagram publisher resumes media processing without creating another container', function () {
     $this->post->update([
         'media' => [
             [
@@ -625,9 +622,32 @@ test('instagram publisher waits for media processing', function () {
         ], 200),
     ]);
 
-    $result = $this->publisher->publish($this->postPlatform);
+    try {
+        $this->publisher->publish($this->postPlatform);
+        test()->fail('Expected the in-progress container to be rescheduled.');
+    } catch (PlatformUnavailableException $exception) {
+        expect($exception->context)->toBe([
+            'instagram_workflow' => [
+                'stage' => 'final_container',
+                'container_id' => 'container-123',
+            ],
+        ])->and($exception->retryDelaySeconds)->toBe(10)
+            ->and($exception->maxRetries)->toBe(90);
+
+        $this->postPlatform->update(['error_context' => $exception->context]);
+    }
+
+    expect(fn () => $this->publisher->publish($this->postPlatform->fresh()))
+        ->toThrow(PlatformUnavailableException::class);
+
+    $result = $this->publisher->publish($this->postPlatform->fresh());
 
     expect($result['id'])->toBe('media-123456789');
+
+    Http::assertSentCount(6);
+    expect(collect(Http::recorded())->filter(
+        fn (array $pair) => $pair[0]->method() === 'POST' && str_ends_with($pair[0]->url(), '/ig_123456789/media')
+    ))->toHaveCount(1);
 });
 
 test('instagram publisher does not publish a container that never finishes processing', function () {
@@ -647,9 +667,15 @@ test('instagram publisher does not publish a container that never finishes proce
     ]);
 
     expect(fn () => $this->publisher->publish($this->postPlatform))
-        ->toThrow(PlatformUnavailableException::class, 'Instagram is still processing container container-123');
+        ->toThrow(function (PlatformUnavailableException $exception): void {
+            expect($exception->context)->toBe([
+                'instagram_workflow' => [
+                    'stage' => 'final_container',
+                    'container_id' => 'container-123',
+                ],
+            ]);
+        });
 
-    Sleep::assertSleptTimes(30);
     Http::assertNotSent(fn ($request) => str_contains($request->url(), '/media_publish'));
 });
 

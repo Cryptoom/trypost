@@ -403,6 +403,43 @@ test('publish reschedules retry exactly 10 minutes into the future', function ()
     Carbon::setTestNow();
 });
 
+test('publish honors a platform-specific retry delay and retry limit', function () {
+    Bus::fake([PublishToSocialPlatform::class]);
+    Event::fake();
+    Mail::fake();
+
+    $now = now()->startOfSecond();
+    Carbon::setTestNow($now);
+
+    $publisher = Mockery::mock(LinkedInPublisher::class);
+    $publisher->shouldReceive('publish')->andThrow(new PlatformUnavailableException(
+        message: 'Remote operation is still processing',
+        context: ['operation_id' => 'operation-123'],
+        retryDelaySeconds: 30,
+        maxRetries: 2,
+    ));
+    $this->app->instance(LinkedInPublisher::class, $publisher);
+
+    (new PublishToSocialPlatform($this->postPlatform))->handle();
+
+    $this->postPlatform->refresh();
+
+    expect($this->postPlatform->error_context['next_attempt_at'] ?? null)
+        ->toBe($now->copy()->addSeconds(30)->toIso8601String());
+
+    Bus::assertDispatched(PublishToSocialPlatform::class, function ($job) use ($now) {
+        return $job->delay instanceof DateTimeInterface
+            && Carbon::instance($job->delay)->equalTo($now->copy()->addSeconds(30));
+    });
+
+    $this->postPlatform->update(['error_context' => ['retry_count' => 2]]);
+    (new PublishToSocialPlatform($this->postPlatform->fresh()))->handle();
+
+    expect($this->postPlatform->fresh()->status)->toBe(PlatformStatus::Failed);
+
+    Carbon::setTestNow();
+});
+
 test('publish records last_attempt_at when rescheduling for retry', function () {
     Bus::fake([PublishToSocialPlatform::class]);
     Event::fake();
