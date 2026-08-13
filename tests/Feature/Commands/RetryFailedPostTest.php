@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 use App\Enums\Post\Status as PostStatus;
 use App\Enums\PostPlatform\Status as PlatformStatus;
-use App\Enums\SocialAccount\Platform;
 use App\Jobs\PublishToSocialPlatform;
 use App\Models\Post;
 use App\Models\PostPlatform;
@@ -26,10 +25,11 @@ beforeEach(function () {
     ]);
 });
 
-test('it does not expose an option that bypasses confirmation', function () {
+test('it does not expose retry filters or confirmation bypasses', function () {
     $command = Artisan::all()['posts:retry'];
 
-    expect($command->getDefinition()->hasOption('force'))->toBeFalse();
+    expect($command->getDefinition()->hasOption('force'))->toBeFalse()
+        ->and($command->getDefinition()->hasOption('platform'))->toBeFalse();
 });
 
 test('it queues fresh attempts only for failed enabled platforms', function () {
@@ -85,35 +85,6 @@ test('it queues fresh attempts only for failed enabled platforms', function () {
         PublishToSocialPlatform::class,
         fn (PublishToSocialPlatform $job): bool => $job->postPlatform->is($failedThreads) && $job->uniqueAttempt === 0,
     );
-});
-
-test('it can retry only one requested platform', function () {
-    Bus::fake([PublishToSocialPlatform::class]);
-
-    $failedThreads = PostPlatform::factory()->threads()->failed()->create([
-        'post_id' => $this->post->id,
-        'social_account_id' => SocialAccount::factory()->threads()->create([
-            'workspace_id' => $this->workspace->id,
-        ]),
-    ]);
-    $failedTikTok = PostPlatform::factory()->tiktok()->failed()->create([
-        'post_id' => $this->post->id,
-        'social_account_id' => SocialAccount::factory()->tiktok()->create([
-            'workspace_id' => $this->workspace->id,
-        ]),
-    ]);
-
-    $this->artisan('posts:retry', [
-        'post' => $this->post->id,
-        '--platform' => Platform::Threads->value,
-    ])->expectsConfirmation('Start new publish attempts for these failed platforms?', 'yes')
-        ->assertSuccessful();
-
-    expect($failedThreads->fresh()->status)->toBe(PlatformStatus::Pending)
-        ->and($failedTikTok->fresh()->status)->toBe(PlatformStatus::Failed);
-
-    Bus::assertDispatchedTimes(PublishToSocialPlatform::class, 1);
-    Bus::assertDispatched(PublishToSocialPlatform::class, fn (PublishToSocialPlatform $job): bool => $job->postPlatform->is($failedThreads));
 });
 
 test('it removes stale TikTok derivatives before starting from scratch', function () {
@@ -218,18 +189,6 @@ test('it fails when the post does not exist', function () {
 
     $this->artisan('posts:retry', ['post' => '019ff9ae-068b-72bf-9f2e-0314ce7dc0e2'])
         ->expectsOutput('Post not found.')
-        ->assertFailed();
-
-    Bus::assertNotDispatched(PublishToSocialPlatform::class);
-});
-
-test('it rejects an unknown platform option', function () {
-    Bus::fake([PublishToSocialPlatform::class]);
-
-    $this->artisan('posts:retry', [
-        'post' => $this->post->id,
-        '--platform' => 'myspace',
-    ])->expectsOutputToContain('Unknown platform.')
         ->assertFailed();
 
     Bus::assertNotDispatched(PublishToSocialPlatform::class);

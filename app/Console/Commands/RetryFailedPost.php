@@ -20,8 +20,7 @@ use Illuminate\Support\Facades\Log;
 class RetryFailedPost extends Command
 {
     protected $signature = 'posts:retry
-        {post : ID of the post whose failed platforms should be retried}
-        {--platform= : Retry only this platform (for example, threads or tiktok)}';
+        {post : ID of the post whose failed platforms should be retried}';
 
     protected $description = 'Retry failed platforms for a post as new publish attempts';
 
@@ -47,16 +46,7 @@ class RetryFailedPost extends Command
             return self::FAILURE;
         }
 
-        $platformOption = $this->option('platform');
-        $platform = is_string($platformOption) ? SocialPlatform::tryFrom($platformOption) : null;
-
-        if ($platformOption !== null && $platform === null) {
-            $this->error('Unknown platform. Use one of: '.implode(', ', array_column(SocialPlatform::cases(), 'value')).'.');
-
-            return self::FAILURE;
-        }
-
-        $failedPlatforms = $this->failedPlatforms($post, $platform);
+        $failedPlatforms = $this->failedPlatforms($post);
 
         if ($failedPlatforms->isEmpty()) {
             $this->warn('No failed enabled platforms matched this post.');
@@ -80,7 +70,7 @@ class RetryFailedPost extends Command
             return self::SUCCESS;
         }
 
-        $retryEntries = $this->prepareRetryEntries($post, $platform);
+        $retryEntries = $this->prepareRetryEntries($post);
 
         if ($retryEntries === []) {
             $this->warn('The post changed while the command was running; nothing was retried.');
@@ -100,7 +90,6 @@ class RetryFailedPost extends Command
         Log::info('Failed post platforms queued for manual retry', [
             'post_id' => $post->id,
             'post_platform_ids' => array_column($retryEntries, 'id'),
-            'platform_filter' => $platform?->value,
         ]);
 
         $this->info(count($retryEntries).' publish attempt(s) queued.');
@@ -116,14 +105,13 @@ class RetryFailedPost extends Command
     /**
      * @return Collection<int, PostPlatform>
      */
-    private function failedPlatforms(Post $post, ?SocialPlatform $platform, bool $lockForUpdate = false): Collection
+    private function failedPlatforms(Post $post, bool $lockForUpdate = false): Collection
     {
         return PostPlatform::query()
             ->with('socialAccount')
             ->where('post_id', $post->id)
             ->enabled()
             ->where('status', PlatformStatus::Failed)
-            ->when($platform, fn (Builder $query) => $query->where('platform', $platform))
             ->when($lockForUpdate, fn (Builder $query) => $query->lockForUpdate())
             ->get();
     }
@@ -135,16 +123,16 @@ class RetryFailedPost extends Command
      *     error_context: array<string, mixed>|null
      * }>
      */
-    private function prepareRetryEntries(Post $post, ?SocialPlatform $platform): array
+    private function prepareRetryEntries(Post $post): array
     {
-        return DB::transaction(function () use ($post, $platform): array {
+        return DB::transaction(function () use ($post): array {
             $lockedPost = Post::query()->lockForUpdate()->find($post->id);
 
             if (! $lockedPost || ! $this->isRetryable($lockedPost)) {
                 return [];
             }
 
-            $platforms = $this->failedPlatforms($lockedPost, $platform, lockForUpdate: true);
+            $platforms = $this->failedPlatforms($lockedPost, lockForUpdate: true);
             $entries = $platforms->map(fn (PostPlatform $postPlatform): array => [
                 'id' => $postPlatform->id,
                 'platform' => $postPlatform->platform,
