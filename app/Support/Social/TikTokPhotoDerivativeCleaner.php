@@ -55,7 +55,6 @@ class TikTokPhotoDerivativeCleaner
     {
         return is_string($path)
             && dirname($path) === self::DIRECTORY
-            && pathinfo($path, PATHINFO_EXTENSION) === 'jpg'
             && Str::isUuid(pathinfo($path, PATHINFO_FILENAME));
     }
 }
