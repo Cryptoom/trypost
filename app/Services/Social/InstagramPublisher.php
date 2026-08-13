@@ -407,19 +407,9 @@ class InstagramPublisher
      */
     private function stringList(mixed $values): ?array
     {
-        if (! is_array($values)) {
-            return null;
-        }
-
-        $strings = [];
-
-        foreach ($values as $value) {
-            if (is_string($value) && $value !== '') {
-                $strings[] = $value;
-            }
-        }
-
-        return $strings;
+        return is_array($values)
+            ? array_values(array_filter($values, fn (mixed $value): bool => is_string($value) && $value !== ''))
+            : null;
     }
 
     private function handleApiError(Response $response): never

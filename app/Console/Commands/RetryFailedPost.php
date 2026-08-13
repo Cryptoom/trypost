@@ -47,9 +47,10 @@ class RetryFailedPost extends Command
             return self::FAILURE;
         }
 
-        $platform = $this->requestedPlatform();
+        $platformOption = $this->option('platform');
+        $platform = is_string($platformOption) ? SocialPlatform::tryFrom($platformOption) : null;
 
-        if ($this->option('platform') !== null && $platform === null) {
+        if ($platformOption !== null && $platform === null) {
             $this->error('Unknown platform. Use one of: '.implode(', ', array_column(SocialPlatform::cases(), 'value')).'.');
 
             return self::FAILURE;
@@ -107,13 +108,6 @@ class RetryFailedPost extends Command
         return self::SUCCESS;
     }
 
-    private function requestedPlatform(): ?SocialPlatform
-    {
-        $platform = $this->option('platform');
-
-        return is_string($platform) ? SocialPlatform::tryFrom($platform) : null;
-    }
-
     private function isRetryable(Post $post): bool
     {
         return in_array($post->status, [PostStatus::Failed, PostStatus::PartiallyPublished], true);
@@ -124,18 +118,14 @@ class RetryFailedPost extends Command
      */
     private function failedPlatforms(Post $post, ?SocialPlatform $platform, bool $lockForUpdate = false): Collection
     {
-        $query = PostPlatform::query()
+        return PostPlatform::query()
             ->with('socialAccount')
             ->where('post_id', $post->id)
             ->enabled()
             ->where('status', PlatformStatus::Failed)
-            ->when($platform, fn (Builder $query) => $query->where('platform', $platform));
-
-        if ($lockForUpdate) {
-            $query->lockForUpdate();
-        }
-
-        return $query->get();
+            ->when($platform, fn (Builder $query) => $query->where('platform', $platform))
+            ->when($lockForUpdate, fn (Builder $query) => $query->lockForUpdate())
+            ->get();
     }
 
     /**
@@ -161,18 +151,19 @@ class RetryFailedPost extends Command
                 'error_context' => $postPlatform->error_context,
             ])->all();
 
-            $platforms->each(fn (PostPlatform $postPlatform) => $postPlatform->update([
+            if ($entries === []) {
+                return [];
+            }
+
+            $platforms->toQuery()->update([
                 'status' => PlatformStatus::Pending,
                 'platform_post_id' => null,
                 'platform_url' => null,
                 'error_message' => null,
                 'error_context' => null,
                 'published_at' => null,
-            ]));
-
-            if ($entries !== []) {
-                $lockedPost->update(['status' => PostStatus::Publishing]);
-            }
+            ]);
+            $lockedPost->update(['status' => PostStatus::Publishing]);
 
             return $entries;
         });

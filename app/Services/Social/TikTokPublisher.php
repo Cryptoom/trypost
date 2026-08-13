@@ -269,9 +269,7 @@ class TikTokPublisher
                 $this->handleApiError($response);
             }
 
-            $data = $response->json();
-
-            $publishId = data_get($data, 'data.publish_id');
+            $publishId = data_get($response->json(), 'data.publish_id');
 
             if (! $publishId) {
                 throw new TikTokPublishException(
@@ -280,19 +278,13 @@ class TikTokPublisher
                 );
             }
 
-            $result = $this->completePublish($postPlatform, $publishId);
-            $this->pruneDerivatives($derivatives);
-
-            return $result;
-        } catch (PlatformUnavailableException $e) {
-            $e->context['tiktok_derivative_paths'] = $derivatives;
-
-            throw $e;
         } catch (Throwable $e) {
-            $this->pruneDerivatives($derivatives);
+            app(TikTokPhotoDerivativeCleaner::class)->cleanupPaths($derivatives);
 
             throw $e;
         }
+
+        return $this->completePublishWithCleanup($postPlatform, $publishId, $derivatives);
     }
 
     /**
@@ -378,17 +370,6 @@ class TikTokPublisher
         }
     }
 
-    /**
-     * Remove hosted photo derivatives, swallowing storage errors so cleanup can
-     * never mask the publish result.
-     *
-     * @param  list<string>  $paths
-     */
-    private function pruneDerivatives(array $paths): void
-    {
-        app(TikTokPhotoDerivativeCleaner::class)->cleanupPaths($paths);
-    }
-
     private function waitForPublishStatus(string $publishId): array
     {
         $response = $this->getHttpClient()
@@ -436,19 +417,19 @@ class TikTokPublisher
      */
     private function completePublishWithCleanup(PostPlatform $postPlatform, string $publishId, array $derivatives): array
     {
-        try {
-            $result = $this->completePublish($postPlatform, $publishId);
-            $this->pruneDerivatives($derivatives);
+        $retainDerivatives = false;
 
-            return $result;
+        try {
+            return $this->completePublish($postPlatform, $publishId);
         } catch (PlatformUnavailableException $e) {
+            $retainDerivatives = true;
             $e->context['tiktok_derivative_paths'] = $derivatives;
 
             throw $e;
-        } catch (Throwable $e) {
-            $this->pruneDerivatives($derivatives);
-
-            throw $e;
+        } finally {
+            if (! $retainDerivatives) {
+                app(TikTokPhotoDerivativeCleaner::class)->cleanupPaths($derivatives);
+            }
         }
     }
 

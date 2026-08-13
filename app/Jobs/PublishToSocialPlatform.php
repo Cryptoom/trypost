@@ -109,24 +109,22 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
             return;
         }
 
-        $requiredScopes = $this->postPlatform->platform->requiredPublishScopes();
-        $accountScopes = $this->postPlatform->socialAccount->scopes ?? [];
+        $missingScopes = array_diff(
+            $this->postPlatform->platform->requiredPublishScopes(),
+            $this->postPlatform->socialAccount->scopes ?? [],
+        );
 
-        if (! empty($requiredScopes)) {
-            $missingScopes = array_diff($requiredScopes, $accountScopes);
+        if ($missingScopes !== []) {
+            $this->failAndFinalize(
+                'Missing permissions: '.implode(', ', $missingScopes).'. Please reconnect your account.',
+                [
+                    'category' => 'permission',
+                    'missing_scopes' => $missingScopes,
+                    'failed_at' => now()->toIso8601String(),
+                ],
+            );
 
-            if (! empty($missingScopes)) {
-                $this->failAndFinalize(
-                    'Missing permissions: '.implode(', ', $missingScopes).'. Please reconnect your account.',
-                    [
-                        'category' => 'permission',
-                        'missing_scopes' => $missingScopes,
-                        'failed_at' => now()->toIso8601String(),
-                    ],
-                );
-
-                return;
-            }
+            return;
         }
 
         $this->postPlatform->markAsPublishing();
@@ -276,24 +274,15 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
     }
 
     /**
-     * @param  array<string, mixed>  $context
-     */
-    private function cleanupRetryResources(array $context): void
-    {
-        if ($this->postPlatform->platform !== SocialPlatform::TikTok) {
-            return;
-        }
-
-        app(TikTokPhotoDerivativeCleaner::class)->cleanup($context, $this->postPlatform->id);
-    }
-
-    /**
      * @param  array<string, mixed>|null  $context
      */
     private function markPlatformAsFailed(string $message, ?array $context = null): void
     {
         $previousContext = $this->postPlatform->error_context ?? [];
-        $this->cleanupRetryResources($previousContext);
+
+        if ($this->postPlatform->platform === SocialPlatform::TikTok) {
+            app(TikTokPhotoDerivativeCleaner::class)->cleanup($previousContext, $this->postPlatform->id);
+        }
 
         $failureContext = [...$previousContext, ...($context ?? [])];
 
@@ -370,42 +359,18 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
 
         if ($publishedCount === $total) {
             $post->markAsPublished();
-            $this->notifySuccess($post);
-        } elseif ($publishedCount > 0) {
-            $post->markAsPartiallyPublished();
-            $this->notifyFailure($post);
-        } else {
-            $post->markAsFailed();
-            $this->notifyFailure($post);
-        }
-    }
+            $this->notify($post, PostPlatformStatus::Published);
 
-    private function notifySuccess(Post $post): void
-    {
-        $owner = $post->workspace->owner;
-
-        if (! $owner) {
             return;
         }
 
-        $publishedPlatforms = $post->postPlatforms()
-            ->with('socialAccount')
-            ->enabled()
-            ->get()
-            ->filter(fn ($pp) => $pp->status === PostPlatformStatus::Published)
-            ->map(fn ($pp) => $pp->platform->label().' (@'.data_get($pp, 'socialAccount.username', '').')')
-            ->implode(', ');
+        if ($publishedCount > 0) {
+            $post->markAsPartiallyPublished();
+        } else {
+            $post->markAsFailed();
+        }
 
-        SendNotification::dispatch(
-            user: $owner,
-            workspaceId: $post->workspace_id,
-            type: Type::PostPublished,
-            channel: Channel::Both,
-            title: 'Post published successfully',
-            body: $publishedPlatforms,
-            data: ['post_id' => $post->id],
-            mailable: new PostPublished($post),
-        );
+        $this->notify($post, PostPlatformStatus::Failed);
     }
 
     public function failed(?\Throwable $exception): void
@@ -433,7 +398,7 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
         $this->broadcastStatus();
     }
 
-    private function notifyFailure(Post $post): void
+    private function notify(Post $post, PostPlatformStatus $status): void
     {
         $owner = $post->workspace->owner;
 
@@ -441,23 +406,24 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
             return;
         }
 
-        $failedPlatforms = $post->postPlatforms()
+        $successful = $status === PostPlatformStatus::Published;
+        $platforms = $post->postPlatforms()
             ->with('socialAccount')
             ->enabled()
+            ->where('status', $status)
             ->get()
-            ->filter(fn ($pp) => $pp->status === PostPlatformStatus::Failed)
             ->map(fn ($pp) => $pp->platform->label().' (@'.data_get($pp, 'socialAccount.username', '').')')
             ->implode(', ');
 
         SendNotification::dispatch(
             user: $owner,
             workspaceId: $post->workspace_id,
-            type: Type::PostFailed,
+            type: $successful ? Type::PostPublished : Type::PostFailed,
             channel: Channel::Both,
-            title: 'Post failed to publish',
-            body: "Failed on: {$failedPlatforms}",
+            title: $successful ? 'Post published successfully' : 'Post failed to publish',
+            body: $successful ? $platforms : "Failed on: {$platforms}",
             data: ['post_id' => $post->id],
-            mailable: new PostPublishFailed($post),
+            mailable: $successful ? new PostPublished($post) : new PostPublishFailed($post),
         );
     }
 }

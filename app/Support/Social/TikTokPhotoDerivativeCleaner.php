@@ -52,11 +52,8 @@ class TikTokPhotoDerivativeCleaner
 
     private function isManagedDerivativePath(mixed $path): bool
     {
-        if (! is_string($path)) {
-            return false;
-        }
-
-        return dirname($path) === self::DIRECTORY
+        return is_string($path)
+            && dirname($path) === self::DIRECTORY
             && pathinfo($path, PATHINFO_EXTENSION) === 'jpg'
             && Str::isUuid(pathinfo($path, PATHINFO_FILENAME));
     }
