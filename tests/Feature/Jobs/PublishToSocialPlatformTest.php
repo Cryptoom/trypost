@@ -808,6 +808,35 @@ test('failed hook prunes pending TikTok photo derivatives', function () {
     ]);
 });
 
+test('inactive TikTok account prunes derivatives from a resumable photo publish', function () {
+    Event::fake();
+    Mail::fake();
+    Storage::fake();
+
+    $path = 'social-tiktok-photos/pending-inactive.jpg';
+    Storage::put($path, 'image');
+    $account = SocialAccount::factory()->tiktok()->create([
+        'workspace_id' => $this->workspace->id,
+        'is_active' => false,
+    ]);
+    $platform = PostPlatform::factory()->tiktok()->create([
+        'post_id' => $this->post->id,
+        'social_account_id' => $account->id,
+        'status' => PlatformStatus::Retrying,
+        'error_context' => [
+            'tiktok_publish_id' => 'publish-inactive',
+            'tiktok_derivative_paths' => [$path],
+        ],
+    ]);
+
+    (new PublishToSocialPlatform($platform))->handle();
+
+    Storage::assertMissing($path);
+    expect($platform->fresh()->status)->toBe(PlatformStatus::Failed)
+        ->and($platform->fresh()->error_message)->toBe(__('posts.errors.account_inactive'))
+        ->and($platform->fresh()->error_context['tiktok_publish_id'] ?? null)->toBe('publish-inactive');
+});
+
 test('pinterest media status 401 marks the account token expired and notifies to reconnect', function () {
     Event::fake();
     Queue::fake();

@@ -87,7 +87,7 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
         }
 
         if (! $this->postPlatform->socialAccount->is_active) {
-            $this->postPlatform->markAsFailed(__('posts.errors.account_inactive'));
+            $this->markPlatformAsFailed(__('posts.errors.account_inactive'));
             $this->updatePostStatus();
             $this->broadcastStatus();
 
@@ -95,7 +95,7 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
         }
 
         if ($this->postPlatform->socialAccount->status === Status::Disconnected) {
-            $this->postPlatform->markAsFailed(__('posts.errors.account_disconnected'));
+            $this->markPlatformAsFailed(__('posts.errors.account_disconnected'));
             $this->updatePostStatus();
             $this->broadcastStatus();
 
@@ -103,7 +103,7 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
         }
 
         if ($this->postPlatform->socialAccount->status === Status::TokenExpired) {
-            $this->postPlatform->markAsFailed(__('posts.errors.account_token_expired'), [
+            $this->markPlatformAsFailed(__('posts.errors.account_token_expired'), [
                 'category' => 'token_expired',
                 'failed_at' => now()->toIso8601String(),
             ]);
@@ -120,7 +120,7 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
             $missingScopes = array_diff($requiredScopes, $accountScopes);
 
             if (! empty($missingScopes)) {
-                $this->postPlatform->markAsFailed(
+                $this->markPlatformAsFailed(
                     'Missing permissions: '.implode(', ', $missingScopes).'. Please reconnect your account.',
                     ['category' => 'permission', 'missing_scopes' => $missingScopes, 'failed_at' => now()->toIso8601String()]
                 );
@@ -171,7 +171,7 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
                     'platform_error_code' => $e->platformErrorCode,
                 ]);
 
-                $this->postPlatform->markAsFailed($e->getMessage(), [
+                $this->markPlatformAsFailed($e->getMessage(), [
                     'category' => 'token_expired',
                     'platform_error_code' => $e->platformErrorCode,
                     'failed_at' => now()->toIso8601String(),
@@ -180,7 +180,7 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
                 break;
             } catch (SocialPublishException $e) {
                 Log::error('Social publish failed: '.$e->userMessage);
-                $this->postPlatform->markAsFailed($e->userMessage, [
+                $this->markPlatformAsFailed($e->userMessage, [
                     'category' => $e->category->value,
                     'platform_error_code' => $e->platformErrorCode,
                     'failed_at' => now()->toIso8601String(),
@@ -195,7 +195,7 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
                     'platform' => $this->postPlatform->platform->value,
                     'error' => $e->getMessage(),
                 ]);
-                $this->postPlatform->markAsFailed($this->safeFailureMessage($e), [
+                $this->markPlatformAsFailed($this->safeFailureMessage($e), [
                     'category' => 'unknown',
                     'failed_at' => now()->toIso8601String(),
                     'content_length' => mb_strlen($this->postPlatform->post->content ?? ''),
@@ -247,9 +247,7 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
                 ...$context,
             ]);
 
-            $this->cleanupRetryResources($context);
-
-            $this->postPlatform->markAsFailed(
+            $this->markPlatformAsFailed(
                 __('posts.errors.platform_unavailable_exhausted'),
                 [...$context, 'failed_at' => now()->toIso8601String()],
             );
@@ -289,6 +287,22 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
         }
 
         app(TikTokPhotoDerivativeCleaner::class)->cleanup($context, $this->postPlatform->id);
+    }
+
+    /**
+     * @param  array<string, mixed>|null  $context
+     */
+    private function markPlatformAsFailed(string $message, ?array $context = null): void
+    {
+        $previousContext = $this->postPlatform->error_context ?? [];
+        $this->cleanupRetryResources($previousContext);
+
+        $failureContext = match (true) {
+            $previousContext !== [], $context !== null => [...$previousContext, ...($context ?? [])],
+            default => null,
+        };
+
+        $this->postPlatform->markAsFailed($message, $failureContext);
     }
 
     private function isTerminal(): bool
@@ -403,13 +417,9 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
             return;
         }
 
-        $previousContext = $this->postPlatform->error_context ?? [];
-        $this->cleanupRetryResources($previousContext);
-
-        $this->postPlatform->markAsFailed(
+        $this->markPlatformAsFailed(
             $exception ? $this->safeFailureMessage($exception) : 'Unknown error',
             [
-                ...$previousContext,
                 'category' => 'job_failed',
                 'failed_at' => now()->toIso8601String(),
             ]
