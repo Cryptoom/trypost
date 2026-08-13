@@ -110,10 +110,7 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
             return;
         }
 
-        $missingScopes = array_diff(
-            $this->postPlatform->platform->requiredPublishScopes(),
-            $this->postPlatform->socialAccount->scopes ?? [],
-        );
+        $missingScopes = $this->missingScopes();
 
         if ($missingScopes !== []) {
             $this->failAndFinalize(
@@ -215,6 +212,15 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
 
         // Delegate to ConnectionVerifier which already has per-platform refresh logic
         app(ConnectionVerifier::class)->verify($account);
+    }
+
+    /** @return list<string> */
+    private function missingScopes(): array
+    {
+        return array_values(array_diff(
+            $this->postPlatform->platform->requiredPublishScopes(),
+            $this->postPlatform->socialAccount->scopes ?? [],
+        ));
     }
 
     private function rescheduleForRetry(PlatformUnavailableException $e): void
