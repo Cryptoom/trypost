@@ -110,18 +110,7 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
             return;
         }
 
-        $missingScopes = $this->missingScopes();
-
-        if ($missingScopes !== []) {
-            $this->failAndFinalize(
-                'Missing permissions: '.implode(', ', $missingScopes).'. Please reconnect your account.',
-                [
-                    'category' => 'permission',
-                    'missing_scopes' => $missingScopes,
-                    'failed_at' => now()->toIso8601String(),
-                ],
-            );
-
+        if ($this->failForMissingScopes()) {
             return;
         }
 
@@ -214,13 +203,27 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
         app(ConnectionVerifier::class)->verify($account);
     }
 
-    /** @return list<string> */
-    private function missingScopes(): array
+    private function failForMissingScopes(): bool
     {
-        return array_values(array_diff(
+        $missingScopes = array_values(array_diff(
             $this->postPlatform->platform->requiredPublishScopes(),
             $this->postPlatform->socialAccount->scopes ?? [],
         ));
+
+        if ($missingScopes === []) {
+            return false;
+        }
+
+        $this->failAndFinalize(
+            'Missing permissions: '.implode(', ', $missingScopes).'. Please reconnect your account.',
+            [
+                'category' => 'permission',
+                'missing_scopes' => $missingScopes,
+                'failed_at' => now()->toIso8601String(),
+            ],
+        );
+
+        return true;
     }
 
     private function rescheduleForRetry(PlatformUnavailableException $e): void
