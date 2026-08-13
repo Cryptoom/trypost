@@ -27,7 +27,9 @@ use App\Services\Social\LinkedInPublisher;
 use App\Services\Social\PinterestPublisher;
 use Carbon\Carbon;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
+use Illuminate\Queue\Middleware\WithoutOverlapping;
 use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
@@ -464,6 +466,39 @@ test('publish records last_attempt_at when rescheduling for retry', function () 
     Carbon::setTestNow();
 });
 
+test('publish preserves resumable context when a later transient error has no context', function () {
+    Bus::fake([PublishToSocialPlatform::class]);
+    Event::fake();
+    Mail::fake();
+
+    $checkpoint = [
+        'instagram_workflow' => [
+            'stage' => 'final_container',
+            'container_id' => 'container-123',
+        ],
+        'tiktok_publish_id' => 'publish-123',
+        'tiktok_derivative_paths' => ['social-tiktok-photos/pending.jpg'],
+        'retry_count' => 2,
+    ];
+    $this->postPlatform->update(['error_context' => $checkpoint]);
+
+    $publisher = Mockery::mock(LinkedInPublisher::class);
+    $publisher->shouldReceive('publish')->andThrow(
+        new PlatformUnavailableException('Token refresh service unavailable', 503)
+    );
+    $this->app->instance(LinkedInPublisher::class, $publisher);
+
+    (new PublishToSocialPlatform($this->postPlatform->fresh()))->handle();
+
+    $context = $this->postPlatform->fresh()->error_context;
+
+    expect($context['instagram_workflow'] ?? null)->toBe($checkpoint['instagram_workflow'])
+        ->and($context['tiktok_publish_id'] ?? null)->toBe('publish-123')
+        ->and($context['tiktok_derivative_paths'] ?? null)->toBe(['social-tiktok-photos/pending.jpg'])
+        ->and($context['retry_count'] ?? null)->toBe(3)
+        ->and($context['http_status'] ?? null)->toBe(503);
+});
+
 test('post stays in Publishing while one platform is still Retrying', function () {
     Bus::fake([PublishToSocialPlatform::class]);
     Event::fake();
@@ -616,6 +651,38 @@ test('publish job unique id includes the platform and attempt', function () {
     expect($job)->toBeInstanceOf(ShouldBeUnique::class)
         ->and($job->uniqueId())->toBe("{$this->postPlatform->id}:3")
         ->and($job->uniqueFor)->toBe(960);
+});
+
+test('publish job prevents concurrent execution across different attempts', function () {
+    $job = new PublishToSocialPlatform($this->postPlatform, 3);
+    $middleware = $job->middleware();
+
+    expect($middleware)->toHaveCount(1)
+        ->and($middleware[0])->toBeInstanceOf(WithoutOverlapping::class)
+        ->and($middleware[0]->key)->toBe("social-publish:{$this->postPlatform->id}")
+        ->and($middleware[0]->releaseAfter)->toBeNull()
+        ->and($middleware[0]->expiresAfter)->toBe($job->timeout + 60);
+});
+
+test('publish job drops an overlapping execution for the same platform', function () {
+    $runningJob = new PublishToSocialPlatform($this->postPlatform, 0);
+    $overlappingJob = new PublishToSocialPlatform($this->postPlatform, 1);
+    /** @var WithoutOverlapping $middleware */
+    $middleware = $overlappingJob->middleware()[0];
+    $lock = Cache::lock($middleware->getLockKey($runningJob), $runningJob->timeout + 60);
+    $handled = false;
+
+    expect($lock->get())->toBeTrue();
+
+    try {
+        $middleware->handle($overlappingJob, function () use (&$handled): void {
+            $handled = true;
+        });
+    } finally {
+        $lock->release();
+    }
+
+    expect($handled)->toBeFalse();
 });
 
 test('publish job unique lock drops a duplicate dispatch for the same platform attempt', function () {

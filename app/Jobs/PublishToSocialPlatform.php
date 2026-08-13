@@ -34,6 +34,7 @@ use App\Services\Social\YouTubePublisher;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Queue\Middleware\WithoutOverlapping;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
@@ -61,6 +62,18 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
     public function uniqueId(): string
     {
         return "{$this->postPlatform->id}:{$this->uniqueAttempt}";
+    }
+
+    /**
+     * @return array<int, object>
+     */
+    public function middleware(): array
+    {
+        return [
+            (new WithoutOverlapping("social-publish:{$this->postPlatform->id}"))
+                ->dontRelease()
+                ->expireAfter($this->timeout + 60),
+        ];
     }
 
     public function handle(): void
@@ -211,6 +224,7 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
         $maxRetries = $e->maxRetries ?? self::MAX_PLATFORM_UNAVAILABLE_RETRIES;
         $retryDelaySeconds = $e->retryDelaySeconds ?? 600;
         $context = [
+            ...($this->postPlatform->error_context ?? []),
             ...$e->context,
             'category' => 'platform_unavailable',
             'http_status' => $e->httpStatus,
