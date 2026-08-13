@@ -17,6 +17,12 @@ class RecoverStuckPosts extends Command
 
     protected $description = 'Recover posts stuck in publishing status for more than 1 hour';
 
+    public function __construct(
+        private readonly TikTokPhotoDerivativeCleaner $tiktokPhotoDerivativeCleaner,
+    ) {
+        parent::__construct();
+    }
+
     public function handle(): void
     {
         $count = 0;
@@ -32,7 +38,7 @@ class RecoverStuckPosts extends Command
                     ->get();
 
                 $stalePlatforms->each(function (PostPlatform $postPlatform): void {
-                    app(TikTokPhotoDerivativeCleaner::class)->cleanup(
+                    $this->tiktokPhotoDerivativeCleaner->cleanup(
                         $postPlatform->error_context,
                         $postPlatform->id,
                     );

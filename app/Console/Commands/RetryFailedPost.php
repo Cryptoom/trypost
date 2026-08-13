@@ -49,7 +49,9 @@ class RetryFailedPost extends Command
 
         $platform = $this->requestedPlatform();
 
-        if ($platform === false) {
+        if ($this->option('platform') !== null && $platform === null) {
+            $this->error('Unknown platform. Use one of: '.implode(', ', array_column(SocialPlatform::cases(), 'value')).'.');
+
             return self::FAILURE;
         }
 
@@ -77,37 +79,7 @@ class RetryFailedPost extends Command
             return self::SUCCESS;
         }
 
-        $retryEntries = DB::transaction(function () use ($post, $platform): array {
-            $lockedPost = Post::query()->lockForUpdate()->find($post->id);
-
-            if (! $lockedPost || ! $this->isRetryable($lockedPost)) {
-                return [];
-            }
-
-            $platforms = $this->failedPlatforms($lockedPost, $platform, lockForUpdate: true);
-            $entries = $platforms->map(fn (PostPlatform $postPlatform): array => [
-                'id' => $postPlatform->id,
-                'platform' => $postPlatform->platform,
-                'error_context' => $postPlatform->error_context,
-            ])->all();
-
-            $platforms->each(function (PostPlatform $postPlatform): void {
-                $postPlatform->update([
-                    'status' => PlatformStatus::Pending,
-                    'platform_post_id' => null,
-                    'platform_url' => null,
-                    'error_message' => null,
-                    'error_context' => null,
-                    'published_at' => null,
-                ]);
-            });
-
-            if ($entries !== []) {
-                $lockedPost->update(['status' => PostStatus::Publishing]);
-            }
-
-            return $entries;
-        });
+        $retryEntries = $this->prepareRetryEntries($post, $platform);
 
         if ($retryEntries === []) {
             $this->warn('The post changed while the command was running; nothing was retried.');
@@ -135,21 +107,11 @@ class RetryFailedPost extends Command
         return self::SUCCESS;
     }
 
-    private function requestedPlatform(): SocialPlatform|false|null
+    private function requestedPlatform(): ?SocialPlatform
     {
         $platform = $this->option('platform');
 
-        if ($platform === null) {
-            return null;
-        }
-
-        if (! is_string($platform) || SocialPlatform::tryFrom($platform) === null) {
-            $this->error('Unknown platform. Use one of: '.implode(', ', array_column(SocialPlatform::cases(), 'value')).'.');
-
-            return false;
-        }
-
-        return SocialPlatform::from($platform);
+        return is_string($platform) ? SocialPlatform::tryFrom($platform) : null;
     }
 
     private function isRetryable(Post $post): bool
@@ -174,5 +136,45 @@ class RetryFailedPost extends Command
         }
 
         return $query->get();
+    }
+
+    /**
+     * @return list<array{
+     *     id: string,
+     *     platform: SocialPlatform,
+     *     error_context: array<string, mixed>|null
+     * }>
+     */
+    private function prepareRetryEntries(Post $post, ?SocialPlatform $platform): array
+    {
+        return DB::transaction(function () use ($post, $platform): array {
+            $lockedPost = Post::query()->lockForUpdate()->find($post->id);
+
+            if (! $lockedPost || ! $this->isRetryable($lockedPost)) {
+                return [];
+            }
+
+            $platforms = $this->failedPlatforms($lockedPost, $platform, lockForUpdate: true);
+            $entries = $platforms->map(fn (PostPlatform $postPlatform): array => [
+                'id' => $postPlatform->id,
+                'platform' => $postPlatform->platform,
+                'error_context' => $postPlatform->error_context,
+            ])->all();
+
+            $platforms->each(fn (PostPlatform $postPlatform) => $postPlatform->update([
+                'status' => PlatformStatus::Pending,
+                'platform_post_id' => null,
+                'platform_url' => null,
+                'error_message' => null,
+                'error_context' => null,
+                'published_at' => null,
+            ]));
+
+            if ($entries !== []) {
+                $lockedPost->update(['status' => PostStatus::Publishing]);
+            }
+
+            return $entries;
+        });
     }
 }

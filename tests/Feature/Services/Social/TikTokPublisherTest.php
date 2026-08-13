@@ -141,7 +141,7 @@ test('tiktok publisher resumes an existing publish without creating a duplicate'
 
 test('tiktok publisher keeps photo derivatives while pending and prunes them on completion', function () {
     Storage::fake();
-    $derivativePath = 'social-tiktok-photos/pending.jpg';
+    $derivativePath = 'social-tiktok-photos/123e4567-e89b-12d3-a456-426614174000.jpg';
     Storage::put($derivativePath, 'image');
 
     $this->postPlatform->update([

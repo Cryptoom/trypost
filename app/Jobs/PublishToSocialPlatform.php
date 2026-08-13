@@ -51,8 +51,10 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
 
     public int $uniqueFor = 960;
 
-    /** Max platform-unavailable reschedules (~1 hour at 10 min each). */
+    /** Default platform-unavailable retry budget (~1 hour at 10 minutes each). */
     public const MAX_PLATFORM_UNAVAILABLE_RETRIES = 6;
+
+    private const int DEFAULT_RETRY_DELAY_SECONDS = 600;
 
     public function __construct(
         public PostPlatform $postPlatform,
@@ -87,28 +89,22 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
         }
 
         if (! $this->postPlatform->socialAccount->is_active) {
-            $this->markPlatformAsFailed(__('posts.errors.account_inactive'));
-            $this->updatePostStatus();
-            $this->broadcastStatus();
+            $this->failAndFinalize(__('posts.errors.account_inactive'));
 
             return;
         }
 
         if ($this->postPlatform->socialAccount->status === Status::Disconnected) {
-            $this->markPlatformAsFailed(__('posts.errors.account_disconnected'));
-            $this->updatePostStatus();
-            $this->broadcastStatus();
+            $this->failAndFinalize(__('posts.errors.account_disconnected'));
 
             return;
         }
 
         if ($this->postPlatform->socialAccount->status === Status::TokenExpired) {
-            $this->markPlatformAsFailed(__('posts.errors.account_token_expired'), [
+            $this->failAndFinalize(__('posts.errors.account_token_expired'), [
                 'category' => 'token_expired',
                 'failed_at' => now()->toIso8601String(),
             ]);
-            $this->updatePostStatus();
-            $this->broadcastStatus();
 
             return;
         }
@@ -120,12 +116,14 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
             $missingScopes = array_diff($requiredScopes, $accountScopes);
 
             if (! empty($missingScopes)) {
-                $this->markPlatformAsFailed(
+                $this->failAndFinalize(
                     'Missing permissions: '.implode(', ', $missingScopes).'. Please reconnect your account.',
-                    ['category' => 'permission', 'missing_scopes' => $missingScopes, 'failed_at' => now()->toIso8601String()]
+                    [
+                        'category' => 'permission',
+                        'missing_scopes' => $missingScopes,
+                        'failed_at' => now()->toIso8601String(),
+                    ],
                 );
-                $this->updatePostStatus();
-                $this->broadcastStatus();
 
                 return;
             }
@@ -228,7 +226,7 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
             ?? self::MAX_PLATFORM_UNAVAILABLE_RETRIES);
         $retryDelaySeconds = (int) ($e->retryDelaySeconds
             ?? data_get($this->postPlatform->error_context, 'retry_delay_seconds')
-            ?? 600);
+            ?? self::DEFAULT_RETRY_DELAY_SECONDS);
         $context = [
             ...($this->postPlatform->error_context ?? []),
             ...$e->context,
@@ -297,12 +295,19 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
         $previousContext = $this->postPlatform->error_context ?? [];
         $this->cleanupRetryResources($previousContext);
 
-        $failureContext = match (true) {
-            $previousContext !== [], $context !== null => [...$previousContext, ...($context ?? [])],
-            default => null,
-        };
+        $failureContext = [...$previousContext, ...($context ?? [])];
 
-        $this->postPlatform->markAsFailed($message, $failureContext);
+        $this->postPlatform->markAsFailed($message, $failureContext === [] ? null : $failureContext);
+    }
+
+    /**
+     * @param  array<string, mixed>|null  $context
+     */
+    private function failAndFinalize(string $message, ?array $context = null): void
+    {
+        $this->markPlatformAsFailed($message, $context);
+        $this->updatePostStatus();
+        $this->broadcastStatus();
     }
 
     private function isTerminal(): bool

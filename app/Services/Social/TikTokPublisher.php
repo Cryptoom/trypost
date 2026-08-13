@@ -13,6 +13,7 @@ use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Services\Media\MediaOptimizer;
 use App\Services\Social\Concerns\HasSocialHttpClient;
+use App\Support\Social\TikTokPhotoDerivativeCleaner;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
@@ -62,7 +63,7 @@ class TikTokPublisher
             return $this->completePublishWithCleanup(
                 $postPlatform,
                 $pendingPublishId,
-                is_array($derivatives) ? array_values(array_filter($derivatives, 'is_string')) : [],
+                is_array($derivatives) ? $derivatives : [],
             );
         }
 
@@ -385,18 +386,7 @@ class TikTokPublisher
      */
     private function pruneDerivatives(array $paths): void
     {
-        if ($paths === []) {
-            return;
-        }
-
-        try {
-            Storage::delete($paths);
-        } catch (Throwable $e) {
-            Log::warning('Failed to prune TikTok photo derivatives', [
-                'paths' => $paths,
-                'exception' => $e->getMessage(),
-            ]);
-        }
+        app(TikTokPhotoDerivativeCleaner::class)->cleanupPaths($paths);
     }
 
     private function waitForPublishStatus(string $publishId): array
@@ -407,7 +397,7 @@ class TikTokPublisher
             ]);
 
         if ($response->failed()) {
-            if ($response->status() !== 429 && $response->status() < 500) {
+            if ($response->status() !== 429 && ! $response->serverError()) {
                 $this->handleApiError($response);
             }
 
@@ -441,7 +431,7 @@ class TikTokPublisher
     }
 
     /**
-     * @param  list<string>  $derivatives
+     * @param  array<array-key, mixed>  $derivatives
      * @return array<string, mixed>
      */
     private function completePublishWithCleanup(PostPlatform $postPlatform, string $publishId, array $derivatives): array

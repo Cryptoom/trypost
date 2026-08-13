@@ -27,6 +27,10 @@ class InstagramPublisher
 
     private const int STATUS_MAX_RETRIES = 90;
 
+    private const string WORKFLOW_CAROUSEL_CHILDREN = 'carousel_children';
+
+    private const string WORKFLOW_FINAL_CONTAINER = 'final_container';
+
     public function publish(PostPlatform $postPlatform): array
     {
         $this->validateContentLength($postPlatform);
@@ -105,58 +109,20 @@ class InstagramPublisher
             $params['alt_text'] = $alt;
         }
 
-        // Step 1: Create container
-        $containerResponse = $this->socialHttp()->post("{$this->baseUrl}/{$instagramId}/media", $params);
+        $containerId = $this->createContainer($instagramId, $params, 'container');
 
-        if ($containerResponse->failed()) {
-            Log::error('Instagram container creation failed', [
-                'status' => $containerResponse->status(),
-                'body' => $this->redactResponseBody($containerResponse->body()),
-            ]);
-            $this->handleApiError($containerResponse);
-        }
-
-        $containerId = $containerResponse->json()['id'] ?? null;
-
-        if (! $containerId) {
-            throw new InstagramPublishException(
-                userMessage: 'Instagram container creation failed: No container ID returned',
-                category: ErrorCategory::ServerError,
-            );
-        }
-
-        // Step 2: Wait for container to be ready
         return $this->finishContainer($instagramId, $accessToken, $containerId);
     }
 
     private function publishReel(string $instagramId, string $accessToken, ?string $content, $media): array
     {
-        // Step 1: Create container for video/reel
-        $containerResponse = $this->socialHttp()->post("{$this->baseUrl}/{$instagramId}/media", [
+        $containerId = $this->createContainer($instagramId, [
             'video_url' => $media->url,
             'caption' => $content,
             'media_type' => 'REELS',
             'access_token' => $accessToken,
-        ]);
+        ], 'reel container');
 
-        if ($containerResponse->failed()) {
-            Log::error('Instagram reel container creation failed', [
-                'status' => $containerResponse->status(),
-                'body' => $this->redactResponseBody($containerResponse->body()),
-            ]);
-            $this->handleApiError($containerResponse);
-        }
-
-        $containerId = $containerResponse->json()['id'] ?? null;
-
-        if (! $containerId) {
-            throw new InstagramPublishException(
-                userMessage: 'Instagram reel container creation failed: No container ID returned',
-                category: ErrorCategory::ServerError,
-            );
-        }
-
-        // Wait for video processing
         return $this->finishContainer($instagramId, $accessToken, $containerId);
     }
 
@@ -176,27 +142,8 @@ class InstagramPublisher
             $params['image_url'] = $this->fitImageToCanvas($media->url, data_get($dimensions, 'width'), data_get($dimensions, 'height'));
         }
 
-        // Step 1: Create story container
-        $containerResponse = $this->socialHttp()->post("{$this->baseUrl}/{$instagramId}/media", $params);
+        $containerId = $this->createContainer($instagramId, $params, 'story container');
 
-        if ($containerResponse->failed()) {
-            Log::error('Instagram story container creation failed', [
-                'status' => $containerResponse->status(),
-                'body' => $this->redactResponseBody($containerResponse->body()),
-            ]);
-            $this->handleApiError($containerResponse);
-        }
-
-        $containerId = $containerResponse->json()['id'] ?? null;
-
-        if (! $containerId) {
-            throw new InstagramPublishException(
-                userMessage: 'Instagram story container creation failed: No container ID returned',
-                category: ErrorCategory::ServerError,
-            );
-        }
-
-        // Step 2: Wait for media processing
         return $this->finishContainer($instagramId, $accessToken, $containerId);
     }
 
@@ -269,7 +216,7 @@ class InstagramPublisher
     private function finishCarousel(string $instagramId, string $accessToken, ?string $content, array $childContainers, array $processingChildContainers): array
     {
         $workflow = [
-            'stage' => 'carousel_children',
+            'stage' => self::WORKFLOW_CAROUSEL_CHILDREN,
             'child_container_ids' => $childContainers,
             'processing_child_container_ids' => $processingChildContainers,
         ];
@@ -278,28 +225,12 @@ class InstagramPublisher
             $this->waitForMediaProcessing($childId, $accessToken, $workflow);
         }
 
-        $carouselResponse = $this->socialHttp()->post("{$this->baseUrl}/{$instagramId}/media", [
+        $carouselId = $this->createContainer($instagramId, [
             'media_type' => 'CAROUSEL',
             'caption' => $content,
             'children' => implode(',', $childContainers),
             'access_token' => $accessToken,
-        ]);
-
-        if ($carouselResponse->failed()) {
-            Log::error('Instagram carousel container creation failed', [
-                'body' => $this->redactResponseBody($carouselResponse->body()),
-            ]);
-            $this->handleApiError($carouselResponse);
-        }
-
-        $carouselId = $carouselResponse->json()['id'] ?? null;
-
-        if (! $carouselId) {
-            throw new InstagramPublishException(
-                userMessage: 'Instagram carousel container creation failed: No container ID returned',
-                category: ErrorCategory::ServerError,
-            );
-        }
+        ], 'carousel container');
 
         return $this->finishContainer($instagramId, $accessToken, $carouselId);
     }
@@ -309,7 +240,9 @@ class InstagramPublisher
      */
     private function resumeWorkflow(string $instagramId, string $accessToken, ?string $content, array $workflow): array
     {
-        if (data_get($workflow, 'stage') === 'final_container') {
+        $stage = data_get($workflow, 'stage');
+
+        if ($stage === self::WORKFLOW_FINAL_CONTAINER) {
             $containerId = data_get($workflow, 'container_id');
 
             if (is_string($containerId) && $containerId !== '') {
@@ -317,17 +250,17 @@ class InstagramPublisher
             }
         }
 
-        if (data_get($workflow, 'stage') === 'carousel_children') {
-            $children = data_get($workflow, 'child_container_ids');
-            $processingChildren = data_get($workflow, 'processing_child_container_ids', []);
+        if ($stage === self::WORKFLOW_CAROUSEL_CHILDREN) {
+            $children = $this->stringList(data_get($workflow, 'child_container_ids'));
+            $processingChildren = $this->stringList(data_get($workflow, 'processing_child_container_ids', []));
 
-            if (is_array($children) && $children !== [] && is_array($processingChildren)) {
+            if ($children !== null && $children !== [] && $processingChildren !== null) {
                 return $this->finishCarousel(
                     $instagramId,
                     $accessToken,
                     $content,
-                    array_values(array_filter($children, 'is_string')),
-                    array_values(array_filter($processingChildren, 'is_string')),
+                    $children,
+                    $processingChildren,
                 );
             }
         }
@@ -341,7 +274,7 @@ class InstagramPublisher
     private function finishContainer(string $instagramId, string $accessToken, string $containerId): array
     {
         $this->waitForMediaProcessing($containerId, $accessToken, [
-            'stage' => 'final_container',
+            'stage' => self::WORKFLOW_FINAL_CONTAINER,
             'container_id' => $containerId,
         ]);
 
@@ -405,7 +338,7 @@ class InstagramPublisher
         ]);
 
         if ($statusResponse->failed()) {
-            if ($statusResponse->status() !== 429 && $statusResponse->status() < 500) {
+            if ($statusResponse->status() !== 429 && ! $statusResponse->serverError()) {
                 $this->handleApiError($statusResponse);
             }
 
@@ -440,6 +373,53 @@ class InstagramPublisher
             retryDelaySeconds: self::STATUS_RETRY_DELAY_SECONDS,
             maxRetries: self::STATUS_MAX_RETRIES,
         );
+    }
+
+    /**
+     * @param  array<string, mixed>  $parameters
+     */
+    private function createContainer(string $instagramId, array $parameters, string $label): string
+    {
+        $response = $this->socialHttp()->post("{$this->baseUrl}/{$instagramId}/media", $parameters);
+
+        if ($response->failed()) {
+            Log::error("Instagram {$label} creation failed", [
+                'status' => $response->status(),
+                'body' => $this->redactResponseBody($response->body()),
+            ]);
+            $this->handleApiError($response);
+        }
+
+        $containerId = data_get($response->json(), 'id');
+
+        if (! is_string($containerId) || $containerId === '') {
+            throw new InstagramPublishException(
+                userMessage: "Instagram {$label} creation failed: No container ID returned",
+                category: ErrorCategory::ServerError,
+            );
+        }
+
+        return $containerId;
+    }
+
+    /**
+     * @return list<string>|null
+     */
+    private function stringList(mixed $values): ?array
+    {
+        if (! is_array($values)) {
+            return null;
+        }
+
+        $strings = [];
+
+        foreach ($values as $value) {
+            if (is_string($value) && $value !== '') {
+                $strings[] = $value;
+            }
+        }
+
+        return $strings;
     }
 
     private function handleApiError(Response $response): never

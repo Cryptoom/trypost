@@ -23,6 +23,14 @@ class TikTokPhotoDerivativeCleaner
             return;
         }
 
+        $this->cleanupPaths($paths, $postPlatformId);
+    }
+
+    /**
+     * @param  array<array-key, mixed>  $paths
+     */
+    public function cleanupPaths(array $paths, ?string $postPlatformId = null): void
+    {
         $derivativePaths = array_values(array_filter(
             $paths,
             $this->isManagedDerivativePath(...),
