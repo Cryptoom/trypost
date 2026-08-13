@@ -7,6 +7,8 @@ namespace App\Console\Commands;
 use App\Enums\Post\Status as PostStatus;
 use App\Enums\PostPlatform\Status as PlatformStatus;
 use App\Models\Post;
+use App\Models\PostPlatform;
+use App\Support\Social\TikTokPhotoDerivativeCleaner;
 use Illuminate\Console\Command;
 
 class RecoverStuckPosts extends Command
@@ -23,18 +25,28 @@ class RecoverStuckPosts extends Command
             ->where('status', PostStatus::Publishing)
             ->where('updated_at', '<=', now()->subHour())
             ->each(function (Post $post) use (&$count) {
-                $post->postPlatforms()
+                $stalePlatforms = $post->postPlatforms()
                     ->enabled()
                     ->whereIn('status', [PlatformStatus::Publishing, PlatformStatus::Pending, PlatformStatus::Retrying])
                     ->where('updated_at', '<=', now()->subHour())
-                    ->update([
+                    ->get();
+
+                $stalePlatforms->each(function (PostPlatform $postPlatform): void {
+                    app(TikTokPhotoDerivativeCleaner::class)->cleanup(
+                        $postPlatform->error_context,
+                        $postPlatform->id,
+                    );
+
+                    $postPlatform->update([
                         'status' => PlatformStatus::Failed,
                         'error_message' => __('posts.errors.publishing_timed_out'),
                         'error_context' => [
+                            ...($postPlatform->error_context ?? []),
                             'category' => 'timeout',
                             'failed_at' => now()->toIso8601String(),
                         ],
                     ]);
+                });
 
                 // Delayed platform-unavailable retries keep the platform Retrying with a
                 // fresh updated_at — do not finalize the post while that work is still live.

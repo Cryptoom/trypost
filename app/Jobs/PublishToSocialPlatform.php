@@ -31,18 +31,20 @@ use App\Services\Social\ThreadsPublisher;
 use App\Services\Social\TikTokPublisher;
 use App\Services\Social\XPublisher;
 use App\Services\Social\YouTubePublisher;
+use App\Support\Social\TikTokPhotoDerivativeCleaner;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Queue\Middleware\WithoutOverlapping;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Storage;
 
 class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
 {
     use Queueable;
 
-    public int $tries = 1;
+    public int $tries = 20;
+
+    public int $maxExceptions = 1;
 
     /** Download/upload + Pinterest poll headroom; keep Horizon/Redis timeouts above this. */
     public int $timeout = 900;
@@ -71,7 +73,7 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
     {
         return [
             (new WithoutOverlapping("social-publish:{$this->postPlatform->id}"))
-                ->dontRelease()
+                ->releaseAfter(60)
                 ->expireAfter($this->timeout + 60),
         ];
     }
@@ -221,14 +223,20 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
     private function rescheduleForRetry(PlatformUnavailableException $e): void
     {
         $retryCount = (int) data_get($this->postPlatform->error_context, 'retry_count', 0) + 1;
-        $maxRetries = $e->maxRetries ?? self::MAX_PLATFORM_UNAVAILABLE_RETRIES;
-        $retryDelaySeconds = $e->retryDelaySeconds ?? 600;
+        $maxRetries = (int) ($e->maxRetries
+            ?? data_get($this->postPlatform->error_context, 'max_retries')
+            ?? self::MAX_PLATFORM_UNAVAILABLE_RETRIES);
+        $retryDelaySeconds = (int) ($e->retryDelaySeconds
+            ?? data_get($this->postPlatform->error_context, 'retry_delay_seconds')
+            ?? 600);
         $context = [
             ...($this->postPlatform->error_context ?? []),
             ...$e->context,
             'category' => 'platform_unavailable',
             'http_status' => $e->httpStatus,
             'retry_count' => $retryCount,
+            'max_retries' => $maxRetries,
+            'retry_delay_seconds' => $retryDelaySeconds,
             'detail' => $e->getMessage(),
         ];
 
@@ -239,7 +247,7 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
                 ...$context,
             ]);
 
-            $this->cleanupExhaustedRetryResources($context);
+            $this->cleanupRetryResources($context);
 
             $this->postPlatform->markAsFailed(
                 __('posts.errors.platform_unavailable_exhausted'),
@@ -274,35 +282,13 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
     /**
      * @param  array<string, mixed>  $context
      */
-    private function cleanupExhaustedRetryResources(array $context): void
+    private function cleanupRetryResources(array $context): void
     {
         if ($this->postPlatform->platform !== SocialPlatform::TikTok) {
             return;
         }
 
-        $paths = data_get($context, 'tiktok_derivative_paths', []);
-
-        if (! is_array($paths) || $paths === []) {
-            return;
-        }
-
-        $derivativePaths = array_values(array_filter(
-            $paths,
-            fn (mixed $path): bool => is_string($path) && str_starts_with($path, 'social-tiktok-photos/'),
-        ));
-
-        if ($derivativePaths === []) {
-            return;
-        }
-
-        try {
-            Storage::delete($derivativePaths);
-        } catch (\Throwable $e) {
-            Log::warning('Failed to prune TikTok photo derivatives after retries exhausted', [
-                'post_platform_id' => $this->postPlatform->id,
-                'error' => $e->getMessage(),
-            ]);
-        }
+        app(TikTokPhotoDerivativeCleaner::class)->cleanup($context, $this->postPlatform->id);
     }
 
     private function isTerminal(): bool
@@ -417,9 +403,13 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
             return;
         }
 
+        $previousContext = $this->postPlatform->error_context ?? [];
+        $this->cleanupRetryResources($previousContext);
+
         $this->postPlatform->markAsFailed(
             $exception ? $this->safeFailureMessage($exception) : 'Unknown error',
             [
+                ...$previousContext,
                 'category' => 'job_failed',
                 'failed_at' => now()->toIso8601String(),
             ]

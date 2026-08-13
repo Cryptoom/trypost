@@ -34,6 +34,7 @@ use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Sleep;
 
 beforeEach(function () {
@@ -499,6 +500,39 @@ test('publish preserves resumable context when a later transient error has no co
         ->and($context['http_status'] ?? null)->toBe(503);
 });
 
+test('publish preserves a resumable retry policy after the global retry limit', function () {
+    Bus::fake([PublishToSocialPlatform::class]);
+    Event::fake();
+    Mail::fake();
+
+    $this->postPlatform->update([
+        'error_context' => [
+            'instagram_workflow' => [
+                'stage' => 'final_container',
+                'container_id' => 'container-123',
+            ],
+            'retry_count' => 7,
+            'max_retries' => 90,
+            'retry_delay_seconds' => 10,
+        ],
+    ]);
+
+    $publisher = Mockery::mock(LinkedInPublisher::class);
+    $publisher->shouldReceive('publish')->andThrow(
+        new PlatformUnavailableException('Token refresh service unavailable', 503)
+    );
+    $this->app->instance(LinkedInPublisher::class, $publisher);
+
+    (new PublishToSocialPlatform($this->postPlatform->fresh()))->handle();
+
+    $context = $this->postPlatform->fresh()->error_context;
+
+    expect($this->postPlatform->fresh()->status)->toBe(PlatformStatus::Retrying)
+        ->and($context['retry_count'] ?? null)->toBe(8)
+        ->and($context['max_retries'] ?? null)->toBe(90)
+        ->and($context['retry_delay_seconds'] ?? null)->toBe(10);
+});
+
 test('post stays in Publishing while one platform is still Retrying', function () {
     Bus::fake([PublishToSocialPlatform::class]);
     Event::fake();
@@ -660,13 +694,15 @@ test('publish job prevents concurrent execution across different attempts', func
     expect($middleware)->toHaveCount(1)
         ->and($middleware[0])->toBeInstanceOf(WithoutOverlapping::class)
         ->and($middleware[0]->key)->toBe("social-publish:{$this->postPlatform->id}")
-        ->and($middleware[0]->releaseAfter)->toBeNull()
-        ->and($middleware[0]->expiresAfter)->toBe($job->timeout + 60);
+        ->and($middleware[0]->releaseAfter)->toBe(60)
+        ->and($middleware[0]->expiresAfter)->toBe($job->timeout + 60)
+        ->and($job->tries)->toBe(20)
+        ->and($job->maxExceptions)->toBe(1);
 });
 
-test('publish job drops an overlapping execution for the same platform', function () {
+test('publish job releases an overlapping execution for the same platform', function () {
     $runningJob = new PublishToSocialPlatform($this->postPlatform, 0);
-    $overlappingJob = new PublishToSocialPlatform($this->postPlatform, 1);
+    $overlappingJob = (new PublishToSocialPlatform($this->postPlatform, 1))->withFakeQueueInteractions();
     /** @var WithoutOverlapping $middleware */
     $middleware = $overlappingJob->middleware()[0];
     $lock = Cache::lock($middleware->getLockKey($runningJob), $runningJob->timeout + 60);
@@ -683,6 +719,7 @@ test('publish job drops an overlapping execution for the same platform', functio
     }
 
     expect($handled)->toBeFalse();
+    $overlappingJob->assertReleased(60);
 });
 
 test('publish job unique lock drops a duplicate dispatch for the same platform attempt', function () {
@@ -741,6 +778,34 @@ test('failed hook skips platforms that are already published', function () {
     expect($this->postPlatform->status)->toBe(PlatformStatus::Published)
         ->and($this->postPlatform->platform_post_id)->toBe('already-published')
         ->and($this->postPlatform->error_message)->toBeNull();
+});
+
+test('failed hook prunes pending TikTok photo derivatives', function () {
+    Event::fake();
+    Mail::fake();
+    Storage::fake();
+
+    $path = 'social-tiktok-photos/pending.jpg';
+    $unrelatedPath = 'customer-media/keep.jpg';
+    Storage::put($path, 'image');
+    Storage::put($unrelatedPath, 'image');
+    $this->postPlatform->update([
+        'platform' => Platform::TikTok,
+        'status' => PlatformStatus::Retrying,
+        'error_context' => [
+            'tiktok_publish_id' => 'publish-123',
+            'tiktok_derivative_paths' => [$path, 'social-tiktok-photos/../customer-media/keep.jpg'],
+        ],
+    ]);
+
+    (new PublishToSocialPlatform($this->postPlatform->fresh()))->failed(new TypeError('Simulated worker kill'));
+
+    Storage::assertMissing($path);
+    Storage::assertExists($unrelatedPath);
+    expect($this->postPlatform->fresh()->error_context)->toMatchArray([
+        'tiktok_publish_id' => 'publish-123',
+        'category' => 'job_failed',
+    ]);
 });
 
 test('pinterest media status 401 marks the account token expired and notifies to reconnect', function () {
