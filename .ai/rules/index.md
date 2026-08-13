@@ -4,5 +4,4 @@ Before planning or editing, find the row whose globs match the file's path and r
 
 | Applies to | Rule file |
 | --- | --- |
-| app/Console/Commands/RetryFailedPost.php | .ai/rules/commands.md |
 | app/Services/Social/** | .ai/rules/social.md |
