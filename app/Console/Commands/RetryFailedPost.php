@@ -21,8 +21,7 @@ class RetryFailedPost extends Command
 {
     protected $signature = 'posts:retry
         {post : ID of the post whose failed platforms should be retried}
-        {--platform= : Retry only this platform (for example, threads or tiktok)}
-        {--force : Retry without asking for confirmation}';
+        {--platform= : Retry only this platform (for example, threads or tiktok)}';
 
     protected $description = 'Retry failed platforms for a post as new publish attempts';
 
@@ -72,7 +71,7 @@ class RetryFailedPost extends Command
             ])->all(),
         );
 
-        if (! $this->option('force') && ! $this->confirm('Start new publish attempts for these failed platforms?')) {
+        if (! $this->confirm('Start new publish attempts for these failed platforms?')) {
             $this->info('Retry cancelled.');
 
             return self::SUCCESS;

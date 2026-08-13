@@ -11,6 +11,7 @@ use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Storage;
 
@@ -23,6 +24,12 @@ beforeEach(function () {
         'status' => PostStatus::PartiallyPublished,
         'published_at' => now()->subHour(),
     ]);
+});
+
+test('it does not expose an option that bypasses confirmation', function () {
+    $command = Artisan::all()['posts:retry'];
+
+    expect($command->getDefinition()->hasOption('force'))->toBeFalse();
 });
 
 test('it queues fresh attempts only for failed enabled platforms', function () {
@@ -57,7 +64,8 @@ test('it queues fresh attempts only for failed enabled platforms', function () {
         ]),
     ]);
 
-    $this->artisan('posts:retry', ['post' => $this->post->id, '--force' => true])
+    $this->artisan('posts:retry', ['post' => $this->post->id])
+        ->expectsConfirmation('Start new publish attempts for these failed platforms?', 'yes')
         ->expectsOutput('2 publish attempt(s) queued.')
         ->assertSuccessful();
 
@@ -98,8 +106,8 @@ test('it can retry only one requested platform', function () {
     $this->artisan('posts:retry', [
         'post' => $this->post->id,
         '--platform' => Platform::Threads->value,
-        '--force' => true,
-    ])->assertSuccessful();
+    ])->expectsConfirmation('Start new publish attempts for these failed platforms?', 'yes')
+        ->assertSuccessful();
 
     expect($failedThreads->fresh()->status)->toBe(PlatformStatus::Pending)
         ->and($failedTikTok->fresh()->status)->toBe(PlatformStatus::Failed);
@@ -125,7 +133,8 @@ test('it removes stale TikTok derivatives before starting from scratch', functio
         ],
     ]);
 
-    $this->artisan('posts:retry', ['post' => $this->post->id, '--force' => true])
+    $this->artisan('posts:retry', ['post' => $this->post->id])
+        ->expectsConfirmation('Start new publish attempts for these failed platforms?', 'yes')
         ->assertSuccessful();
 
     Storage::assertMissing($derivativePath);
@@ -160,7 +169,7 @@ test('it rejects posts that are not in a terminal failure state', function () {
     Bus::fake([PublishToSocialPlatform::class]);
     $this->post->update(['status' => PostStatus::Publishing]);
 
-    $this->artisan('posts:retry', ['post' => $this->post->id, '--force' => true])
+    $this->artisan('posts:retry', ['post' => $this->post->id])
         ->expectsOutput('Only failed or partially published posts can be retried.')
         ->assertFailed();
 
@@ -177,7 +186,8 @@ test('it retries a completely failed post', function () {
         ]),
     ]);
 
-    $this->artisan('posts:retry', ['post' => $this->post->id, '--force' => true])
+    $this->artisan('posts:retry', ['post' => $this->post->id])
+        ->expectsConfirmation('Start new publish attempts for these failed platforms?', 'yes')
         ->assertSuccessful();
 
     expect($this->post->fresh()->status)->toBe(PostStatus::Publishing)
@@ -195,7 +205,7 @@ test('it fails when no failed enabled platform matches', function () {
         ]),
     ]);
 
-    $this->artisan('posts:retry', ['post' => $this->post->id, '--force' => true])
+    $this->artisan('posts:retry', ['post' => $this->post->id])
         ->expectsOutput('No failed enabled platforms matched this post.')
         ->assertFailed();
 
@@ -206,7 +216,7 @@ test('it fails when no failed enabled platform matches', function () {
 test('it fails when the post does not exist', function () {
     Bus::fake([PublishToSocialPlatform::class]);
 
-    $this->artisan('posts:retry', ['post' => '019ff9ae-068b-72bf-9f2e-0314ce7dc0e2', '--force' => true])
+    $this->artisan('posts:retry', ['post' => '019ff9ae-068b-72bf-9f2e-0314ce7dc0e2'])
         ->expectsOutput('Post not found.')
         ->assertFailed();
 
@@ -219,7 +229,6 @@ test('it rejects an unknown platform option', function () {
     $this->artisan('posts:retry', [
         'post' => $this->post->id,
         '--platform' => 'myspace',
-        '--force' => true,
     ])->expectsOutputToContain('Unknown platform.')
         ->assertFailed();
 
