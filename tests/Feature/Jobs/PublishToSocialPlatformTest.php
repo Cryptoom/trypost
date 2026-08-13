@@ -792,7 +792,7 @@ test('failed hook prunes pending TikTok photo derivatives', function () {
     Mail::fake();
     Storage::fake();
 
-    $path = 'social-tiktok-photos/pending.jpg';
+    $path = 'social-tiktok-photos/123e4567-e89b-12d3-a456-426614174000.jpg';
     $unrelatedPath = 'customer-media/keep.jpg';
     Storage::put($path, 'image');
     Storage::put($unrelatedPath, 'image');
@@ -820,7 +820,7 @@ test('terminal TikTok account guards prune derivatives from a resumable photo pu
     Mail::fake();
     Storage::fake();
 
-    $path = 'social-tiktok-photos/pending-'.str_replace('_', '-', $guard).'.jpg';
+    $path = 'social-tiktok-photos/'.fake()->uuid().'.jpg';
     Storage::put($path, 'image');
 
     $accountAttributes = match ($guard) {

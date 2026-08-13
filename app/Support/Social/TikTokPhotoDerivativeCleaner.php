@@ -6,9 +6,12 @@ namespace App\Support\Social;
 
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class TikTokPhotoDerivativeCleaner
 {
+    private const string DIRECTORY = 'social-tiktok-photos';
+
     /**
      * @param  array<string, mixed>|null  $context
      */
@@ -22,8 +25,7 @@ class TikTokPhotoDerivativeCleaner
 
         $derivativePaths = array_values(array_filter(
             $paths,
-            fn (mixed $path): bool => is_string($path)
-                && preg_match('/\Asocial-tiktok-photos\/[A-Za-z0-9-]+\.jpg\z/', $path) === 1,
+            $this->isManagedDerivativePath(...),
         ));
 
         if ($derivativePaths === []) {
@@ -38,5 +40,16 @@ class TikTokPhotoDerivativeCleaner
                 'error' => $e->getMessage(),
             ]);
         }
+    }
+
+    private function isManagedDerivativePath(mixed $path): bool
+    {
+        if (! is_string($path)) {
+            return false;
+        }
+
+        return dirname($path) === self::DIRECTORY
+            && pathinfo($path, PATHINFO_EXTENSION) === 'jpg'
+            && Str::isUuid(pathinfo($path, PATHINFO_FILENAME));
     }
 }

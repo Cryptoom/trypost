@@ -142,7 +142,7 @@ test('it recovers platforms stuck in retrying for over 1 hour', function () {
 
 test('it prunes TikTok photo derivatives when recovering a stuck retry', function () {
     Storage::fake();
-    $path = 'social-tiktok-photos/stuck.jpg';
+    $path = 'social-tiktok-photos/123e4567-e89b-12d3-a456-426614174000.jpg';
     Storage::put($path, 'image');
 
     $post = Post::factory()->create([
