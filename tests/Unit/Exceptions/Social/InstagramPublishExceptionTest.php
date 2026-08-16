@@ -66,43 +66,6 @@ test('known subcode 2207050 maps to Permission category', function () {
         ->and($exception->userMessage)->toBe('Instagram account is restricted or inactive. Please check the Instagram app.');
 });
 
-test('known subcode 2207066 maps collaborator rejection to ContentPolicy', function () {
-    $response = Http::response([
-        'error' => [
-            'message' => 'User not visible',
-            'type' => 'OAuthException',
-            'code' => 210,
-            'error_subcode' => 2207066,
-            'error_user_msg' => 'The user host_one cannot be tagged on this media.',
-        ],
-    ], 400);
-
-    $fakeResponse = Http::fake(['*' => $response])->post('https://graph.instagram.com/test');
-
-    $exception = InstagramPublishException::fromApiResponse($fakeResponse);
-
-    expect($exception->category)->toBe(ErrorCategory::ContentPolicy)
-        ->and($exception->userMessage)->toBe('The user host_one cannot be tagged on this media.');
-});
-
-test('known subcode 2207066 without user message uses fallback copy', function () {
-    $response = Http::response([
-        'error' => [
-            'message' => 'User not visible',
-            'type' => 'OAuthException',
-            'code' => 210,
-            'error_subcode' => 2207066,
-        ],
-    ], 400);
-
-    $fakeResponse = Http::fake(['*' => $response])->post('https://graph.instagram.com/test');
-
-    $exception = InstagramPublishException::fromApiResponse($fakeResponse);
-
-    expect($exception->category)->toBe(ErrorCategory::ContentPolicy)
-        ->and($exception->userMessage)->toBe("Instagram couldn't invite this collaborator. The account may be private, age-restricted, or have collab invites off.");
-});
-
 test('known subcode 2207010 maps to ContentPolicy category', function () {
     $response = Http::response([
         'error' => [

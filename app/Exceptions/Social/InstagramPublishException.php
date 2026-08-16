@@ -50,7 +50,6 @@ class InstagramPublishException extends SocialPublishException
             2207036 => ['Product tag positions are required for photos.', ErrorCategory::ContentPolicy],
             2207037 => ['Invalid product tag. The product may be deleted or not permitted.', ErrorCategory::ContentPolicy],
             2207040 => ['Too many tags (max 20).', ErrorCategory::ContentPolicy],
-            2207066 => [$errorUserMsg ?? "Instagram couldn't invite this collaborator. The account may be private, age-restricted, or have collab invites off.", ErrorCategory::ContentPolicy],
             2207042 => ['Daily publishing limit reached. Please try again tomorrow.', ErrorCategory::RateLimit],
             2207050 => ['Instagram account is restricted or inactive. Please check the Instagram app.', ErrorCategory::Permission],
             2207081 => ["This account doesn't support Trial Reels.", ErrorCategory::Permission],
