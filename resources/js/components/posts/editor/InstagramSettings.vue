@@ -8,7 +8,7 @@ import { Avatar } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
 import { getMediaValidationWarning } from '@/composables/useMedia';
 import { getPlatformLogo } from '@/composables/usePlatformLogo';
-import { getUsername, isSameUsername } from '@/composables/useUsername';
+import { formatUsername, useUsername } from '@/composables/useUsername';
 import { fallbackImageCapableVariant, filterImageCapableVariants } from '@/lib/aiGenerateVariants';
 import { ContentType } from '@/types/content-type';
 import type { MediaItem } from '@/types/media';
@@ -72,24 +72,17 @@ const aspectRatios = [
 
 const isFeed = computed(() => props.contentType === ContentType.InstagramFeed);
 const selectedAspectRatio = computed(() => props.meta.aspect_ratio ?? '1:1');
-const collaboratorDraft = ref('');
-const collaboratorSelf = ref(false);
 const errors = usePageErrors();
 const collaboratorsError = computed(() =>
     Object.entries(errors.value).find(([key]) => key.includes('.meta.collaborators'))?.[1],
 );
 
 const updateMeta = (patch: Record<string, any>) => emit('update:meta', { ...props.meta, ...patch });
-
-const addCollaborator = () => {
-    const username = getUsername(collaboratorDraft.value);
-    collaboratorDraft.value = '';
-    collaboratorSelf.value = isSameUsername(username, props.socialAccount?.username);
-
-    if (username && !collaboratorSelf.value) {
-        updateMeta({ collaborators: [...(props.meta.collaborators ?? []), username] });
-    }
-};
+const { draft, isSelf, add, remove } = useUsername(
+    () => props.meta.collaborators ?? [],
+    () => props.socialAccount?.username,
+    (collaborators) => updateMeta({ collaborators }),
+);
 
 const pickVariant = (value: string) => {
     if (props.disabled) return;
@@ -184,12 +177,12 @@ const warning = computed(() => getMediaValidationWarning(props.contentType, prop
                         :key="username"
                         class="inline-flex items-center gap-1 rounded-full border-2 border-foreground/30 bg-violet-50 px-2 py-0.5 text-xs font-semibold text-foreground"
                     >
-                        @{{ username }}
+                        {{ formatUsername(username) }}
                         <button
                             v-if="!disabled"
                             type="button"
                             class="text-foreground/50 hover:text-foreground"
-                            @click="updateMeta({ collaborators: meta.collaborators.filter((item: string) => item !== username) })"
+                            @click="remove(username)"
                         >
                             <IconX class="size-3" />
                         </button>
@@ -197,12 +190,12 @@ const warning = computed(() => getMediaValidationWarning(props.contentType, prop
                 </div>
                 <Input
                     v-if="!disabled && (meta.collaborators?.length ?? 0) < 3"
-                    v-model="collaboratorDraft"
+                    v-model="draft"
                     :placeholder="$t('posts.form.instagram.collaborators_placeholder')"
-                    @keydown.enter.prevent="addCollaborator"
-                    @blur="addCollaborator"
+                    @keydown.enter.prevent="add"
+                    @blur="add"
                 />
-                <InputError :message="collaboratorSelf ? $t('posts.form.instagram.collaborators_self') : collaboratorsError" />
+                <InputError :message="isSelf ? $t('posts.form.instagram.collaborators_self') : collaboratorsError" />
                 <p class="text-xs font-medium text-foreground/60">
                     {{ $t('posts.form.instagram.collaborators_hint') }}
                 </p>
