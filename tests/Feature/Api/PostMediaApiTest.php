@@ -2,16 +2,23 @@
 
 declare(strict_types=1);
 
+use App\Actions\Post\AttachExistingAsset;
+use App\Enums\Post\Status as PostStatus;
 use App\Enums\SocialAccount\Platform;
+use App\Enums\UserWorkspace\Role;
 use App\Models\Media;
 use App\Models\Post;
 use App\Models\PostPlatform;
 use App\Models\SocialAccount;
+use App\Models\User;
 use App\Models\Workspace;
+use App\Support\PostMediaRules;
+use App\Support\PostStatusRules;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 
 // A public IP literal as the host lets SafeHttpFetcher's SSRF guard pass without
 // a real DNS lookup; Http::fake() intercepts the request before any network I/O.
@@ -628,4 +635,315 @@ it('rejects media alt text over 2000 characters', function () {
         ->assertJsonValidationErrors(['media.0.meta']);
 
     expect(Post::where('content', 'Alt text too long post')->exists())->toBeFalse();
+});
+
+it('attaches an existing workspace asset to a post', function () {
+    $asset = Media::factory()->assets()->create([
+        'mediable_type' => (new Workspace)->getMorphClass(),
+        'mediable_id' => $this->workspace->id,
+        'original_filename' => 'library.jpg',
+        'size' => 12345,
+        'meta' => [
+            'width' => 1920,
+            'height' => 1080,
+            'duration' => 12.5,
+            'color_space' => 'srgb',
+        ],
+    ]);
+
+    $this->withHeaders(['Authorization' => 'Bearer '.$this->plainToken])
+        ->postJson(route('api.posts.attach-existing-asset', $this->post), [
+            'asset_id' => $asset->id,
+            'alt' => 'Library hero',
+        ])
+        ->assertOk()
+        ->assertJsonPath('id', $this->post->id);
+
+    expect($this->post->fresh()->media)->toHaveCount(1)
+        ->and(data_get($this->post->fresh()->media, '0.id'))->toBe($asset->id)
+        ->and(data_get($this->post->fresh()->media, '0.size'))->toBe(12345)
+        ->and(data_get($this->post->fresh()->media, '0.meta'))->toBe([
+            'width' => 1920,
+            'height' => 1080,
+            'duration' => 12.5,
+            'color_space' => 'srgb',
+            'alt_text' => 'Library hero',
+        ]);
+});
+
+it('preserves library alt text when attach omits alt', function () {
+    $asset = Media::factory()->assets()->create([
+        'mediable_type' => (new Workspace)->getMorphClass(),
+        'mediable_id' => $this->workspace->id,
+        'meta' => [
+            'width' => 800,
+            'height' => 600,
+            'alt_text' => 'From library',
+        ],
+    ]);
+
+    $this->withHeaders(['Authorization' => 'Bearer '.$this->plainToken])
+        ->postJson(route('api.posts.attach-existing-asset', $this->post), [
+            'asset_id' => $asset->id,
+        ])
+        ->assertOk();
+
+    expect(data_get($this->post->fresh()->media, '0.meta'))->toBe([
+        'width' => 800,
+        'height' => 600,
+        'alt_text' => 'From library',
+    ]);
+});
+
+it('attaches an existing document asset without inventing meta', function () {
+    $asset = Media::factory()->assets()->document()->create([
+        'mediable_type' => (new Workspace)->getMorphClass(),
+        'mediable_id' => $this->workspace->id,
+        'original_filename' => 'brief.pdf',
+        'meta' => [],
+    ]);
+
+    $this->withHeaders(['Authorization' => 'Bearer '.$this->plainToken])
+        ->postJson(route('api.posts.attach-existing-asset', $this->post), [
+            'asset_id' => $asset->id,
+            'alt' => 'ignored for pdf',
+        ])
+        ->assertOk();
+
+    expect($this->post->fresh()->media)->toHaveCount(1)
+        ->and(data_get($this->post->fresh()->media, '0.id'))->toBe($asset->id)
+        ->and(data_get($this->post->fresh()->media, '0.type'))->toBe('document')
+        ->and(data_get($this->post->fresh()->media, '0.meta'))->toBeNull();
+});
+
+it('does not duplicate an already attached asset', function () {
+    $asset = Media::factory()->assets()->create([
+        'mediable_type' => (new Workspace)->getMorphClass(),
+        'mediable_id' => $this->workspace->id,
+    ]);
+
+    $this->withHeaders(['Authorization' => 'Bearer '.$this->plainToken])
+        ->postJson(route('api.posts.attach-existing-asset', $this->post), [
+            'asset_id' => $asset->id,
+            'alt' => 'First alt',
+        ])
+        ->assertOk()
+        ->assertJsonPath('id', $this->post->id);
+
+    $this->withHeaders(['Authorization' => 'Bearer '.$this->plainToken])
+        ->postJson(route('api.posts.attach-existing-asset', $this->post), [
+            'asset_id' => $asset->id,
+            'alt' => 'Replacement alt',
+        ])
+        ->assertOk()
+        ->assertJsonPath('id', $this->post->id);
+
+    expect($this->post->fresh()->media)->toHaveCount(1)
+        ->and(data_get($this->post->fresh()->media, '0.meta.alt_text'))->toBe('First alt');
+});
+
+it('does not store alt text for existing non-image assets', function () {
+    $asset = Media::factory()->assets()->video()->create([
+        'mediable_type' => (new Workspace)->getMorphClass(),
+        'mediable_id' => $this->workspace->id,
+    ]);
+
+    $this->withHeaders(['Authorization' => 'Bearer '.$this->plainToken])
+        ->postJson(route('api.posts.attach-existing-asset', $this->post), [
+            'asset_id' => $asset->id,
+            'alt' => 'ignored for video',
+        ])
+        ->assertOk();
+
+    expect(data_get($this->post->fresh()->media, '0.meta.alt_text'))->toBeNull()
+        ->and(data_get($this->post->fresh()->media, '0.meta.duration'))->not->toBeNull();
+});
+
+it('rejects existing-asset alt text over the stored maximum', function () {
+    $asset = Media::factory()->assets()->create([
+        'mediable_type' => (new Workspace)->getMorphClass(),
+        'mediable_id' => $this->workspace->id,
+    ]);
+
+    $this->withHeaders(['Authorization' => 'Bearer '.$this->plainToken])
+        ->postJson(route('api.posts.attach-existing-asset', $this->post), [
+            'asset_id' => $asset->id,
+            'alt' => str_repeat('a', PostMediaRules::ALT_TEXT_MAX_LENGTH + 1),
+        ])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['alt']);
+
+    expect($this->post->fresh()->media)->toHaveCount(0);
+});
+
+it('attaches an existing asset to a scheduled post', function () {
+    $this->post->update([
+        'status' => PostStatus::Scheduled,
+        'scheduled_at' => now()->addDay(),
+    ]);
+
+    $asset = Media::factory()->assets()->create([
+        'mediable_type' => (new Workspace)->getMorphClass(),
+        'mediable_id' => $this->workspace->id,
+    ]);
+
+    $this->withHeaders(['Authorization' => 'Bearer '.$this->plainToken])
+        ->postJson(route('api.posts.attach-existing-asset', $this->post), [
+            'asset_id' => $asset->id,
+        ])
+        ->assertOk();
+
+    expect($this->post->fresh()->media)->toHaveCount(1);
+});
+
+it('does not reveal a post from another workspace when attaching an asset', function () {
+    $other = Workspace::factory()->create();
+    $foreignPost = Post::factory()->create([
+        'workspace_id' => $other->id,
+        'user_id' => $this->user->id,
+    ]);
+    $tiktok = SocialAccount::factory()->tiktok()->create([
+        'workspace_id' => $other->id,
+    ]);
+    PostPlatform::factory()->tiktok()->create([
+        'post_id' => $foreignPost->id,
+        'social_account_id' => $tiktok->id,
+        'enabled' => true,
+    ]);
+    $asset = Media::factory()->assets()->create([
+        'mediable_type' => (new Workspace)->getMorphClass(),
+        'mediable_id' => $this->workspace->id,
+    ]);
+
+    $this->withHeaders(['Authorization' => 'Bearer '.$this->plainToken])
+        ->postJson(route('api.posts.attach-existing-asset', $foreignPost), [
+            'asset_id' => $asset->id,
+        ])
+        ->assertNotFound();
+});
+
+it('does not duplicate an asset when two post instances attach it', function () {
+    $asset = Media::factory()->assets()->create([
+        'mediable_type' => (new Workspace)->getMorphClass(),
+        'mediable_id' => $this->workspace->id,
+    ]);
+
+    $first = $this->post->fresh();
+    $second = $this->post->fresh();
+
+    AttachExistingAsset::execute($first, $asset);
+    AttachExistingAsset::execute($second, $asset);
+
+    expect($this->post->fresh()->media)->toHaveCount(1);
+});
+
+it('forbids viewers from attaching an existing asset', function () {
+    $viewer = User::factory()->create(['account_id' => $this->user->account_id]);
+    $this->workspace->members()->attach($viewer->id, ['role' => Role::Viewer->value]);
+    $viewer->update(['current_workspace_id' => $this->workspace->id]);
+
+    $asset = Media::factory()->assets()->create([
+        'mediable_type' => (new Workspace)->getMorphClass(),
+        'mediable_id' => $this->workspace->id,
+    ]);
+
+    $this->withHeaders(['Authorization' => 'Bearer '.passportToken($viewer, $this->workspace)])
+        ->postJson(route('api.posts.attach-existing-asset', $this->post), [
+            'asset_id' => $asset->id,
+        ])
+        ->assertForbidden();
+
+    expect($this->post->fresh()->media)->toHaveCount(0);
+});
+
+it('rejects an asset from another workspace', function () {
+    $other = Workspace::factory()->create();
+    $asset = Media::factory()->assets()->create([
+        'mediable_type' => (new Workspace)->getMorphClass(),
+        'mediable_id' => $other->id,
+    ]);
+
+    $this->withHeaders(['Authorization' => 'Bearer '.$this->plainToken])
+        ->postJson(route('api.posts.attach-existing-asset', $this->post), [
+            'asset_id' => $asset->id,
+        ])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['asset_id']);
+
+    expect($this->post->fresh()->media)->toHaveCount(0);
+});
+
+it('rejects attaching an existing asset when the post cannot be edited', function (PostStatus $status) {
+    $this->post->update(['status' => $status]);
+
+    $asset = Media::factory()->assets()->create([
+        'mediable_type' => (new Workspace)->getMorphClass(),
+        'mediable_id' => $this->workspace->id,
+    ]);
+
+    $this->withHeaders(['Authorization' => 'Bearer '.$this->plainToken])
+        ->postJson(route('api.posts.attach-existing-asset', $this->post), [
+            'asset_id' => $asset->id,
+        ])
+        ->assertUnprocessable()
+        ->assertJsonPath('message', PostStatusRules::editBlockedMessage());
+
+    expect($this->post->fresh()->media)->toHaveCount(0);
+})->with([
+    PostStatus::Published,
+    PostStatus::PartiallyPublished,
+    PostStatus::Failed,
+    PostStatus::Publishing,
+]);
+
+it('rejects attaching via the action when the post cannot be edited', function () {
+    $this->post->update(['status' => PostStatus::Published]);
+
+    $asset = Media::factory()->assets()->create([
+        'mediable_type' => (new Workspace)->getMorphClass(),
+        'mediable_id' => $this->workspace->id,
+    ]);
+
+    expect(fn () => AttachExistingAsset::execute($this->post, $asset))
+        ->toThrow(ValidationException::class);
+
+    expect($this->post->fresh()->media)->toHaveCount(0);
+});
+
+it('rejects attaching via the action when the library asset was deleted', function () {
+    $asset = Media::factory()->assets()->create([
+        'mediable_type' => (new Workspace)->getMorphClass(),
+        'mediable_id' => $this->workspace->id,
+    ]);
+    $stale = $asset->fresh();
+    $asset->delete();
+
+    expect(fn () => AttachExistingAsset::execute($this->post, $stale))
+        ->toThrow(ValidationException::class);
+
+    expect($this->post->fresh()->media)->toHaveCount(0);
+});
+
+it('rejects an asset type the enabled platforms cannot publish', function () {
+    $this->socialAccount->update(['platform' => Platform::TikTok]);
+    $this->post->postPlatforms()->delete();
+    PostPlatform::factory()->tiktok()->create([
+        'post_id' => $this->post->id,
+        'social_account_id' => $this->socialAccount->id,
+        'enabled' => true,
+    ]);
+
+    $asset = Media::factory()->assets()->create([
+        'mediable_type' => (new Workspace)->getMorphClass(),
+        'mediable_id' => $this->workspace->id,
+    ]);
+
+    $this->withHeaders(['Authorization' => 'Bearer '.$this->plainToken])
+        ->postJson(route('api.posts.attach-existing-asset', $this->post), [
+            'asset_id' => $asset->id,
+        ])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['asset_id']);
+
+    expect($this->post->fresh()->media)->toHaveCount(0);
 });
