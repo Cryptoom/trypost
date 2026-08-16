@@ -15,7 +15,6 @@ import { computed } from 'vue';
 
 import PostMediaPreview from '@/components/posts/previews/PostMediaPreview.vue';
 import VerticalMediaCanvas from '@/components/posts/previews/VerticalMediaCanvas.vue';
-import { formatCollaboratorNames } from '@/composables/useInstagramCollaborators';
 import { getInitials } from '@/composables/useInitials';
 import { ContentType } from '@/types/content-type';
 import type { MediaItem } from '@/types/media';
@@ -89,7 +88,11 @@ const truncatedCaption = computed(() => {
     return props.content.substring(0, 80) + '...';
 });
 
-const collaboratorNames = computed(() => formatCollaboratorNames(props.meta?.collaborators));
+const collaboratorNames = computed(() => {
+    const list = Array.isArray(props.meta?.collaborators) ? props.meta.collaborators : [];
+
+    return list.map((username: string) => `@${username}`).join(', ');
+});
 </script>
 
 <template>
