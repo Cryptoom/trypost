@@ -72,9 +72,7 @@ const aspectRatios = [
 const isFeed = computed(() => props.contentType === ContentType.InstagramFeed);
 const isStory = computed(() => props.contentType === ContentType.InstagramStory);
 const selectedAspectRatio = computed(() => props.meta.aspect_ratio ?? '1:1');
-const collaborators = computed<string[]>(() =>
-    Array.isArray(props.meta.collaborators) ? props.meta.collaborators : [],
-);
+const collaborators = computed<string[]>(() => props.meta.collaborators ?? []);
 const collaboratorDraft = ref('');
 const errors = usePageErrors();
 const collaboratorsError = computed(() =>
