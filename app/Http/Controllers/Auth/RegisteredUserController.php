@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Auth;
 
 use App\Actions\User\CreateUser;
-use App\Http\Controllers\Auth\Concerns\PreservesUtmParameters;
+use App\Http\Controllers\Auth\Concerns\PreservesAttributionParameters;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\App\Auth\RegisterRequest;
 use Illuminate\Auth\Events\Registered;
@@ -17,30 +17,30 @@ use Inertia\Response;
 
 class RegisteredUserController extends Controller
 {
-    use PreservesUtmParameters;
+    use PreservesAttributionParameters;
 
     public function create(Request $request): Response
     {
-        $this->storeUtmParameters($request);
+        $this->storeAttributionParameters($request);
 
         return Inertia::render('auth/Register', [
             'email' => $request->query('email'),
-            'redirect' => $request->query('redirect'),
             'invite' => $request->query('invite'),
         ]);
     }
 
     public function store(RegisterRequest $request): RedirectResponse
     {
-        $utmParameters = $this->retrieveUtmParameters();
+        $attributionParameters = $this->retrieveAttributionParameters();
+        $invite = $request->invite();
 
         $user = CreateUser::execute([
             'name' => $request->validated('name'),
             'email' => $request->validated('email'),
             'password' => $request->validated('password'),
-            'is_invite' => $request->isInviteRegistration(),
+            'is_invite' => $invite !== null,
             'registration_ip' => $request->ip(),
-        ], $utmParameters);
+        ], $attributionParameters);
 
         event(new Registered($user));
 
@@ -48,14 +48,10 @@ class RegisteredUserController extends Controller
 
         $request->session()->forget('pending_invite_id');
 
-        if ($redirect = $request->input('redirect')) {
-            if (str_starts_with($redirect, '/') && ! str_starts_with($redirect, '//')) {
-                return redirect($redirect);
-            }
+        if ($invite) {
+            return redirect()->route('app.invites.show', $invite);
         }
 
-        session()->flash('auth_provider', 'email');
-
-        return redirect()->route('register.success', $utmParameters);
+        return redirect()->route('app.welcome');
     }
 }

@@ -5,8 +5,11 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Auth;
 
 use App\Actions\User\CreateUser;
-use App\Http\Controllers\Auth\Concerns\PreservesUtmParameters;
+use App\Enums\Auth\SocialAuthProvider;
+use App\Http\Controllers\Auth\Concerns\PreservesAttributionParameters;
+use App\Http\Controllers\Auth\Concerns\PreservesInvite;
 use App\Http\Controllers\Controller;
+use App\Models\Invite;
 use App\Models\User;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
@@ -16,11 +19,14 @@ use Laravel\Socialite\Facades\Socialite;
 
 class GoogleController extends Controller
 {
-    use PreservesUtmParameters;
+    use PreservesAttributionParameters, PreservesInvite;
 
     public function redirect(Request $request): RedirectResponse
     {
-        $this->storeUtmParameters($request);
+        abort_unless(SocialAuthProvider::Google->isEnabled(), 404);
+
+        $this->storeAttributionParameters($request);
+        $this->storeInvite($request);
 
         return Socialite::driver('google-auth')->redirect();
     }
@@ -33,9 +39,7 @@ class GoogleController extends Controller
             return redirect()->route('login');
         }
 
-        // The signup/login redirect is gated by the `guest` middleware and
-        // the connect-from-settings redirect by `auth`, so this is a safe
-        // signal for which flow we came from.
+        // `guest` middleware gates login/signup; `auth` gates the settings connect flow.
         if (Auth::check()) {
             return $this->connectToCurrentUser(Auth::user(), $googleUser->getId());
         }
@@ -82,29 +86,42 @@ class GoogleController extends Controller
 
         Auth::login($user, remember: true);
 
-        $this->retrieveUtmParameters();
+        $this->retrieveAttributionParameters();
+
+        if ($invite = Invite::fromId($this->retrieveInvite())) {
+            return redirect()->route('app.invites.show', $invite);
+        }
 
         return redirect()->route('app.home');
     }
 
     private function registerNewUser(\Laravel\Socialite\Contracts\User $googleUser): RedirectResponse
     {
-        $utmParameters = $this->retrieveUtmParameters();
+        $invite = $this->resolveInviteForRegistration();
+
+        if ($redirect = $this->inviteEmailMismatchRedirect($invite, $googleUser->getEmail())) {
+            return $redirect;
+        }
+
+        $attributionParameters = $this->retrieveAttributionParameters();
 
         $user = CreateUser::execute([
             'name' => $googleUser->getName(),
             'email' => $googleUser->getEmail(),
             'google_id' => $googleUser->getId(),
             'email_verified_at' => now(),
+            'is_invite' => $invite !== null,
             'registration_ip' => request()->ip(),
-        ], $utmParameters);
+        ], $attributionParameters);
 
         event(new Registered($user));
 
         Auth::login($user, remember: true);
 
-        session()->flash('auth_provider', 'google');
+        if ($invite) {
+            return redirect()->route('app.invites.show', $invite);
+        }
 
-        return redirect()->route('register.success', $utmParameters);
+        return redirect()->route('app.welcome');
     }
 }

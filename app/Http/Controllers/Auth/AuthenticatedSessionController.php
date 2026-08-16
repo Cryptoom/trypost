@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\App\Auth\LoginRequest;
+use App\Models\Invite;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -22,7 +23,7 @@ class AuthenticatedSessionController extends Controller
         return Inertia::render('auth/Login', [
             'status' => session('status'),
             'email' => $request->query('email'),
-            'redirect' => $request->query('redirect'),
+            'invite' => $request->query('invite'),
         ]);
     }
 
@@ -35,12 +36,8 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerate();
 
-        // Check for redirect param
-        if ($redirect = $request->input('redirect')) {
-            // Only allow internal redirects (paths starting with /)
-            if (str_starts_with($redirect, '/') && ! str_starts_with($redirect, '//')) {
-                return redirect($redirect);
-            }
+        if ($invite = Invite::fromId($request->string('invite')->toString())) {
+            return redirect()->route('app.invites.show', $invite);
         }
 
         return redirect()->intended(route('app.calendar'));

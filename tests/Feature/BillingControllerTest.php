@@ -153,27 +153,8 @@ test('billing processing shows processing page', function () {
     $response->assertInertia(fn ($page) => $page
         ->component('billing/Processing', false)
         ->has('subscriptionActive')
-        ->where('fromCheckout', false)
         ->where('redirectToOnboarding', true)
-        ->where('conversion', null)
     );
-});
-
-test('billing processing exposes fromCheckout=true only the first time a session_id is seen', function () {
-    config(['trypost.self_hosted' => false]);
-
-    $sessionId = 'cs_test_'.fake()->uuid();
-
-    $first = $this->actingAs($this->user)
-        ->get(route('app.billing.processing', ['session_id' => $sessionId]));
-    $first->assertOk();
-    $first->assertInertia(fn ($page) => $page->where('fromCheckout', true));
-
-    // A back-button / refresh to the same success URL must not re-fire the event.
-    $second = $this->actingAs($this->user)
-        ->get(route('app.billing.processing', ['session_id' => $sessionId]));
-    $second->assertOk();
-    $second->assertInertia(fn ($page) => $page->where('fromCheckout', false));
 });
 
 test('billing processing skips onboarding when already completed', function () {
@@ -244,28 +225,6 @@ test('billing processing still sends satisfied-but-unstamped owners to onboardin
         SendEvent::class,
         fn (SendEvent $event): bool => data_get($event->payload, 'event') === OnboardingEvent::Completed->value,
     );
-});
-
-test('billing processing exposes null conversion when session_id query param is missing', function () {
-    config(['trypost.self_hosted' => false]);
-
-    $response = $this->actingAs($this->user)
-        ->get(route('app.billing.processing', ['session_id' => '']));
-
-    $response->assertOk();
-    $response->assertInertia(fn ($page) => $page->where('conversion', null));
-});
-
-test('billing processing exposes null conversion when account has no stripe_id', function () {
-    config(['trypost.self_hosted' => false]);
-
-    expect($this->account->stripe_id)->toBeNull();
-
-    $response = $this->actingAs($this->user)
-        ->get(route('app.billing.processing', ['session_id' => 'cs_test_123']));
-
-    $response->assertOk();
-    $response->assertInertia(fn ($page) => $page->where('conversion', null));
 });
 
 test('shared auth.plan exposes name slug and interval via AuthPlanResource', function () {

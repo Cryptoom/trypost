@@ -32,6 +32,29 @@ test('handle is a no-op when api key is unset', function () {
     Queue::assertNothingPushed();
 });
 
+test('handle is a no-op when PostHog is disabled in production', function () {
+    app()->detectEnvironment(fn () => 'production');
+    config(['services.posthog.enabled' => false, 'services.posthog.api_key' => null]);
+    Queue::fake();
+
+    (new SyncUser((string) $this->user->id))->handle(app(PostHogService::class));
+
+    Queue::assertNothingPushed();
+});
+
+test('handle still identifies the user in the local environment even when PostHog is disabled', function () {
+    app()->detectEnvironment(fn () => 'local');
+    config(['services.posthog.enabled' => false, 'services.posthog.api_key' => null]);
+    Queue::fake();
+
+    (new SyncUser((string) $this->user->id))->handle(app(PostHogService::class));
+
+    // The identify() call still runs (and logs locally), but since PostHog
+    // remains disabled, it must not queue an actual SendEvent to it.
+    Queue::assertPushed(SyncAccountUsage::class);
+    Queue::assertNotPushed(SendEvent::class);
+});
+
 test('handle returns silently when user does not exist', function () {
     Queue::fake();
 
@@ -51,6 +74,53 @@ test('handle identifies the user with email, name and signed_up_at', function ()
             && $job->payload['properties']['$email'] === $this->user->email
             && $job->payload['properties']['$name'] === $this->user->name
             && isset($job->payload['properties']['$set_once']['signed_up_at']);
+    });
+});
+
+test('handle forwards ad click ids as first-touch person properties when present', function () {
+    $this->user->update(['gclid' => 'g-123', 'fbclid' => 'fb-456']);
+    Queue::fake();
+
+    (new SyncUser((string) $this->user->id))->handle(app(PostHogService::class));
+
+    Queue::assertPushed(SendEvent::class, function ($job) {
+        return $job->payload['properties']['$set_once']['gclid'] === 'g-123'
+            && $job->payload['properties']['$set_once']['fbclid'] === 'fb-456';
+    });
+});
+
+test('handle forwards utm parameters as first-touch person properties when present', function () {
+    $this->user->update(['utm_source' => 'google', 'utm_medium' => 'cpc', 'utm_campaign' => 'spring-launch']);
+    Queue::fake();
+
+    (new SyncUser((string) $this->user->id))->handle(app(PostHogService::class));
+
+    Queue::assertPushed(SendEvent::class, function ($job) {
+        return $job->payload['properties']['$set_once']['utm_source'] === 'google'
+            && $job->payload['properties']['$set_once']['utm_medium'] === 'cpc'
+            && $job->payload['properties']['$set_once']['utm_campaign'] === 'spring-launch';
+    });
+});
+
+test('handle omits attribution properties when none are set', function () {
+    Queue::fake();
+
+    (new SyncUser((string) $this->user->id))->handle(app(PostHogService::class));
+
+    Queue::assertPushed(SendEvent::class, function ($job) {
+        $setOnce = $job->payload['properties']['$set_once'];
+
+        return ! array_key_exists('utm_source', $setOnce)
+            && ! array_key_exists('utm_medium', $setOnce)
+            && ! array_key_exists('utm_campaign', $setOnce)
+            && ! array_key_exists('utm_term', $setOnce)
+            && ! array_key_exists('utm_content', $setOnce)
+            && ! array_key_exists('gclid', $setOnce)
+            && ! array_key_exists('fbclid', $setOnce)
+            && ! array_key_exists('li_fat_id', $setOnce)
+            && ! array_key_exists('ttclid', $setOnce)
+            && ! array_key_exists('rdt_cid', $setOnce)
+            && ! array_key_exists('epik', $setOnce);
     });
 });
 

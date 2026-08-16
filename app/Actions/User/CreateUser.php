@@ -6,6 +6,7 @@ namespace App\Actions\User;
 
 use App\Actions\Workspace\CreateWorkspace;
 use App\Enums\Plan\Slug;
+use App\Enums\PostHog\UserEvent;
 use App\Jobs\PostHog\SyncUser;
 use App\Models\Account;
 use App\Models\Plan;
@@ -17,12 +18,13 @@ class CreateUser
 {
     /**
      * @param  array{name: string, email: string, password?: string, google_id?: string, github_id?: string, email_verified_at?: \DateTimeInterface|null, is_invite?: bool, registration_ip?: string|null}  $data
-     * @param  array<string, string>  $utmParameters
+     * @param  array<string, string>  $attributionParameters  UTM parameters and ad click IDs (gclid, fbclid, etc.) captured before signup
      */
-    public static function execute(array $data, array $utmParameters = []): User
+    public static function execute(array $data, array $attributionParameters = []): User
     {
-        $user = DB::transaction(function () use ($data, $utmParameters): User {
-            $isInviteRegistration = data_get($data, 'is_invite', false);
+        $isInviteRegistration = (bool) data_get($data, 'is_invite', false);
+
+        $user = DB::transaction(function () use ($data, $attributionParameters, $isInviteRegistration): User {
             $requiresCardForTrial = (bool) config('trypost.billing.require_card_for_trial', true);
             $accountAttributes = [
                 'name' => data_get($data, 'name')."'s Account",
@@ -45,7 +47,7 @@ class CreateUser
                 'email_verified_at' => data_get($data, 'email_verified_at', $isInviteRegistration ? now() : null),
                 'account_id' => $account->id,
                 'registration_ip' => data_get($data, 'registration_ip'),
-            ], $utmParameters));
+            ], $attributionParameters));
 
             $account->update(['owner_id' => $user->id]);
 
@@ -56,8 +58,23 @@ class CreateUser
             return $user;
         });
 
-        if (PostHogService::isEnabled()) {
+        if (PostHogService::shouldTrack()) {
             SyncUser::dispatch((string) $user->id);
+
+            if (! $isInviteRegistration) {
+                $authProvider = match (true) {
+                    (bool) $user->google_id => 'google',
+                    (bool) $user->github_id => 'github',
+                    default => 'email',
+                };
+
+                app(PostHogService::class)->capture(
+                    (string) $user->id,
+                    UserEvent::SignedUp->value,
+                    ['auth_provider' => $authProvider],
+                    $user->account,
+                );
+            }
         }
 
         return $user;

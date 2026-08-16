@@ -6,12 +6,16 @@ namespace App\Services\Social;
 
 use App\DataTransferObjects\MediaItem;
 use App\Enums\SocialAccount\Platform;
+use App\Enums\TikTok\PublishStatus;
+use App\Exceptions\PlatformUnavailableException;
 use App\Exceptions\Social\ErrorCategory;
 use App\Exceptions\Social\TikTokPublishException;
 use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Services\Media\MediaOptimizer;
 use App\Services\Social\Concerns\HasSocialHttpClient;
+use App\Support\Social\PublishCheckpoint;
+use App\Support\Social\TikTokPhotoDerivativeCleaner;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
@@ -24,7 +28,9 @@ class TikTokPublisher
 {
     use HasSocialHttpClient;
 
-    private const PHOTO_DERIVATIVE_DIRECTORY = 'social-tiktok-photos';
+    private const int STATUS_RETRY_DELAY_SECONDS = 30;
+
+    private const int STATUS_MAX_RETRIES = 120;
 
     private string $baseUrl;
 
@@ -48,6 +54,16 @@ class TikTokPublisher
         }
 
         $this->accessToken = $account->access_token;
+
+        $pendingPublishId = PublishCheckpoint::tiktokPublishId($postPlatform->error_context);
+
+        if ($pendingPublishId !== null) {
+            return $this->completePublishWithCleanup(
+                $postPlatform,
+                $pendingPublishId,
+                PublishCheckpoint::tiktokDerivativePaths($postPlatform->error_context),
+            );
+        }
 
         $media = $postPlatform->post->mediaItems;
 
@@ -185,23 +201,11 @@ class TikTokPublisher
 
         $data = $response->json();
 
-        $publishId = data_get($data, 'data.publish_id');
+        $publishId = $this->requirePublishId(data_get($data, 'data.publish_id'));
 
-        if (! $publishId) {
-            throw new TikTokPublishException(
-                userMessage: 'TikTok did not return a publish_id',
-                category: ErrorCategory::ServerError,
-            );
-        }
+        $this->rememberPublishId($postPlatform, $publishId);
 
-        // Wait for processing and get final status
-        $statusData = $this->waitForPublishStatus($publishId);
-        $postId = data_get($statusData, 'publicaly_available_post_id.0');
-
-        return [
-            'id' => $postId ?? $publishId,
-            'url' => $this->buildTikTokUrl($postPlatform->socialAccount, $postId),
-        ];
+        return $this->completePublish($postPlatform, $publishId);
     }
 
     private function publishPhotos(PostPlatform $postPlatform, $mediaCollection, ?string $content): array
@@ -257,28 +261,16 @@ class TikTokPublisher
                 $this->handleApiError($response);
             }
 
-            $data = $response->json();
+            $publishId = $this->requirePublishId(data_get($response->json(), 'data.publish_id'));
 
-            $publishId = data_get($data, 'data.publish_id');
+            $this->rememberPublishId($postPlatform, $publishId, $derivatives);
+        } catch (Throwable $e) {
+            app(TikTokPhotoDerivativeCleaner::class)->cleanupPaths($derivatives);
 
-            if (! $publishId) {
-                throw new TikTokPublishException(
-                    userMessage: 'TikTok did not return a publish_id',
-                    category: ErrorCategory::ServerError,
-                );
-            }
-
-            // Wait for processing and get final status
-            $statusData = $this->waitForPublishStatus($publishId);
-            $postId = data_get($statusData, 'publicaly_available_post_id.0');
-
-            return [
-                'id' => $postId ?? $publishId,
-                'url' => $this->buildTikTokUrl($postPlatform->socialAccount, $postId),
-            ];
-        } finally {
-            $this->pruneDerivatives($derivatives);
+            throw $e;
         }
+
+        return $this->completePublishWithCleanup($postPlatform, $publishId, $derivatives);
     }
 
     /**
@@ -345,7 +337,7 @@ class TikTokPublisher
             $optimized = app(MediaOptimizer::class)->optimizeImage($tempInput, Platform::TikTok);
 
             try {
-                $path = self::PHOTO_DERIVATIVE_DIRECTORY.'/'.Str::uuid()->toString().'.jpg';
+                $path = TikTokPhotoDerivativeCleaner::DIRECTORY.'/'.Str::uuid()->toString().'.jpg';
                 Storage::put($path, file_get_contents($optimized));
             } finally {
                 @unlink($optimized);
@@ -364,65 +356,124 @@ class TikTokPublisher
         }
     }
 
-    /**
-     * Remove hosted photo derivatives, swallowing storage errors so cleanup can
-     * never mask the publish result.
-     *
-     * @param  list<string>  $paths
-     */
-    private function pruneDerivatives(array $paths): void
+    private function waitForPublishStatus(string $publishId): array
     {
-        if ($paths === []) {
-            return;
+        $response = $this->getHttpClient()
+            ->post("{$this->baseUrl}/post/publish/status/fetch/", [
+                'publish_id' => $publishId,
+            ]);
+
+        if ($response->failed()) {
+            if ($response->status() !== 429 && ! $response->serverError()) {
+                $this->handleApiError($response);
+            }
+
+            throw $this->pendingPublishException($publishId, $response->status());
         }
 
+        $data = $response->json();
+        $status = PublishStatus::tryFrom((string) data_get($data, 'data.status', ''));
+
+        return match ($status) {
+            PublishStatus::PublishComplete => data_get($data, 'data', []),
+            PublishStatus::Failed => throw TikTokPublishException::fromFailReason(
+                (string) data_get($data, 'data.fail_reason', 'Unknown error'),
+                json_encode($data),
+            ),
+            default => throw $this->pendingPublishException($publishId),
+        };
+    }
+
+    private function requirePublishId(mixed $publishId): string
+    {
+        $resolved = is_string($publishId) && $publishId !== '' ? $publishId : null;
+
+        if ($resolved === null) {
+            throw new TikTokPublishException(
+                userMessage: 'TikTok did not return a publish_id',
+                category: ErrorCategory::ServerError,
+            );
+        }
+
+        return $resolved;
+    }
+
+    /**
+     * Persist the publish_id before status polling so a crash after /init/
+     * can resume without creating a second publish.
+     *
+     * @param  list<string>  $derivatives
+     */
+    private function rememberPublishId(PostPlatform $postPlatform, string $publishId, array $derivatives = []): void
+    {
+        $context = [
+            ...($postPlatform->error_context ?? []),
+            PublishCheckpoint::TIKTOK_PUBLISH_ID => $publishId,
+        ];
+
+        if ($derivatives !== []) {
+            $context[PublishCheckpoint::TIKTOK_DERIVATIVE_PATHS] = $derivatives;
+        }
+
+        $postPlatform->update([
+            'error_context' => $context,
+        ]);
+    }
+
+    private function pendingPublishException(string $publishId, ?int $httpStatus = null): PlatformUnavailableException
+    {
+        return new PlatformUnavailableException(
+            message: "TikTok is still processing publish_id {$publishId}",
+            httpStatus: $httpStatus,
+            context: [PublishCheckpoint::TIKTOK_PUBLISH_ID => $publishId],
+            retryDelaySeconds: self::STATUS_RETRY_DELAY_SECONDS,
+            maxRetries: self::STATUS_MAX_RETRIES,
+        );
+    }
+
+    /**
+     * Finish an in-flight publish and prune hosted photos only when TikTok
+     * confirmed the attempt is dead, or when it completed. Resumable
+     * interruptions (still processing, expired token, unexpected crash)
+     * must keep the files so a later status poll can still PULL_FROM_URL.
+     *
+     * @param  array<array-key, mixed>  $derivatives
+     * @return array<string, mixed>
+     */
+    private function completePublishWithCleanup(PostPlatform $postPlatform, string $publishId, array $derivatives): array
+    {
+        $retainDerivatives = true;
+
         try {
-            Storage::delete($paths);
-        } catch (Throwable $e) {
-            Log::warning('Failed to prune TikTok photo derivatives', [
-                'paths' => $paths,
-                'exception' => $e->getMessage(),
-            ]);
+            $result = $this->completePublish($postPlatform, $publishId);
+            $retainDerivatives = false;
+
+            return $result;
+        } catch (PlatformUnavailableException $e) {
+            $e->context[PublishCheckpoint::TIKTOK_DERIVATIVE_PATHS] = $derivatives;
+
+            throw $e;
+        } catch (TikTokPublishException $e) {
+            $retainDerivatives = false;
+
+            throw $e;
+        } finally {
+            if (! $retainDerivatives) {
+                app(TikTokPhotoDerivativeCleaner::class)->cleanupPaths($derivatives);
+            }
         }
     }
 
-    private function waitForPublishStatus(string $publishId, int $maxAttempts = 20): array
+    private function completePublish(PostPlatform $postPlatform, string $publishId): array
     {
-        for ($i = 0; $i < $maxAttempts; $i++) {
-            sleep(3);
+        $statusData = $this->waitForPublishStatus($publishId);
+        $postId = data_get($statusData, 'publicaly_available_post_id.0');
+        $postId = is_string($postId) && $postId !== '' ? $postId : null;
 
-            $response = $this->getHttpClient()
-                ->post("{$this->baseUrl}/post/publish/status/fetch/", [
-                    'publish_id' => $publishId,
-                ]);
-
-            if ($response->failed()) {
-                Log::warning('TikTok status check failed', [
-                    'attempt' => $i,
-                    'body' => $this->redactResponseBody($response->body()),
-                ]);
-
-                continue;
-            }
-
-            $data = $response->json();
-            $status = data_get($data, 'data.status', 'UNKNOWN');
-
-            if ($status === 'PUBLISH_COMPLETE') {
-                return data_get($data, 'data', []);
-            }
-
-            if (in_array($status, ['FAILED', 'PUBLISH_FAILED'])) {
-                $failReason = data_get($data, 'data.fail_reason', 'Unknown error');
-                throw TikTokPublishException::fromFailReason($failReason, json_encode($data));
-            }
-
-            // PROCESSING_UPLOAD, PROCESSING_DOWNLOAD, SENDING_TO_USER_INBOX - continue waiting
-        }
-
-        Log::warning('TikTok publish status timeout, returning publish_id anyway');
-
-        return ['publish_id' => $publishId];
+        return [
+            'id' => $postId ?? $publishId,
+            'url' => $this->buildTikTokUrl($postPlatform->socialAccount, $postId),
+        ];
     }
 
     private function buildTikTokUrl(SocialAccount $account, ?string $postId = null): ?string

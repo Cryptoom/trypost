@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Str;
 
 class Invite extends Model
 {
@@ -42,5 +43,18 @@ class Invite extends Model
     public function invitedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'invited_by');
+    }
+
+    /**
+     * `id` is a native Postgres uuid column — find() on a non-UUID string
+     * raises a type-cast error rather than returning null.
+     */
+    public static function fromId(?string $id): ?self
+    {
+        if (! $id || ! Str::isUuid($id)) {
+            return null;
+        }
+
+        return self::find($id);
     }
 }

@@ -35,11 +35,11 @@ class TrackBilling implements ShouldQueue
 
     public function handle(PostHogService $postHog): void
     {
-        if (! PostHogService::isEnabled()) {
+        if (! PostHogService::shouldTrack()) {
             return;
         }
 
-        $account = Account::with(['plan', 'owner'])->find($this->accountId);
+        $account = Account::with('plan')->find($this->accountId);
 
         if (! $account || ! $account->owner_id) {
             return;
@@ -50,10 +50,8 @@ class TrackBilling implements ShouldQueue
             $this->event->value,
             [
                 'stripe_status' => data_get($this->payload, 'data.object.status'),
-                'plan' => $account->plan?->name,
                 'plan_slug' => $account->plan?->slug->value,
                 'previous_plan' => $this->previousPlan,
-                'persona' => $account->owner?->persona?->value,
             ],
             $account,
         );

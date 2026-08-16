@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Enums\Auth\SocialAuthProvider;
 use App\Enums\Notification\Type as NotificationType;
 use App\Enums\User\Persona;
 use App\Enums\User\ReferralSource;
@@ -44,6 +45,12 @@ class User extends Authenticatable implements MustVerifyEmail, OAuthenticatable
         'utm_campaign',
         'utm_term',
         'utm_content',
+        'gclid',
+        'fbclid',
+        'li_fat_id',
+        'ttclid',
+        'rdt_cid',
+        'epik',
         'registration_ip',
         'persona',
         'goals',
@@ -120,5 +127,10 @@ class User extends Authenticatable implements MustVerifyEmail, OAuthenticatable
             NotificationType::MentionedInComment => $preference->mentioned_in_comment ?? true,
             default => true,
         };
+    }
+
+    public function isConnectedTo(SocialAuthProvider $provider): bool
+    {
+        return (bool) $this->{"{$provider->value}_id"};
     }
 }
