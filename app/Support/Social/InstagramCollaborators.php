@@ -47,14 +47,9 @@ final class InstagramCollaborators
             }
 
             $username = ltrim(trim($item), '@');
+            $key = self::key($username);
 
-            if ($username === '') {
-                continue;
-            }
-
-            $key = mb_strtolower($username);
-
-            if (isset($seen[$key])) {
+            if ($key === '' || isset($seen[$key])) {
                 continue;
             }
 
@@ -69,16 +64,14 @@ final class InstagramCollaborators
         return $usernames;
     }
 
+    public static function key(string $username): string
+    {
+        return mb_strtolower(ltrim(trim($username), '@'));
+    }
+
     public static function isSameUsername(string $left, ?string $right): bool
     {
-        $leftUsername = self::normalize([$left])[0] ?? null;
-        $rightUsername = self::normalize([$right ?? ''])[0] ?? null;
-
-        if ($leftUsername === null || $rightUsername === null) {
-            return false;
-        }
-
-        return mb_strtolower($leftUsername) === mb_strtolower($rightUsername);
+        return $right !== null && self::key($left) !== '' && self::key($left) === self::key($right);
     }
 
     /**
@@ -114,18 +107,17 @@ final class InstagramCollaborators
             ),
         ];
 
+        $account = $postPlatform->socialAccount;
+        $network = $account?->platform ?? $postPlatform->platform;
+
         if (
-            $postPlatform->platform !== Platform::InstagramFacebook
+            $account === null
+            || blank($account->access_token)
+            || $network !== Platform::InstagramFacebook
             || $postPlatform->status !== Status::Published
             || blank($postPlatform->platform_post_id)
             || $stored === []
         ) {
-            return $fallback;
-        }
-
-        $account = $postPlatform->socialAccount;
-
-        if ($account === null || blank($account->access_token)) {
             return $fallback;
         }
 
@@ -162,7 +154,7 @@ final class InstagramCollaborators
                 continue;
             }
 
-            $byUsername[mb_strtolower($username)] = [
+            $byUsername[self::key($username)] = [
                 'username' => $username,
                 'invite_status' => self::normalizeInviteStatus(data_get($row, 'invite_status')),
             ];
@@ -171,7 +163,7 @@ final class InstagramCollaborators
         return [
             'status_available' => true,
             'collaborators' => array_map(
-                fn (string $username): array => $byUsername[mb_strtolower($username)] ?? [
+                fn (string $username): array => $byUsername[self::key($username)] ?? [
                     'username' => $username,
                     'invite_status' => null,
                 ],

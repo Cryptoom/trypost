@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Enums\SocialAccount\Platform;
 use App\Models\Post;
 use App\Models\PostPlatform;
 use App\Models\SocialAccount;
@@ -69,19 +68,17 @@ test('passes when the collaborator is a different username', function () {
 
 test('fails on update when the post platform account matches', function () {
     $workspace = Workspace::factory()->create();
-    $account = SocialAccount::factory()->create([
+    $account = SocialAccount::factory()->instagramFacebook()->create([
         'workspace_id' => $workspace->id,
-        'platform' => Platform::InstagramFacebook,
         'username' => 'page_ig',
     ]);
     $post = Post::factory()->create([
         'workspace_id' => $workspace->id,
         'user_id' => User::factory(),
     ]);
-    $platform = PostPlatform::factory()->create([
+    $platform = PostPlatform::factory()->instagramFacebook()->create([
         'post_id' => $post->id,
         'social_account_id' => $account->id,
-        'platform' => Platform::InstagramFacebook,
     ]);
 
     $errors = runCollaboratorsMetaRule(['page_ig'], [

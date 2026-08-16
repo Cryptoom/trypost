@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Support;
 
 use App\Enums\PostPlatform\AspectRatio;
+use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
 use App\Models\Post;
 use App\Models\PostPlatform;
@@ -99,7 +100,6 @@ class PostPlatformMetaRules
             'platforms.*.meta.link.url' => __('posts.form.pinterest.link_invalid'),
             'platforms.*.meta.link.max' => __('posts.form.pinterest.link_max'),
             'platforms.*.meta.title.max' => __('posts.form.pinterest.title_max'),
-            'platforms.*.meta.collaborators.max' => __('posts.form.instagram.collaborators_max'),
         ];
     }
 
@@ -138,41 +138,68 @@ class PostPlatformMetaRules
      *
      * @param  array<string, mixed>|null  $existing
      * @param  array<string, mixed>|null  $incoming
+     * @param  ContentType|string|null  $contentType
      * @return array<string, mixed>
      */
-    public static function merge(?Platform $platform, ?array $existing, ?array $incoming): array
+    public static function merge(?Platform $platform, ?array $existing, ?array $incoming, mixed $contentType = null): array
     {
+        $incoming = $incoming ?? [];
+
+        if (
+            in_array($platform, [Platform::Instagram, Platform::InstagramFacebook], true)
+            && in_array($contentType, [ContentType::InstagramStory, ContentType::InstagramStory->value], true)
+        ) {
+            $incoming['collaborators'] = [];
+        }
+
         return array_filter(
-            array_merge($existing ?? [], self::normalize($platform, $incoming ?? [])),
+            array_merge($existing ?? [], self::normalize($platform, $incoming)),
             fn (mixed $value): bool => $value !== null,
         );
     }
 
     /**
-     * Resolve the social network for `platforms.{i}.meta.*` from create
-     * (`social_account_id`) or update (`id`) payload. Used so Instagram/Discord
-     * shape rules no-op on other networks that reuse the same meta key.
+     * @param  array<string, mixed>|null  $incoming
+     * @return array<string, mixed>
+     */
+    public static function mergeFrom(PostPlatform $postPlatform, ?array $incoming, mixed $contentType = null): array
+    {
+        return self::merge(
+            self::platformOf($postPlatform),
+            $postPlatform->meta,
+            $incoming,
+            $contentType ?? $postPlatform->content_type,
+        );
+    }
+
+    /**
+     * Connected account for `platforms.{i}.meta.*`. Update `id` wins so a leftover
+     * create-shape `social_account_id` cannot skip Instagram/Discord rules.
      *
+     * @param  array<string, mixed>  $data
+     */
+    public static function accountForAttribute(array $data, string $attribute): ?SocialAccount
+    {
+        $row = data_get($data, Str::before($attribute, '.meta.'));
+        $postPlatformId = data_get($row, 'id');
+
+        if (is_string($postPlatformId) && Str::isUuid($postPlatformId)) {
+            return PostPlatform::query()->with('socialAccount')->find($postPlatformId)?->socialAccount;
+        }
+
+        $accountId = data_get($row, 'social_account_id');
+
+        return is_string($accountId) && Str::isUuid($accountId)
+            ? SocialAccount::query()->find($accountId)
+            : null;
+    }
+
+    /**
      * @param  array<string, mixed>  $data
      */
     public static function platformForAttribute(array $data, string $attribute): ?Platform
     {
-        $platformKey = Str::before($attribute, '.meta.');
-        $accountId = data_get($data, "{$platformKey}.social_account_id");
-
-        if (is_string($accountId) && Str::isUuid($accountId)) {
-            return SocialAccount::query()->find($accountId)?->platform;
-        }
-
-        $postPlatformId = data_get($data, "{$platformKey}.id");
-
-        if (is_string($postPlatformId) && Str::isUuid($postPlatformId)) {
-            $postPlatform = PostPlatform::query()->with('socialAccount')->find($postPlatformId);
-
-            return $postPlatform !== null ? self::platformOf($postPlatform) : null;
-        }
-
-        return null;
+        return self::accountForAttribute($data, $attribute)?->platform;
     }
 
     /**
@@ -218,8 +245,8 @@ class PostPlatformMetaRules
     {
         $errors = [];
 
-        foreach ($post->postPlatforms()->enabled()->get()->values() as $index => $postPlatform) {
-            $violation = self::requiredMetaViolation($postPlatform->platform, $postPlatform->meta);
+        foreach ($post->postPlatforms()->enabled()->with('socialAccount')->get()->values() as $index => $postPlatform) {
+            $violation = self::requiredMetaViolation(self::platformOf($postPlatform), $postPlatform->meta);
 
             if ($violation !== null) {
                 [$field, $message] = $violation;

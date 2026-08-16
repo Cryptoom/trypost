@@ -55,6 +55,16 @@ class DiscordMentionsMeta implements DataAwareRule, ValidationRule, ValidatorAwa
                 $this->validator?->errors()->add("{$attribute}.{$index}.token", __('validation.required', [
                     'attribute' => 'token',
                 ]));
+
+                continue;
+            }
+
+            $label = data_get($item, 'label');
+
+            if ($label !== null && ! is_string($label)) {
+                $this->validator?->errors()->add("{$attribute}.{$index}.label", __('validation.string', [
+                    'attribute' => 'label',
+                ]));
             }
         }
     }

@@ -5,6 +5,7 @@ import { computed, ref, watch } from 'vue';
 
 import { instagramCollaborators as collaboratorsRoute } from '@/actions/App/Http/Controllers/App/PostController';
 import InputError from '@/components/InputError.vue';
+import { usePageErrors } from '@/composables/usePageErrors';
 import { Avatar } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
 import { getMediaValidationWarning } from '@/composables/useMedia';
@@ -14,10 +15,15 @@ import { ContentType } from '@/types/content-type';
 import type { MediaItem } from '@/types/media';
 import { PostPlatformStatus } from '@/types/post';
 
+type InviteStatus = 'Accepted' | 'Pending' | 'Declined';
+
 const MAX_COLLABORATORS = 3;
 const USERNAME_PATTERN = /^[A-Za-z0-9._]{1,30}$/;
-
-type InviteStatus = 'Accepted' | 'Pending' | 'Declined';
+const INVITE_STATUS_KEYS: Record<InviteStatus, string> = {
+    Accepted: 'posts.form.instagram.collaborators_accepted',
+    Pending: 'posts.form.instagram.collaborators_pending',
+    Declined: 'posts.form.instagram.collaborators_declined',
+};
 
 interface CollaboratorsResponse {
     status_available: boolean;
@@ -96,6 +102,11 @@ const collaborators = computed<string[]>(() => {
 });
 const collaboratorDraft = ref('');
 const selfMentionAttempted = ref(false);
+const invalidUsernameAttempted = ref(false);
+const errors = usePageErrors();
+const backendCollaboratorsError = computed(() =>
+    Object.entries(errors.value).find(([key]) => key.includes('.meta.collaborators'))?.[1],
+);
 const statusAvailable = ref(false);
 const inviteByUsername = ref<Record<string, InviteStatus | null>>({});
 const collaboratorsHttp = useHttp<Record<string, never>, CollaboratorsResponse>({});
@@ -113,10 +124,14 @@ const canFetchStatus = computed(() => Boolean(
     && collaborators.value.length > 0,
 ));
 
+const clearInviteStatus = () => {
+    statusAvailable.value = false;
+    inviteByUsername.value = {};
+};
+
 const fetchInviteStatus = async () => {
     if (!canFetchStatus.value || !props.postId || !props.postPlatformId) {
-        statusAvailable.value = false;
-        inviteByUsername.value = {};
+        clearInviteStatus();
 
         return;
     }
@@ -132,8 +147,7 @@ const fetchInviteStatus = async () => {
             response.collaborators.map((row) => [row.username.toLowerCase(), row.invite_status]),
         );
     } catch {
-        statusAvailable.value = false;
-        inviteByUsername.value = {};
+        clearInviteStatus();
     }
 };
 
@@ -152,11 +166,16 @@ const commitCollaboratorDraft = () => {
 
     const next = [...collaborators.value];
     selfMentionAttempted.value = false;
+    invalidUsernameAttempted.value = false;
 
     for (const piece of collaboratorDraft.value.split(/[,\n]/)) {
         const username = piece.trim().replace(/^@+/, '');
 
         if (!USERNAME_PATTERN.test(username)) {
+            if (username !== '') {
+                invalidUsernameAttempted.value = true;
+            }
+
             continue;
         }
 
@@ -204,24 +223,16 @@ const removeCollaborator = (username: string) => {
 const inviteStatusKey = (username: string): string | null => {
     const status = inviteByUsername.value[username.toLowerCase()];
 
-    if (status === 'Accepted') {
-        return 'posts.form.instagram.collaborators_accepted';
-    }
-
-    if (status === 'Pending') {
-        return 'posts.form.instagram.collaborators_pending';
-    }
-
-    if (status === 'Declined') {
-        return 'posts.form.instagram.collaborators_declined';
-    }
-
-    return null;
+    return status ? INVITE_STATUS_KEYS[status] : null;
 };
 
 const pickVariant = (value: string) => {
     if (props.disabled) return;
     emit('update:contentType', value);
+
+    if (value === ContentType.InstagramStory && collaborators.value.length > 0) {
+        emit('update:meta', { ...props.meta, collaborators: [] });
+    }
 };
 
 const pickAspectRatio = (value: string) => {
@@ -336,7 +347,11 @@ const warning = computed(() => getMediaValidationWarning(props.contentType, prop
                     @keydown="onCollaboratorKeydown"
                     @blur="commitCollaboratorDraft"
                 />
-                <InputError :message="selfMentionAttempted ? $t('posts.form.instagram.collaborators_self') : undefined" />
+                <InputError :message="selfMentionAttempted
+                    ? $t('posts.form.instagram.collaborators_self')
+                    : invalidUsernameAttempted
+                        ? $t('posts.form.instagram.collaborators_invalid')
+                        : backendCollaboratorsError" />
                 <p class="text-xs font-medium text-foreground/60">
                     {{ isPublished && !statusAvailable && collaborators.length
                         ? $t('posts.form.instagram.collaborators_status_unavailable')

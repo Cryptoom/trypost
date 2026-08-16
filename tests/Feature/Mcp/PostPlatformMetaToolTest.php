@@ -452,19 +452,17 @@ test('get instagram collaborators returns invite status', function () {
         ], 200),
     ]);
 
-    $account = SocialAccount::factory()->create([
+    $account = SocialAccount::factory()->instagramFacebook()->create([
         'workspace_id' => $this->workspace->id,
-        'platform' => Platform::InstagramFacebook,
         'access_token' => 'token-fb',
     ]);
     $post = Post::factory()->create([
         'workspace_id' => $this->workspace->id,
         'user_id' => $this->user->id,
     ]);
-    $platform = PostPlatform::factory()->create([
+    $platform = PostPlatform::factory()->instagramFacebook()->create([
         'post_id' => $post->id,
         'social_account_id' => $account->id,
-        'platform' => Platform::InstagramFacebook,
         'status' => PostPlatformStatus::Published,
         'platform_post_id' => 'media-1',
         'meta' => ['collaborators' => ['host_one']],

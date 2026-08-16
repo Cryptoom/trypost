@@ -5,15 +5,12 @@ declare(strict_types=1);
 namespace App\Rules;
 
 use App\Enums\SocialAccount\Platform;
-use App\Models\PostPlatform;
-use App\Models\SocialAccount;
 use App\Support\PostPlatformMetaRules;
 use App\Support\Social\InstagramCollaborators;
 use Closure;
 use Illuminate\Contracts\Validation\DataAwareRule;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Contracts\Validation\ValidatorAwareRule;
-use Illuminate\Support\Str;
 use Illuminate\Validation\Validator;
 
 /**
@@ -50,9 +47,9 @@ class InstagramCollaboratorsMeta implements DataAwareRule, ValidationRule, Valid
             return;
         }
 
-        $platform = PostPlatformMetaRules::platformForAttribute($this->data, $attribute);
+        $account = PostPlatformMetaRules::accountForAttribute($this->data, $attribute);
 
-        if (! in_array($platform, [Platform::Instagram, Platform::InstagramFacebook], true)) {
+        if (! in_array($account?->platform, [Platform::Instagram, Platform::InstagramFacebook], true)) {
             return;
         }
 
@@ -63,60 +60,29 @@ class InstagramCollaboratorsMeta implements DataAwareRule, ValidationRule, Valid
         }
 
         $seen = [];
-        $ownUsername = $this->ownUsernameFor($attribute);
 
         foreach ($value as $index => $item) {
             $itemAttribute = "{$attribute}.{$index}";
 
             if (! is_string($item) || preg_match('/^@?[A-Za-z0-9._]{1,30}$/', $item) !== 1) {
-                $this->addItemError($itemAttribute, __('posts.form.instagram.collaborators_invalid'));
+                $this->validator?->errors()->add($itemAttribute, __('posts.form.instagram.collaborators_invalid'));
 
                 continue;
             }
 
-            $key = mb_strtolower(ltrim(trim($item), '@'));
+            $key = InstagramCollaborators::key($item);
 
             if (isset($seen[$key])) {
-                $this->addItemError($itemAttribute, __('posts.form.instagram.collaborators_invalid'));
+                $this->validator?->errors()->add($itemAttribute, __('posts.form.instagram.collaborators_invalid'));
 
                 continue;
             }
 
             $seen[$key] = true;
 
-            if ($ownUsername !== null && InstagramCollaborators::isSameUsername($item, $ownUsername)) {
-                $this->addItemError($itemAttribute, __('posts.form.instagram.collaborators_self'));
+            if (InstagramCollaborators::isSameUsername($item, $account->username)) {
+                $this->validator?->errors()->add($itemAttribute, __('posts.form.instagram.collaborators_self'));
             }
         }
-    }
-
-    private function addItemError(string $attribute, string $message): void
-    {
-        $this->validator?->errors()->add($attribute, $message);
-    }
-
-    private function ownUsernameFor(string $attribute): ?string
-    {
-        $platformKey = Str::before($attribute, '.meta.');
-        $accountId = data_get($this->data, "{$platformKey}.social_account_id");
-
-        if (is_string($accountId) && Str::isUuid($accountId)) {
-            return $this->normalizedUsername(SocialAccount::query()->find($accountId)?->username);
-        }
-
-        $postPlatformId = data_get($this->data, "{$platformKey}.id");
-
-        if (is_string($postPlatformId) && Str::isUuid($postPlatformId)) {
-            return $this->normalizedUsername(
-                PostPlatform::query()->with('socialAccount')->find($postPlatformId)?->socialAccount?->username,
-            );
-        }
-
-        return null;
-    }
-
-    private function normalizedUsername(mixed $username): ?string
-    {
-        return InstagramCollaborators::normalize(is_string($username) ? [$username] : [])[0] ?? null;
     }
 }

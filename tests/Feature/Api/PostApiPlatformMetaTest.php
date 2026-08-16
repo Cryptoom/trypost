@@ -392,6 +392,115 @@ it('persists Instagram collaborators and strips at signs', function () {
         ->toBe(['Host_One', 'host_two']);
 });
 
+it('persists Instagram collaborators on update', function () {
+    $instagram = SocialAccount::factory()->instagram()->create(['workspace_id' => $this->workspace->id]);
+    $post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+        'status' => PostStatus::Draft,
+    ]);
+    $platform = PostPlatform::factory()->instagram()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $instagram->id,
+        'enabled' => true,
+        'meta' => ['aspect_ratio' => '4:5'],
+    ]);
+
+    $this->withHeaders($this->headers)
+        ->putJson(route('api.posts.update', $post), [
+            'status' => PostStatus::Draft->value,
+            'platforms' => [[
+                'id' => $platform->id,
+                'meta' => ['collaborators' => ['@Host_One']],
+            ]],
+        ])
+        ->assertOk();
+
+    expect(data_get($platform->fresh()->meta, 'collaborators'))->toBe(['Host_One'])
+        ->and(data_get($platform->fresh()->meta, 'aspect_ratio'))->toBe('4:5');
+});
+
+it('still validates Instagram collaborators when update also sends another social_account_id', function () {
+    $instagram = SocialAccount::factory()->instagram()->create(['workspace_id' => $this->workspace->id]);
+    $tiktok = SocialAccount::factory()->tiktok()->create(['workspace_id' => $this->workspace->id]);
+    $post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+        'status' => PostStatus::Draft,
+    ]);
+    $platform = PostPlatform::factory()->instagram()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $instagram->id,
+        'enabled' => true,
+    ]);
+
+    $this->withHeaders($this->headers)
+        ->putJson(route('api.posts.update', $post), [
+            'status' => PostStatus::Draft->value,
+            'platforms' => [[
+                'id' => $platform->id,
+                'social_account_id' => $tiktok->id,
+                'meta' => ['collaborators' => ['a', 'b', 'c', 'd', 'not valid!!']],
+            ]],
+        ])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['platforms.0.meta.collaborators']);
+});
+
+it('still validates Discord mentions when update also sends another social_account_id', function () {
+    $tiktok = SocialAccount::factory()->tiktok()->create(['workspace_id' => $this->workspace->id]);
+    $post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+        'status' => PostStatus::Draft,
+    ]);
+    $platform = PostPlatform::factory()->discord()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $this->discordAccount->id,
+        'enabled' => true,
+    ]);
+
+    $this->withHeaders($this->headers)
+        ->putJson(route('api.posts.update', $post), [
+            'status' => PostStatus::Draft->value,
+            'platforms' => [[
+                'id' => $platform->id,
+                'social_account_id' => $tiktok->id,
+                'meta' => ['mentions' => ['@everyone']],
+            ]],
+        ])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['platforms.0.meta.mentions.0.token']);
+});
+
+it('clears Instagram collaborators when the platform is switched to a story', function () {
+    $instagram = SocialAccount::factory()->instagram()->create(['workspace_id' => $this->workspace->id]);
+    $post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+        'status' => PostStatus::Draft,
+    ]);
+    $platform = PostPlatform::factory()->instagram()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $instagram->id,
+        'enabled' => true,
+        'meta' => ['collaborators' => ['Host_One']],
+    ]);
+
+    $this->withHeaders($this->headers)
+        ->putJson(route('api.posts.update', $post), [
+            'status' => PostStatus::Draft->value,
+            'platforms' => [[
+                'id' => $platform->id,
+                'content_type' => ContentType::InstagramStory->value,
+                'meta' => ['collaborators' => ['host_two']],
+            ]],
+        ])
+        ->assertOk();
+
+    expect(data_get($platform->fresh()->meta, 'collaborators'))->toBe([]);
+});
+
 it('rejects more than three Instagram collaborators', function () {
     $instagram = SocialAccount::factory()->instagram()->create(['workspace_id' => $this->workspace->id]);
 
@@ -479,19 +588,17 @@ it('returns Instagram collaborator invite status for a published Facebook login 
         ], 200),
     ]);
 
-    $account = SocialAccount::factory()->create([
+    $account = SocialAccount::factory()->instagramFacebook()->create([
         'workspace_id' => $this->workspace->id,
-        'platform' => Platform::InstagramFacebook,
         'access_token' => 'token-fb',
     ]);
     $post = Post::factory()->create([
         'workspace_id' => $this->workspace->id,
         'user_id' => $this->user->id,
     ]);
-    $platform = PostPlatform::factory()->create([
+    $platform = PostPlatform::factory()->instagramFacebook()->create([
         'post_id' => $post->id,
         'social_account_id' => $account->id,
-        'platform' => Platform::InstagramFacebook,
         'status' => PostPlatformStatus::Published,
         'platform_post_id' => 'media-1',
         'meta' => ['collaborators' => ['host_one']],

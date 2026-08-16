@@ -110,10 +110,7 @@ class InstagramPublisher
             'image_url' => $imageUrl,
             'caption' => $content,
             'access_token' => $accessToken,
-            ...InstagramCollaborators::payload(
-                data_get($this->postPlatform->meta, 'collaborators'),
-                $this->postPlatform->socialAccount?->username,
-            ),
+            ...$this->collaboratorPayload(),
         ];
 
         $alt = $media->altTextFor(Platform::Instagram);
@@ -134,10 +131,7 @@ class InstagramPublisher
             'caption' => $content,
             'media_type' => 'REELS',
             'access_token' => $accessToken,
-            ...InstagramCollaborators::payload(
-                data_get($this->postPlatform->meta, 'collaborators'),
-                $this->postPlatform->socialAccount?->username,
-            ),
+            ...$this->collaboratorPayload(),
         ], 'reel container');
 
         return $this->finishContainer($instagramId, $accessToken, $containerId);
@@ -247,10 +241,7 @@ class InstagramPublisher
             'caption' => $content,
             'children' => implode(',', $childContainers),
             'access_token' => $accessToken,
-            ...InstagramCollaborators::payload(
-                data_get($this->postPlatform->meta, 'collaborators'),
-                $this->postPlatform->socialAccount?->username,
-            ),
+            ...$this->collaboratorPayload(),
         ], 'carousel container');
 
         return $this->finishContainer($instagramId, $accessToken, $carouselId);
@@ -487,6 +478,17 @@ class InstagramPublisher
             context: [PublishCheckpoint::INSTAGRAM_WORKFLOW => $workflow],
             retryDelaySeconds: self::STATUS_RETRY_DELAY_SECONDS,
             maxRetries: self::STATUS_MAX_RETRIES,
+        );
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function collaboratorPayload(): array
+    {
+        return InstagramCollaborators::payload(
+            data_get($this->postPlatform->meta, 'collaborators'),
+            $this->postPlatform->socialAccount?->username,
         );
     }
 

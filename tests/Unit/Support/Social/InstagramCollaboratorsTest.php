@@ -77,16 +77,15 @@ test('fetch invite status maps facebook login graph response', function () {
     ]);
 
     $workspace = Workspace::factory()->create();
-    $account = SocialAccount::factory()->create([
+    $account = SocialAccount::factory()->instagramFacebook()->create([
         'workspace_id' => $workspace->id,
-        'platform' => Platform::InstagramFacebook,
         'access_token' => 'token-fb',
     ]);
     $post = Post::factory()->create(['workspace_id' => $workspace->id, 'user_id' => User::factory()]);
     $platform = PostPlatform::factory()->create([
         'post_id' => $post->id,
         'social_account_id' => $account->id,
-        'platform' => Platform::InstagramFacebook,
+        'platform' => Platform::Instagram,
         'status' => Status::Published,
         'platform_post_id' => 'media-1',
         'meta' => ['collaborators' => ['host_one', 'host_two']],
@@ -107,16 +106,14 @@ test('fetch invite status falls back when the graph call fails', function () {
     ]);
 
     $workspace = Workspace::factory()->create();
-    $account = SocialAccount::factory()->create([
+    $account = SocialAccount::factory()->instagramFacebook()->create([
         'workspace_id' => $workspace->id,
-        'platform' => Platform::InstagramFacebook,
         'access_token' => 'token-fb',
     ]);
     $post = Post::factory()->create(['workspace_id' => $workspace->id, 'user_id' => User::factory()]);
-    $platform = PostPlatform::factory()->create([
+    $platform = PostPlatform::factory()->instagramFacebook()->create([
         'post_id' => $post->id,
         'social_account_id' => $account->id,
-        'platform' => Platform::InstagramFacebook,
         'status' => Status::Published,
         'platform_post_id' => 'media-1',
         'meta' => ['collaborators' => ['host_one']],

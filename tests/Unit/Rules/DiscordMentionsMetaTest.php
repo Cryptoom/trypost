@@ -41,6 +41,19 @@ test('requires a token on each Discord mention', function () {
     expect($errors)->toHaveKey('platforms.0.meta.mentions.0.token');
 });
 
+test('rejects a non-string Discord mention label', function () {
+    $workspace = Workspace::factory()->create();
+    $account = SocialAccount::factory()->discord()->create([
+        'workspace_id' => $workspace->id,
+    ]);
+
+    $errors = runMentionsMetaRule([['token' => '<@1>', 'label' => 123]], [
+        'social_account_id' => $account->id,
+    ]);
+
+    expect($errors)->toHaveKey('platforms.0.meta.mentions.0.label');
+});
+
 test('skips Discord mention shape when the platform is tiktok', function () {
     $workspace = Workspace::factory()->create();
     $account = SocialAccount::factory()->tiktok()->create([

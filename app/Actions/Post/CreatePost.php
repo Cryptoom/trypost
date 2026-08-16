@@ -76,10 +76,10 @@ class CreatePost
                         ->first();
 
                     if ($existing) {
-                        $updates['meta'] = PostPlatformMetaRules::merge(
-                            PostPlatformMetaRules::platformOf($existing),
-                            $existing->meta,
+                        $updates['meta'] = PostPlatformMetaRules::mergeFrom(
+                            $existing,
                             $meta,
+                            data_get($platformData, 'content_type'),
                         );
                     }
                 }

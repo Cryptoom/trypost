@@ -62,10 +62,10 @@ class UpdatePost
                             ->first();
 
                         if ($postPlatform) {
-                            $updateData['meta'] = PostPlatformMetaRules::merge(
-                                PostPlatformMetaRules::platformOf($postPlatform),
-                                $postPlatform->meta,
+                            $updateData['meta'] = PostPlatformMetaRules::mergeFrom(
+                                $postPlatform,
                                 data_get($platformData, 'meta') ?? [],
+                                data_get($platformData, 'content_type'),
                             );
                         }
                     }
