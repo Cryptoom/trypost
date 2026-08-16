@@ -7,16 +7,25 @@ namespace App\Support;
 use App\Enums\PostPlatform\AspectRatio;
 use App\Enums\SocialAccount\Platform;
 use App\Models\Post;
-use App\Rules\InstagramCollaboratorIsNotSelf;
+use App\Models\PostPlatform;
+use App\Models\SocialAccount;
+use App\Rules\DiscordMentionsMeta;
+use App\Rules\InstagramCollaboratorsMeta;
+use App\Support\Social\InstagramCollaborators;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Validation\Validator;
 
 /**
- * Single source of truth for per-platform `PostPlatform.meta` validation, shared
- * by the web, public REST API, and MCP post create/update flows so every entry
- * point accepts the same per-platform settings and enforces the same
- * required-on-publish rules.
+ * Single source of truth for per-platform `PostPlatform.meta` validation and
+ * persist-time shaping, shared by the web, public REST API, and MCP post
+ * create/update flows so every entry point accepts the same per-platform
+ * settings and enforces the same required-on-publish rules.
+ *
+ * Persist-time `normalize()` / `merge()` dispatch on the platform enum so
+ * Instagram collaborator shaping never rewrites another network's meta.
+ * Add a match arm when YouTube/TikTok mentions (or similar) land.
  */
 class PostPlatformMetaRules
 {
@@ -45,8 +54,7 @@ class PostPlatformMetaRules
 
             // Instagram / Facebook
             'platforms.*.meta.aspect_ratio' => ['sometimes', 'nullable', 'string', Rule::enum(AspectRatio::class)],
-            'platforms.*.meta.collaborators' => ['sometimes', 'nullable', 'array', 'max:3'],
-            'platforms.*.meta.collaborators.*' => ['string', 'max:30', 'distinct:ignore_case', 'regex:/^@?[A-Za-z0-9._]{1,30}$/', new InstagramCollaboratorIsNotSelf],
+            'platforms.*.meta.collaborators' => ['sometimes', 'nullable', 'array', new InstagramCollaboratorsMeta],
 
             // LinkedIn — title shown on a document (PDF carousel) post
             'platforms.*.meta.document_title' => ['sometimes', 'nullable', 'string', 'max:300'],
@@ -70,9 +78,7 @@ class PostPlatformMetaRules
             // Discord
             'platforms.*.meta.channel_id' => ['sometimes', 'nullable', 'string'],
             'platforms.*.meta.channel_name' => ['sometimes', 'nullable', 'string'],
-            'platforms.*.meta.mentions' => ['sometimes', 'nullable', 'array'],
-            'platforms.*.meta.mentions.*.token' => ['required', 'string'],
-            'platforms.*.meta.mentions.*.label' => ['sometimes', 'nullable', 'string'],
+            'platforms.*.meta.mentions' => ['sometimes', 'nullable', 'array', new DiscordMentionsMeta],
             'platforms.*.meta.embeds' => ['sometimes', 'nullable', 'array', 'max:10'],
             'platforms.*.meta.embeds.*.title' => ['sometimes', 'nullable', 'string', 'max:256'],
             'platforms.*.meta.embeds.*.description' => ['sometimes', 'nullable', 'string', 'max:4096'],
@@ -94,8 +100,6 @@ class PostPlatformMetaRules
             'platforms.*.meta.link.max' => __('posts.form.pinterest.link_max'),
             'platforms.*.meta.title.max' => __('posts.form.pinterest.title_max'),
             'platforms.*.meta.collaborators.max' => __('posts.form.instagram.collaborators_max'),
-            'platforms.*.meta.collaborators.*.regex' => __('posts.form.instagram.collaborators_invalid'),
-            'platforms.*.meta.collaborators.*.distinct' => __('posts.form.instagram.collaborators_invalid'),
         ];
     }
 
@@ -111,6 +115,73 @@ class PostPlatformMetaRules
             'platforms.*.meta.link' => __('posts.form.pinterest.link'),
             'platforms.*.meta.collaborators' => __('posts.form.instagram.collaborators'),
         ];
+    }
+
+    /**
+     * Shape incoming meta for one platform before it is stored. Only the matching
+     * network's keys are rewritten; every other key (and every other network)
+     * passes through unchanged.
+     *
+     * @param  array<string, mixed>  $meta
+     * @return array<string, mixed>
+     */
+    public static function normalize(?Platform $platform, array $meta): array
+    {
+        return match ($platform) {
+            Platform::Instagram, Platform::InstagramFacebook => InstagramCollaborators::applyToMeta($meta),
+            default => $meta,
+        };
+    }
+
+    /**
+     * Merge incoming meta onto stored meta after platform-specific normalize.
+     *
+     * @param  array<string, mixed>|null  $existing
+     * @param  array<string, mixed>|null  $incoming
+     * @return array<string, mixed>
+     */
+    public static function merge(?Platform $platform, ?array $existing, ?array $incoming): array
+    {
+        return array_filter(
+            array_merge($existing ?? [], self::normalize($platform, $incoming ?? [])),
+            fn (mixed $value): bool => $value !== null,
+        );
+    }
+
+    /**
+     * Resolve the social network for `platforms.{i}.meta.*` from create
+     * (`social_account_id`) or update (`id`) payload. Used so Instagram/Discord
+     * shape rules no-op on other networks that reuse the same meta key.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    public static function platformForAttribute(array $data, string $attribute): ?Platform
+    {
+        $platformKey = Str::before($attribute, '.meta.');
+        $accountId = data_get($data, "{$platformKey}.social_account_id");
+
+        if (is_string($accountId) && Str::isUuid($accountId)) {
+            return SocialAccount::query()->find($accountId)?->platform;
+        }
+
+        $postPlatformId = data_get($data, "{$platformKey}.id");
+
+        if (is_string($postPlatformId) && Str::isUuid($postPlatformId)) {
+            $postPlatform = PostPlatform::query()->with('socialAccount')->find($postPlatformId);
+
+            return $postPlatform !== null ? self::platformOf($postPlatform) : null;
+        }
+
+        return null;
+    }
+
+    /**
+     * Prefer the connected account's network over the denormalized
+     * `post_platforms.platform` column (stale copies / factory defaults).
+     */
+    public static function platformOf(PostPlatform $postPlatform): Platform
+    {
+        return $postPlatform->socialAccount?->platform ?? $postPlatform->platform;
     }
 
     /**

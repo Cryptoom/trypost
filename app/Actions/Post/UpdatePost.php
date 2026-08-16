@@ -9,8 +9,8 @@ use App\Enums\Post\Status as PostStatus;
 use App\Jobs\PublishPost;
 use App\Models\Post;
 use App\Models\Workspace;
+use App\Support\PostPlatformMetaRules;
 use App\Support\PostStatusRules;
-use App\Support\Social\InstagramCollaborators;
 use Carbon\Carbon;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
@@ -56,12 +56,16 @@ class UpdatePost
                     }
 
                     if (data_get($platformData, 'meta') !== null) {
-                        $postPlatform = $post->postPlatforms()->where('id', data_get($platformData, 'id'))->first();
+                        $postPlatform = $post->postPlatforms()
+                            ->with('socialAccount')
+                            ->where('id', data_get($platformData, 'id'))
+                            ->first();
 
                         if ($postPlatform) {
-                            $updateData['meta'] = array_filter(
-                                array_merge($postPlatform->meta ?? [], InstagramCollaborators::applyToMeta(data_get($platformData, 'meta') ?? [])),
-                                fn (mixed $value): bool => $value !== null,
+                            $updateData['meta'] = PostPlatformMetaRules::merge(
+                                PostPlatformMetaRules::platformOf($postPlatform),
+                                $postPlatform->meta,
+                                data_get($platformData, 'meta') ?? [],
                             );
                         }
                     }

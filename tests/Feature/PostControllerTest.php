@@ -1375,7 +1375,7 @@ test('update post accepts instagram collaborators and strips at signs', function
         'status' => PostStatus::Draft,
     ]);
 
-    $postPlatform = PostPlatform::factory()->create([
+    $postPlatform = PostPlatform::factory()->instagram()->create([
         'post_id' => $post->id,
         'social_account_id' => $instagramAccount->id,
     ]);
@@ -1408,7 +1408,7 @@ test('update post rejects tagging the connected instagram account as a collabora
         'status' => PostStatus::Draft,
     ]);
 
-    $postPlatform = PostPlatform::factory()->create([
+    $postPlatform = PostPlatform::factory()->instagram()->create([
         'post_id' => $post->id,
         'social_account_id' => $instagramAccount->id,
     ]);
@@ -1438,7 +1438,7 @@ test('update post rejects more than three instagram collaborators', function () 
         'status' => PostStatus::Draft,
     ]);
 
-    $postPlatform = PostPlatform::factory()->create([
+    $postPlatform = PostPlatform::factory()->instagram()->create([
         'post_id' => $post->id,
         'social_account_id' => $instagramAccount->id,
     ]);

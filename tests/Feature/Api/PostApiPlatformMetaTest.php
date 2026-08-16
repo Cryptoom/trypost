@@ -427,6 +427,33 @@ it('rejects tagging the connected Instagram account as a collaborator', function
         ->assertJsonValidationErrors(['platforms.0.meta.collaborators.0']);
 });
 
+it('does not apply Instagram collaborator rules to TikTok meta', function () {
+    $tiktok = SocialAccount::factory()->tiktok()->create([
+        'workspace_id' => $this->workspace->id,
+        'username' => 'testuser',
+    ]);
+
+    $this->withHeaders($this->headers)
+        ->postJson(route('api.posts.store'), [
+            'content' => 'TikTok can reuse the key later',
+            'platforms' => [[
+                'social_account_id' => $tiktok->id,
+                'content_type' => ContentType::TikTokVideo->value,
+                'meta' => [
+                    'privacy_level' => 'SELF_ONLY',
+                    'collaborators' => ['@TestUser', 'a', 'b', 'c', 'not valid!!'],
+                    'mentions' => ['@someone'],
+                ],
+            ]],
+        ])
+        ->assertCreated();
+
+    $meta = PostPlatform::where('social_account_id', $tiktok->id)->sole()->meta;
+
+    expect(data_get($meta, 'collaborators'))->toBe(['@TestUser', 'a', 'b', 'c', 'not valid!!'])
+        ->and(data_get($meta, 'mentions'))->toBe(['@someone']);
+});
+
 it('rejects an invalid Instagram collaborator username', function () {
     $instagram = SocialAccount::factory()->instagram()->create(['workspace_id' => $this->workspace->id]);
 

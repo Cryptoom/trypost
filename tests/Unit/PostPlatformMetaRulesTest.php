@@ -2,7 +2,16 @@
 
 declare(strict_types=1);
 
+use App\Enums\SocialAccount\Platform;
+use App\Models\Post;
+use App\Models\PostPlatform;
+use App\Models\SocialAccount;
+use App\Models\User;
+use App\Models\Workspace;
 use App\Support\PostPlatformMetaRules;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+
+uses(RefreshDatabase::class);
 
 test('custom meta messages cover pinterest and instagram collaborator fields', function () {
     expect(PostPlatformMetaRules::messages())->toBe([
@@ -10,8 +19,6 @@ test('custom meta messages cover pinterest and instagram collaborator fields', f
         'platforms.*.meta.link.max' => __('posts.form.pinterest.link_max'),
         'platforms.*.meta.title.max' => __('posts.form.pinterest.title_max'),
         'platforms.*.meta.collaborators.max' => __('posts.form.instagram.collaborators_max'),
-        'platforms.*.meta.collaborators.*.regex' => __('posts.form.instagram.collaborators_invalid'),
-        'platforms.*.meta.collaborators.*.distinct' => __('posts.form.instagram.collaborators_invalid'),
     ]);
 });
 
@@ -29,11 +36,69 @@ test('shared meta rules still include non-pinterest platform fields', function (
     expect($rules)->toHaveKeys([
         'platforms.*.meta.aspect_ratio',
         'platforms.*.meta.collaborators',
-        'platforms.*.meta.collaborators.*',
         'platforms.*.meta.privacy_level',
         'platforms.*.meta.board_id',
         'platforms.*.meta.channel_id',
         'platforms.*.meta.title',
         'platforms.*.meta.link',
     ]);
+});
+
+test('normalize strips instagram collaborators only on instagram platforms', function () {
+    $incoming = ['collaborators' => ['@Host_One', 'host_two'], 'aspect_ratio' => '4:5'];
+
+    expect(PostPlatformMetaRules::normalize(Platform::Instagram, $incoming)['collaborators'])->toBe(['Host_One', 'host_two'])
+        ->and(PostPlatformMetaRules::normalize(Platform::InstagramFacebook, $incoming)['collaborators'])->toBe(['Host_One', 'host_two']);
+});
+
+test('normalize leaves other networks meta untouched so future mentions stay intact', function () {
+    $incoming = ['collaborators' => ['@Host_One'], 'mentions' => ['@someone']];
+
+    expect(PostPlatformMetaRules::normalize(Platform::TikTok, $incoming))->toBe($incoming)
+        ->and(PostPlatformMetaRules::normalize(Platform::YouTube, $incoming))->toBe($incoming)
+        ->and(PostPlatformMetaRules::normalize(null, $incoming))->toBe($incoming);
+});
+
+test('merge applies instagram normalize then keeps existing keys', function () {
+    expect(PostPlatformMetaRules::merge(
+        Platform::Instagram,
+        ['aspect_ratio' => '4:5'],
+        ['collaborators' => ['@Host_One']],
+    ))->toBe([
+        'aspect_ratio' => '4:5',
+        'collaborators' => ['Host_One'],
+    ]);
+});
+
+test('platformForAttribute uses the social account network on create and update', function () {
+    $workspace = Workspace::factory()->create();
+    $instagram = SocialAccount::factory()->instagram()->create(['workspace_id' => $workspace->id]);
+    $tiktok = SocialAccount::factory()->tiktok()->create(['workspace_id' => $workspace->id]);
+    $post = Post::factory()->create([
+        'workspace_id' => $workspace->id,
+        'user_id' => User::factory(),
+    ]);
+    $instagramRow = PostPlatform::factory()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $instagram->id,
+        'platform' => Platform::LinkedIn,
+    ]);
+    $tiktokRow = PostPlatform::factory()->tiktok()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $tiktok->id,
+    ]);
+
+    expect(PostPlatformMetaRules::platformForAttribute(
+        ['platforms' => [['social_account_id' => $instagram->id]]],
+        'platforms.0.meta.collaborators',
+    ))->toBe(Platform::Instagram)
+        ->and(PostPlatformMetaRules::platformForAttribute(
+            ['platforms' => [['id' => $instagramRow->id]]],
+            'platforms.0.meta.collaborators',
+        ))->toBe(Platform::Instagram)
+        ->and(PostPlatformMetaRules::platformForAttribute(
+            ['platforms' => [['id' => $tiktokRow->id]]],
+            'platforms.0.meta.mentions',
+        ))->toBe(Platform::TikTok)
+        ->and(PostPlatformMetaRules::platformOf($instagramRow->load('socialAccount')))->toBe(Platform::Instagram);
 });
