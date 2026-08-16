@@ -9,6 +9,7 @@ use App\Enums\Post\Status as PostStatus;
 use App\Models\Post;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Support\Social\InstagramCollaborators;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -75,7 +76,7 @@ class CreatePost
 
                     if ($existing) {
                         $updates['meta'] = array_filter(
-                            array_merge($existing->meta ?? [], $meta),
+                            array_merge($existing->meta ?? [], InstagramCollaborators::applyToMeta($meta)),
                             fn (mixed $value): bool => $value !== null,
                         );
                     }

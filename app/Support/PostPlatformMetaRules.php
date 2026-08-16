@@ -7,6 +7,7 @@ namespace App\Support;
 use App\Enums\PostPlatform\AspectRatio;
 use App\Enums\SocialAccount\Platform;
 use App\Models\Post;
+use App\Rules\InstagramCollaboratorIsNotSelf;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Validation\Validator;
@@ -44,6 +45,8 @@ class PostPlatformMetaRules
 
             // Instagram / Facebook
             'platforms.*.meta.aspect_ratio' => ['sometimes', 'nullable', 'string', Rule::enum(AspectRatio::class)],
+            'platforms.*.meta.collaborators' => ['sometimes', 'nullable', 'array', 'max:3'],
+            'platforms.*.meta.collaborators.*' => ['string', 'max:30', 'distinct:ignore_case', 'regex:/^@?[A-Za-z0-9._]{1,30}$/', new InstagramCollaboratorIsNotSelf],
 
             // LinkedIn — title shown on a document (PDF carousel) post
             'platforms.*.meta.document_title' => ['sometimes', 'nullable', 'string', 'max:300'],
@@ -90,6 +93,9 @@ class PostPlatformMetaRules
             'platforms.*.meta.link.url' => __('posts.form.pinterest.link_invalid'),
             'platforms.*.meta.link.max' => __('posts.form.pinterest.link_max'),
             'platforms.*.meta.title.max' => __('posts.form.pinterest.title_max'),
+            'platforms.*.meta.collaborators.max' => __('posts.form.instagram.collaborators_max'),
+            'platforms.*.meta.collaborators.*.regex' => __('posts.form.instagram.collaborators_invalid'),
+            'platforms.*.meta.collaborators.*.distinct' => __('posts.form.instagram.collaborators_invalid'),
         ];
     }
 
@@ -103,6 +109,7 @@ class PostPlatformMetaRules
         return [
             'platforms.*.meta.title' => __('posts.form.pinterest.title'),
             'platforms.*.meta.link' => __('posts.form.pinterest.link'),
+            'platforms.*.meta.collaborators' => __('posts.form.instagram.collaborators'),
         ];
     }
 

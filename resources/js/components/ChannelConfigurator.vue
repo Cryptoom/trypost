@@ -24,6 +24,7 @@ const props = withDefaults(defineProps<{
     videoDurationSec?: number | null;
     disabled?: boolean;
     previewOnly?: boolean;
+    postId?: string;
 }>(), {
     media: () => [],
     videoDurationSec: null,
@@ -119,6 +120,9 @@ const selectedChannels = computed(() => props.channels.filter((channel) => isSel
                 :meta="channel.meta"
                 :disabled="disabled"
                 :preview-only="previewOnly"
+                :post-id="postId"
+                :post-platform-id="postId ? channel.id : undefined"
+                :status="channel.status"
                 @update:content-type="emit('update:contentType', channel.id, $event)"
                 @update:meta="emit('update:meta', channel.id, $event)"
             />

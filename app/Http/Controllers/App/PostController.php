@@ -26,6 +26,7 @@ use App\Models\PostPlatform;
 use App\Services\Post\PostMetricsFetcher;
 use App\Services\Social\TikTokCreatorInfo;
 use App\Support\PostStatusRules;
+use App\Support\Social\InstagramCollaborators;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -205,6 +206,19 @@ class PostController extends Controller
         }
 
         return response()->json(app(PostMetricsFetcher::class)->forPlatform($postPlatform));
+    }
+
+    public function instagramCollaborators(Request $request, Post $post, PostPlatform $postPlatform): JsonResponse
+    {
+        $this->authorize('view', $post);
+
+        if ($postPlatform->post_id !== $post->id) {
+            abort(404);
+        }
+
+        $postPlatform->loadMissing('socialAccount');
+
+        return response()->json(InstagramCollaborators::fetchInviteStatus($postPlatform));
     }
 
     public function show(Request $request, Post $post): Response|RedirectResponse

@@ -22,8 +22,10 @@ use App\Http\Resources\Api\PostMetricsResource;
 use App\Http\Resources\Api\PostPreviewResource;
 use App\Http\Resources\Api\PostResource;
 use App\Models\Post;
+use App\Models\PostPlatform;
 use App\Services\Post\MediaAttacher;
 use App\Support\PostStatusRules;
+use App\Support\Social\InstagramCollaborators;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -197,5 +199,18 @@ class PostController extends Controller
         $post->load(['postPlatforms.socialAccount']);
 
         return new PostPreviewResource($post);
+    }
+
+    public function collaborators(Request $request, Post $post, PostPlatform $postPlatform): JsonResponse
+    {
+        $this->authorize('view', $post);
+
+        if ($postPlatform->post_id !== $post->id) {
+            abort(404);
+        }
+
+        $postPlatform->loadMissing('socialAccount');
+
+        return response()->json(InstagramCollaborators::fetchInviteStatus($postPlatform));
     }
 }

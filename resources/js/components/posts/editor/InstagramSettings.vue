@@ -1,13 +1,28 @@
 <script setup lang="ts">
-import { IconAlertTriangle, IconChevronDown, IconChevronUp } from '@tabler/icons-vue';
+import { useHttp } from '@inertiajs/vue3';
+import { IconAlertTriangle, IconChevronDown, IconChevronUp, IconX } from '@tabler/icons-vue';
 import { computed, ref, watch } from 'vue';
 
+import { instagramCollaborators as collaboratorsRoute } from '@/actions/App/Http/Controllers/App/PostController';
+import InputError from '@/components/InputError.vue';
 import { Avatar } from '@/components/ui/avatar';
+import { Input } from '@/components/ui/input';
 import { getMediaValidationWarning } from '@/composables/useMedia';
 import { getPlatformLogo } from '@/composables/usePlatformLogo';
 import { fallbackImageCapableVariant, filterImageCapableVariants } from '@/lib/aiGenerateVariants';
 import { ContentType } from '@/types/content-type';
 import type { MediaItem } from '@/types/media';
+import { PostPlatformStatus } from '@/types/post';
+
+const MAX_COLLABORATORS = 3;
+const USERNAME_PATTERN = /^[A-Za-z0-9._]{1,30}$/;
+
+type InviteStatus = 'Accepted' | 'Pending' | 'Declined';
+
+interface CollaboratorsResponse {
+    status_available: boolean;
+    collaborators: { username: string; invite_status: InviteStatus | null }[];
+}
 
 interface SocialAccount {
     id: string;
@@ -25,6 +40,9 @@ interface Props {
     meta?: Record<string, any>;
     disabled?: boolean;
     previewOnly?: boolean;
+    postId?: string;
+    postPlatformId?: string;
+    status?: string | null;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -67,7 +85,139 @@ const aspectRatios = [
 ];
 
 const isFeed = computed(() => props.contentType === ContentType.InstagramFeed);
+const isStory = computed(() => props.contentType === ContentType.InstagramStory);
+const showCollaborators = computed(() => !isStory.value);
+const isPublished = computed(() => props.status === PostPlatformStatus.Published);
 const selectedAspectRatio = computed(() => props.meta.aspect_ratio ?? '1:1');
+const collaborators = computed<string[]>(() => {
+    const value = props.meta.collaborators;
+
+    return Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string' && item !== '') : [];
+});
+const collaboratorDraft = ref('');
+const selfMentionAttempted = ref(false);
+const statusAvailable = ref(false);
+const inviteByUsername = ref<Record<string, InviteStatus | null>>({});
+const collaboratorsHttp = useHttp<Record<string, never>, CollaboratorsResponse>({});
+
+const ownUsername = computed(() => {
+    const username = props.socialAccount?.username;
+
+    return username ? username.replace(/^@+/, '').toLowerCase() : '';
+});
+
+const canFetchStatus = computed(() => Boolean(
+    props.postId
+    && props.postPlatformId
+    && isPublished.value
+    && collaborators.value.length > 0,
+));
+
+const fetchInviteStatus = async () => {
+    if (!canFetchStatus.value || !props.postId || !props.postPlatformId) {
+        statusAvailable.value = false;
+        inviteByUsername.value = {};
+
+        return;
+    }
+
+    try {
+        const response = await collaboratorsHttp.get(collaboratorsRoute.url({
+            post: props.postId,
+            postPlatform: props.postPlatformId,
+        }));
+
+        statusAvailable.value = response.status_available;
+        inviteByUsername.value = Object.fromEntries(
+            response.collaborators.map((row) => [row.username.toLowerCase(), row.invite_status]),
+        );
+    } catch {
+        statusAvailable.value = false;
+        inviteByUsername.value = {};
+    }
+};
+
+watch(
+    [() => props.postId, () => props.postPlatformId, isPublished, collaborators],
+    () => {
+        void fetchInviteStatus();
+    },
+    { immediate: true },
+);
+
+const commitCollaboratorDraft = () => {
+    if (props.disabled) {
+        return;
+    }
+
+    const next = [...collaborators.value];
+    selfMentionAttempted.value = false;
+
+    for (const piece of collaboratorDraft.value.split(/[,\n]/)) {
+        const username = piece.trim().replace(/^@+/, '');
+
+        if (!USERNAME_PATTERN.test(username)) {
+            continue;
+        }
+
+        if (ownUsername.value !== '' && username.toLowerCase() === ownUsername.value) {
+            selfMentionAttempted.value = true;
+            continue;
+        }
+
+        if (next.some((existing) => existing.toLowerCase() === username.toLowerCase())) {
+            continue;
+        }
+
+        if (next.length >= MAX_COLLABORATORS) {
+            break;
+        }
+
+        next.push(username);
+    }
+
+    collaboratorDraft.value = '';
+
+    if (next.length !== collaborators.value.length) {
+        emit('update:meta', { ...props.meta, collaborators: next });
+    }
+};
+
+const onCollaboratorKeydown = (event: KeyboardEvent) => {
+    if (event.key === 'Enter' || event.key === ',') {
+        event.preventDefault();
+        commitCollaboratorDraft();
+    }
+};
+
+const removeCollaborator = (username: string) => {
+    if (props.disabled) {
+        return;
+    }
+
+    emit('update:meta', {
+        ...props.meta,
+        collaborators: collaborators.value.filter((item) => item !== username),
+    });
+};
+
+const inviteStatusKey = (username: string): string | null => {
+    const status = inviteByUsername.value[username.toLowerCase()];
+
+    if (status === 'Accepted') {
+        return 'posts.form.instagram.collaborators_accepted';
+    }
+
+    if (status === 'Pending') {
+        return 'posts.form.instagram.collaborators_pending';
+    }
+
+    if (status === 'Declined') {
+        return 'posts.form.instagram.collaborators_declined';
+    }
+
+    return null;
+};
 
 const pickVariant = (value: string) => {
     if (props.disabled) return;
@@ -152,6 +302,46 @@ const warning = computed(() => getMediaValidationWarning(props.contentType, prop
                         {{ $t(ratio.labelKey) }}
                     </button>
                 </div>
+            </div>
+
+            <div v-if="showCollaborators" class="space-y-2">
+                <p class="text-[11px] font-black uppercase tracking-widest text-foreground/60">{{ $t('posts.form.instagram.collaborators') }}</p>
+                <div v-if="collaborators.length" class="flex flex-wrap gap-1.5">
+                    <span
+                        v-for="username in collaborators"
+                        :key="username"
+                        class="inline-flex items-center gap-1 rounded-full border-2 border-foreground/30 bg-violet-50 px-2 py-0.5 text-xs font-semibold text-foreground"
+                    >
+                        @{{ username }}
+                        <span
+                            v-if="isPublished && inviteStatusKey(username)"
+                            class="font-medium text-foreground/60"
+                        >
+                            · {{ $t(inviteStatusKey(username) ?? '') }}
+                        </span>
+                        <button
+                            v-if="!disabled"
+                            type="button"
+                            class="text-foreground/50 hover:text-foreground"
+                            @click="removeCollaborator(username)"
+                        >
+                            <IconX class="size-3" />
+                        </button>
+                    </span>
+                </div>
+                <Input
+                    v-if="!disabled && collaborators.length < MAX_COLLABORATORS"
+                    v-model="collaboratorDraft"
+                    :placeholder="$t('posts.form.instagram.collaborators_placeholder')"
+                    @keydown="onCollaboratorKeydown"
+                    @blur="commitCollaboratorDraft"
+                />
+                <InputError :message="selfMentionAttempted ? $t('posts.form.instagram.collaborators_self') : undefined" />
+                <p class="text-xs font-medium text-foreground/60">
+                    {{ isPublished && !statusAvailable && collaborators.length
+                        ? $t('posts.form.instagram.collaborators_status_unavailable')
+                        : $t('posts.form.instagram.collaborators_hint') }}
+                </p>
             </div>
 
             <p

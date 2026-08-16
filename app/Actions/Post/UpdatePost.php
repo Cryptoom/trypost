@@ -10,6 +10,7 @@ use App\Jobs\PublishPost;
 use App\Models\Post;
 use App\Models\Workspace;
 use App\Support\PostStatusRules;
+use App\Support\Social\InstagramCollaborators;
 use Carbon\Carbon;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
@@ -59,7 +60,7 @@ class UpdatePost
 
                         if ($postPlatform) {
                             $updateData['meta'] = array_filter(
-                                array_merge($postPlatform->meta ?? [], data_get($platformData, 'meta') ?? []),
+                                array_merge($postPlatform->meta ?? [], InstagramCollaborators::applyToMeta(data_get($platformData, 'meta') ?? [])),
                                 fn (mixed $value): bool => $value !== null,
                             );
                         }

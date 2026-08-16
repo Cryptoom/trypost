@@ -2004,3 +2004,199 @@ test('instagram publisher sends alt text on image carousel children but never on
             && ! array_key_exists('alt_text', $data);
     });
 });
+
+test('reel container includes collaborators as a json string', function () {
+    $this->postPlatform->update([
+        'content_type' => ContentType::InstagramReel,
+        'meta' => ['collaborators' => ['@Host_One', 'host_two']],
+    ]);
+    $this->post->update([
+        'media' => [[
+            'id' => 'test-media-video',
+            'path' => 'media/2026-01/test-video.mp4',
+            'url' => 'https://example.com/media/2026-01/test-video.mp4',
+            'mime_type' => 'video/mp4',
+            'original_filename' => 'test.mp4',
+        ]],
+    ]);
+
+    Http::fake([
+        'https://graph.instagram.com/v25.0/ig_123456789/media' => Http::response(['id' => 'container-123'], 200),
+        'https://graph.instagram.com/v25.0/container-123*' => Http::response(['status_code' => 'FINISHED'], 200),
+        'https://graph.instagram.com/v25.0/ig_123456789/media_publish' => Http::response(['id' => 'reel-123'], 200),
+        'https://graph.instagram.com/v25.0/reel-123*' => Http::response(['permalink' => 'https://www.instagram.com/reel/ABC/'], 200),
+    ]);
+
+    $this->publisher->publish($this->postPlatform);
+
+    Http::assertSent(function (Request $request) {
+        $data = $request->data();
+
+        return str_ends_with($request->url(), '/ig_123456789/media')
+            && data_get($data, 'media_type') === 'REELS'
+            && data_get($data, 'collaborators') === '["Host_One","host_two"]';
+    });
+});
+
+test('single image container includes collaborators', function () {
+    $this->postPlatform->update(['meta' => ['collaborators' => ['host_one']]]);
+    $this->post->update([
+        'media' => [[
+            'id' => 'test-media-id',
+            'path' => 'media/2026-01/test-image.jpg',
+            'url' => 'https://example.com/media/2026-01/test-image.jpg',
+            'mime_type' => 'image/jpeg',
+            'original_filename' => 'test.jpg',
+        ]],
+    ]);
+
+    Http::fake([
+        'https://graph.instagram.com/v25.0/ig_123456789/media' => Http::response(['id' => 'container-123'], 200),
+        'https://graph.instagram.com/v25.0/container-123*' => Http::response(['status_code' => 'FINISHED'], 200),
+        'https://graph.instagram.com/v25.0/ig_123456789/media_publish' => Http::response(['id' => 'media-123'], 200),
+        'https://graph.instagram.com/v25.0/media-123*' => Http::response(['permalink' => 'https://www.instagram.com/p/ABC/'], 200),
+    ]);
+
+    $this->publisher->publish($this->postPlatform);
+
+    Http::assertSent(function (Request $request) {
+        $data = $request->data();
+
+        return str_ends_with($request->url(), '/ig_123456789/media')
+            && data_get($data, 'image_url') !== null
+            && data_get($data, 'collaborators') === '["host_one"]';
+    });
+});
+
+test('carousel parent includes collaborators and children do not', function () {
+    $this->postPlatform->update(['meta' => ['collaborators' => ['host_one', 'host_two']]]);
+    $this->post->update([
+        'media' => [
+            ['id' => 'img-1', 'path' => 'media/2026-01/a.jpg', 'url' => 'https://example.com/a.jpg', 'mime_type' => 'image/jpeg', 'original_filename' => 'a.jpg'],
+            ['id' => 'img-2', 'path' => 'media/2026-01/b.jpg', 'url' => 'https://example.com/b.jpg', 'mime_type' => 'image/jpeg', 'original_filename' => 'b.jpg'],
+        ],
+    ]);
+
+    Http::fake([
+        'https://graph.instagram.com/v25.0/ig_123456789/media' => Http::sequence()
+            ->push(['id' => 'child-1'], 200)
+            ->push(['id' => 'child-2'], 200)
+            ->push(['id' => 'carousel-container-123'], 200),
+        'https://graph.instagram.com/v25.0/carousel-container-123*' => Http::response(['status_code' => 'FINISHED'], 200),
+        'https://graph.instagram.com/v25.0/ig_123456789/media_publish' => Http::response(['id' => 'carousel-123'], 200),
+        'https://graph.instagram.com/v25.0/carousel-123*' => Http::response(['permalink' => 'https://www.instagram.com/p/CAR/'], 200),
+    ]);
+
+    $this->publisher->publish($this->postPlatform);
+
+    $mediaRequests = collect(Http::recorded())
+        ->map(fn ($pair) => $pair[0])
+        ->filter(fn (Request $request) => str_ends_with($request->url(), '/ig_123456789/media'));
+
+    $children = $mediaRequests->filter(fn (Request $request) => data_get($request->data(), 'is_carousel_item') === 'true');
+    $parent = $mediaRequests->first(fn (Request $request) => data_get($request->data(), 'media_type') === 'CAROUSEL');
+
+    expect($children)->toHaveCount(2)
+        ->and($children->every(fn (Request $request) => ! array_key_exists('collaborators', $request->data())))->toBeTrue()
+        ->and(data_get($parent?->data(), 'collaborators'))->toBe('["host_one","host_two"]');
+});
+
+test('story container omits collaborators', function () {
+    $this->postPlatform->update([
+        'content_type' => ContentType::InstagramStory,
+        'meta' => ['collaborators' => ['host_one']],
+    ]);
+    $this->post->update([
+        'media' => [[
+            'id' => 'test-media-video-story',
+            'path' => 'media/2026-01/story.mp4',
+            'url' => 'https://example.com/media/2026-01/story.mp4',
+            'mime_type' => 'video/mp4',
+            'original_filename' => 'story.mp4',
+        ]],
+    ]);
+
+    Http::fake([
+        'https://graph.instagram.com/v25.0/ig_123456789/media' => Http::response(['id' => 'story-container-123'], 200),
+        'https://graph.instagram.com/v25.0/story-container-123*' => Http::response(['status_code' => 'FINISHED'], 200),
+        'https://graph.instagram.com/v25.0/ig_123456789/media_publish' => Http::response(['id' => 'story-123'], 200),
+        'https://graph.instagram.com/v25.0/story-123*' => Http::response(['permalink' => 'https://www.instagram.com/stories/testuser/1/'], 200),
+    ]);
+
+    $this->publisher->publish($this->postPlatform);
+
+    Http::assertSent(function (Request $request) {
+        $data = $request->data();
+
+        return str_ends_with($request->url(), '/ig_123456789/media')
+            && data_get($data, 'media_type') === 'STORIES'
+            && ! array_key_exists('collaborators', $data);
+    });
+});
+
+test('reel container omits the connected account from collaborators', function () {
+    $this->socialAccount->update(['username' => 'testuser']);
+    $this->postPlatform->update([
+        'content_type' => ContentType::InstagramReel,
+        'meta' => ['collaborators' => ['@TestUser', 'host_one']],
+    ]);
+    $this->post->update([
+        'media' => [[
+            'id' => 'test-media-video',
+            'path' => 'media/2026-01/test-video.mp4',
+            'url' => 'https://example.com/media/2026-01/test-video.mp4',
+            'mime_type' => 'video/mp4',
+            'original_filename' => 'test.mp4',
+        ]],
+    ]);
+
+    Http::fake([
+        'https://graph.instagram.com/v25.0/ig_123456789/media' => Http::response(['id' => 'container-123'], 200),
+        'https://graph.instagram.com/v25.0/container-123*' => Http::response(['status_code' => 'FINISHED'], 200),
+        'https://graph.instagram.com/v25.0/ig_123456789/media_publish' => Http::response(['id' => 'reel-123'], 200),
+        'https://graph.instagram.com/v25.0/reel-123*' => Http::response(['permalink' => 'https://www.instagram.com/reel/ABC/'], 200),
+    ]);
+
+    $this->publisher->publish($this->postPlatform->fresh(['socialAccount']));
+
+    Http::assertSent(function (Request $request) {
+        $data = $request->data();
+
+        return str_ends_with($request->url(), '/ig_123456789/media')
+            && data_get($data, 'media_type') === 'REELS'
+            && data_get($data, 'collaborators') === '["host_one"]';
+    });
+});
+
+test('empty collaborators meta omits the graph key', function () {
+    $this->postPlatform->update([
+        'content_type' => ContentType::InstagramReel,
+        'meta' => ['collaborators' => []],
+    ]);
+    $this->post->update([
+        'media' => [[
+            'id' => 'test-media-video',
+            'path' => 'media/2026-01/test-video.mp4',
+            'url' => 'https://example.com/media/2026-01/test-video.mp4',
+            'mime_type' => 'video/mp4',
+            'original_filename' => 'test.mp4',
+        ]],
+    ]);
+
+    Http::fake([
+        'https://graph.instagram.com/v25.0/ig_123456789/media' => Http::response(['id' => 'container-123'], 200),
+        'https://graph.instagram.com/v25.0/container-123*' => Http::response(['status_code' => 'FINISHED'], 200),
+        'https://graph.instagram.com/v25.0/ig_123456789/media_publish' => Http::response(['id' => 'reel-123'], 200),
+        'https://graph.instagram.com/v25.0/reel-123*' => Http::response(['permalink' => 'https://www.instagram.com/reel/ABC/'], 200),
+    ]);
+
+    $this->publisher->publish($this->postPlatform);
+
+    Http::assertSent(function (Request $request) {
+        $data = $request->data();
+
+        return str_ends_with($request->url(), '/ig_123456789/media')
+            && data_get($data, 'media_type') === 'REELS'
+            && ! array_key_exists('collaborators', $data);
+    });
+});

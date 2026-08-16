@@ -87,6 +87,15 @@ const truncatedCaption = computed(() => {
     if (props.content.length <= 80) return props.content;
     return props.content.substring(0, 80) + '...';
 });
+
+const collaboratorNames = computed(() => {
+    const list = Array.isArray(props.meta?.collaborators) ? props.meta.collaborators : [];
+
+    return list
+        .filter((item): item is string => typeof item === 'string' && item !== '')
+        .map((username) => `@${username.replace(/^@+/, '')}`)
+        .join(', ');
+});
 </script>
 
 <template>
@@ -154,10 +163,13 @@ const truncatedCaption = computed(() => {
                 </div>
 
                 <!-- Caption -->
-                <div v-if="content" class="flex-shrink-0 px-2.5 py-0.5">
-                    <p class="text-[12px] line-clamp-2">
+                <div v-if="content || collaboratorNames" class="flex-shrink-0 px-2.5 py-0.5">
+                    <p v-if="content" class="text-[12px] line-clamp-2">
                         <span class="font-semibold">{{ socialAccount.handle_label }}</span>
                         <span class="ml-1">{{ content }}</span>
+                    </p>
+                    <p v-if="collaboratorNames" class="text-[12px] text-[#737373]">
+                        {{ $t('posts.form.instagram.collaborators_with', { names: collaboratorNames }) }}
                     </p>
                 </div>
             </div>
@@ -216,6 +228,9 @@ const truncatedCaption = computed(() => {
                     </div>
                     <p v-if="content" class="text-white text-[11px] drop-shadow-lg line-clamp-2 mb-1.5">
                         {{ truncatedCaption }}
+                    </p>
+                    <p v-if="collaboratorNames" class="text-white/80 text-[11px] drop-shadow-lg mb-1.5">
+                        {{ $t('posts.form.instagram.collaborators_with', { names: collaboratorNames }) }}
                     </p>
                     <div class="flex items-center">
                         <div class="flex items-center gap-1 bg-white/20 backdrop-blur-sm rounded-full px-2 py-0.5">

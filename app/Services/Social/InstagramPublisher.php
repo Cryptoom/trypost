@@ -15,6 +15,7 @@ use App\Models\PostPlatform;
 use App\Services\Social\Concerns\CropsImageForAspectRatio;
 use App\Services\Social\Concerns\HasSocialHttpClient;
 use App\Services\Social\Meta\GraphError;
+use App\Support\Social\InstagramCollaborators;
 use App\Support\Social\PublishCheckpoint;
 use Closure;
 use Illuminate\Http\Client\ConnectionException;
@@ -109,6 +110,10 @@ class InstagramPublisher
             'image_url' => $imageUrl,
             'caption' => $content,
             'access_token' => $accessToken,
+            ...InstagramCollaborators::payload(
+                data_get($this->postPlatform->meta, 'collaborators'),
+                $this->postPlatform->socialAccount?->username,
+            ),
         ];
 
         $alt = $media->altTextFor(Platform::Instagram);
@@ -129,6 +134,10 @@ class InstagramPublisher
             'caption' => $content,
             'media_type' => 'REELS',
             'access_token' => $accessToken,
+            ...InstagramCollaborators::payload(
+                data_get($this->postPlatform->meta, 'collaborators'),
+                $this->postPlatform->socialAccount?->username,
+            ),
         ], 'reel container');
 
         return $this->finishContainer($instagramId, $accessToken, $containerId);
@@ -238,6 +247,10 @@ class InstagramPublisher
             'caption' => $content,
             'children' => implode(',', $childContainers),
             'access_token' => $accessToken,
+            ...InstagramCollaborators::payload(
+                data_get($this->postPlatform->meta, 'collaborators'),
+                $this->postPlatform->socialAccount?->username,
+            ),
         ], 'carousel container');
 
         return $this->finishContainer($instagramId, $accessToken, $carouselId);
