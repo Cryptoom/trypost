@@ -51,11 +51,14 @@ class UpdatePost
                 foreach (data_get($data, 'platforms', []) as $platformData) {
                     $updateData = ['enabled' => true];
 
-                    if (data_get($platformData, 'content_type') !== null) {
-                        $updateData['content_type'] = data_get($platformData, 'content_type');
+                    $contentType = data_get($platformData, 'content_type');
+                    $incomingMeta = data_get($platformData, 'meta');
+
+                    if ($contentType !== null) {
+                        $updateData['content_type'] = $contentType;
                     }
 
-                    if (data_get($platformData, 'meta') !== null) {
+                    if ($incomingMeta !== null || PostPlatformMetaRules::mustMergeForContentType($contentType)) {
                         $postPlatform = $post->postPlatforms()
                             ->with('socialAccount')
                             ->where('id', data_get($platformData, 'id'))
@@ -64,8 +67,8 @@ class UpdatePost
                         if ($postPlatform) {
                             $updateData['meta'] = PostPlatformMetaRules::mergeFrom(
                                 $postPlatform,
-                                data_get($platformData, 'meta') ?? [],
-                                data_get($platformData, 'content_type'),
+                                $incomingMeta ?? [],
+                                $contentType,
                             );
                         }
                     }

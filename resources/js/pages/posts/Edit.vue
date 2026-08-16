@@ -25,6 +25,7 @@ import debounce from '@/debounce';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { destroy as destroyPost, update as updatePost } from '@/routes/app/posts';
 import type { PinterestBoardsPayload } from '@/types';
+import { ContentType } from '@/types/content-type';
 import type { MediaItem } from '@/types/media';
 import { PostStatus } from '@/types/post';
 
@@ -243,6 +244,14 @@ const snapToCompatibleVariant = (platformId: string) => {
     if (!fallback) return;
 
     platformContentTypes.value = { ...platformContentTypes.value, [platformId]: fallback };
+
+    if (fallback === ContentType.InstagramStory) {
+        const currentMeta = platformMeta.value[platformId] ?? pp.meta ?? {};
+        platformMeta.value = {
+            ...platformMeta.value,
+            [platformId]: { ...currentMeta, collaborators: [] },
+        };
+    }
 };
 
 const togglePlatform = (platformId: string) => {

@@ -446,6 +446,7 @@ test('instagram publisher can publish carousel with videos', function () {
 });
 
 test('instagram publisher resumes a processing carousel child without recreating child containers', function () {
+    $this->postPlatform->update(['meta' => ['collaborators' => ['host_one']]]);
     $this->post->update([
         'media' => [
             [
@@ -502,10 +503,15 @@ test('instagram publisher resumes a processing carousel child without recreating
 
     $result = $this->publisher->publish($this->postPlatform->fresh());
 
+    $parent = collect(Http::recorded())
+        ->map(fn (array $pair) => $pair[0])
+        ->first(fn (Request $request) => data_get($request->data(), 'media_type') === 'CAROUSEL');
+
     expect($result['id'])->toBe('carousel-resumed-123456789')
         ->and(collect(Http::recorded())->filter(
             fn (array $pair) => $pair[0]->method() === 'POST' && str_ends_with($pair[0]->url(), '/ig_123456789/media')
-        ))->toHaveCount(3);
+        ))->toHaveCount(3)
+        ->and(data_get($parent?->data(), 'collaborators'))->toBe('["host_one"]');
 });
 
 test('instagram publisher throws exception on api error', function () {
@@ -1563,6 +1569,7 @@ test('instagram publisher can publish single image with empty string content', f
 
 test('instagram publisher routes feed video to reel', function () {
     // InstagramFeed content type with a single video should route to publishReel (REELS media_type)
+    $this->postPlatform->update(['meta' => ['collaborators' => ['host_one']]]);
     $this->post->update([
         'media' => [
             [
@@ -1595,9 +1602,12 @@ test('instagram publisher routes feed video to reel', function () {
     expect($result['id'])->toBe('feed-reel-123');
 
     // Assert media_type=REELS was sent in the container creation request
-    Http::assertSent(function ($request) {
+    Http::assertSent(function (Request $request) {
+        $data = $request->data();
+
         return str_contains($request->url(), '/ig_123456789/media')
-            && str_contains($request->body(), 'REELS');
+            && data_get($data, 'media_type') === 'REELS'
+            && data_get($data, 'collaborators') === '["host_one"]';
     });
 });
 

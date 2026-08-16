@@ -390,6 +390,24 @@ it('persists Instagram collaborators and strips at signs', function () {
         ->toBe(['Host_One', 'host_two']);
 });
 
+it('clears Instagram collaborators when creating a story', function () {
+    $instagram = SocialAccount::factory()->instagram()->create(['workspace_id' => $this->workspace->id]);
+
+    $this->withHeaders($this->headers)
+        ->postJson(route('api.posts.store'), [
+            'content' => 'Story',
+            'platforms' => [[
+                'social_account_id' => $instagram->id,
+                'content_type' => ContentType::InstagramStory->value,
+                'meta' => ['collaborators' => ['@Host_One']],
+            ]],
+        ])
+        ->assertCreated();
+
+    expect(PostPlatform::where('social_account_id', $instagram->id)->sole()->meta['collaborators'])
+        ->toBe([]);
+});
+
 it('persists Instagram collaborators on update', function () {
     $instagram = SocialAccount::factory()->instagram()->create(['workspace_id' => $this->workspace->id]);
     $post = Post::factory()->create([
@@ -497,6 +515,36 @@ it('clears Instagram collaborators when the platform is switched to a story', fu
         ->assertOk();
 
     expect(data_get($platform->fresh()->meta, 'collaborators'))->toBe([]);
+});
+
+it('clears Instagram collaborators when switching to a story without sending meta', function () {
+    $instagram = SocialAccount::factory()->instagram()->create(['workspace_id' => $this->workspace->id]);
+    $post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+        'status' => PostStatus::Draft,
+    ]);
+    $platform = PostPlatform::factory()->instagram()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $instagram->id,
+        'enabled' => true,
+        'content_type' => ContentType::InstagramReel->value,
+        'meta' => ['collaborators' => ['Host_One'], 'aspect_ratio' => '4:5'],
+    ]);
+
+    $this->withHeaders($this->headers)
+        ->putJson(route('api.posts.update', $post), [
+            'status' => PostStatus::Draft->value,
+            'platforms' => [[
+                'id' => $platform->id,
+                'content_type' => ContentType::InstagramStory->value,
+            ]],
+        ])
+        ->assertOk();
+
+    expect(data_get($platform->fresh()->meta, 'collaborators'))->toBe([])
+        ->and(data_get($platform->fresh()->meta, 'aspect_ratio'))->toBe('4:5')
+        ->and($platform->fresh()->content_type)->toBe(ContentType::InstagramStory);
 });
 
 it('rejects more than three Instagram collaborators', function () {

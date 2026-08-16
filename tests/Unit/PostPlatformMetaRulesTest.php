@@ -82,6 +82,25 @@ test('merge clears instagram collaborators on stories', function () {
     ]);
 });
 
+test('merge clears instagram collaborators on stories even when incoming meta is empty', function () {
+    expect(PostPlatformMetaRules::merge(
+        Platform::Instagram,
+        ['collaborators' => ['Host_One'], 'aspect_ratio' => '4:5'],
+        [],
+        ContentType::InstagramStory,
+    ))->toMatchArray([
+        'aspect_ratio' => '4:5',
+        'collaborators' => [],
+    ]);
+});
+
+test('must merge stored meta when switching to an instagram story', function () {
+    expect(PostPlatformMetaRules::mustMergeForContentType(ContentType::InstagramStory))->toBeTrue()
+        ->and(PostPlatformMetaRules::mustMergeForContentType(ContentType::InstagramStory->value))->toBeTrue()
+        ->and(PostPlatformMetaRules::mustMergeForContentType(ContentType::InstagramReel))->toBeFalse()
+        ->and(PostPlatformMetaRules::mustMergeForContentType(null))->toBeFalse();
+});
+
 test('platformForAttribute uses the social account network on create and update', function () {
     $workspace = Workspace::factory()->create();
     $instagram = SocialAccount::factory()->instagram()->create(['workspace_id' => $workspace->id]);

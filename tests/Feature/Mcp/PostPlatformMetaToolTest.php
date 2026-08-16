@@ -389,6 +389,25 @@ test('create post persists Instagram collaborators', function () {
         ->toBe(['Host_One', 'host_two']);
 });
 
+test('create post clears Instagram collaborators on a story', function () {
+    $instagram = SocialAccount::factory()->instagram()->create(['workspace_id' => $this->workspace->id]);
+
+    $response = TryPostServer::actingAs($this->user)
+        ->tool(CreatePostTool::class, [
+            'content' => 'Story',
+            'platforms' => [[
+                'social_account_id' => $instagram->id,
+                'content_type' => ContentType::InstagramStory->value,
+                'meta' => ['collaborators' => ['@Host_One']],
+            ]],
+        ]);
+
+    $response->assertOk();
+
+    expect(PostPlatform::where('social_account_id', $instagram->id)->sole()->meta['collaborators'])
+        ->toBe([]);
+});
+
 test('create post rejects tagging the connected Instagram account as a collaborator', function () {
     $instagram = SocialAccount::factory()->instagram()->create([
         'workspace_id' => $this->workspace->id,
@@ -437,4 +456,38 @@ test('update post merges Instagram collaborators with existing aspect_ratio', fu
 
     expect(data_get($meta, 'collaborators'))->toBe(['host_one'])
         ->and(data_get($meta, 'aspect_ratio'))->toBe('4:5');
+});
+
+test('update post clears Instagram collaborators when switching to a story without sending meta', function () {
+    $instagram = SocialAccount::factory()->instagram()->create(['workspace_id' => $this->workspace->id]);
+    $post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+        'status' => PostStatus::Draft,
+    ]);
+    $platform = PostPlatform::factory()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $instagram->id,
+        'platform' => Platform::Instagram,
+        'content_type' => ContentType::InstagramReel,
+        'enabled' => true,
+        'meta' => ['collaborators' => ['Host_One'], 'aspect_ratio' => '4:5'],
+    ]);
+
+    $response = TryPostServer::actingAs($this->user)
+        ->tool(UpdatePostTool::class, [
+            'post_id' => $post->id,
+            'platforms' => [[
+                'id' => $platform->id,
+                'content_type' => ContentType::InstagramStory->value,
+            ]],
+        ]);
+
+    $response->assertOk();
+
+    $meta = $platform->fresh()->meta;
+
+    expect(data_get($meta, 'collaborators'))->toBe([])
+        ->and(data_get($meta, 'aspect_ratio'))->toBe('4:5')
+        ->and($platform->fresh()->content_type)->toBe(ContentType::InstagramStory);
 });

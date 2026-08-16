@@ -173,6 +173,15 @@ class PostPlatformMetaRules
     }
 
     /**
+     * Sparse updates that only change `content_type` still need merge() when
+     * the new type forbids stored keys (Instagram Stories drop collaborators).
+     */
+    public static function mustMergeForContentType(mixed $contentType): bool
+    {
+        return in_array($contentType, [ContentType::InstagramStory, ContentType::InstagramStory->value], true);
+    }
+
+    /**
      * Connected account for `platforms.{i}.meta.*`. Update `id` wins so a leftover
      * create-shape `social_account_id` cannot skip Instagram/Discord rules.
      *

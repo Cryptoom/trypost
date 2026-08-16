@@ -1396,6 +1396,42 @@ test('update post accepts instagram collaborators and strips at signs', function
     expect(data_get($postPlatform->meta, 'collaborators'))->toBe(['Host_One', 'host_two']);
 });
 
+test('update post clears instagram collaborators when switching to a story without sending meta', function () {
+    $instagramAccount = SocialAccount::factory()->instagram()->create([
+        'workspace_id' => $this->workspace->id,
+    ]);
+
+    $post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+        'status' => PostStatus::Draft,
+    ]);
+
+    $postPlatform = PostPlatform::factory()->instagram()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $instagramAccount->id,
+        'content_type' => ContentType::InstagramReel->value,
+        'meta' => ['collaborators' => ['Host_One'], 'aspect_ratio' => '4:5'],
+    ]);
+
+    $response = $this->actingAs($this->user)->put(route('app.posts.update', $post), [
+        'status' => 'draft',
+        'platforms' => [
+            [
+                'id' => $postPlatform->id,
+                'content_type' => ContentType::InstagramStory->value,
+            ],
+        ],
+    ]);
+
+    $response->assertSessionDoesntHaveErrors();
+    $postPlatform->refresh();
+
+    expect(data_get($postPlatform->meta, 'collaborators'))->toBe([])
+        ->and(data_get($postPlatform->meta, 'aspect_ratio'))->toBe('4:5')
+        ->and($postPlatform->content_type)->toBe(ContentType::InstagramStory);
+});
+
 test('update post rejects tagging the connected instagram account as a collaborator', function () {
     $instagramAccount = SocialAccount::factory()->instagram()->create([
         'workspace_id' => $this->workspace->id,
