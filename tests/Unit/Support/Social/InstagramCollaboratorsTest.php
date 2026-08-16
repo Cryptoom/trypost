@@ -35,6 +35,22 @@ test('payload omits the connected account username', function () {
     ]);
 });
 
+test('failures flags invalid, duplicate, self, and max', function () {
+    expect(InstagramCollaborators::failures(['.user', 'a', 'A', 'b', 'c', 'd'], 'testuser'))
+        ->toBe([
+            'items' => [
+                0 => 'invalid',
+                2 => 'duplicate',
+            ],
+            'exceedsMax' => true,
+        ])
+        ->and(InstagramCollaborators::failures(['@TestUser'], 'testuser'))
+        ->toBe([
+            'items' => [0 => 'self'],
+            'exceedsMax' => false,
+        ]);
+});
+
 test('isValidUsername rejects leading, trailing, and consecutive periods', function (string $username, bool $valid) {
     expect(InstagramCollaborators::isValidUsername($username))->toBe($valid);
 })->with([
@@ -53,11 +69,11 @@ test('normalize drops graph-invalid usernames', function () {
         ->toBe(['host_one']);
 });
 
-test('vue collaborator limits stay in sync with the php constants', function () {
-    $vue = file_get_contents(resource_path('js/components/posts/editor/InstagramSettings.vue'));
+test('frontend collaborator limits stay in sync with the php constants', function () {
+    $frontend = file_get_contents(resource_path('js/composables/useInstagramCollaborators.ts'));
 
-    expect($vue)->toContain('const MAX_COLLABORATORS = '.InstagramCollaborators::MAX)
-        ->and($vue)->toContain(InstagramCollaborators::USERNAME_PATTERN);
+    expect($frontend)->toContain('export const MAX_COLLABORATORS = '.InstagramCollaborators::MAX)
+        ->and($frontend)->toContain(InstagramCollaborators::USERNAME_PATTERN);
 });
 
 test('collaborator copy treats the field as optional', function () {

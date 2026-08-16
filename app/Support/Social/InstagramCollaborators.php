@@ -80,6 +80,52 @@ final class InstagramCollaborators
     }
 
     /**
+     * Per-item reject reasons plus whether unique valid names exceed MAX.
+     *
+     * @param  array<int|string, mixed>  $usernames
+     * @return array{items: array<int|string, 'invalid'|'duplicate'|'self'>, exceedsMax: bool}
+     */
+    public static function failures(array $usernames, ?string $ownUsername): array
+    {
+        $seen = [];
+        $items = [];
+
+        foreach ($usernames as $index => $item) {
+            $reason = self::itemFailure($item, $seen, $ownUsername);
+
+            if ($reason !== null) {
+                $items[$index] = $reason;
+            }
+        }
+
+        return [
+            'items' => $items,
+            'exceedsMax' => count($seen) > self::MAX,
+        ];
+    }
+
+    /**
+     * @param  array<string, true>  $seen
+     * @return 'invalid'|'duplicate'|'self'|null
+     */
+    private static function itemFailure(mixed $item, array &$seen, ?string $ownUsername): ?string
+    {
+        if (! is_string($item) || ! self::isValidUsername($item)) {
+            return 'invalid';
+        }
+
+        $key = self::key($item);
+
+        if (isset($seen[$key])) {
+            return 'duplicate';
+        }
+
+        $seen[$key] = true;
+
+        return self::isSameUsername($item, $ownUsername) ? 'self' : null;
+    }
+
+    /**
      * Graph expects a JSON array string, not a PHP form array (`collaborators[0]=…`).
      *
      * @return array<string, string>

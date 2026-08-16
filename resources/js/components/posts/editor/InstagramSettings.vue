@@ -6,15 +6,12 @@ import InputError from '@/components/InputError.vue';
 import { usePageErrors } from '@/composables/usePageErrors';
 import { Avatar } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
+import { isValidInstagramUsername, MAX_COLLABORATORS } from '@/composables/useInstagramCollaborators';
 import { getMediaValidationWarning } from '@/composables/useMedia';
 import { getPlatformLogo } from '@/composables/usePlatformLogo';
 import { fallbackImageCapableVariant, filterImageCapableVariants } from '@/lib/aiGenerateVariants';
 import { ContentType } from '@/types/content-type';
 import type { MediaItem } from '@/types/media';
-
-const MAX_COLLABORATORS = 3;
-// Keep in sync with InstagramCollaborators::MAX and USERNAME_PATTERN.
-const USERNAME_PATTERN = /^(?!.*\.\.)(?!\.)[A-Za-z0-9._]{1,30}(?<!\.)$/;
 
 interface SocialAccount {
     id: string;
@@ -110,11 +107,12 @@ const commitCollaboratorDraft = () => {
     for (const piece of collaboratorDraft.value.split(/[,\n]/)) {
         const username = piece.trim().replace(/^@+/, '');
 
-        if (!USERNAME_PATTERN.test(username)) {
-            if (username !== '') {
-                invalidUsernameAttempted.value = true;
-            }
+        if (username === '') {
+            continue;
+        }
 
+        if (!isValidInstagramUsername(username)) {
+            invalidUsernameAttempted.value = true;
             continue;
         }
 

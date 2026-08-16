@@ -10,6 +10,7 @@ use Closure;
 use Illuminate\Contracts\Validation\DataAwareRule;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Contracts\Validation\ValidatorAwareRule;
+use Illuminate\Support\Arr;
 use Illuminate\Validation\Validator;
 
 /**
@@ -42,30 +43,20 @@ class DiscordMentionsMeta implements DataAwareRule, ValidationRule, ValidatorAwa
 
     public function validate(string $attribute, mixed $value, Closure $fail): void
     {
-        if (! is_array($value)) {
+        if (! is_array($value) || PostPlatformMetaRules::platformForAttribute($this->data, $attribute) !== Platform::Discord) {
             return;
         }
 
-        if (PostPlatformMetaRules::platformForAttribute($this->data, $attribute) !== Platform::Discord) {
-            return;
-        }
+        $data = [];
+        Arr::set($data, $attribute, $value);
 
-        foreach ($value as $index => $item) {
-            if (! is_array($item) || ! is_string(data_get($item, 'token')) || data_get($item, 'token') === '') {
-                $this->validator?->errors()->add("{$attribute}.{$index}.token", __('validation.required', [
-                    'attribute' => 'token',
-                ]));
+        $nested = validator($data, [
+            "{$attribute}.*.token" => ['required', 'string'],
+            "{$attribute}.*.label" => ['nullable', 'string'],
+        ]);
 
-                continue;
-            }
-
-            $label = data_get($item, 'label');
-
-            if ($label !== null && ! is_string($label)) {
-                $this->validator?->errors()->add("{$attribute}.{$index}.label", __('validation.string', [
-                    'attribute' => 'label',
-                ]));
-            }
+        if ($nested->fails()) {
+            $this->validator?->errors()->merge($nested->errors());
         }
     }
 }

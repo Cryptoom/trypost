@@ -43,43 +43,19 @@ class InstagramCollaboratorsMeta implements DataAwareRule, ValidationRule, Valid
 
     public function validate(string $attribute, mixed $value, Closure $fail): void
     {
-        if (! is_array($value)) {
-            return;
-        }
-
         $account = PostPlatformMetaRules::accountForAttribute($this->data, $attribute);
 
-        if (! in_array($account?->platform, [Platform::Instagram, Platform::InstagramFacebook], true)) {
+        if (! is_array($value) || ! in_array($account?->platform, [Platform::Instagram, Platform::InstagramFacebook], true)) {
             return;
         }
 
-        $seen = [];
+        ['items' => $items, 'exceedsMax' => $exceedsMax] = InstagramCollaborators::failures($value, $account->username);
 
-        foreach ($value as $index => $item) {
-            $itemAttribute = "{$attribute}.{$index}";
-
-            if (! is_string($item) || ! InstagramCollaborators::isValidUsername($item)) {
-                $this->validator?->errors()->add($itemAttribute, __('posts.form.instagram.collaborators_invalid'));
-
-                continue;
-            }
-
-            $key = InstagramCollaborators::key($item);
-
-            if (isset($seen[$key])) {
-                $this->validator?->errors()->add($itemAttribute, __('posts.form.instagram.collaborators_duplicate'));
-
-                continue;
-            }
-
-            $seen[$key] = true;
-
-            if (InstagramCollaborators::isSameUsername($item, $account->username)) {
-                $this->validator?->errors()->add($itemAttribute, __('posts.form.instagram.collaborators_self'));
-            }
+        foreach ($items as $index => $reason) {
+            $this->validator?->errors()->add("{$attribute}.{$index}", __("posts.form.instagram.collaborators_{$reason}"));
         }
 
-        if (count($seen) > InstagramCollaborators::MAX) {
+        if ($exceedsMax) {
             $fail(__('posts.form.instagram.collaborators_max'));
         }
     }
