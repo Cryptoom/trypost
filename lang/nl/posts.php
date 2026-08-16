@@ -122,6 +122,7 @@ return [
             'collaborators_hint' => 'Optioneel. Uitgenodigde accounts moeten accepteren. Privéaccounts, leeftijdsbeperkte accounts of accounts met collab-uitnodigingen uit worden geweigerd. Max. 3.',
             'collaborators_max' => 'Je kunt tot 3 medewerkers uitnodigen.',
             'collaborators_invalid' => 'Voer een geldige Instagram-gebruikersnaam in.',
+            'collaborators_duplicate' => 'Deze medewerker is al toegevoegd.',
             'collaborators_self' => 'Je kunt dit verbonden Instagram-account niet als collaborator toevoegen.',
             'collaborators_with' => 'met :names',
         ],

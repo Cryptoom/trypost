@@ -389,6 +389,55 @@ test('create post persists Instagram collaborators', function () {
         ->toBe(['Host_One', 'host_two']);
 });
 
+test('create post persists Instagram Facebook collaborators', function () {
+    $instagram = SocialAccount::factory()->instagramFacebook()->create(['workspace_id' => $this->workspace->id]);
+
+    $response = TryPostServer::actingAs($this->user)
+        ->tool(CreatePostTool::class, [
+            'content' => 'Collab reel',
+            'platforms' => [[
+                'social_account_id' => $instagram->id,
+                'content_type' => ContentType::InstagramReel->value,
+                'meta' => ['collaborators' => ['@Host_One']],
+            ]],
+        ]);
+
+    $response->assertOk();
+
+    expect(PostPlatform::where('social_account_id', $instagram->id)->sole()->meta['collaborators'])
+        ->toBe(['Host_One']);
+});
+
+test('create post rejects more than three Instagram collaborators', function () {
+    $instagram = SocialAccount::factory()->instagram()->create(['workspace_id' => $this->workspace->id]);
+
+    TryPostServer::actingAs($this->user)
+        ->tool(CreatePostTool::class, [
+            'content' => 'Too many',
+            'platforms' => [[
+                'social_account_id' => $instagram->id,
+                'content_type' => ContentType::InstagramFeed->value,
+                'meta' => ['collaborators' => ['a', 'b', 'c', 'd']],
+            ]],
+        ])
+        ->assertHasErrors();
+});
+
+test('create post rejects an invalid Instagram collaborator username', function () {
+    $instagram = SocialAccount::factory()->instagram()->create(['workspace_id' => $this->workspace->id]);
+
+    TryPostServer::actingAs($this->user)
+        ->tool(CreatePostTool::class, [
+            'content' => 'Bad username',
+            'platforms' => [[
+                'social_account_id' => $instagram->id,
+                'content_type' => ContentType::InstagramFeed->value,
+                'meta' => ['collaborators' => ['.user']],
+            ]],
+        ])
+        ->assertHasErrors();
+});
+
 test('create post clears Instagram collaborators on a story', function () {
     $instagram = SocialAccount::factory()->instagram()->create(['workspace_id' => $this->workspace->id]);
 

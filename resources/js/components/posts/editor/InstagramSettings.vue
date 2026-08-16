@@ -13,7 +13,7 @@ import { ContentType } from '@/types/content-type';
 import type { MediaItem } from '@/types/media';
 
 const MAX_COLLABORATORS = 3;
-const USERNAME_PATTERN = /^[A-Za-z0-9._]{1,30}$/;
+const USERNAME_PATTERN = /^(?!.*\.\.)(?!\.)[A-Za-z0-9._]{1,30}(?<!\.)$/;
 
 interface SocialAccount {
     id: string;
@@ -83,6 +83,7 @@ const collaborators = computed<string[]>(() => {
 });
 const collaboratorDraft = ref('');
 const selfMentionAttempted = ref(false);
+const duplicateAttempted = ref(false);
 const invalidUsernameAttempted = ref(false);
 const errors = usePageErrors();
 const backendCollaboratorsError = computed(() =>
@@ -102,6 +103,7 @@ const commitCollaboratorDraft = () => {
 
     const next = [...collaborators.value];
     selfMentionAttempted.value = false;
+    duplicateAttempted.value = false;
     invalidUsernameAttempted.value = false;
 
     for (const piece of collaboratorDraft.value.split(/[,\n]/)) {
@@ -121,6 +123,7 @@ const commitCollaboratorDraft = () => {
         }
 
         if (next.some((existing) => existing.toLowerCase() === username.toLowerCase())) {
+            duplicateAttempted.value = true;
             continue;
         }
 
@@ -273,9 +276,11 @@ const warning = computed(() => getMediaValidationWarning(props.contentType, prop
                 />
                 <InputError :message="selfMentionAttempted
                     ? $t('posts.form.instagram.collaborators_self')
-                    : invalidUsernameAttempted
-                        ? $t('posts.form.instagram.collaborators_invalid')
-                        : backendCollaboratorsError" />
+                    : duplicateAttempted
+                        ? $t('posts.form.instagram.collaborators_duplicate')
+                        : invalidUsernameAttempted
+                            ? $t('posts.form.instagram.collaborators_invalid')
+                            : backendCollaboratorsError" />
                 <p class="text-xs font-medium text-foreground/60">
                     {{ $t('posts.form.instagram.collaborators_hint') }}
                 </p>

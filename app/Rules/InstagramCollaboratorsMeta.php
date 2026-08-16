@@ -64,7 +64,7 @@ class InstagramCollaboratorsMeta implements DataAwareRule, ValidationRule, Valid
         foreach ($value as $index => $item) {
             $itemAttribute = "{$attribute}.{$index}";
 
-            if (! is_string($item) || preg_match('/^@?[A-Za-z0-9._]{1,30}$/', $item) !== 1) {
+            if (! is_string($item) || ! InstagramCollaborators::isValidUsername($item)) {
                 $this->validator?->errors()->add($itemAttribute, __('posts.form.instagram.collaborators_invalid'));
 
                 continue;
@@ -73,7 +73,7 @@ class InstagramCollaboratorsMeta implements DataAwareRule, ValidationRule, Valid
             $key = InstagramCollaborators::key($item);
 
             if (isset($seen[$key])) {
-                $this->validator?->errors()->add($itemAttribute, __('posts.form.instagram.collaborators_invalid'));
+                $this->validator?->errors()->add($itemAttribute, __('posts.form.instagram.collaborators_duplicate'));
 
                 continue;
             }

@@ -35,6 +35,24 @@ test('payload omits the connected account username', function () {
     ]);
 });
 
+test('isValidUsername rejects leading, trailing, and consecutive periods', function (string $username, bool $valid) {
+    expect(InstagramCollaborators::isValidUsername($username))->toBe($valid);
+})->with([
+    'plain' => ['host_one', true],
+    'at prefix' => ['@Host.One', true],
+    'underscore edges' => ['_user_', true],
+    'leading period' => ['.user', false],
+    'trailing period' => ['user.', false],
+    'consecutive periods' => ['user..name', false],
+    'at leading period' => ['@.user', false],
+    'empty' => ['', false],
+]);
+
+test('normalize drops graph-invalid usernames', function () {
+    expect(InstagramCollaborators::normalize(['.user', 'host_one', 'user.', 'user..name']))
+        ->toBe(['host_one']);
+});
+
 test('collaborator copy treats the field as optional', function () {
     expect(__('posts.form.instagram.collaborators_hint'))
         ->toContain('Optional')

@@ -122,6 +122,7 @@ return [
             'collaborators_hint' => 'Opcional. As contas convidadas precisam aceitar. Contas privadas, com restrição de idade ou convites de collab desligados são recusadas. Máx. 3.',
             'collaborators_max' => 'Você pode convidar até 3 colaboradores.',
             'collaborators_invalid' => 'Informe um nome de usuário válido do Instagram.',
+            'collaborators_duplicate' => 'Este colaborador já foi adicionado.',
             'collaborators_self' => 'Você não pode adicionar esta conta do Instagram como colaborador.',
             'collaborators_with' => 'com :names',
         ],

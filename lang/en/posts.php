@@ -122,6 +122,7 @@ return [
             'collaborators_hint' => 'Optional. Invited accounts must accept. Private, age-restricted, or collab-off accounts are rejected. Max 3.',
             'collaborators_max' => 'You can invite up to 3 collaborators.',
             'collaborators_invalid' => 'Enter a valid Instagram username.',
+            'collaborators_duplicate' => 'This collaborator has already been added.',
             'collaborators_self' => "You can't add this connected Instagram account as a collaborator.",
             'collaborators_with' => 'with :names',
         ],

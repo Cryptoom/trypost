@@ -88,6 +88,35 @@ test('fails on update when the post platform account matches', function () {
     expect($errors['items']['platforms.0.meta.collaborators.0'] ?? [])->toBe([__('posts.form.instagram.collaborators_self')]);
 });
 
+test('fails on a duplicate collaborator with a dedicated message', function () {
+    $workspace = Workspace::factory()->create();
+    $account = SocialAccount::factory()->instagram()->create([
+        'workspace_id' => $workspace->id,
+        'username' => 'testuser',
+    ]);
+
+    $errors = runCollaboratorsMetaRule(['Host_One', 'host_one'], [
+        'social_account_id' => $account->id,
+    ]);
+
+    expect($errors['items']['platforms.0.meta.collaborators.1'] ?? [])
+        ->toBe([__('posts.form.instagram.collaborators_duplicate')]);
+});
+
+test('fails on a leading period username', function () {
+    $workspace = Workspace::factory()->create();
+    $account = SocialAccount::factory()->instagram()->create([
+        'workspace_id' => $workspace->id,
+    ]);
+
+    $errors = runCollaboratorsMetaRule(['.user'], [
+        'social_account_id' => $account->id,
+    ]);
+
+    expect($errors['items']['platforms.0.meta.collaborators.0'] ?? [])
+        ->toBe([__('posts.form.instagram.collaborators_invalid')]);
+});
+
 test('skips instagram constraints when the platform is tiktok', function () {
     $workspace = Workspace::factory()->create();
     $account = SocialAccount::factory()->tiktok()->create([

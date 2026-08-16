@@ -122,6 +122,7 @@ return [
             'collaborators_hint' => '可选。受邀账号必须接受。私密、有年龄限制或关闭合作邀请的账号会被拒绝。最多 3 个。',
             'collaborators_max' => '最多可邀请 3 位合作者。',
             'collaborators_invalid' => '请输入有效的 Instagram 用户名。',
+            'collaborators_duplicate' => '该合作者已添加。',
             'collaborators_self' => '不能将当前连接的 Instagram 账号添加为合作者。',
             'collaborators_with' => '与 :names',
         ],

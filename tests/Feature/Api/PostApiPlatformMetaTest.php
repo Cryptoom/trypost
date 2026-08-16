@@ -390,6 +390,56 @@ it('persists Instagram collaborators and strips at signs', function () {
         ->toBe(['Host_One', 'host_two']);
 });
 
+it('persists Instagram Facebook collaborators', function () {
+    $instagram = SocialAccount::factory()->instagramFacebook()->create(['workspace_id' => $this->workspace->id]);
+
+    $this->withHeaders($this->headers)
+        ->postJson(route('api.posts.store'), [
+            'content' => 'Collab reel',
+            'platforms' => [[
+                'social_account_id' => $instagram->id,
+                'content_type' => ContentType::InstagramReel->value,
+                'meta' => ['collaborators' => ['@Host_One']],
+            ]],
+        ])
+        ->assertCreated();
+
+    expect(PostPlatform::where('social_account_id', $instagram->id)->sole()->meta['collaborators'])
+        ->toBe(['Host_One']);
+});
+
+it('rejects duplicate Instagram collaborators', function () {
+    $instagram = SocialAccount::factory()->instagram()->create(['workspace_id' => $this->workspace->id]);
+
+    $this->withHeaders($this->headers)
+        ->postJson(route('api.posts.store'), [
+            'content' => 'Dupes',
+            'platforms' => [[
+                'social_account_id' => $instagram->id,
+                'content_type' => ContentType::InstagramFeed->value,
+                'meta' => ['collaborators' => ['Host_One', 'host_one']],
+            ]],
+        ])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['platforms.0.meta.collaborators.1']);
+});
+
+it('rejects Instagram collaborator usernames that start with a period', function () {
+    $instagram = SocialAccount::factory()->instagram()->create(['workspace_id' => $this->workspace->id]);
+
+    $this->withHeaders($this->headers)
+        ->postJson(route('api.posts.store'), [
+            'content' => 'Bad username',
+            'platforms' => [[
+                'social_account_id' => $instagram->id,
+                'content_type' => ContentType::InstagramFeed->value,
+                'meta' => ['collaborators' => ['.user']],
+            ]],
+        ])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['platforms.0.meta.collaborators.0']);
+});
+
 it('clears Instagram collaborators when creating a story', function () {
     $instagram = SocialAccount::factory()->instagram()->create(['workspace_id' => $this->workspace->id]);
 

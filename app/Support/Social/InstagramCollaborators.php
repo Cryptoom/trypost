@@ -9,6 +9,12 @@ final class InstagramCollaborators
     public const int MAX = 3;
 
     /**
+     * Instagram usernames: 1–30 letters, numbers, periods, underscores.
+     * No leading/trailing period and no consecutive periods.
+     */
+    public const string USERNAME_PATTERN = '/^(?!.*\.\.)(?!\.)[A-Za-z0-9._]{1,30}(?<!\.)$/';
+
+    /**
      * @param  array<string, mixed>  $meta
      * @return array<string, mixed>
      */
@@ -43,7 +49,7 @@ final class InstagramCollaborators
             $username = ltrim(trim($item), '@');
             $key = self::key($username);
 
-            if ($key === '' || isset($seen[$key])) {
+            if ($key === '' || isset($seen[$key]) || ! self::isValidUsername($username)) {
                 continue;
             }
 
@@ -66,6 +72,11 @@ final class InstagramCollaborators
     public static function isSameUsername(string $left, ?string $right): bool
     {
         return $right !== null && self::key($left) !== '' && self::key($left) === self::key($right);
+    }
+
+    public static function isValidUsername(string $username): bool
+    {
+        return preg_match(self::USERNAME_PATTERN, ltrim(trim($username), '@')) === 1;
     }
 
     /**

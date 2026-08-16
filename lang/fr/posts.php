@@ -122,6 +122,7 @@ return [
             'collaborators_hint' => 'Facultatif. Les comptes invités doivent accepter. Les comptes privés, avec restriction d’âge ou invitations collab désactivées sont refusés. Max. 3.',
             'collaborators_max' => 'Vous pouvez inviter jusqu’à 3 collaborateurs.',
             'collaborators_invalid' => 'Saisissez un identifiant Instagram valide.',
+            'collaborators_duplicate' => 'Ce collaborateur a déjà été ajouté.',
             'collaborators_self' => 'Vous ne pouvez pas ajouter ce compte Instagram comme collaborateur.',
             'collaborators_with' => 'avec :names',
         ],

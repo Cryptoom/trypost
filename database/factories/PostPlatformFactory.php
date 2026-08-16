@@ -79,6 +79,7 @@ class PostPlatformFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'platform' => Platform::Instagram,
+            'content_type' => ContentType::InstagramFeed,
         ]);
     }
 
@@ -86,6 +87,7 @@ class PostPlatformFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'platform' => Platform::InstagramFacebook,
+            'content_type' => ContentType::InstagramFeed,
         ]);
     }
 

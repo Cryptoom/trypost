@@ -141,3 +141,8 @@ test('platformForAttribute uses the social account network on create and update'
         ))->toBe(Platform::Instagram)
         ->and(PostPlatformMetaRules::platformOf($instagramRow->load('socialAccount')))->toBe(Platform::Instagram);
 });
+
+test('instagram factory states default to feed content type', function () {
+    expect(PostPlatform::factory()->instagram()->make()->content_type)->toBe(ContentType::InstagramFeed)
+        ->and(PostPlatform::factory()->instagramFacebook()->make()->content_type)->toBe(ContentType::InstagramFeed);
+});

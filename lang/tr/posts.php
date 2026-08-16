@@ -124,6 +124,7 @@ return [
             'collaborators_hint' => 'İsteğe bağlı. Davet edilen hesapların kabul etmesi gerekir. Gizli, yaş kısıtlı veya collab davetleri kapalı hesaplar reddedilir. En fazla 3.',
             'collaborators_max' => 'En fazla 3 iş birliği yapan davet edebilirsiniz.',
             'collaborators_invalid' => 'Geçerli bir Instagram kullanıcı adı girin.',
+            'collaborators_duplicate' => 'Bu iş birliği yapan zaten eklendi.',
             'collaborators_self' => 'Bu bağlı Instagram hesabını işbirlikçi olarak ekleyemezsiniz.',
             'collaborators_with' => ':names ile',
         ],
