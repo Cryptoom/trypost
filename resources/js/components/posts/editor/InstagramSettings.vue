@@ -13,6 +13,7 @@ import { ContentType } from '@/types/content-type';
 import type { MediaItem } from '@/types/media';
 
 const MAX_COLLABORATORS = 3;
+// Keep in sync with InstagramCollaborators::MAX and USERNAME_PATTERN.
 const USERNAME_PATTERN = /^(?!.*\.\.)(?!\.)[A-Za-z0-9._]{1,30}(?<!\.)$/;
 
 interface SocialAccount {
@@ -134,11 +135,12 @@ const commitCollaboratorDraft = () => {
         next.push(username);
     }
 
-    collaboratorDraft.value = '';
-
-    if (next.length !== collaborators.value.length) {
-        emit('update:meta', { ...props.meta, collaborators: next });
+    if (next.length === collaborators.value.length) {
+        return;
     }
+
+    collaboratorDraft.value = '';
+    emit('update:meta', { ...props.meta, collaborators: next });
 };
 
 const onCollaboratorKeydown = (event: KeyboardEvent) => {

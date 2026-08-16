@@ -103,6 +103,37 @@ test('fails on a duplicate collaborator with a dedicated message', function () {
         ->toBe([__('posts.form.instagram.collaborators_duplicate')]);
 });
 
+test('fails max after counting unique valid usernames', function () {
+    $workspace = Workspace::factory()->create();
+    $account = SocialAccount::factory()->instagram()->create([
+        'workspace_id' => $workspace->id,
+    ]);
+
+    $errors = runCollaboratorsMetaRule(['a', 'b', 'c', 'd'], [
+        'social_account_id' => $account->id,
+    ]);
+
+    expect($errors['parent'])->toBe([__('posts.form.instagram.collaborators_max')]);
+});
+
+test('duplicate names in a long list fail as duplicates not as max', function () {
+    $workspace = Workspace::factory()->create();
+    $account = SocialAccount::factory()->instagram()->create([
+        'workspace_id' => $workspace->id,
+        'username' => 'testuser',
+    ]);
+
+    $errors = runCollaboratorsMetaRule(['Host_One', 'host_one', 'HOST_ONE', 'a'], [
+        'social_account_id' => $account->id,
+    ]);
+
+    expect($errors['parent'])->toBe([])
+        ->and($errors['items']['platforms.0.meta.collaborators.1'] ?? [])
+        ->toBe([__('posts.form.instagram.collaborators_duplicate')])
+        ->and($errors['items']['platforms.0.meta.collaborators.2'] ?? [])
+        ->toBe([__('posts.form.instagram.collaborators_duplicate')]);
+});
+
 test('fails on a leading period username', function () {
     $workspace = Workspace::factory()->create();
     $account = SocialAccount::factory()->instagram()->create([

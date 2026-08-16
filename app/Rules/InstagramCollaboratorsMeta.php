@@ -53,12 +53,6 @@ class InstagramCollaboratorsMeta implements DataAwareRule, ValidationRule, Valid
             return;
         }
 
-        if (count($value) > InstagramCollaborators::MAX) {
-            $fail(__('posts.form.instagram.collaborators_max'));
-
-            return;
-        }
-
         $seen = [];
 
         foreach ($value as $index => $item) {
@@ -83,6 +77,10 @@ class InstagramCollaboratorsMeta implements DataAwareRule, ValidationRule, Valid
             if (InstagramCollaborators::isSameUsername($item, $account->username)) {
                 $this->validator?->errors()->add($itemAttribute, __('posts.form.instagram.collaborators_self'));
             }
+        }
+
+        if (count($seen) > InstagramCollaborators::MAX) {
+            $fail(__('posts.form.instagram.collaborators_max'));
         }
     }
 }

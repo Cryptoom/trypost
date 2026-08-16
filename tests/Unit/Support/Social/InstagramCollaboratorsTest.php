@@ -53,6 +53,13 @@ test('normalize drops graph-invalid usernames', function () {
         ->toBe(['host_one']);
 });
 
+test('vue collaborator limits stay in sync with the php constants', function () {
+    $vue = file_get_contents(resource_path('js/components/posts/editor/InstagramSettings.vue'));
+
+    expect($vue)->toContain('const MAX_COLLABORATORS = '.InstagramCollaborators::MAX)
+        ->and($vue)->toContain(InstagramCollaborators::USERNAME_PATTERN);
+});
+
 test('collaborator copy treats the field as optional', function () {
     expect(__('posts.form.instagram.collaborators_hint'))
         ->toContain('Optional')
