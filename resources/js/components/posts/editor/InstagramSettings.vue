@@ -83,13 +83,11 @@ const updateMeta = (patch: Record<string, any>) => emit('update:meta', { ...prop
 const addCollaborator = () => {
     const username = collaboratorDraft.value.trim().replace(/^@/, '');
     collaboratorDraft.value = '';
-    collaboratorSelf.value = username !== '' && username.toLowerCase() === props.socialAccount?.username?.toLowerCase();
+    collaboratorSelf.value = username.toLowerCase() === props.socialAccount?.username?.toLowerCase();
 
-    if (username === '' || collaboratorSelf.value) {
-        return;
+    if (username && !collaboratorSelf.value) {
+        updateMeta({ collaborators: [...(props.meta.collaborators ?? []), username] });
     }
-
-    updateMeta({ collaborators: [...(props.meta.collaborators ?? []), username] });
 };
 
 const pickVariant = (value: string) => {
