@@ -21,17 +21,21 @@ use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Services\Media\MediaOptimizer;
 use App\Services\Social\ConnectionVerifier;
 use App\Services\Social\LinkedInPagePublisher;
 use App\Services\Social\LinkedInPublisher;
 use App\Services\Social\PinterestPublisher;
 use Carbon\Carbon;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
+use Illuminate\Queue\Middleware\WithoutOverlapping;
 use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Sleep;
 
 beforeEach(function () {
@@ -263,7 +267,11 @@ test('publish reschedules platform unavailable retry via Bus dispatch (not marke
 
     $publisher = Mockery::mock(LinkedInPublisher::class);
     $publisher->shouldReceive('publish')->andThrow(
-        new PlatformUnavailableException('LinkedIn API returned 503 during token refresh', 503)
+        new PlatformUnavailableException(
+            'LinkedIn API returned 503 during token refresh',
+            503,
+            ['operation_id' => 'operation-123'],
+        )
     );
 
     $this->app->instance(LinkedInPublisher::class, $publisher);
@@ -277,6 +285,7 @@ test('publish reschedules platform unavailable retry via Bus dispatch (not marke
     expect($this->postPlatform->error_context['category'] ?? null)->toBe('platform_unavailable');
     expect($this->postPlatform->error_context['http_status'] ?? null)->toBe(503);
     expect($this->postPlatform->error_context['retry_count'] ?? null)->toBe(1);
+    expect($this->postPlatform->error_context['operation_id'] ?? null)->toBe('operation-123');
     expect($this->postPlatform->error_message)->toBe(__('posts.errors.platform_unavailable'));
     expect($this->postPlatform->error_context['detail'] ?? null)->toContain('LinkedIn API returned 503');
     expect($this->socialAccount->status)->toBe(AccountStatus::Connected);
@@ -398,6 +407,43 @@ test('publish reschedules retry exactly 10 minutes into the future', function ()
     Carbon::setTestNow();
 });
 
+test('publish honors a platform-specific retry delay and retry limit', function () {
+    Bus::fake([PublishToSocialPlatform::class]);
+    Event::fake();
+    Mail::fake();
+
+    $now = now()->startOfSecond();
+    Carbon::setTestNow($now);
+
+    $publisher = Mockery::mock(LinkedInPublisher::class);
+    $publisher->shouldReceive('publish')->andThrow(new PlatformUnavailableException(
+        message: 'Remote operation is still processing',
+        context: ['operation_id' => 'operation-123'],
+        retryDelaySeconds: 30,
+        maxRetries: 2,
+    ));
+    $this->app->instance(LinkedInPublisher::class, $publisher);
+
+    (new PublishToSocialPlatform($this->postPlatform))->handle();
+
+    $this->postPlatform->refresh();
+
+    expect($this->postPlatform->error_context['next_attempt_at'] ?? null)
+        ->toBe($now->copy()->addSeconds(30)->toIso8601String());
+
+    Bus::assertDispatched(PublishToSocialPlatform::class, function ($job) use ($now) {
+        return $job->delay instanceof DateTimeInterface
+            && Carbon::instance($job->delay)->equalTo($now->copy()->addSeconds(30));
+    });
+
+    $this->postPlatform->update(['error_context' => ['retry_count' => 2]]);
+    (new PublishToSocialPlatform($this->postPlatform->fresh()))->handle();
+
+    expect($this->postPlatform->fresh()->status)->toBe(PlatformStatus::Failed);
+
+    Carbon::setTestNow();
+});
+
 test('publish records last_attempt_at when rescheduling for retry', function () {
     Bus::fake([PublishToSocialPlatform::class]);
     Event::fake();
@@ -420,6 +466,72 @@ test('publish records last_attempt_at when rescheduling for retry', function () 
         ->toBe($now->toIso8601String());
 
     Carbon::setTestNow();
+});
+
+test('publish preserves resumable context when a later transient error has no context', function () {
+    Bus::fake([PublishToSocialPlatform::class]);
+    Event::fake();
+    Mail::fake();
+
+    $checkpoint = [
+        'instagram_workflow' => [
+            'stage' => 'final_container',
+            'container_id' => 'container-123',
+        ],
+        'tiktok_publish_id' => 'publish-123',
+        'tiktok_derivative_paths' => ['social-tiktok-photos/pending.jpg'],
+        'retry_count' => 2,
+    ];
+    $this->postPlatform->update(['error_context' => $checkpoint]);
+
+    $publisher = Mockery::mock(LinkedInPublisher::class);
+    $publisher->shouldReceive('publish')->andThrow(
+        new PlatformUnavailableException('Token refresh service unavailable', 503)
+    );
+    $this->app->instance(LinkedInPublisher::class, $publisher);
+
+    (new PublishToSocialPlatform($this->postPlatform->fresh()))->handle();
+
+    $context = $this->postPlatform->fresh()->error_context;
+
+    expect($context['instagram_workflow'] ?? null)->toBe($checkpoint['instagram_workflow'])
+        ->and($context['tiktok_publish_id'] ?? null)->toBe('publish-123')
+        ->and($context['tiktok_derivative_paths'] ?? null)->toBe(['social-tiktok-photos/pending.jpg'])
+        ->and($context['retry_count'] ?? null)->toBe(3)
+        ->and($context['http_status'] ?? null)->toBe(503);
+});
+
+test('publish preserves a resumable retry policy after the global retry limit', function () {
+    Bus::fake([PublishToSocialPlatform::class]);
+    Event::fake();
+    Mail::fake();
+
+    $this->postPlatform->update([
+        'error_context' => [
+            'instagram_workflow' => [
+                'stage' => 'final_container',
+                'container_id' => 'container-123',
+            ],
+            'retry_count' => 7,
+            'max_retries' => 90,
+            'retry_delay_seconds' => 10,
+        ],
+    ]);
+
+    $publisher = Mockery::mock(LinkedInPublisher::class);
+    $publisher->shouldReceive('publish')->andThrow(
+        new PlatformUnavailableException('Token refresh service unavailable', 503)
+    );
+    $this->app->instance(LinkedInPublisher::class, $publisher);
+
+    (new PublishToSocialPlatform($this->postPlatform->fresh()))->handle();
+
+    $context = $this->postPlatform->fresh()->error_context;
+
+    expect($this->postPlatform->fresh()->status)->toBe(PlatformStatus::Retrying)
+        ->and($context['retry_count'] ?? null)->toBe(8)
+        ->and($context['max_retries'] ?? null)->toBe(90)
+        ->and($context['retry_delay_seconds'] ?? null)->toBe(10);
 });
 
 test('post stays in Publishing while one platform is still Retrying', function () {
@@ -533,6 +645,41 @@ test('publish hard-fails when platform unavailable retries are exhausted', funct
     Bus::assertNotDispatched(PublishToSocialPlatform::class);
 });
 
+test('publish keeps a resumable checkpoint when platform unavailable retries are exhausted', function () {
+    Bus::fake([PublishToSocialPlatform::class]);
+    Event::fake();
+    Mail::fake();
+
+    $workflow = [
+        'stage' => 'final_container',
+        'container_id' => 'container-123',
+    ];
+    $this->postPlatform->update([
+        'error_context' => [
+            'tiktok_publish_id' => 'pub_in_flight',
+            'instagram_workflow' => $workflow,
+            'retry_count' => PublishToSocialPlatform::MAX_PLATFORM_UNAVAILABLE_RETRIES,
+        ],
+    ]);
+
+    $publisher = Mockery::mock(LinkedInPublisher::class);
+    $publisher->shouldReceive('publish')->andThrow(
+        new PlatformUnavailableException('LinkedIn 503', 503)
+    );
+    $this->app->instance(LinkedInPublisher::class, $publisher);
+
+    (new PublishToSocialPlatform($this->postPlatform->fresh()))->handle();
+
+    $context = $this->postPlatform->fresh()->error_context;
+
+    expect($this->postPlatform->fresh()->status)->toBe(PlatformStatus::Failed)
+        ->and($context['tiktok_publish_id'] ?? null)->toBe('pub_in_flight')
+        ->and($context['instagram_workflow'] ?? null)->toBe($workflow)
+        ->and($context['category'] ?? null)->toBe('platform_unavailable');
+
+    Bus::assertNotDispatched(PublishToSocialPlatform::class);
+});
+
 test('publish skips platforms that are already failed', function () {
     Event::fake();
     Mail::fake();
@@ -574,6 +721,48 @@ test('publish job unique id includes the platform and attempt', function () {
     expect($job)->toBeInstanceOf(ShouldBeUnique::class)
         ->and($job->uniqueId())->toBe("{$this->postPlatform->id}:3")
         ->and($job->uniqueFor)->toBe(960);
+});
+
+test('publish job prevents concurrent execution across different attempts', function () {
+    $job = new PublishToSocialPlatform($this->postPlatform, 3);
+    $middleware = $job->middleware();
+
+    expect($middleware)->toHaveCount(1)
+        ->and($middleware[0])->toBeInstanceOf(WithoutOverlapping::class)
+        ->and($middleware[0]->key)->toBe("social-publish:{$this->postPlatform->id}")
+        ->and($middleware[0]->releaseAfter)->toBe(60)
+        ->and($middleware[0]->expiresAfter)->toBe($job->timeout + 60)
+        ->and($job->tries)->toBe(20)
+        ->and($job->maxExceptions)->toBe(1);
+});
+
+test('publish job releases an overlapping execution for the same platform', function () {
+    $runningJob = new PublishToSocialPlatform($this->postPlatform, 0);
+    $overlappingJob = (new PublishToSocialPlatform($this->postPlatform, 1))->withFakeQueueInteractions();
+    /** @var WithoutOverlapping $middleware */
+    $middleware = $overlappingJob->middleware()[0];
+    $lock = Cache::lock($middleware->getLockKey($runningJob), $runningJob->timeout + 60);
+    $handled = false;
+
+    expect($middleware->getLockKey($runningJob))->toBe($middleware->getLockKey($overlappingJob))
+        ->and($lock->get())->toBeTrue();
+
+    try {
+        $middleware->handle($overlappingJob, function () use (&$handled): void {
+            $handled = true;
+        });
+    } finally {
+        $lock->release();
+    }
+
+    expect($handled)->toBeFalse();
+    $overlappingJob->assertReleased(60);
+
+    $middleware->handle($overlappingJob, function () use (&$handled): void {
+        $handled = true;
+    });
+
+    expect($handled)->toBeTrue();
 });
 
 test('publish job unique lock drops a duplicate dispatch for the same platform attempt', function () {
@@ -632,6 +821,226 @@ test('failed hook skips platforms that are already published', function () {
     expect($this->postPlatform->status)->toBe(PlatformStatus::Published)
         ->and($this->postPlatform->platform_post_id)->toBe('already-published')
         ->and($this->postPlatform->error_message)->toBeNull();
+});
+
+test('failed hook keeps TikTok photo derivatives while a publish_id can be resumed', function () {
+    Event::fake();
+    Mail::fake();
+    Storage::fake();
+
+    $path = 'social-tiktok-photos/123e4567-e89b-12d3-a456-426614174000.jpg';
+    $unrelatedPath = 'customer-media/keep.jpg';
+    Storage::put($path, 'image');
+    Storage::put($unrelatedPath, 'image');
+    $this->postPlatform->update([
+        'platform' => Platform::TikTok,
+        'status' => PlatformStatus::Retrying,
+        'error_context' => [
+            'tiktok_publish_id' => 'publish-123',
+            'tiktok_derivative_paths' => [$path, 'social-tiktok-photos/../customer-media/keep.jpg'],
+        ],
+    ]);
+
+    (new PublishToSocialPlatform($this->postPlatform->fresh()))->failed(new TypeError('Simulated worker kill'));
+
+    Storage::assertExists($path);
+    Storage::assertExists($unrelatedPath);
+    expect($this->postPlatform->fresh()->error_context)->toMatchArray([
+        'tiktok_publish_id' => 'publish-123',
+        'category' => 'job_failed',
+    ]);
+});
+
+test('failed hook prunes TikTok photo derivatives when there is no publish_id', function () {
+    Event::fake();
+    Mail::fake();
+    Storage::fake();
+
+    $path = 'social-tiktok-photos/123e4567-e89b-12d3-a456-426614174000.jpg';
+    Storage::put($path, 'image');
+    $this->postPlatform->update([
+        'platform' => Platform::TikTok,
+        'status' => PlatformStatus::Retrying,
+        'error_context' => [
+            'tiktok_derivative_paths' => [$path],
+        ],
+    ]);
+
+    (new PublishToSocialPlatform($this->postPlatform->fresh()))->failed(new TypeError('Simulated worker kill'));
+
+    Storage::assertMissing($path);
+    expect($this->postPlatform->fresh()->error_context['category'] ?? null)->toBe('job_failed');
+});
+
+test('terminal TikTok account guards keep derivatives while a publish_id can be resumed', function (string $guard) {
+    Event::fake();
+    Mail::fake();
+    Storage::fake();
+
+    $path = 'social-tiktok-photos/'.fake()->uuid().'.jpg';
+    Storage::put($path, 'image');
+
+    $accountAttributes = match ($guard) {
+        'inactive' => ['is_active' => false],
+        'disconnected' => ['status' => AccountStatus::Disconnected],
+        'token_expired' => ['status' => AccountStatus::TokenExpired],
+        'missing_scopes' => ['scopes' => []],
+    };
+    $account = SocialAccount::factory()->tiktok()->create([
+        'workspace_id' => $this->workspace->id,
+        ...$accountAttributes,
+    ]);
+    $platform = PostPlatform::factory()->tiktok()->create([
+        'post_id' => $this->post->id,
+        'social_account_id' => $account->id,
+        'status' => PlatformStatus::Retrying,
+        'error_context' => [
+            'tiktok_publish_id' => "publish-{$guard}",
+            'tiktok_derivative_paths' => [$path],
+        ],
+    ]);
+
+    (new PublishToSocialPlatform($platform))->handle();
+
+    Storage::assertExists($path);
+    $platform->refresh();
+
+    expect($platform->status)->toBe(PlatformStatus::Failed)
+        ->and($platform->error_context['tiktok_publish_id'] ?? null)->toBe("publish-{$guard}");
+
+    if ($guard === 'missing_scopes') {
+        expect($platform->error_message)->toBe('Missing permissions: video.publish. Please reconnect your account.')
+            ->and($platform->error_context['category'] ?? null)->toBe('permission')
+            ->and($platform->error_context['missing_scopes'] ?? null)->toBe(['video.publish']);
+
+        return;
+    }
+
+    $translationKey = match ($guard) {
+        'inactive' => 'posts.errors.account_inactive',
+        'disconnected' => 'posts.errors.account_disconnected',
+        'token_expired' => 'posts.errors.account_token_expired',
+    };
+
+    expect($platform->error_message)->toBe(__($translationKey));
+})->with([
+    'inactive account' => 'inactive',
+    'disconnected account' => 'disconnected',
+    'expired token' => 'token_expired',
+    'missing publish scopes' => 'missing_scopes',
+]);
+
+test('terminal TikTok account guards prune derivatives when there is no publish_id', function (string $guard) {
+    Event::fake();
+    Mail::fake();
+    Storage::fake();
+
+    $path = 'social-tiktok-photos/'.fake()->uuid().'.jpg';
+    Storage::put($path, 'image');
+
+    $accountAttributes = match ($guard) {
+        'inactive' => ['is_active' => false],
+        'disconnected' => ['status' => AccountStatus::Disconnected],
+        'token_expired' => ['status' => AccountStatus::TokenExpired],
+        'missing_scopes' => ['scopes' => []],
+    };
+    $account = SocialAccount::factory()->tiktok()->create([
+        'workspace_id' => $this->workspace->id,
+        ...$accountAttributes,
+    ]);
+    $platform = PostPlatform::factory()->tiktok()->create([
+        'post_id' => $this->post->id,
+        'social_account_id' => $account->id,
+        'status' => PlatformStatus::Retrying,
+        'error_context' => [
+            'tiktok_derivative_paths' => [$path],
+        ],
+    ]);
+
+    (new PublishToSocialPlatform($platform))->handle();
+
+    Storage::assertMissing($path);
+    expect($platform->fresh()->status)->toBe(PlatformStatus::Failed)
+        ->and($platform->fresh()->error_context['tiktok_publish_id'] ?? null)->toBeNull();
+})->with([
+    'inactive account' => 'inactive',
+    'disconnected account' => 'disconnected',
+    'expired token' => 'token_expired',
+    'missing publish scopes' => 'missing_scopes',
+]);
+
+test('tiktok photo publish resumes after a status-fetch token expiry without a second init', function () {
+    Event::fake();
+    Mail::fake();
+    Storage::fake();
+
+    $account = SocialAccount::factory()->tiktok()->create([
+        'workspace_id' => $this->workspace->id,
+        'username' => 'tiktoker',
+        'token_expires_at' => now()->addDay(),
+    ]);
+    $this->post->update([
+        'media' => [[
+            'id' => 'oversized',
+            'path' => 'media/2026-01/big.jpg',
+            'url' => 'https://example.com/media/2026-01/big.jpg',
+            'mime_type' => 'image/jpeg',
+            'original_filename' => 'big.jpg',
+            'meta' => ['width' => 1254, 'height' => 1254],
+        ]],
+    ]);
+    $platform = PostPlatform::factory()->tiktok()->create([
+        'post_id' => $this->post->id,
+        'social_account_id' => $account->id,
+        'status' => PlatformStatus::Pending,
+        'enabled' => true,
+        'meta' => ['privacy_level' => 'SELF_ONLY'],
+    ]);
+
+    $mockOptimizer = Mockery::mock(MediaOptimizer::class);
+    $mockOptimizer->shouldReceive('maxWidthForPlatform')->with(Platform::TikTok)->andReturn(1080);
+    $mockOptimizer->shouldReceive('optimizeImage')->with(Mockery::type('string'), Platform::TikTok)->andReturnUsing(function (string $tempFile) {
+        $optimized = tempnam(sys_get_temp_dir(), 'tt_opt_');
+        copy($tempFile, $optimized);
+
+        return $optimized;
+    });
+    app()->instance(MediaOptimizer::class, $mockOptimizer);
+
+    $verifier = Mockery::mock(ConnectionVerifier::class);
+    $verifier->shouldReceive('verify')->once()->andReturn(true);
+    $this->app->instance(ConnectionVerifier::class, $verifier);
+
+    $api = config('trypost.platforms.tiktok.api');
+
+    Http::fake([
+        $api.'/post/publish/content/init/' => Http::response(['data' => ['publish_id' => 'pub_job_401']]),
+        $api.'/post/publish/status/fetch/' => Http::sequence()
+            ->push([
+                'error' => [
+                    'code' => 'access_token_invalid',
+                    'message' => 'Access token is invalid',
+                ],
+            ], 401)
+            ->push([
+                'data' => [
+                    'status' => 'PUBLISH_COMPLETE',
+                    'publicaly_available_post_id' => ['video_123'],
+                ],
+            ]),
+        '*' => Http::response('fake-image-content', 200),
+    ]);
+
+    (new PublishToSocialPlatform($platform))->handle();
+
+    $platform->refresh();
+
+    expect($platform->status)->toBe(PlatformStatus::Published)
+        ->and($platform->platform_post_id)->toBe('video_123')
+        ->and($platform->error_context)->toBeNull()
+        ->and(Storage::allFiles('social-tiktok-photos'))->toBeEmpty()
+        ->and(Http::recorded(fn ($request) => str_contains($request->url(), '/post/publish/content/init/')))
+        ->toHaveCount(1);
 });
 
 test('pinterest media status 401 marks the account token expired and notifies to reconnect', function () {
@@ -988,6 +1397,41 @@ test('publish to social platform saves error context on social publish exception
     expect($this->postPlatform->error_context['platform_error_code'])->toBe('403');
     expect($this->postPlatform->error_context['content_length'])->toBe(11);
     expect($this->postPlatform->error_context['raw_response'])->toBe('{"error": "forbidden"}');
+});
+
+test('publish keeps a resumable checkpoint when a later publish exception is terminal', function () {
+    Event::fake();
+
+    $workflow = [
+        'stage' => 'final_container',
+        'container_id' => 'container-123',
+    ];
+    $this->postPlatform->update([
+        'error_context' => [
+            'tiktok_publish_id' => 'pub_dead',
+            'instagram_workflow' => $workflow,
+        ],
+    ]);
+
+    $publisher = Mockery::mock(LinkedInPublisher::class);
+    $publisher->shouldReceive('publish')->andThrow(
+        new LinkedInPublishException(
+            'Video rejected',
+            ErrorCategory::ContentPolicy,
+            'video_rejected',
+            '{"status":"FAILED"}',
+        )
+    );
+    $this->app->instance(LinkedInPublisher::class, $publisher);
+
+    (new PublishToSocialPlatform($this->postPlatform->fresh()))->handle();
+
+    $context = $this->postPlatform->fresh()->error_context;
+
+    expect($this->postPlatform->fresh()->status)->toBe(PlatformStatus::Failed)
+        ->and($context['tiktok_publish_id'] ?? null)->toBe('pub_dead')
+        ->and($context['instagram_workflow'] ?? null)->toBe($workflow)
+        ->and($context['category'] ?? null)->toBe('content_policy');
 });
 
 test('publish to social platform fails when scopes are missing', function () {

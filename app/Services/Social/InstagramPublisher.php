@@ -4,14 +4,20 @@ declare(strict_types=1);
 
 namespace App\Services\Social;
 
+use App\Enums\Instagram\ContainerStatus;
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
+use App\Exceptions\PlatformUnavailableException;
 use App\Exceptions\Social\ErrorCategory;
 use App\Exceptions\Social\InstagramPublishException;
 use App\Exceptions\Social\SocialPublishException;
 use App\Models\PostPlatform;
 use App\Services\Social\Concerns\CropsImageForAspectRatio;
 use App\Services\Social\Concerns\HasSocialHttpClient;
+use App\Services\Social\Meta\GraphError;
+use App\Support\Social\PublishCheckpoint;
+use Closure;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Log;
 
@@ -22,8 +28,19 @@ class InstagramPublisher
 
     private string $baseUrl;
 
+    private PostPlatform $postPlatform;
+
+    private const int STATUS_RETRY_DELAY_SECONDS = 10;
+
+    private const int STATUS_MAX_RETRIES = 90;
+
+    private const string WORKFLOW_CAROUSEL_CHILDREN = 'carousel_children';
+
+    private const string WORKFLOW_FINAL_CONTAINER = 'final_container';
+
     public function publish(PostPlatform $postPlatform): array
     {
+        $this->postPlatform = $postPlatform;
         $this->validateContentLength($postPlatform);
 
         $account = $postPlatform->socialAccount;
@@ -37,6 +54,12 @@ class InstagramPublisher
         $accessToken = $account->access_token;
 
         $content = $postPlatform->post->content ? app(ContentSanitizer::class)->sanitize($postPlatform->post->content, $postPlatform->platform) : null;
+
+        $pendingWorkflow = PublishCheckpoint::instagramWorkflow($postPlatform->error_context);
+
+        if ($pendingWorkflow !== null) {
+            return $this->resumeWorkflow($instagramId, $accessToken, $content, $pendingWorkflow);
+        }
 
         $media = $postPlatform->post->mediaItems;
 
@@ -94,65 +117,21 @@ class InstagramPublisher
             $params['alt_text'] = $alt;
         }
 
-        // Step 1: Create container
-        $containerResponse = $this->socialHttp()->post("{$this->baseUrl}/{$instagramId}/media", $params);
+        $containerId = $this->createContainer($instagramId, $params, 'container');
 
-        if ($containerResponse->failed()) {
-            Log::error('Instagram container creation failed', [
-                'status' => $containerResponse->status(),
-                'body' => $this->redactResponseBody($containerResponse->body()),
-            ]);
-            $this->handleApiError($containerResponse);
-        }
-
-        $containerId = $containerResponse->json()['id'] ?? null;
-
-        if (! $containerId) {
-            throw new InstagramPublishException(
-                userMessage: 'Instagram container creation failed: No container ID returned',
-                category: ErrorCategory::ServerError,
-            );
-        }
-
-        // Step 2: Wait for container to be ready
-        $this->waitForMediaProcessing($containerId, $accessToken);
-
-        // Step 3: Publish container
-        return $this->publishContainer($instagramId, $accessToken, $containerId);
+        return $this->finishContainer($instagramId, $accessToken, $containerId);
     }
 
     private function publishReel(string $instagramId, string $accessToken, ?string $content, $media): array
     {
-        // Step 1: Create container for video/reel
-        $containerResponse = $this->socialHttp()->post("{$this->baseUrl}/{$instagramId}/media", [
+        $containerId = $this->createContainer($instagramId, [
             'video_url' => $media->url,
             'caption' => $content,
             'media_type' => 'REELS',
             'access_token' => $accessToken,
-        ]);
+        ], 'reel container');
 
-        if ($containerResponse->failed()) {
-            Log::error('Instagram reel container creation failed', [
-                'status' => $containerResponse->status(),
-                'body' => $this->redactResponseBody($containerResponse->body()),
-            ]);
-            $this->handleApiError($containerResponse);
-        }
-
-        $containerId = $containerResponse->json()['id'] ?? null;
-
-        if (! $containerId) {
-            throw new InstagramPublishException(
-                userMessage: 'Instagram reel container creation failed: No container ID returned',
-                category: ErrorCategory::ServerError,
-            );
-        }
-
-        // Wait for video processing
-        $this->waitForMediaProcessing($containerId, $accessToken);
-
-        // Step 2: Publish container
-        return $this->publishContainer($instagramId, $accessToken, $containerId);
+        return $this->finishContainer($instagramId, $accessToken, $containerId);
     }
 
     private function publishStory(string $instagramId, string $accessToken, $media): array
@@ -171,37 +150,16 @@ class InstagramPublisher
             $params['image_url'] = $this->fitImageToCanvas($media->url, data_get($dimensions, 'width'), data_get($dimensions, 'height'));
         }
 
-        // Step 1: Create story container
-        $containerResponse = $this->socialHttp()->post("{$this->baseUrl}/{$instagramId}/media", $params);
+        $containerId = $this->createContainer($instagramId, $params, 'story container');
 
-        if ($containerResponse->failed()) {
-            Log::error('Instagram story container creation failed', [
-                'status' => $containerResponse->status(),
-                'body' => $this->redactResponseBody($containerResponse->body()),
-            ]);
-            $this->handleApiError($containerResponse);
-        }
-
-        $containerId = $containerResponse->json()['id'] ?? null;
-
-        if (! $containerId) {
-            throw new InstagramPublishException(
-                userMessage: 'Instagram story container creation failed: No container ID returned',
-                category: ErrorCategory::ServerError,
-            );
-        }
-
-        // Step 2: Wait for media processing
-        $this->waitForMediaProcessing($containerId, $accessToken);
-
-        // Step 3: Publish story container
-        return $this->publishContainer($instagramId, $accessToken, $containerId);
+        return $this->finishContainer($instagramId, $accessToken, $containerId);
     }
 
     private function publishCarousel(string $instagramId, string $accessToken, ?string $content, $mediaCollection, ?string $aspectRatio): array
     {
         // Step 1: Create containers for each media item
         $childContainers = [];
+        $processingChildContainers = [];
 
         foreach ($mediaCollection as $media) {
             $isVideo = $media->isVideo();
@@ -234,20 +192,19 @@ class InstagramPublisher
                 continue;
             }
 
-            $childId = $containerResponse->json()['id'] ?? null;
+            $childId = $this->stringId(data_get($containerResponse->json(), 'id'));
 
-            if (! $childId) {
+            if ($childId === null) {
                 Log::error('Instagram carousel item creation returned no ID', ['body' => $this->redactResponseBody($containerResponse->body())]);
 
                 continue;
             }
 
-            // Wait for video processing if needed
-            if ($isVideo) {
-                $this->waitForMediaProcessing($childId, $accessToken);
-            }
-
             $childContainers[] = $childId;
+
+            if ($isVideo) {
+                $processingChildContainers[] = $childId;
+            }
         }
 
         if (empty($childContainers)) {
@@ -257,73 +214,128 @@ class InstagramPublisher
             );
         }
 
-        // Step 2: Create carousel container
-        $carouselResponse = $this->socialHttp()->post("{$this->baseUrl}/{$instagramId}/media", [
+        return $this->finishCarousel($instagramId, $accessToken, $content, $childContainers, $processingChildContainers);
+    }
+
+    /**
+     * @param  list<string>  $childContainers
+     * @param  list<string>  $processingChildContainers
+     */
+    private function finishCarousel(string $instagramId, string $accessToken, ?string $content, array $childContainers, array $processingChildContainers): array
+    {
+        $workflow = [
+            'stage' => self::WORKFLOW_CAROUSEL_CHILDREN,
+            'child_container_ids' => $childContainers,
+            'processing_child_container_ids' => $processingChildContainers,
+        ];
+
+        foreach ($processingChildContainers as $childId) {
+            $this->waitForMediaProcessing($childId, $accessToken, $workflow);
+        }
+
+        $carouselId = $this->createContainer($instagramId, [
             'media_type' => 'CAROUSEL',
             'caption' => $content,
             'children' => implode(',', $childContainers),
             'access_token' => $accessToken,
+        ], 'carousel container');
+
+        return $this->finishContainer($instagramId, $accessToken, $carouselId);
+    }
+
+    /**
+     * @param  array<string, mixed>  $workflow
+     */
+    private function resumeWorkflow(string $instagramId, string $accessToken, ?string $content, array $workflow): array
+    {
+        $mediaId = $this->stringId(data_get($workflow, 'media_id'));
+
+        if ($mediaId !== null) {
+            return $this->publishedMedia($mediaId, $accessToken);
+        }
+
+        $stage = data_get($workflow, 'stage');
+
+        if ($stage === self::WORKFLOW_FINAL_CONTAINER) {
+            $containerId = $this->stringId(data_get($workflow, 'container_id'));
+
+            if ($containerId !== null) {
+                return $this->finishContainer($instagramId, $accessToken, $containerId);
+            }
+        }
+
+        if ($stage === self::WORKFLOW_CAROUSEL_CHILDREN) {
+            $children = $this->stringList(data_get($workflow, 'child_container_ids'));
+            $processingChildren = $this->stringList(data_get($workflow, 'processing_child_container_ids', []));
+
+            if ($children !== null && $children !== [] && $processingChildren !== null) {
+                return $this->finishCarousel(
+                    $instagramId,
+                    $accessToken,
+                    $content,
+                    $children,
+                    $processingChildren,
+                );
+            }
+        }
+
+        throw new InstagramPublishException(
+            userMessage: 'Instagram publish state is invalid and cannot be resumed.',
+            category: ErrorCategory::ServerError,
+        );
+    }
+
+    private function finishContainer(string $instagramId, string $accessToken, string $containerId): array
+    {
+        $status = $this->waitForMediaProcessing($containerId, $accessToken, [
+            'stage' => self::WORKFLOW_FINAL_CONTAINER,
+            'container_id' => $containerId,
         ]);
 
-        if ($carouselResponse->failed()) {
-            Log::error('Instagram carousel container creation failed', [
-                'body' => $this->redactResponseBody($carouselResponse->body()),
-            ]);
-            $this->handleApiError($carouselResponse);
+        if ($status === ContainerStatus::Published) {
+            return $this->alreadyPublishedContainer($containerId);
         }
 
-        $carouselId = $carouselResponse->json()['id'] ?? null;
-
-        if (! $carouselId) {
-            throw new InstagramPublishException(
-                userMessage: 'Instagram carousel container creation failed: No container ID returned',
-                category: ErrorCategory::ServerError,
-            );
-        }
-
-        // Step 3: Wait for carousel to be ready
-        $this->waitForMediaProcessing($carouselId, $accessToken);
-
-        // Step 4: Publish carousel
-        return $this->publishContainer($instagramId, $accessToken, $carouselId);
+        return $this->publishContainer($instagramId, $accessToken, $containerId);
     }
 
     private function publishContainer(string $instagramId, string $accessToken, string $containerId): array
     {
-        $publishResponse = $this->socialHttp()->post("{$this->baseUrl}/{$instagramId}/media_publish", [
-            'creation_id' => $containerId,
-            'access_token' => $accessToken,
-        ]);
+        $workflow = [
+            'stage' => self::WORKFLOW_FINAL_CONTAINER,
+            'container_id' => $containerId,
+        ];
+
+        $publishResponse = $this->sendGraphRequest(
+            fn (): Response => $this->socialHttp()->post("{$this->baseUrl}/{$instagramId}/media_publish", [
+                'creation_id' => $containerId,
+                'access_token' => $accessToken,
+            ]),
+            $containerId,
+            $workflow,
+        );
 
         if ($publishResponse->failed()) {
             Log::error('Instagram publish failed', [
                 'status' => $publishResponse->status(),
                 'body' => $this->redactResponseBody($publishResponse->body()),
             ]);
+
+            if (GraphError::isTransientFailure($publishResponse)) {
+                throw $this->pendingContainerException($containerId, $workflow, $publishResponse->status());
+            }
+
             $this->handleApiError($publishResponse);
         }
 
-        $mediaId = $publishResponse->json()['id'] ?? null;
+        $mediaId = $this->requireGraphId(
+            $publishResponse->json()['id'] ?? null,
+            'Instagram publish failed: no media ID returned',
+        );
 
-        if (! $mediaId) {
-            throw new InstagramPublishException(
-                userMessage: 'Instagram publish failed: no media ID returned',
-                category: ErrorCategory::ServerError,
-            );
-        }
+        $this->rememberPublishedMedia($containerId, $mediaId);
 
-        // Get permalink
-        $permalinkResponse = $this->socialHttp()->get("{$this->baseUrl}/{$mediaId}", [
-            'fields' => 'permalink',
-            'access_token' => $accessToken,
-        ]);
-
-        $permalink = $permalinkResponse->json()['permalink'] ?? null;
-
-        return [
-            'id' => $mediaId,
-            'url' => $permalink,
-        ];
+        return $this->publishedMedia($mediaId, $accessToken);
     }
 
     protected function cropFailureException(string $message): SocialPublishException
@@ -334,37 +346,202 @@ class InstagramPublisher
         );
     }
 
-    private function waitForMediaProcessing(string $containerId, string $accessToken, int $maxAttempts = 30): void
+    /**
+     * @param  array<string, mixed>  $workflow
+     */
+    private function waitForMediaProcessing(string $containerId, string $accessToken, array $workflow): ContainerStatus
     {
-        for ($i = 0; $i < $maxAttempts; $i++) {
-            $statusResponse = $this->socialHttp()->get("{$this->baseUrl}/{$containerId}", [
+        $statusResponse = $this->sendGraphRequest(
+            fn (): Response => $this->socialHttp()->get("{$this->baseUrl}/{$containerId}", [
                 'fields' => 'status_code',
                 'access_token' => $accessToken,
+            ]),
+            $containerId,
+            $workflow,
+        );
+
+        if ($statusResponse->failed()) {
+            if (! GraphError::isTransientFailure($statusResponse)) {
+                $this->handleApiError($statusResponse);
+            }
+
+            throw $this->pendingContainerException($containerId, $workflow, $statusResponse->status());
+        }
+
+        $status = ContainerStatus::tryFrom((string) ($statusResponse->json()['status_code'] ?? ''));
+
+        return match ($status) {
+            ContainerStatus::Finished, ContainerStatus::Published => $status,
+            ContainerStatus::Error => throw new InstagramPublishException(
+                userMessage: 'Instagram media processing failed',
+                category: ErrorCategory::ServerError,
+            ),
+            ContainerStatus::Expired => throw new InstagramPublishException(
+                userMessage: 'Media container expired. Please try again in a few minutes.',
+                category: ErrorCategory::ServerError,
+            ),
+            default => throw $this->pendingContainerException($containerId, $workflow),
+        };
+    }
+
+    /**
+     * Persist the media id before the permalink fetch so a crash after
+     * media_publish can resume with the real id instead of guessing from /media.
+     */
+    private function rememberPublishedMedia(string $containerId, string $mediaId): void
+    {
+        $this->postPlatform->update([
+            'error_context' => [
+                ...($this->postPlatform->error_context ?? []),
+                PublishCheckpoint::INSTAGRAM_WORKFLOW => [
+                    'stage' => self::WORKFLOW_FINAL_CONTAINER,
+                    'container_id' => $containerId,
+                    'media_id' => $mediaId,
+                ],
+            ],
+        ]);
+    }
+
+    /**
+     * @return array{id: string, url: string|null}
+     */
+    private function publishedMedia(string $mediaId, string $accessToken): array
+    {
+        try {
+            $permalinkResponse = $this->socialHttp()->get("{$this->baseUrl}/{$mediaId}", [
+                'fields' => 'permalink',
+                'access_token' => $accessToken,
+            ]);
+        } catch (ConnectionException) {
+            return [
+                'id' => $mediaId,
+                'url' => null,
+            ];
+        }
+
+        $permalink = data_get($permalinkResponse->json(), 'permalink');
+
+        return [
+            'id' => $mediaId,
+            'url' => $this->stringId($permalink),
+        ];
+    }
+
+    /**
+     * The container node has no published media id. Listing /media or /stories
+     * and taking data.0 can bind a different post from the same account, so
+     * keep the container id until media_publish has checkpointed a media_id.
+     *
+     * @return array{id: string, url: string|null}
+     */
+    private function alreadyPublishedContainer(string $containerId): array
+    {
+        return [
+            'id' => $containerId,
+            'url' => null,
+        ];
+    }
+
+    /**
+     * @param  Closure(): Response  $request
+     * @param  array<string, mixed>|null  $workflow
+     */
+    private function sendGraphRequest(Closure $request, ?string $containerId = null, ?array $workflow = null): Response
+    {
+        try {
+            return $request();
+        } catch (ConnectionException $e) {
+            if ($containerId !== null && $workflow !== null) {
+                throw $this->pendingContainerException($containerId, $workflow);
+            }
+
+            throw new PlatformUnavailableException(
+                message: "Instagram API unreachable: {$e->getMessage()}",
+                retryDelaySeconds: self::STATUS_RETRY_DELAY_SECONDS,
+                maxRetries: self::STATUS_MAX_RETRIES,
+            );
+        }
+    }
+
+    /**
+     * @param  array<string, mixed>  $workflow
+     */
+    private function pendingContainerException(string $containerId, array $workflow, ?int $httpStatus = null): PlatformUnavailableException
+    {
+        return new PlatformUnavailableException(
+            message: "Instagram is still processing container {$containerId}",
+            httpStatus: $httpStatus,
+            context: [PublishCheckpoint::INSTAGRAM_WORKFLOW => $workflow],
+            retryDelaySeconds: self::STATUS_RETRY_DELAY_SECONDS,
+            maxRetries: self::STATUS_MAX_RETRIES,
+        );
+    }
+
+    /**
+     * @param  array<string, mixed>  $parameters
+     */
+    private function createContainer(string $instagramId, array $parameters, string $label): string
+    {
+        $response = $this->sendGraphRequest(
+            fn (): Response => $this->socialHttp()->post("{$this->baseUrl}/{$instagramId}/media", $parameters),
+        );
+
+        if ($response->failed()) {
+            Log::error("Instagram {$label} creation failed", [
+                'status' => $response->status(),
+                'body' => $this->redactResponseBody($response->body()),
             ]);
 
-            if ($statusResponse->failed()) {
-                sleep(5);
-
-                continue;
-            }
-
-            $status = $statusResponse->json()['status_code'] ?? 'UNKNOWN';
-
-            if ($status === 'FINISHED') {
-                return;
-            }
-
-            if ($status === 'ERROR') {
-                throw new InstagramPublishException(
-                    userMessage: 'Instagram media processing failed',
-                    category: ErrorCategory::ServerError,
+            if (GraphError::isTransientFailure($response)) {
+                throw new PlatformUnavailableException(
+                    message: "Instagram {$label} creation failed transiently",
+                    httpStatus: $response->status(),
+                    retryDelaySeconds: self::STATUS_RETRY_DELAY_SECONDS,
+                    maxRetries: self::STATUS_MAX_RETRIES,
                 );
             }
 
-            sleep(5);
+            $this->handleApiError($response);
         }
 
-        Log::warning('Instagram media processing timeout, proceeding anyway');
+        return $this->requireGraphId(
+            data_get($response->json(), 'id'),
+            "Instagram {$label} creation failed: No container ID returned",
+        );
+    }
+
+    private function requireGraphId(mixed $id, string $missingMessage): string
+    {
+        $resolved = $this->stringId($id);
+
+        if ($resolved === null) {
+            throw new InstagramPublishException(
+                userMessage: $missingMessage,
+                category: ErrorCategory::ServerError,
+            );
+        }
+
+        return $resolved;
+    }
+
+    private function stringId(mixed $value): ?string
+    {
+        return is_string($value) && $value !== '' ? $value : null;
+    }
+
+    /**
+     * @return list<string>|null
+     */
+    private function stringList(mixed $values): ?array
+    {
+        if (! is_array($values)) {
+            return null;
+        }
+
+        return array_values(array_filter(
+            $values,
+            fn (mixed $value): bool => $this->stringId($value) !== null,
+        ));
     }
 
     private function handleApiError(Response $response): never

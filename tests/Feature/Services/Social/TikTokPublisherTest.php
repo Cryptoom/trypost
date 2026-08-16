@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
+use App\Exceptions\PlatformUnavailableException;
 use App\Exceptions\Social\TikTokPublishException;
 use App\Exceptions\TokenExpiredException;
 use App\Models\Post;
@@ -85,6 +86,340 @@ test('tiktok publisher can publish video', function () {
     Http::assertSent(function ($request) {
         return str_contains($request->url(), '/post/publish/video/init/');
     });
+});
+
+test('tiktok publisher does not report success before processing completes', function () {
+    $this->post->update([
+        'media' => [[
+            'id' => 'test-media-video',
+            'path' => 'media/2026-01/test-video.mp4',
+            'url' => 'https://example.com/media/2026-01/test-video.mp4',
+            'mime_type' => 'video/mp4',
+            'original_filename' => 'test-video.mp4',
+        ]],
+    ]);
+
+    Http::fake([
+        $this->api.'/post/publish/video/init/' => Http::response(['data' => ['publish_id' => 'pub_processing']]),
+        $this->api.'/post/publish/status/fetch/' => Http::response(['data' => ['status' => 'PROCESSING_DOWNLOAD']]),
+    ]);
+
+    expect(fn () => $this->publisher->publish($this->postPlatform))
+        ->toThrow(function (PlatformUnavailableException $exception): void {
+            expect($exception->context)->toBe(['tiktok_publish_id' => 'pub_processing'])
+                ->and($exception->retryDelaySeconds)->toBe(30)
+                ->and($exception->maxRetries)->toBe(120);
+        });
+
+    expect($this->postPlatform->fresh()->error_context['tiktok_publish_id'] ?? null)->toBe('pub_processing');
+
+    Http::assertSentCount(2);
+});
+
+test('tiktok publisher checkpoints a video publish_id when status fetch reports an expired token', function () {
+    $this->post->update([
+        'media' => [[
+            'id' => 'test-media-video',
+            'path' => 'media/2026-01/test-video.mp4',
+            'url' => 'https://example.com/media/2026-01/test-video.mp4',
+            'mime_type' => 'video/mp4',
+            'original_filename' => 'test-video.mp4',
+        ]],
+    ]);
+
+    Http::fake([
+        $this->api.'/post/publish/video/init/' => Http::response(['data' => ['publish_id' => 'pub_video_401']]),
+        $this->api.'/post/publish/status/fetch/' => Http::response([
+            'error' => [
+                'code' => 'access_token_invalid',
+                'message' => 'Access token is invalid',
+            ],
+        ], 401),
+    ]);
+
+    expect(fn () => $this->publisher->publish($this->postPlatform))
+        ->toThrow(TokenExpiredException::class);
+
+    expect($this->postPlatform->fresh()->error_context['tiktok_publish_id'] ?? null)->toBe('pub_video_401');
+
+    Http::assertNotSent(fn ($request) => str_contains($request->url(), '/content/init/'));
+});
+
+test('tiktok publisher checkpoints a photo publish_id before polling status', function () {
+    $this->postPlatform->update(['meta' => ['privacy_level' => 'SELF_ONLY']]);
+    $this->post->update([
+        'media' => [[
+            'id' => 'test-media-image',
+            'path' => 'media/2026-01/image1.jpg',
+            'url' => 'https://example.com/media/2026-01/image1.jpg',
+            'mime_type' => 'image/jpeg',
+            'original_filename' => 'image1.jpg',
+            'meta' => ['width' => 1080, 'height' => 1080],
+        ]],
+    ]);
+
+    Http::fake([
+        $this->api.'/post/publish/content/init/' => Http::response(['data' => ['publish_id' => 'pub_photo_processing']]),
+        $this->api.'/post/publish/status/fetch/' => Http::response(['data' => ['status' => 'PROCESSING_DOWNLOAD']]),
+    ]);
+
+    expect(fn () => $this->publisher->publish($this->postPlatform))
+        ->toThrow(PlatformUnavailableException::class);
+
+    expect($this->postPlatform->fresh()->error_context['tiktok_publish_id'] ?? null)->toBe('pub_photo_processing');
+
+    Http::assertNotSent(fn ($request) => str_contains($request->url(), '/video/init/'));
+});
+
+test('tiktok publisher checkpoints photo derivatives with the publish_id before polling', function () {
+    Storage::fake();
+
+    $this->postPlatform->update(['meta' => ['privacy_level' => 'SELF_ONLY']]);
+    $this->post->update([
+        'media' => [[
+            'id' => 'oversized',
+            'path' => 'media/2026-01/big.jpg',
+            'url' => 'https://example.com/media/2026-01/big.jpg',
+            'mime_type' => 'image/jpeg',
+            'original_filename' => 'big.jpg',
+            'meta' => ['width' => 1254, 'height' => 1254],
+        ]],
+    ]);
+
+    $mockOptimizer = Mockery::mock(MediaOptimizer::class);
+    $mockOptimizer->shouldReceive('maxWidthForPlatform')->with(Platform::TikTok)->andReturn(1080);
+    $mockOptimizer->shouldReceive('optimizeImage')->with(Mockery::type('string'), Platform::TikTok)->andReturnUsing(function (string $tempFile) {
+        $optimized = tempnam(sys_get_temp_dir(), 'tt_opt_');
+        copy($tempFile, $optimized);
+
+        return $optimized;
+    });
+    app()->instance(MediaOptimizer::class, $mockOptimizer);
+
+    Http::fake([
+        $this->api.'/post/publish/content/init/' => Http::response(['data' => ['publish_id' => 'pub_photo_deriv']]),
+        $this->api.'/post/publish/status/fetch/' => Http::response(['data' => ['status' => 'PROCESSING_DOWNLOAD']]),
+        '*' => Http::response('fake-image-content', 200),
+    ]);
+
+    expect(fn () => $this->publisher->publish($this->postPlatform))
+        ->toThrow(PlatformUnavailableException::class);
+
+    $context = $this->postPlatform->fresh()->error_context;
+    $paths = $context['tiktok_derivative_paths'] ?? null;
+
+    expect($context['tiktok_publish_id'] ?? null)->toBe('pub_photo_deriv')
+        ->and($paths)->toBeArray()
+        ->and($paths)->not->toBeEmpty();
+
+    foreach ($paths as $path) {
+        Storage::assertExists($path);
+    }
+});
+
+test('tiktok publisher keeps photo derivatives when status fetch reports an expired token', function () {
+    Storage::fake();
+
+    $this->postPlatform->update(['meta' => ['privacy_level' => 'SELF_ONLY']]);
+    $this->post->update([
+        'media' => [[
+            'id' => 'oversized',
+            'path' => 'media/2026-01/big.jpg',
+            'url' => 'https://example.com/media/2026-01/big.jpg',
+            'mime_type' => 'image/jpeg',
+            'original_filename' => 'big.jpg',
+            'meta' => ['width' => 1254, 'height' => 1254],
+        ]],
+    ]);
+
+    $mockOptimizer = Mockery::mock(MediaOptimizer::class);
+    $mockOptimizer->shouldReceive('maxWidthForPlatform')->with(Platform::TikTok)->andReturn(1080);
+    $mockOptimizer->shouldReceive('optimizeImage')->with(Mockery::type('string'), Platform::TikTok)->andReturnUsing(function (string $tempFile) {
+        $optimized = tempnam(sys_get_temp_dir(), 'tt_opt_');
+        copy($tempFile, $optimized);
+
+        return $optimized;
+    });
+    app()->instance(MediaOptimizer::class, $mockOptimizer);
+
+    Http::fake([
+        $this->api.'/post/publish/content/init/' => Http::response(['data' => ['publish_id' => 'pub_photo_401']]),
+        $this->api.'/post/publish/status/fetch/' => Http::sequence()
+            ->push([
+                'error' => [
+                    'code' => 'access_token_invalid',
+                    'message' => 'Access token is invalid',
+                ],
+            ], 401)
+            ->push([
+                'data' => [
+                    'status' => 'PUBLISH_COMPLETE',
+                    'publicaly_available_post_id' => ['video_123'],
+                ],
+            ]),
+        '*' => Http::response('fake-image-content', 200),
+    ]);
+
+    expect(fn () => $this->publisher->publish($this->postPlatform))
+        ->toThrow(TokenExpiredException::class);
+
+    $context = $this->postPlatform->fresh()->error_context;
+    $paths = $context['tiktok_derivative_paths'] ?? null;
+
+    expect($context['tiktok_publish_id'] ?? null)->toBe('pub_photo_401')
+        ->and($paths)->toBeArray()
+        ->and($paths)->not->toBeEmpty();
+
+    foreach ($paths as $path) {
+        Storage::assertExists($path);
+    }
+
+    $result = $this->publisher->publish($this->postPlatform->fresh());
+
+    expect($result['id'])->toBe('video_123');
+
+    foreach ($paths as $path) {
+        Storage::assertMissing($path);
+    }
+
+    expect(Http::recorded(fn ($request) => str_contains($request->url(), '/post/publish/content/init/')))
+        ->toHaveCount(1);
+});
+
+test('tiktok publisher prunes photo derivatives when TikTok confirms the publish failed', function () {
+    Storage::fake();
+
+    $this->postPlatform->update(['meta' => ['privacy_level' => 'SELF_ONLY']]);
+    $this->post->update([
+        'media' => [[
+            'id' => 'oversized',
+            'path' => 'media/2026-01/big.jpg',
+            'url' => 'https://example.com/media/2026-01/big.jpg',
+            'mime_type' => 'image/jpeg',
+            'original_filename' => 'big.jpg',
+            'meta' => ['width' => 1254, 'height' => 1254],
+        ]],
+    ]);
+
+    $mockOptimizer = Mockery::mock(MediaOptimizer::class);
+    $mockOptimizer->shouldReceive('maxWidthForPlatform')->with(Platform::TikTok)->andReturn(1080);
+    $mockOptimizer->shouldReceive('optimizeImage')->with(Mockery::type('string'), Platform::TikTok)->andReturnUsing(function (string $tempFile) {
+        $optimized = tempnam(sys_get_temp_dir(), 'tt_opt_');
+        copy($tempFile, $optimized);
+
+        return $optimized;
+    });
+    app()->instance(MediaOptimizer::class, $mockOptimizer);
+
+    Http::fake([
+        $this->api.'/post/publish/content/init/' => Http::response(['data' => ['publish_id' => 'pub_photo_failed']]),
+        $this->api.'/post/publish/status/fetch/' => Http::response([
+            'data' => [
+                'status' => 'FAILED',
+                'fail_reason' => 'photo_pull_failed',
+            ],
+        ]),
+        '*' => Http::response('fake-image-content', 200),
+    ]);
+
+    expect(fn () => $this->publisher->publish($this->postPlatform))
+        ->toThrow(TikTokPublishException::class);
+
+    expect($this->postPlatform->fresh()->error_context['tiktok_publish_id'] ?? null)->toBe('pub_photo_failed')
+        ->and(Storage::allFiles('social-tiktok-photos'))->toBeEmpty();
+});
+
+test('tiktok publisher resumes an existing publish without creating a duplicate', function () {
+    $this->postPlatform->update([
+        'error_context' => ['tiktok_publish_id' => 'pub_existing'],
+    ]);
+
+    Http::fake([
+        $this->api.'/post/publish/status/fetch/' => Http::response([
+            'data' => [
+                'status' => 'PUBLISH_COMPLETE',
+                'publicaly_available_post_id' => ['video_123'],
+            ],
+        ]),
+    ]);
+
+    $result = $this->publisher->publish($this->postPlatform->fresh());
+
+    expect($result)->toBe([
+        'id' => 'video_123',
+        'url' => 'https://www.tiktok.com/@tiktoker/video/video_123',
+    ]);
+
+    Http::assertSentCount(1);
+    Http::assertNotSent(fn ($request) => str_contains($request->url(), '/init/'));
+});
+
+test('tiktok publisher retries a server-error status fetch without creating a duplicate', function () {
+    $this->postPlatform->update([
+        'error_context' => ['tiktok_publish_id' => 'pub_existing'],
+    ]);
+
+    Http::fake([
+        $this->api.'/post/publish/status/fetch/' => Http::response(['error' => ['code' => 'internal_error']], 503),
+    ]);
+
+    expect(fn () => $this->publisher->publish($this->postPlatform->fresh()))
+        ->toThrow(function (PlatformUnavailableException $exception): void {
+            expect($exception->httpStatus)->toBe(503)
+                ->and($exception->context['tiktok_publish_id'] ?? null)->toBe('pub_existing');
+        });
+
+    Http::assertNotSent(fn ($request) => str_contains($request->url(), '/init/'));
+});
+
+test('tiktok publisher retries a rate-limited status fetch without creating a duplicate', function () {
+    $this->postPlatform->update([
+        'error_context' => ['tiktok_publish_id' => 'pub_existing'],
+    ]);
+
+    Http::fake([
+        $this->api.'/post/publish/status/fetch/' => Http::response(['error' => ['code' => 'rate_limit']], 429),
+    ]);
+
+    expect(fn () => $this->publisher->publish($this->postPlatform->fresh()))
+        ->toThrow(function (PlatformUnavailableException $exception): void {
+            expect($exception->httpStatus)->toBe(429)
+                ->and($exception->context['tiktok_publish_id'] ?? null)->toBe('pub_existing');
+        });
+
+    Http::assertNotSent(fn ($request) => str_contains($request->url(), '/init/'));
+});
+
+test('tiktok publisher keeps photo derivatives while pending and prunes them on completion', function () {
+    Storage::fake();
+    $derivativePath = 'social-tiktok-photos/123e4567-e89b-12d3-a456-426614174000.jpg';
+    Storage::put($derivativePath, 'image');
+
+    $this->postPlatform->update([
+        'error_context' => [
+            'tiktok_publish_id' => 'pub_existing',
+            'tiktok_derivative_paths' => [$derivativePath],
+        ],
+    ]);
+
+    Http::fake([
+        $this->api.'/post/publish/status/fetch/' => Http::sequence()
+            ->push(['data' => ['status' => 'PROCESSING_DOWNLOAD']])
+            ->push(['data' => ['status' => 'PUBLISH_COMPLETE', 'publicaly_available_post_id' => ['video_123']]]),
+    ]);
+
+    expect(fn () => $this->publisher->publish($this->postPlatform->fresh()))
+        ->toThrow(function (PlatformUnavailableException $exception) use ($derivativePath): void {
+            expect($exception->context['tiktok_derivative_paths'] ?? null)->toBe([$derivativePath]);
+        });
+
+    Storage::assertExists($derivativePath);
+
+    $result = $this->publisher->publish($this->postPlatform->fresh());
+
+    expect($result['id'])->toBe('video_123');
+    Storage::assertMissing($derivativePath);
+    Http::assertNotSent(fn ($request) => str_contains($request->url(), '/init/'));
 });
 
 test('tiktok publisher can publish photos', function () {
