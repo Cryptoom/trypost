@@ -386,8 +386,32 @@ it('persists Instagram collaborators and strips at signs', function () {
         ])
         ->assertCreated();
 
-    expect(PostPlatform::where('social_account_id', $instagram->id)->sole()->meta['collaborators'])
-        ->toBe(['Host_One', 'host_two']);
+    expect(PostPlatform::where('social_account_id', $instagram->id)->sole()->meta)
+        ->toMatchArray([
+            'collaborators' => ['Host_One', 'host_two'],
+            'collaborators_with' => '@Host_One, @host_two',
+        ]);
+});
+
+it('persists Instagram collaborators from a comma-separated string', function () {
+    $instagram = SocialAccount::factory()->instagram()->create(['workspace_id' => $this->workspace->id]);
+
+    $this->withHeaders($this->headers)
+        ->postJson(route('api.posts.store'), [
+            'content' => 'Collab reel',
+            'platforms' => [[
+                'social_account_id' => $instagram->id,
+                'content_type' => ContentType::InstagramReel->value,
+                'meta' => ['collaborators' => '@Host_One, host_two'],
+            ]],
+        ])
+        ->assertCreated();
+
+    expect(PostPlatform::where('social_account_id', $instagram->id)->sole()->meta)
+        ->toMatchArray([
+            'collaborators' => ['Host_One', 'host_two'],
+            'collaborators_with' => '@Host_One, @host_two',
+        ]);
 });
 
 it('persists Instagram Facebook collaborators', function () {

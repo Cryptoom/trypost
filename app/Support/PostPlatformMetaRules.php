@@ -55,7 +55,7 @@ class PostPlatformMetaRules
 
             // Instagram / Facebook
             'platforms.*.meta.aspect_ratio' => ['sometimes', 'nullable', 'string', Rule::enum(AspectRatio::class)],
-            'platforms.*.meta.collaborators' => ['sometimes', 'nullable', 'array', new InstagramCollaboratorsMeta],
+            'platforms.*.meta.collaborators' => ['sometimes', 'nullable', new InstagramCollaboratorsMeta],
 
             // LinkedIn — title shown on a document (PDF carousel) post
             'platforms.*.meta.document_title' => ['sometimes', 'nullable', 'string', 'max:300'],

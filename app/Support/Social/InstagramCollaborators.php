@@ -31,18 +31,31 @@ final class InstagramCollaborators
     }
 
     /**
+     * Web may send a comma-separated field; API/MCP send a list. Same shaping either way.
+     *
+     * @return list<mixed>
+     */
+    public static function items(mixed $value): array
+    {
+        if (is_string($value)) {
+            return array_values(array_filter(
+                array_map(trim(...), preg_split('/[,\n]+/', $value) ?: []),
+                fn (string $item): bool => $item !== '',
+            ));
+        }
+
+        return is_array($value) ? array_values($value) : [];
+    }
+
+    /**
      * @return list<string>
      */
     public static function normalize(mixed $value): array
     {
-        if (! is_array($value)) {
-            return [];
-        }
-
         $seen = [];
         $usernames = [];
 
-        foreach ($value as $item) {
+        foreach (self::items($value) as $item) {
             if (! is_string($item)) {
                 continue;
             }
@@ -94,15 +107,14 @@ final class InstagramCollaborators
     /**
      * Per-item reject reasons plus whether unique valid names exceed MAX.
      *
-     * @param  array<int|string, mixed>  $usernames
      * @return array{items: array<int|string, 'invalid'|'duplicate'|'self'>, exceedsMax: bool}
      */
-    public static function failures(array $usernames, ?string $ownUsername): array
+    public static function failures(mixed $value, ?string $ownUsername): array
     {
         $seen = [];
         $items = [];
 
-        foreach ($usernames as $index => $item) {
+        foreach (self::items($value) as $index => $item) {
             $reason = self::itemFailure($item, $seen, $ownUsername);
 
             if ($reason !== null) {

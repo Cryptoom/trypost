@@ -1393,7 +1393,41 @@ test('update post accepts instagram collaborators and strips at signs', function
 
     $response->assertSessionDoesntHaveErrors('platforms.0.meta.collaborators');
     $postPlatform->refresh();
-    expect(data_get($postPlatform->meta, 'collaborators'))->toBe(['Host_One', 'host_two']);
+    expect(data_get($postPlatform->meta, 'collaborators'))->toBe(['Host_One', 'host_two'])
+        ->and(data_get($postPlatform->meta, 'collaborators_with'))->toBe('@Host_One, @host_two');
+});
+
+test('update post accepts instagram collaborators as a comma-separated string', function () {
+    $instagramAccount = SocialAccount::factory()->instagram()->create([
+        'workspace_id' => $this->workspace->id,
+    ]);
+
+    $post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+        'status' => PostStatus::Draft,
+    ]);
+
+    $postPlatform = PostPlatform::factory()->instagram()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $instagramAccount->id,
+    ]);
+
+    $response = $this->actingAs($this->user)->put(route('app.posts.update', $post), [
+        'status' => 'draft',
+        'platforms' => [
+            [
+                'id' => $postPlatform->id,
+                'content_type' => ContentType::InstagramFeed->value,
+                'meta' => ['collaborators' => '@Host_One, host_two'],
+            ],
+        ],
+    ]);
+
+    $response->assertSessionDoesntHaveErrors('platforms.0.meta.collaborators');
+    $postPlatform->refresh();
+    expect(data_get($postPlatform->meta, 'collaborators'))->toBe(['Host_One', 'host_two'])
+        ->and(data_get($postPlatform->meta, 'collaborators_with'))->toBe('@Host_One, @host_two');
 });
 
 test('update post clears instagram collaborators when switching to a story without sending meta', function () {

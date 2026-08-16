@@ -9,6 +9,13 @@ test('normalize strips at signs, trims, and deduplicates case-insensitively', fu
         ->toBe(['Host_One', 'host_two']);
 });
 
+test('normalize accepts a comma-separated string from the web field', function () {
+    expect(InstagramCollaborators::normalize('@Host_One, host_two'))
+        ->toBe(['Host_One', 'host_two'])
+        ->and(InstagramCollaborators::applyToMeta(['collaborators' => '@Host_One, host_two'])['collaborators_with'])
+        ->toBe('@Host_One, @host_two');
+});
+
 test('display prefixes usernames for the post preview', function () {
     expect(InstagramCollaborators::display(['Host_One', 'host_two']))->toBe('@Host_One, @host_two')
         ->and(InstagramCollaborators::display([]))->toBe('');

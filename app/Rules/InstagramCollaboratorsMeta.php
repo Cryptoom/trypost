@@ -45,7 +45,10 @@ class InstagramCollaboratorsMeta implements DataAwareRule, ValidationRule, Valid
     {
         $account = PostPlatformMetaRules::accountForAttribute($this->data, $attribute);
 
-        if (! is_array($value) || ! in_array($account?->platform, [Platform::Instagram, Platform::InstagramFacebook], true)) {
+        if (
+            (! is_array($value) && ! is_string($value))
+            || ! in_array($account?->platform, [Platform::Instagram, Platform::InstagramFacebook], true)
+        ) {
             return;
         }
 

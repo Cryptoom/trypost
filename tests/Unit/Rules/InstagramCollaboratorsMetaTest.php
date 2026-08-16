@@ -15,10 +15,10 @@ uses(RefreshDatabase::class);
 
 /**
  * @param  array<string, mixed>  $platform
- * @param  list<mixed>  $collaborators
+ * @param  list<mixed>|string  $collaborators
  * @return array<string, list<string>>
  */
-function runCollaboratorsMetaRule(array $collaborators, array $platform): array
+function runCollaboratorsMetaRule(array|string $collaborators, array $platform): array
 {
     $data = [
         'platforms' => [array_merge($platform, ['meta' => ['collaborators' => $collaborators]])],
@@ -132,6 +132,23 @@ test('duplicate names in a long list fail as duplicates not as max', function ()
         ->toBe([__('posts.form.instagram.collaborators_duplicate')])
         ->and($errors['items']['platforms.0.meta.collaborators.2'] ?? [])
         ->toBe([__('posts.form.instagram.collaborators_duplicate')]);
+});
+
+test('validates a comma-separated string the same as a list', function () {
+    $workspace = Workspace::factory()->create();
+    $account = SocialAccount::factory()->instagram()->create([
+        'workspace_id' => $workspace->id,
+        'username' => 'testuser',
+    ]);
+
+    $errors = runCollaboratorsMetaRule('@Host_One, host_one, .user', [
+        'social_account_id' => $account->id,
+    ]);
+
+    expect($errors['items']['platforms.0.meta.collaborators.1'] ?? [])
+        ->toBe([__('posts.form.instagram.collaborators_duplicate')])
+        ->and($errors['items']['platforms.0.meta.collaborators.2'] ?? [])
+        ->toBe([__('posts.form.instagram.collaborators_invalid')]);
 });
 
 test('fails on a leading period username', function () {
