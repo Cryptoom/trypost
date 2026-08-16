@@ -4,15 +4,13 @@ declare(strict_types=1);
 
 namespace App\Support\Social;
 
+use Illuminate\Support\Collection;
+
 final class InstagramCollaborators
 {
     public const int MAX = 3;
 
-    /**
-     * Instagram usernames: 1–30 letters, numbers, periods, underscores.
-     * No leading/trailing period and no consecutive periods.
-     */
-    public const string USERNAME_PATTERN = '^(?!.*\.\.)(?!\.)[A-Za-z0-9._]{1,30}(?<!\.)$';
+    private const string USERNAME_PATTERN = '/^(?!.*\.\.)(?!\.)[A-Za-z0-9._]{1,30}(?<!\.)$/';
 
     /**
      * @param  array<string, mixed>  $meta
@@ -30,88 +28,35 @@ final class InstagramCollaborators
         return $meta;
     }
 
-    /**
-     * Web may send a comma-separated field; API/MCP send a list. Same shaping either way.
-     *
-     * @return list<mixed>
-     */
-    public static function items(mixed $value): array
-    {
-        if (is_string($value)) {
-            return array_values(array_filter(
-                array_map(trim(...), preg_split('/[,\n]+/', $value) ?: []),
-                fn (string $item): bool => $item !== '',
-            ));
-        }
-
-        return is_array($value) ? array_values($value) : [];
-    }
-
-    /**
-     * @return list<string>
-     */
+    /** @return list<string> */
     public static function normalize(mixed $value): array
     {
-        $seen = [];
-        $usernames = [];
-
-        foreach (self::items($value) as $item) {
-            if (! is_string($item)) {
-                continue;
-            }
-
-            $username = self::bare($item);
-            $key = self::key($username);
-
-            if ($key === '' || isset($seen[$key]) || ! self::isValidUsername($username)) {
-                continue;
-            }
-
-            $seen[$key] = true;
-            $usernames[] = $username;
-
-            if (count($usernames) === self::MAX) {
-                break;
-            }
-        }
-
-        return $usernames;
+        return self::items($value)
+            ->filter(fn (mixed $item): bool => is_string($item) && self::isValidUsername($item))
+            ->map(self::bare(...))
+            ->unique(self::key(...))
+            ->take(self::MAX)
+            ->values()
+            ->all();
     }
 
-    /**
-     * @param  list<string>  $usernames
-     */
+    /** @param  list<string>  $usernames */
     public static function display(array $usernames): string
     {
-        return implode(', ', array_map(
-            fn (string $username): string => "@{$username}",
-            $usernames,
-        ));
-    }
-
-    public static function bare(string $username): string
-    {
-        return str_replace('@', '', trim($username));
-    }
-
-    public static function key(string $username): string
-    {
-        return mb_strtolower(self::bare($username));
+        return collect($usernames)->map(fn (string $username): string => "@{$username}")->implode(', ');
     }
 
     public static function isSameUsername(string $left, ?string $right): bool
     {
-        return $right !== null && self::key($left) !== '' && self::key($left) === self::key($right);
+        return filled($right) && ($key = self::key($left)) !== '' && $key === self::key($right);
     }
 
     public static function isValidUsername(string $username): bool
     {
-        return preg_match('/'.self::USERNAME_PATTERN.'/', self::bare($username)) === 1;
+        return preg_match(self::USERNAME_PATTERN, self::bare($username)) === 1;
     }
 
     /**
-     * Per-item reject reasons plus whether unique valid names exceed MAX.
-     *
      * @return array{items: array<int|string, 'invalid'|'duplicate'|'self'>, exceedsMax: bool}
      */
     public static function failures(mixed $value, ?string $ownUsername): array
@@ -120,56 +65,53 @@ final class InstagramCollaborators
         $items = [];
 
         foreach (self::items($value) as $index => $item) {
-            $reason = self::itemFailure($item, $seen, $ownUsername);
+            if (! is_string($item) || ! self::isValidUsername($item)) {
+                $items[$index] = 'invalid';
 
-            if ($reason !== null) {
-                $items[$index] = $reason;
+                continue;
+            }
+
+            $key = self::key($item);
+
+            if (isset($seen[$key])) {
+                $items[$index] = 'duplicate';
+
+                continue;
+            }
+
+            $seen[$key] = true;
+
+            if (self::isSameUsername($item, $ownUsername)) {
+                $items[$index] = 'self';
             }
         }
 
-        return [
-            'items' => $items,
-            'exceedsMax' => count($seen) > self::MAX,
-        ];
+        return ['items' => $items, 'exceedsMax' => count($seen) > self::MAX];
     }
 
-    /**
-     * @param  array<string, true>  $seen
-     * @return 'invalid'|'duplicate'|'self'|null
-     */
-    private static function itemFailure(mixed $item, array &$seen, ?string $ownUsername): ?string
-    {
-        if (! is_string($item) || ! self::isValidUsername($item)) {
-            return 'invalid';
-        }
-
-        $key = self::key($item);
-
-        if (isset($seen[$key])) {
-            return 'duplicate';
-        }
-
-        $seen[$key] = true;
-
-        return self::isSameUsername($item, $ownUsername) ? 'self' : null;
-    }
-
-    /**
-     * Graph expects a JSON array string, not a PHP form array (`collaborators[0]=…`).
-     *
-     * @return array<string, string>
-     */
+    /** @return array<string, string> */
     public static function payload(mixed $value, ?string $ownUsername = null): array
     {
-        $usernames = array_values(array_filter(
-            self::normalize($value),
-            fn (string $username): bool => ! self::isSameUsername($username, $ownUsername),
-        ));
+        $usernames = collect(self::normalize($value))
+            ->reject(fn (string $username): bool => self::isSameUsername($username, $ownUsername));
 
-        if ($usernames === []) {
-            return [];
-        }
+        return $usernames->isEmpty() ? [] : ['collaborators' => $usernames->values()->toJson(JSON_THROW_ON_ERROR)];
+    }
 
-        return ['collaborators' => json_encode($usernames, JSON_THROW_ON_ERROR)];
+    private static function items(mixed $value): Collection
+    {
+        return is_string($value)
+            ? str($value)->explode(',')->map(trim(...))->filter()->values()
+            : collect(is_array($value) ? $value : [])->values();
+    }
+
+    private static function bare(string $username): string
+    {
+        return str_replace('@', '', trim($username));
+    }
+
+    private static function key(string $username): string
+    {
+        return mb_strtolower(self::bare($username));
     }
 }
