@@ -4,6 +4,14 @@ declare(strict_types=1);
 
 use App\Support\Social\InstagramCollaborators;
 
+test('usernames are accepted with or without at signs', function () {
+    expect(InstagramCollaborators::normalize(['@apple']))->toBe(['apple'])
+        ->and(InstagramCollaborators::normalize(['apple']))->toBe(['apple'])
+        ->and(InstagramCollaborators::normalize(['@@apple@']))->toBe(['apple'])
+        ->and(InstagramCollaborators::failures(['@apple'], null))->toBe(['items' => [], 'exceedsMax' => false])
+        ->and(InstagramCollaborators::failures(['apple'], null))->toBe(['items' => [], 'exceedsMax' => false]);
+});
+
 test('normalize strips at signs, trims, and deduplicates case-insensitively', function () {
     expect(InstagramCollaborators::normalize([' @Host_One ', 'host_one', 'host_two', '', 1]))
         ->toBe(['Host_One', 'host_two']);

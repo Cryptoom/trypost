@@ -60,7 +60,7 @@ final class InstagramCollaborators
                 continue;
             }
 
-            $username = ltrim(trim($item), '@');
+            $username = self::bare($item);
             $key = self::key($username);
 
             if ($key === '' || isset($seen[$key]) || ! self::isValidUsername($username)) {
@@ -89,9 +89,14 @@ final class InstagramCollaborators
         ));
     }
 
+    public static function bare(string $username): string
+    {
+        return str_replace('@', '', trim($username));
+    }
+
     public static function key(string $username): string
     {
-        return mb_strtolower(ltrim(trim($username), '@'));
+        return mb_strtolower(self::bare($username));
     }
 
     public static function isSameUsername(string $left, ?string $right): bool
@@ -101,7 +106,7 @@ final class InstagramCollaborators
 
     public static function isValidUsername(string $username): bool
     {
-        return preg_match('/'.self::USERNAME_PATTERN.'/', ltrim(trim($username), '@')) === 1;
+        return preg_match('/'.self::USERNAME_PATTERN.'/', self::bare($username)) === 1;
     }
 
     /**

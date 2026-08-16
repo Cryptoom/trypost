@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { IconAlertTriangle, IconChevronDown, IconChevronUp } from '@tabler/icons-vue';
+import { IconAlertTriangle, IconChevronDown, IconChevronUp, IconX } from '@tabler/icons-vue';
+import { trans } from 'laravel-vue-i18n';
 import { computed, ref, watch } from 'vue';
 
 import InputError from '@/components/InputError.vue';
@@ -71,12 +72,45 @@ const aspectRatios = [
 
 const isFeed = computed(() => props.contentType === ContentType.InstagramFeed);
 const selectedAspectRatio = computed(() => props.meta.aspect_ratio ?? '1:1');
+const collaborators = computed<string[]>(() =>
+    Array.isArray(props.meta.collaborators) ? props.meta.collaborators : [],
+);
+const collaboratorDraft = ref('');
+const collaboratorFeedback = ref('');
 const errors = usePageErrors();
 const collaboratorsError = computed(() =>
-    Object.entries(errors.value).find(([key]) => key.includes('.meta.collaborators'))?.[1],
+    collaboratorFeedback.value
+    || Object.entries(errors.value).find(([key]) => key.includes('.meta.collaborators'))?.[1],
 );
 
 const updateMeta = (patch: Record<string, any>) => emit('update:meta', { ...props.meta, ...patch });
+
+const commitCollaboratorDraft = () => {
+    if (props.disabled) {
+        return;
+    }
+
+    let username = collaboratorDraft.value.trim();
+
+    if (username.startsWith('@')) {
+        username = username.slice(1);
+    }
+
+    collaboratorDraft.value = '';
+
+    if (username === '') {
+        return;
+    }
+
+    if (username.toLowerCase() === (props.socialAccount?.username ?? '').toLowerCase()) {
+        collaboratorFeedback.value = trans('posts.form.instagram.collaborators_self');
+
+        return;
+    }
+
+    collaboratorFeedback.value = '';
+    updateMeta({ collaborators: [...collaborators.value, username] });
+};
 
 const pickVariant = (value: string) => {
     if (props.disabled) return;
@@ -165,11 +199,29 @@ const warning = computed(() => getMediaValidationWarning(props.contentType, prop
 
             <div v-if="contentType !== ContentType.InstagramStory" class="space-y-2">
                 <p class="text-[11px] font-black uppercase tracking-widest text-foreground/60">{{ $t('posts.form.instagram.collaborators') }}</p>
+                <div v-if="collaborators.length" class="flex flex-wrap gap-1.5">
+                    <span
+                        v-for="username in collaborators"
+                        :key="username"
+                        class="inline-flex items-center gap-1 rounded-full border-2 border-foreground/30 bg-violet-50 px-2 py-0.5 text-xs font-semibold text-foreground"
+                    >
+                        @{{ username }}
+                        <button
+                            v-if="!disabled"
+                            type="button"
+                            class="text-foreground/50 hover:text-foreground"
+                            @click="updateMeta({ collaborators: collaborators.filter((item) => item !== username) })"
+                        >
+                            <IconX class="size-3" />
+                        </button>
+                    </span>
+                </div>
                 <Input
-                    :model-value="meta.collaborators_with ?? ''"
-                    :disabled="disabled"
+                    v-if="!disabled && collaborators.length < 3"
+                    v-model="collaboratorDraft"
                     :placeholder="$t('posts.form.instagram.collaborators_placeholder')"
-                    @update:model-value="updateMeta({ collaborators: String($event), collaborators_with: String($event) })"
+                    @keydown.enter.prevent="commitCollaboratorDraft"
+                    @blur="commitCollaboratorDraft"
                 />
                 <InputError :message="collaboratorsError" />
                 <p class="text-xs font-medium text-foreground/60">
