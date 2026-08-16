@@ -95,29 +95,17 @@ const commitCollaboratorDraft = () => {
         return;
     }
 
-    const next = [...collaborators.value];
+    const added = collaboratorDraft.value
+        .split(/[,\n]/)
+        .map((piece) => piece.trim().replace(/^@+/, ''))
+        .filter((username) => username !== '');
 
-    for (const piece of collaboratorDraft.value.split(/[,\n]/)) {
-        const username = piece.trim().replace(/^@+/, '');
-
-        if (username !== '') {
-            next.push(username);
-        }
-    }
-
-    if (next.length === collaborators.value.length) {
+    if (added.length === 0) {
         return;
     }
 
     collaboratorDraft.value = '';
-    emit('update:meta', metaWithCollaborators(next));
-};
-
-const onCollaboratorKeydown = (event: KeyboardEvent) => {
-    if (event.key === 'Enter' || event.key === ',') {
-        event.preventDefault();
-        commitCollaboratorDraft();
-    }
+    emit('update:meta', metaWithCollaborators([...collaborators.value, ...added]));
 };
 
 const removeCollaborator = (username: string) => {
@@ -240,7 +228,7 @@ const warning = computed(() => getMediaValidationWarning(props.contentType, prop
                     v-if="!disabled && collaborators.length < 3"
                     v-model="collaboratorDraft"
                     :placeholder="$t('posts.form.instagram.collaborators_placeholder')"
-                    @keydown="onCollaboratorKeydown"
+                    @keydown.enter.prevent="commitCollaboratorDraft"
                     @blur="commitCollaboratorDraft"
                 />
                 <InputError :message="collaboratorsError" />
