@@ -16,6 +16,7 @@ import { computed } from 'vue';
 import PostMediaPreview from '@/components/posts/previews/PostMediaPreview.vue';
 import VerticalMediaCanvas from '@/components/posts/previews/VerticalMediaCanvas.vue';
 import { getInitials } from '@/composables/useInitials';
+import { formatUsername } from '@/composables/useUsername';
 import { ContentType } from '@/types/content-type';
 import type { MediaItem } from '@/types/media';
 
@@ -89,7 +90,7 @@ const truncatedCaption = computed(() => {
 });
 
 const collaboratorNames = computed(() =>
-    (props.meta?.collaborators ?? []).map((username: string) => `@${username}`).join(', '),
+    (props.meta?.collaborators ?? []).map(formatUsername).join(', '),
 );
 </script>
 

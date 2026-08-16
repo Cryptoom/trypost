@@ -8,6 +8,7 @@ import { Avatar } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
 import { getMediaValidationWarning } from '@/composables/useMedia';
 import { getPlatformLogo } from '@/composables/usePlatformLogo';
+import { getUsername, isSameUsername } from '@/composables/useUsername';
 import { fallbackImageCapableVariant, filterImageCapableVariants } from '@/lib/aiGenerateVariants';
 import { ContentType } from '@/types/content-type';
 import type { MediaItem } from '@/types/media';
@@ -81,9 +82,9 @@ const collaboratorsError = computed(() =>
 const updateMeta = (patch: Record<string, any>) => emit('update:meta', { ...props.meta, ...patch });
 
 const addCollaborator = () => {
-    const username = collaboratorDraft.value.trim().replace(/^@/, '');
+    const username = getUsername(collaboratorDraft.value);
     collaboratorDraft.value = '';
-    collaboratorSelf.value = username.toLowerCase() === props.socialAccount?.username?.toLowerCase();
+    collaboratorSelf.value = isSameUsername(username, props.socialAccount?.username);
 
     if (username && !collaboratorSelf.value) {
         updateMeta({ collaborators: [...(props.meta.collaborators ?? []), username] });
