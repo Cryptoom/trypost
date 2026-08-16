@@ -1463,6 +1463,36 @@ test('update post rejects tagging the connected instagram account as a collabora
     $response->assertSessionHasErrors('platforms.0.meta.collaborators.0');
 });
 
+test('update post rejects an invalid instagram collaborator username', function () {
+    $instagramAccount = SocialAccount::factory()->instagram()->create([
+        'workspace_id' => $this->workspace->id,
+    ]);
+
+    $post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+        'status' => PostStatus::Draft,
+    ]);
+
+    $postPlatform = PostPlatform::factory()->instagram()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $instagramAccount->id,
+    ]);
+
+    $response = $this->actingAs($this->user)->put(route('app.posts.update', $post), [
+        'status' => 'draft',
+        'platforms' => [
+            [
+                'id' => $postPlatform->id,
+                'content_type' => ContentType::InstagramFeed->value,
+                'meta' => ['collaborators' => ['.user']],
+            ],
+        ],
+    ]);
+
+    $response->assertSessionHasErrors('platforms.0.meta.collaborators.0');
+});
+
 test('update post rejects more than three instagram collaborators', function () {
     $instagramAccount = SocialAccount::factory()->instagram()->create([
         'workspace_id' => $this->workspace->id,

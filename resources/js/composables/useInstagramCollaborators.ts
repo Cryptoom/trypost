@@ -1,16 +1,15 @@
 export const MAX_COLLABORATORS = 3;
 
-/** Keep in sync with InstagramCollaborators::USERNAME_PATTERN. */
-export const USERNAME_PATTERN = /^(?!.*\.\.)(?!\.)[A-Za-z0-9._]{1,30}(?<!\.)$/;
+export const normalizeInstagramUsername = (username: string): string => username.trim().replace(/^@+/, '');
 
-export const isValidInstagramUsername = (username?: string): boolean => {
-    if (!username) {
-        return false;
-    }
+export const collaboratorUsernames = (value: unknown): string[] =>
+    Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string' && item !== '') : [];
 
-    return USERNAME_PATTERN.test(username.trim().replace(/^@+/, ''));
-};
+export const formatCollaboratorNames = (value: unknown): string =>
+    collaboratorUsernames(value)
+        .map((username) => `@${normalizeInstagramUsername(username)}`)
+        .join(', ');
 
 export const useInstagramCollaborators = () => {
-    return { isValidInstagramUsername, MAX_COLLABORATORS };
+    return { collaboratorUsernames, formatCollaboratorNames, MAX_COLLABORATORS };
 };

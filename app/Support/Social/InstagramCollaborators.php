@@ -12,7 +12,7 @@ final class InstagramCollaborators
      * Instagram usernames: 1–30 letters, numbers, periods, underscores.
      * No leading/trailing period and no consecutive periods.
      */
-    public const string USERNAME_PATTERN = '/^(?!.*\.\.)(?!\.)[A-Za-z0-9._]{1,30}(?<!\.)$/';
+    public const string USERNAME_PATTERN = '^(?!.*\.\.)(?!\.)[A-Za-z0-9._]{1,30}(?<!\.)$';
 
     /**
      * @param  array<string, mixed>  $meta
@@ -76,7 +76,7 @@ final class InstagramCollaborators
 
     public static function isValidUsername(string $username): bool
     {
-        return preg_match(self::USERNAME_PATTERN, ltrim(trim($username), '@')) === 1;
+        return preg_match('/'.self::USERNAME_PATTERN.'/', ltrim(trim($username), '@')) === 1;
     }
 
     /**

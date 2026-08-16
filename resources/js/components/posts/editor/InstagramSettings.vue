@@ -6,7 +6,7 @@ import InputError from '@/components/InputError.vue';
 import { usePageErrors } from '@/composables/usePageErrors';
 import { Avatar } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
-import { isValidInstagramUsername, MAX_COLLABORATORS } from '@/composables/useInstagramCollaborators';
+import { collaboratorUsernames, MAX_COLLABORATORS, normalizeInstagramUsername } from '@/composables/useInstagramCollaborators';
 import { getMediaValidationWarning } from '@/composables/useMedia';
 import { getPlatformLogo } from '@/composables/usePlatformLogo';
 import { fallbackImageCapableVariant, filterImageCapableVariants } from '@/lib/aiGenerateVariants';
@@ -74,15 +74,10 @@ const isFeed = computed(() => props.contentType === ContentType.InstagramFeed);
 const isStory = computed(() => props.contentType === ContentType.InstagramStory);
 const showCollaborators = computed(() => !isStory.value);
 const selectedAspectRatio = computed(() => props.meta.aspect_ratio ?? '1:1');
-const collaborators = computed<string[]>(() => {
-    const value = props.meta.collaborators;
-
-    return Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string' && item !== '') : [];
-});
+const collaborators = computed(() => collaboratorUsernames(props.meta.collaborators));
 const collaboratorDraft = ref('');
 const selfMentionAttempted = ref(false);
 const duplicateAttempted = ref(false);
-const invalidUsernameAttempted = ref(false);
 const errors = usePageErrors();
 const backendCollaboratorsError = computed(() =>
     Object.entries(errors.value).find(([key]) => key.includes('.meta.collaborators'))?.[1],
@@ -91,7 +86,7 @@ const backendCollaboratorsError = computed(() =>
 const ownUsername = computed(() => {
     const username = props.socialAccount?.username;
 
-    return username ? username.replace(/^@+/, '').toLowerCase() : '';
+    return username ? normalizeInstagramUsername(username).toLowerCase() : '';
 });
 
 const commitCollaboratorDraft = () => {
@@ -102,17 +97,11 @@ const commitCollaboratorDraft = () => {
     const next = [...collaborators.value];
     selfMentionAttempted.value = false;
     duplicateAttempted.value = false;
-    invalidUsernameAttempted.value = false;
 
     for (const piece of collaboratorDraft.value.split(/[,\n]/)) {
-        const username = piece.trim().replace(/^@+/, '');
+        const username = normalizeInstagramUsername(piece);
 
         if (username === '') {
-            continue;
-        }
-
-        if (!isValidInstagramUsername(username)) {
-            invalidUsernameAttempted.value = true;
             continue;
         }
 
@@ -278,9 +267,7 @@ const warning = computed(() => getMediaValidationWarning(props.contentType, prop
                     ? $t('posts.form.instagram.collaborators_self')
                     : duplicateAttempted
                         ? $t('posts.form.instagram.collaborators_duplicate')
-                        : invalidUsernameAttempted
-                            ? $t('posts.form.instagram.collaborators_invalid')
-                            : backendCollaboratorsError" />
+                        : backendCollaboratorsError" />
                 <p class="text-xs font-medium text-foreground/60">
                     {{ $t('posts.form.instagram.collaborators_hint') }}
                 </p>

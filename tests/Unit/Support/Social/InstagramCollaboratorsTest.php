@@ -69,13 +69,6 @@ test('normalize drops graph-invalid usernames', function () {
         ->toBe(['host_one']);
 });
 
-test('frontend collaborator limits stay in sync with the php constants', function () {
-    $frontend = file_get_contents(resource_path('js/composables/useInstagramCollaborators.ts'));
-
-    expect($frontend)->toContain('export const MAX_COLLABORATORS = '.InstagramCollaborators::MAX)
-        ->and($frontend)->toContain(InstagramCollaborators::USERNAME_PATTERN);
-});
-
 test('collaborator copy treats the field as optional', function () {
     expect(__('posts.form.instagram.collaborators_hint'))
         ->toContain('Optional')
