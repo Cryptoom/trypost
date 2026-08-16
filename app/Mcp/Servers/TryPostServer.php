@@ -19,7 +19,6 @@ use App\Mcp\Tools\Post\AttachMediaFromUploadTool;
 use App\Mcp\Tools\Post\AttachMediaFromUrlTool;
 use App\Mcp\Tools\Post\CreatePostTool;
 use App\Mcp\Tools\Post\DeletePostTool;
-use App\Mcp\Tools\Post\GetInstagramCollaboratorsTool;
 use App\Mcp\Tools\Post\GetPostMetricsTool;
 use App\Mcp\Tools\Post\GetPostTool;
 use App\Mcp\Tools\Post\ListPostsTool;
@@ -63,7 +62,6 @@ class TryPostServer extends Server
         RequestMediaUploadTool::class,
         AttachMediaFromUploadTool::class,
         GetPostMetricsTool::class,
-        GetInstagramCollaboratorsTool::class,
 
         // Assets
         ListAssetsTool::class,

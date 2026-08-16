@@ -4,14 +4,12 @@ declare(strict_types=1);
 
 use App\Enums\Post\Status as PostStatus;
 use App\Enums\PostPlatform\ContentType;
-use App\Enums\PostPlatform\Status as PostPlatformStatus;
 use App\Enums\SocialAccount\Platform;
 use App\Enums\UserWorkspace\Role;
 use App\Jobs\PublishPost;
 use App\Mcp\Servers\TryPostServer;
 use App\Mcp\Tools\Post\AttachMediaFromUploadTool;
 use App\Mcp\Tools\Post\CreatePostTool;
-use App\Mcp\Tools\Post\GetInstagramCollaboratorsTool;
 use App\Mcp\Tools\Post\PublishPostTool;
 use App\Mcp\Tools\Post\UpdatePostTool;
 use App\Models\Post;
@@ -19,10 +17,8 @@ use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
-use Illuminate\Testing\Fluent\AssertableJson;
 
 beforeEach(function () {
     $this->user = User::factory()->create();
@@ -441,57 +437,4 @@ test('update post merges Instagram collaborators with existing aspect_ratio', fu
 
     expect(data_get($meta, 'collaborators'))->toBe(['host_one'])
         ->and(data_get($meta, 'aspect_ratio'))->toBe('4:5');
-});
-
-test('get instagram collaborators returns invite status', function () {
-    Http::fake([
-        config('trypost.platforms.instagram-facebook.graph_api').'/media-1/collaborators*' => Http::response([
-            'data' => [
-                ['username' => 'host_one', 'invite_status' => 'Pending'],
-            ],
-        ], 200),
-    ]);
-
-    $account = SocialAccount::factory()->instagramFacebook()->create([
-        'workspace_id' => $this->workspace->id,
-        'access_token' => 'token-fb',
-    ]);
-    $post = Post::factory()->create([
-        'workspace_id' => $this->workspace->id,
-        'user_id' => $this->user->id,
-    ]);
-    $platform = PostPlatform::factory()->instagramFacebook()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $account->id,
-        'status' => PostPlatformStatus::Published,
-        'platform_post_id' => 'media-1',
-        'meta' => ['collaborators' => ['host_one']],
-    ]);
-
-    TryPostServer::actingAs($this->user)
-        ->tool(GetInstagramCollaboratorsTool::class, [
-            'post_id' => $post->id,
-            'post_platform_id' => $platform->id,
-        ])
-        ->assertOk()
-        ->assertStructuredContent(function (AssertableJson $json) {
-            $json->where('status_available', true)
-                ->has('collaborators', 1)
-                ->where('collaborators.0.username', 'host_one')
-                ->where('collaborators.0.invite_status', 'Pending');
-        });
-});
-
-test('get instagram collaborators errors when the platform is missing', function () {
-    $post = Post::factory()->create([
-        'workspace_id' => $this->workspace->id,
-        'user_id' => $this->user->id,
-    ]);
-
-    TryPostServer::actingAs($this->user)
-        ->tool(GetInstagramCollaboratorsTool::class, [
-            'post_id' => $post->id,
-            'post_platform_id' => (string) Str::uuid(),
-        ])
-        ->assertHasErrors(['Post platform not found.']);
 });

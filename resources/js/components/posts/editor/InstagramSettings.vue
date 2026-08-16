@@ -1,9 +1,7 @@
 <script setup lang="ts">
-import { useHttp } from '@inertiajs/vue3';
 import { IconAlertTriangle, IconChevronDown, IconChevronUp, IconX } from '@tabler/icons-vue';
 import { computed, ref, watch } from 'vue';
 
-import { instagramCollaborators as collaboratorsRoute } from '@/actions/App/Http/Controllers/App/PostController';
 import InputError from '@/components/InputError.vue';
 import { usePageErrors } from '@/composables/usePageErrors';
 import { Avatar } from '@/components/ui/avatar';
@@ -13,22 +11,9 @@ import { getPlatformLogo } from '@/composables/usePlatformLogo';
 import { fallbackImageCapableVariant, filterImageCapableVariants } from '@/lib/aiGenerateVariants';
 import { ContentType } from '@/types/content-type';
 import type { MediaItem } from '@/types/media';
-import { PostPlatformStatus } from '@/types/post';
-
-type InviteStatus = 'Accepted' | 'Pending' | 'Declined';
 
 const MAX_COLLABORATORS = 3;
 const USERNAME_PATTERN = /^[A-Za-z0-9._]{1,30}$/;
-const INVITE_STATUS_KEYS: Record<InviteStatus, string> = {
-    Accepted: 'posts.form.instagram.collaborators_accepted',
-    Pending: 'posts.form.instagram.collaborators_pending',
-    Declined: 'posts.form.instagram.collaborators_declined',
-};
-
-interface CollaboratorsResponse {
-    status_available: boolean;
-    collaborators: { username: string; invite_status: InviteStatus | null }[];
-}
 
 interface SocialAccount {
     id: string;
@@ -46,9 +31,6 @@ interface Props {
     meta?: Record<string, any>;
     disabled?: boolean;
     previewOnly?: boolean;
-    postId?: string;
-    postPlatformId?: string;
-    status?: string | null;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -93,7 +75,6 @@ const aspectRatios = [
 const isFeed = computed(() => props.contentType === ContentType.InstagramFeed);
 const isStory = computed(() => props.contentType === ContentType.InstagramStory);
 const showCollaborators = computed(() => !isStory.value);
-const isPublished = computed(() => props.status === PostPlatformStatus.Published);
 const selectedAspectRatio = computed(() => props.meta.aspect_ratio ?? '1:1');
 const collaborators = computed<string[]>(() => {
     const value = props.meta.collaborators;
@@ -107,57 +88,12 @@ const errors = usePageErrors();
 const backendCollaboratorsError = computed(() =>
     Object.entries(errors.value).find(([key]) => key.includes('.meta.collaborators'))?.[1],
 );
-const statusAvailable = ref(false);
-const inviteByUsername = ref<Record<string, InviteStatus | null>>({});
-const collaboratorsHttp = useHttp<Record<string, never>, CollaboratorsResponse>({});
 
 const ownUsername = computed(() => {
     const username = props.socialAccount?.username;
 
     return username ? username.replace(/^@+/, '').toLowerCase() : '';
 });
-
-const canFetchStatus = computed(() => Boolean(
-    props.postId
-    && props.postPlatformId
-    && isPublished.value
-    && collaborators.value.length > 0,
-));
-
-const clearInviteStatus = () => {
-    statusAvailable.value = false;
-    inviteByUsername.value = {};
-};
-
-const fetchInviteStatus = async () => {
-    if (!canFetchStatus.value || !props.postId || !props.postPlatformId) {
-        clearInviteStatus();
-
-        return;
-    }
-
-    try {
-        const response = await collaboratorsHttp.get(collaboratorsRoute.url({
-            post: props.postId,
-            postPlatform: props.postPlatformId,
-        }));
-
-        statusAvailable.value = response.status_available;
-        inviteByUsername.value = Object.fromEntries(
-            response.collaborators.map((row) => [row.username.toLowerCase(), row.invite_status]),
-        );
-    } catch {
-        clearInviteStatus();
-    }
-};
-
-watch(
-    [() => props.postId, () => props.postPlatformId, isPublished, collaborators],
-    () => {
-        void fetchInviteStatus();
-    },
-    { immediate: true },
-);
 
 const commitCollaboratorDraft = () => {
     if (props.disabled) {
@@ -218,12 +154,6 @@ const removeCollaborator = (username: string) => {
         ...props.meta,
         collaborators: collaborators.value.filter((item) => item !== username),
     });
-};
-
-const inviteStatusKey = (username: string): string | null => {
-    const status = inviteByUsername.value[username.toLowerCase()];
-
-    return status ? INVITE_STATUS_KEYS[status] : null;
 };
 
 const pickVariant = (value: string) => {
@@ -324,12 +254,6 @@ const warning = computed(() => getMediaValidationWarning(props.contentType, prop
                         class="inline-flex items-center gap-1 rounded-full border-2 border-foreground/30 bg-violet-50 px-2 py-0.5 text-xs font-semibold text-foreground"
                     >
                         @{{ username }}
-                        <span
-                            v-if="isPublished && inviteStatusKey(username)"
-                            class="font-medium text-foreground/60"
-                        >
-                            · {{ $t(inviteStatusKey(username) ?? '') }}
-                        </span>
                         <button
                             v-if="!disabled"
                             type="button"
@@ -353,9 +277,7 @@ const warning = computed(() => getMediaValidationWarning(props.contentType, prop
                         ? $t('posts.form.instagram.collaborators_invalid')
                         : backendCollaboratorsError" />
                 <p class="text-xs font-medium text-foreground/60">
-                    {{ isPublished && !statusAvailable && collaborators.length
-                        ? $t('posts.form.instagram.collaborators_status_unavailable')
-                        : $t('posts.form.instagram.collaborators_hint') }}
+                    {{ $t('posts.form.instagram.collaborators_hint') }}
                 </p>
             </div>
 

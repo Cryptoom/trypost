@@ -1457,61 +1457,6 @@ test('update post rejects more than three instagram collaborators', function () 
     $response->assertSessionHasErrors('platforms.0.meta.collaborators');
 });
 
-test('instagram collaborators endpoint returns invite status', function () {
-    Http::fake([
-        config('trypost.platforms.instagram-facebook.graph_api').'/media-1/collaborators*' => Http::response([
-            'data' => [
-                ['username' => 'host_one', 'invite_status' => 'Accepted'],
-            ],
-        ], 200),
-    ]);
-
-    $account = SocialAccount::factory()->instagramFacebook()->create([
-        'workspace_id' => $this->workspace->id,
-        'access_token' => 'token-fb',
-    ]);
-    $post = Post::factory()->create([
-        'workspace_id' => $this->workspace->id,
-        'user_id' => $this->user->id,
-    ]);
-    $platform = PostPlatform::factory()->instagramFacebook()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $account->id,
-        'status' => Status::Published,
-        'platform_post_id' => 'media-1',
-        'meta' => ['collaborators' => ['host_one']],
-    ]);
-
-    $this->actingAs($this->user)
-        ->getJson(route('app.posts.platforms.instagram-collaborators', ['post' => $post, 'postPlatform' => $platform]))
-        ->assertOk()
-        ->assertJson([
-            'status_available' => true,
-            'collaborators' => [
-                ['username' => 'host_one', 'invite_status' => 'Accepted'],
-            ],
-        ]);
-});
-
-test('instagram collaborators endpoint returns 404 when platform belongs to another post', function () {
-    $post = Post::factory()->create([
-        'workspace_id' => $this->workspace->id,
-        'user_id' => $this->user->id,
-    ]);
-    $other = Post::factory()->create([
-        'workspace_id' => $this->workspace->id,
-        'user_id' => $this->user->id,
-    ]);
-    $platform = PostPlatform::factory()->create([
-        'post_id' => $other->id,
-        'social_account_id' => $this->socialAccount->id,
-    ]);
-
-    $this->actingAs($this->user)
-        ->getJson(route('app.posts.platforms.instagram-collaborators', ['post' => $post, 'postPlatform' => $platform]))
-        ->assertNotFound();
-});
-
 test('scheduling without content_type per platform fails', function () {
     $youtubeAccount = SocialAccount::factory()->create([
         'workspace_id' => $this->workspace->id,

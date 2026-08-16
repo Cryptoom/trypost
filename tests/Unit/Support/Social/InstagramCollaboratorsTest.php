@@ -2,15 +2,7 @@
 
 declare(strict_types=1);
 
-use App\Enums\PostPlatform\Status;
-use App\Enums\SocialAccount\Platform;
-use App\Models\Post;
-use App\Models\PostPlatform;
-use App\Models\SocialAccount;
-use App\Models\User;
-use App\Models\Workspace;
 use App\Support\Social\InstagramCollaborators;
-use Illuminate\Support\Facades\Http;
 
 test('normalize strips at signs, trims, and deduplicates case-insensitively', function () {
     expect(InstagramCollaborators::normalize([' @Host_One ', 'host_one', 'host_two', '', 1]))
@@ -43,84 +35,8 @@ test('payload omits the connected account username', function () {
     ]);
 });
 
-test('fetch invite status skips the graph call for standalone instagram', function () {
-    Http::fake();
-
-    $workspace = Workspace::factory()->create();
-    $account = SocialAccount::factory()->instagram()->create(['workspace_id' => $workspace->id]);
-    $post = Post::factory()->create(['workspace_id' => $workspace->id, 'user_id' => User::factory()]);
-    $platform = PostPlatform::factory()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $account->id,
-        'platform' => Platform::Instagram,
-        'status' => Status::Published,
-        'platform_post_id' => 'media-1',
-        'meta' => ['collaborators' => ['host_one']],
-    ]);
-
-    expect(InstagramCollaborators::fetchInviteStatus($platform->load('socialAccount')))->toBe([
-        'status_available' => false,
-        'collaborators' => [['username' => 'host_one', 'invite_status' => null]],
-    ]);
-
-    Http::assertNothingSent();
-});
-
-test('fetch invite status maps facebook login graph response', function () {
-    Http::fake([
-        config('trypost.platforms.instagram-facebook.graph_api').'/media-1/collaborators*' => Http::response([
-            'data' => [
-                ['username' => 'host_one', 'invite_status' => 'Accpeted'],
-                ['username' => 'host_two', 'invite_status' => 'Pending'],
-            ],
-        ], 200),
-    ]);
-
-    $workspace = Workspace::factory()->create();
-    $account = SocialAccount::factory()->instagramFacebook()->create([
-        'workspace_id' => $workspace->id,
-        'access_token' => 'token-fb',
-    ]);
-    $post = Post::factory()->create(['workspace_id' => $workspace->id, 'user_id' => User::factory()]);
-    $platform = PostPlatform::factory()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $account->id,
-        'platform' => Platform::Instagram,
-        'status' => Status::Published,
-        'platform_post_id' => 'media-1',
-        'meta' => ['collaborators' => ['host_one', 'host_two']],
-    ]);
-
-    expect(InstagramCollaborators::fetchInviteStatus($platform->load('socialAccount')))->toBe([
-        'status_available' => true,
-        'collaborators' => [
-            ['username' => 'host_one', 'invite_status' => 'Accepted'],
-            ['username' => 'host_two', 'invite_status' => 'Pending'],
-        ],
-    ]);
-});
-
-test('fetch invite status falls back when the graph call fails', function () {
-    Http::fake([
-        config('trypost.platforms.instagram-facebook.graph_api').'/media-1/collaborators*' => Http::response(['error' => ['message' => 'unsupported']], 400),
-    ]);
-
-    $workspace = Workspace::factory()->create();
-    $account = SocialAccount::factory()->instagramFacebook()->create([
-        'workspace_id' => $workspace->id,
-        'access_token' => 'token-fb',
-    ]);
-    $post = Post::factory()->create(['workspace_id' => $workspace->id, 'user_id' => User::factory()]);
-    $platform = PostPlatform::factory()->instagramFacebook()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $account->id,
-        'status' => Status::Published,
-        'platform_post_id' => 'media-1',
-        'meta' => ['collaborators' => ['host_one']],
-    ]);
-
-    expect(InstagramCollaborators::fetchInviteStatus($platform->load('socialAccount')))->toBe([
-        'status_available' => false,
-        'collaborators' => [['username' => 'host_one', 'invite_status' => null]],
-    ]);
+test('collaborator copy treats the field as optional', function () {
+    expect(__('posts.form.instagram.collaborators_hint'))
+        ->toContain('Optional')
+        ->toContain('must accept');
 });

@@ -4,13 +4,11 @@ declare(strict_types=1);
 
 use App\Enums\Post\Status as PostStatus;
 use App\Enums\PostPlatform\ContentType;
-use App\Enums\PostPlatform\Status as PostPlatformStatus;
 use App\Enums\SocialAccount\Platform;
 use App\Jobs\PublishPost;
 use App\Models\Post;
 use App\Models\PostPlatform;
 use App\Models\SocialAccount;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 
 beforeEach(function () {
@@ -577,61 +575,6 @@ it('rejects an invalid Instagram collaborator username', function () {
         ])
         ->assertUnprocessable()
         ->assertJsonValidationErrors(['platforms.0.meta.collaborators.0']);
-});
-
-it('returns Instagram collaborator invite status for a published Facebook login post', function () {
-    Http::fake([
-        config('trypost.platforms.instagram-facebook.graph_api').'/media-1/collaborators*' => Http::response([
-            'data' => [
-                ['username' => 'host_one', 'invite_status' => 'Pending'],
-            ],
-        ], 200),
-    ]);
-
-    $account = SocialAccount::factory()->instagramFacebook()->create([
-        'workspace_id' => $this->workspace->id,
-        'access_token' => 'token-fb',
-    ]);
-    $post = Post::factory()->create([
-        'workspace_id' => $this->workspace->id,
-        'user_id' => $this->user->id,
-    ]);
-    $platform = PostPlatform::factory()->instagramFacebook()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $account->id,
-        'status' => PostPlatformStatus::Published,
-        'platform_post_id' => 'media-1',
-        'meta' => ['collaborators' => ['host_one']],
-    ]);
-
-    $this->withHeaders($this->headers)
-        ->getJson(route('api.posts.platforms.collaborators', ['post' => $post, 'postPlatform' => $platform]))
-        ->assertOk()
-        ->assertJson([
-            'status_available' => true,
-            'collaborators' => [
-                ['username' => 'host_one', 'invite_status' => 'Pending'],
-            ],
-        ]);
-});
-
-it('returns 404 when the collaborator platform does not belong to the post', function () {
-    $post = Post::factory()->create([
-        'workspace_id' => $this->workspace->id,
-        'user_id' => $this->user->id,
-    ]);
-    $other = Post::factory()->create([
-        'workspace_id' => $this->workspace->id,
-        'user_id' => $this->user->id,
-    ]);
-    $platform = PostPlatform::factory()->create([
-        'post_id' => $other->id,
-        'social_account_id' => $this->discordAccount->id,
-    ]);
-
-    $this->withHeaders($this->headers)
-        ->getJson(route('api.posts.platforms.collaborators', ['post' => $post, 'postPlatform' => $platform]))
-        ->assertNotFound();
 });
 
 it('rejects non-http Pinterest links', function () {

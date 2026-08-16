@@ -4,12 +4,6 @@ declare(strict_types=1);
 
 namespace App\Support\Social;
 
-use App\Enums\PostPlatform\Status;
-use App\Enums\SocialAccount\Platform;
-use App\Models\PostPlatform;
-use Illuminate\Http\Client\ConnectionException;
-use Illuminate\Support\Facades\Http;
-
 final class InstagramCollaborators
 {
     public const int MAX = 3;
@@ -91,98 +85,5 @@ final class InstagramCollaborators
         }
 
         return ['collaborators' => json_encode($usernames, JSON_THROW_ON_ERROR)];
-    }
-
-    /**
-     * @return array{status_available: bool, collaborators: list<array{username: string, invite_status: string|null}>}
-     */
-    public static function fetchInviteStatus(PostPlatform $postPlatform): array
-    {
-        $stored = self::normalize(data_get($postPlatform->meta, 'collaborators'));
-        $fallback = [
-            'status_available' => false,
-            'collaborators' => array_map(
-                fn (string $username): array => ['username' => $username, 'invite_status' => null],
-                $stored,
-            ),
-        ];
-
-        $account = $postPlatform->socialAccount;
-        $network = $account?->platform ?? $postPlatform->platform;
-
-        if (
-            $account === null
-            || blank($account->access_token)
-            || $network !== Platform::InstagramFacebook
-            || $postPlatform->status !== Status::Published
-            || blank($postPlatform->platform_post_id)
-            || $stored === []
-        ) {
-            return $fallback;
-        }
-
-        $baseUrl = $account->platform->instagramGraphBaseUrl();
-
-        try {
-            $response = Http::timeout(30)->get("{$baseUrl}/{$postPlatform->platform_post_id}/collaborators", [
-                'access_token' => $account->access_token,
-            ]);
-        } catch (ConnectionException) {
-            return $fallback;
-        }
-
-        if ($response->failed()) {
-            return $fallback;
-        }
-
-        $rows = data_get($response->json(), 'data', []);
-
-        if (! is_array($rows)) {
-            return $fallback;
-        }
-
-        $byUsername = [];
-
-        foreach ($rows as $row) {
-            if (! is_array($row)) {
-                continue;
-            }
-
-            $username = self::normalize([data_get($row, 'username')])[0] ?? null;
-
-            if ($username === null) {
-                continue;
-            }
-
-            $byUsername[self::key($username)] = [
-                'username' => $username,
-                'invite_status' => self::normalizeInviteStatus(data_get($row, 'invite_status')),
-            ];
-        }
-
-        return [
-            'status_available' => true,
-            'collaborators' => array_map(
-                fn (string $username): array => $byUsername[self::key($username)] ?? [
-                    'username' => $username,
-                    'invite_status' => null,
-                ],
-                $stored,
-            ),
-        ];
-    }
-
-    private static function normalizeInviteStatus(mixed $status): ?string
-    {
-        if (! is_string($status) || $status === '') {
-            return null;
-        }
-
-        return match (mb_strtolower($status)) {
-            'accepted', 'accpeted' => 'Accepted',
-            'pending' => 'Pending',
-            'declined' => 'Declined',
-            default => $status,
-        };
     }
 }

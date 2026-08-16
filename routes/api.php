@@ -30,7 +30,6 @@ Route::middleware(['auth:api', 'workspace.token', 'throttle:api'])->group(functi
     Route::post('/posts/{post}/media/from-asset', [PostController::class, 'attachExistingAsset'])->name('api.posts.attach-existing-asset');
     Route::get('/posts/{post}/metrics', [PostController::class, 'metrics'])->name('api.posts.metrics');
     Route::get('/posts/{post}/preview', [PostController::class, 'preview'])->name('api.posts.preview');
-    Route::get('/posts/{post}/platforms/{postPlatform}/collaborators', [PostController::class, 'collaborators'])->name('api.posts.platforms.collaborators');
 
     // Platforms (read-only metadata)
     Route::get('/content-types', [PlatformController::class, 'contentTypes'])->name('api.content-types');

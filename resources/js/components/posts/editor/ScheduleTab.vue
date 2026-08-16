@@ -80,7 +80,6 @@ const props = defineProps<{
     tiktokCreatorInfos?: Record<string, TikTokCreatorInfo> | null;
     pinterestBoards?: Record<string, PinterestBoardsPayload> | null;
     media?: MediaItem[];
-    postId?: string;
 }>();
 
 const emit = defineEmits<{
@@ -168,7 +167,6 @@ const channels = computed<Channel[]>(() =>
                 :media="media ?? []"
                 :video-duration-sec="videoDurationSec"
                 :disabled="isReadOnly"
-                :post-id="postId"
                 @toggle="(id: string) => emit('togglePlatform', id)"
                 @update:content-type="(id: string, value: string) => emit('update:platformContentType', id, value)"
                 @update:meta="(id: string, value: Record<string, any>) => emit('update:platformMeta', id, value)"
