@@ -88,7 +88,11 @@ const truncatedCaption = computed(() => {
     return props.content.substring(0, 80) + '...';
 });
 
-const collaboratorNames = computed(() => props.meta?.collaborators_with ?? '');
+const collaboratorNames = computed(() => {
+    const names = Array.isArray(props.meta?.collaborators) ? props.meta.collaborators : [];
+
+    return names.map((username: string) => `@${username}`).join(', ');
+});
 </script>
 
 <template>

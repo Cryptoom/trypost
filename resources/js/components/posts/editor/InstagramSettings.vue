@@ -71,63 +71,37 @@ const aspectRatios = [
 
 const isFeed = computed(() => props.contentType === ContentType.InstagramFeed);
 const isStory = computed(() => props.contentType === ContentType.InstagramStory);
-const showCollaborators = computed(() => !isStory.value);
 const selectedAspectRatio = computed(() => props.meta.aspect_ratio ?? '1:1');
-const collaborators = computed<string[]>(() => {
-    const value = props.meta.collaborators;
-
-    return Array.isArray(value) ? value : [];
-});
+const collaborators = computed<string[]>(() =>
+    Array.isArray(props.meta.collaborators) ? props.meta.collaborators : [],
+);
 const collaboratorDraft = ref('');
 const errors = usePageErrors();
 const collaboratorsError = computed(() =>
     Object.entries(errors.value).find(([key]) => key.includes('.meta.collaborators'))?.[1],
 );
 
-const metaWithCollaborators = (next: string[]): Record<string, any> => ({
-    ...props.meta,
-    collaborators: next,
-    collaborators_with: next.map((username) => `@${username}`).join(', '),
-});
+const updateMeta = (patch: Record<string, any>) => emit('update:meta', { ...props.meta, ...patch });
 
 const commitCollaboratorDraft = () => {
-    if (props.disabled) {
-        return;
-    }
+    const username = collaboratorDraft.value.trim().replace(/^@+/, '');
 
-    const added = collaboratorDraft.value
-        .split(/[,\n]/)
-        .map((piece) => piece.trim().replace(/^@+/, ''))
-        .filter((username) => username !== '');
-
-    if (added.length === 0) {
+    if (props.disabled || username === '') {
         return;
     }
 
     collaboratorDraft.value = '';
-    emit('update:meta', metaWithCollaborators([...collaborators.value, ...added]));
-};
-
-const removeCollaborator = (username: string) => {
-    if (props.disabled) {
-        return;
-    }
-
-    emit('update:meta', metaWithCollaborators(collaborators.value.filter((item) => item !== username)));
+    updateMeta({ collaborators: [...collaborators.value, username] });
 };
 
 const pickVariant = (value: string) => {
     if (props.disabled) return;
     emit('update:contentType', value);
-
-    if (value === ContentType.InstagramStory && collaborators.value.length > 0) {
-        emit('update:meta', metaWithCollaborators([]));
-    }
 };
 
 const pickAspectRatio = (value: string) => {
     if (props.disabled) return;
-    emit('update:meta', { ...props.meta, aspect_ratio: value });
+    updateMeta({ aspect_ratio: value });
 };
 
 const warning = computed(() => getMediaValidationWarning(props.contentType, props.media));
@@ -205,7 +179,7 @@ const warning = computed(() => getMediaValidationWarning(props.contentType, prop
                 </div>
             </div>
 
-            <div v-if="showCollaborators" class="space-y-2">
+            <div v-if="!isStory" class="space-y-2">
                 <p class="text-[11px] font-black uppercase tracking-widest text-foreground/60">{{ $t('posts.form.instagram.collaborators') }}</p>
                 <div v-if="collaborators.length" class="flex flex-wrap gap-1.5">
                     <span
@@ -218,7 +192,7 @@ const warning = computed(() => getMediaValidationWarning(props.contentType, prop
                             v-if="!disabled"
                             type="button"
                             class="text-foreground/50 hover:text-foreground"
-                            @click="removeCollaborator(username)"
+                            @click="updateMeta({ collaborators: collaborators.filter((item) => item !== username) })"
                         >
                             <IconX class="size-3" />
                         </button>
