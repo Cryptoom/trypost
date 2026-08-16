@@ -47,8 +47,12 @@ test('shared meta rules still include non-pinterest platform fields', function (
 test('normalize strips instagram collaborators only on instagram platforms', function () {
     $incoming = ['collaborators' => ['@Host_One', 'host_two'], 'aspect_ratio' => '4:5'];
 
-    expect(PostPlatformMetaRules::normalize(Platform::Instagram, $incoming)['collaborators'])->toBe(['Host_One', 'host_two'])
-        ->and(PostPlatformMetaRules::normalize(Platform::InstagramFacebook, $incoming)['collaborators'])->toBe(['Host_One', 'host_two']);
+    expect(PostPlatformMetaRules::normalize(Platform::Instagram, $incoming))->toMatchArray([
+        'collaborators' => ['Host_One', 'host_two'],
+        'collaborators_with' => '@Host_One, @host_two',
+        'aspect_ratio' => '4:5',
+    ])
+        ->and(PostPlatformMetaRules::normalize(Platform::InstagramFacebook, $incoming)['collaborators_with'])->toBe('@Host_One, @host_two');
 });
 
 test('normalize leaves other networks meta untouched so future mentions stay intact', function () {
@@ -67,6 +71,7 @@ test('merge applies instagram normalize then keeps existing keys', function () {
     ))->toBe([
         'aspect_ratio' => '4:5',
         'collaborators' => ['Host_One'],
+        'collaborators_with' => '@Host_One',
     ]);
 });
 
@@ -79,6 +84,7 @@ test('merge clears instagram collaborators on stories', function () {
     ))->toMatchArray([
         'aspect_ratio' => '4:5',
         'collaborators' => [],
+        'collaborators_with' => '',
     ]);
 });
 
@@ -91,6 +97,7 @@ test('merge clears instagram collaborators on stories even when incoming meta is
     ))->toMatchArray([
         'aspect_ratio' => '4:5',
         'collaborators' => [],
+        'collaborators_with' => '',
     ]);
 });
 

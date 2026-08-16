@@ -84,6 +84,12 @@ const collaboratorsError = computed(() =>
     Object.entries(errors.value).find(([key]) => key.includes('.meta.collaborators'))?.[1],
 );
 
+const metaWithCollaborators = (next: string[]): Record<string, any> => ({
+    ...props.meta,
+    collaborators: next,
+    collaborators_with: next.map((username) => `@${username}`).join(', '),
+});
+
 const commitCollaboratorDraft = () => {
     if (props.disabled) {
         return;
@@ -104,7 +110,7 @@ const commitCollaboratorDraft = () => {
     }
 
     collaboratorDraft.value = '';
-    emit('update:meta', { ...props.meta, collaborators: next });
+    emit('update:meta', metaWithCollaborators(next));
 };
 
 const onCollaboratorKeydown = (event: KeyboardEvent) => {
@@ -119,10 +125,7 @@ const removeCollaborator = (username: string) => {
         return;
     }
 
-    emit('update:meta', {
-        ...props.meta,
-        collaborators: collaborators.value.filter((item) => item !== username),
-    });
+    emit('update:meta', metaWithCollaborators(collaborators.value.filter((item) => item !== username)));
 };
 
 const pickVariant = (value: string) => {
@@ -130,7 +133,7 @@ const pickVariant = (value: string) => {
     emit('update:contentType', value);
 
     if (value === ContentType.InstagramStory && collaborators.value.length > 0) {
-        emit('update:meta', { ...props.meta, collaborators: [] });
+        emit('update:meta', metaWithCollaborators([]));
     }
 };
 

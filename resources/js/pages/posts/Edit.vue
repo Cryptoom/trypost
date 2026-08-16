@@ -249,7 +249,7 @@ const snapToCompatibleVariant = (platformId: string) => {
         const currentMeta = platformMeta.value[platformId] ?? pp.meta ?? {};
         platformMeta.value = {
             ...platformMeta.value,
-            [platformId]: { ...currentMeta, collaborators: [] },
+            [platformId]: { ...currentMeta, collaborators: [], collaborators_with: '' },
         };
     }
 };

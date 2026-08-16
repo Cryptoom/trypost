@@ -9,6 +9,20 @@ test('normalize strips at signs, trims, and deduplicates case-insensitively', fu
         ->toBe(['Host_One', 'host_two']);
 });
 
+test('display prefixes usernames for the post preview', function () {
+    expect(InstagramCollaborators::display(['Host_One', 'host_two']))->toBe('@Host_One, @host_two')
+        ->and(InstagramCollaborators::display([]))->toBe('');
+});
+
+test('applyToMeta stores the preview line next to the usernames', function () {
+    expect(InstagramCollaborators::applyToMeta(['collaborators' => ['@Host_One', 'host_two'], 'aspect_ratio' => '4:5']))
+        ->toMatchArray([
+            'collaborators' => ['Host_One', 'host_two'],
+            'collaborators_with' => '@Host_One, @host_two',
+            'aspect_ratio' => '4:5',
+        ]);
+});
+
 test('normalize caps at three usernames', function () {
     expect(InstagramCollaborators::normalize(['a', 'b', 'c', 'd']))->toBe(['a', 'b', 'c']);
 });

@@ -25,6 +25,7 @@ final class InstagramCollaborators
         }
 
         $meta['collaborators'] = self::normalize($meta['collaborators']);
+        $meta['collaborators_with'] = self::display($meta['collaborators']);
 
         return $meta;
     }
@@ -62,6 +63,17 @@ final class InstagramCollaborators
         }
 
         return $usernames;
+    }
+
+    /**
+     * @param  list<string>  $usernames
+     */
+    public static function display(array $usernames): string
+    {
+        return implode(', ', array_map(
+            fn (string $username): string => "@{$username}",
+            $usernames,
+        ));
     }
 
     public static function key(string $username): string
