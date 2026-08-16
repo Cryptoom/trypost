@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Http\Controllers\Api\ApiKeyController;
+use App\Http\Controllers\Api\AssetController;
 use App\Http\Controllers\Api\LabelController;
 use App\Http\Controllers\Api\PlatformController;
 use App\Http\Controllers\Api\PostController;
@@ -26,6 +27,7 @@ Route::middleware(['auth:api', 'workspace.token', 'throttle:api'])->group(functi
     Route::delete('/posts/{post}', [PostController::class, 'destroy'])->name('api.posts.destroy');
     Route::post('/posts/{post}/media', [PostController::class, 'storeMedia'])->name('api.posts.store-media');
     Route::post('/posts/{post}/media/from-url', [PostController::class, 'attachMediaFromUrl'])->name('api.posts.attach-media-from-url');
+    Route::post('/posts/{post}/media/from-asset', [PostController::class, 'attachExistingAsset'])->name('api.posts.attach-existing-asset');
     Route::get('/posts/{post}/metrics', [PostController::class, 'metrics'])->name('api.posts.metrics');
     Route::get('/posts/{post}/preview', [PostController::class, 'preview'])->name('api.posts.preview');
 
@@ -40,6 +42,10 @@ Route::middleware(['auth:api', 'workspace.token', 'throttle:api'])->group(functi
     Route::post('/signatures', [SignatureController::class, 'store'])->name('api.signatures.store');
     Route::put('/signatures/{signature}', [SignatureController::class, 'update'])->name('api.signatures.update');
     Route::delete('/signatures/{signature}', [SignatureController::class, 'destroy'])->name('api.signatures.destroy');
+
+    // Assets
+    Route::get('/assets', [AssetController::class, 'index'])->name('api.assets.index');
+    Route::get('/assets/{media}', [AssetController::class, 'show'])->name('api.assets.show');
 
     // Labels
     Route::get('/labels', [LabelController::class, 'index'])->name('api.labels.index');

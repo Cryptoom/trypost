@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api;
 
+use App\Actions\Post\AttachExistingAsset;
 use App\Actions\Post\CreatePost;
 use App\Actions\Post\DeletePost;
 use App\Actions\Post\HostInlineMedia;
@@ -11,6 +12,7 @@ use App\Actions\Post\UpdatePost;
 use App\Enums\Media\Type as MediaType;
 use App\Enums\Post\Action as PostAction;
 use App\Enums\Post\CreatedVia;
+use App\Http\Requests\Api\Post\AttachExistingAssetRequest;
 use App\Http\Requests\Api\Post\AttachMediaFromUrlRequest;
 use App\Http\Requests\Api\Post\StoreMediaRequest;
 use App\Http\Requests\Api\Post\StorePostRequest;
@@ -140,6 +142,28 @@ class PostController extends Controller
             'mime_type' => $media->mime_type,
             'original_filename' => $media->original_filename,
         ]]);
+
+        $post->refresh()->load(['postPlatforms.socialAccount', 'labels']);
+
+        return new PostResource($post);
+    }
+
+    public function attachExistingAsset(AttachExistingAssetRequest $request, Post $post): PostResource|JsonResponse
+    {
+        $this->authorize('update', $post);
+
+        if (PostStatusRules::blocksEditing($post)) {
+            return response()->json(
+                ['message' => PostStatusRules::editBlockedMessage()],
+                Response::HTTP_UNPROCESSABLE_ENTITY,
+            );
+        }
+
+        AttachExistingAsset::execute(
+            $post,
+            $request->asset(),
+            $request->validated('alt'),
+        );
 
         $post->refresh()->load(['postPlatforms.socialAccount', 'labels']);
 
