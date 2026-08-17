@@ -48,29 +48,30 @@ class UpdatePost
             DB::transaction(function () use ($post, $data) {
                 $post->postPlatforms()->update(['enabled' => false]);
 
+                $existing = $post->postPlatforms()
+                    ->with('socialAccount')
+                    ->get()
+                    ->keyBy('id');
+
                 foreach (data_get($data, 'platforms', []) as $platformData) {
                     $updateData = ['enabled' => true];
-
                     $contentType = data_get($platformData, 'content_type');
                     $incomingMeta = data_get($platformData, 'meta');
+                    $postPlatform = $existing->get(data_get($platformData, 'id'));
 
                     if ($contentType !== null) {
                         $updateData['content_type'] = $contentType;
                     }
 
-                    if ($incomingMeta !== null || PostPlatformMetaRules::dropsCollaborators($contentType)) {
-                        $postPlatform = $post->postPlatforms()
-                            ->with('socialAccount')
-                            ->where('id', data_get($platformData, 'id'))
-                            ->first();
-
-                        if ($postPlatform) {
-                            $updateData['meta'] = PostPlatformMetaRules::mergeFrom(
-                                $postPlatform,
-                                $incomingMeta ?? [],
-                                $contentType,
-                            );
-                        }
+                    if (
+                        $postPlatform
+                        && ($incomingMeta !== null || PostPlatformMetaRules::dropsCollaborators($contentType ?? $postPlatform->content_type))
+                    ) {
+                        $updateData['meta'] = PostPlatformMetaRules::mergeFrom(
+                            $postPlatform,
+                            $incomingMeta ?? [],
+                            $contentType,
+                        );
                     }
 
                     $post->postPlatforms()

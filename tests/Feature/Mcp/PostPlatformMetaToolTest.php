@@ -557,3 +557,36 @@ test('update post clears Instagram collaborators when switching to a story witho
         ->and(data_get($meta, 'aspect_ratio'))->toBe('4:5')
         ->and($platform->fresh()->content_type)->toBe(ContentType::InstagramStory);
 });
+
+test('update post clears leftover Instagram collaborators on an already-story row without sending content_type', function () {
+    $instagram = SocialAccount::factory()->instagram()->create(['workspace_id' => $this->workspace->id]);
+    $post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+        'status' => PostStatus::Draft,
+    ]);
+    $platform = PostPlatform::factory()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $instagram->id,
+        'platform' => Platform::Instagram,
+        'content_type' => ContentType::InstagramStory,
+        'enabled' => true,
+        'meta' => ['collaborators' => ['Host_One'], 'aspect_ratio' => '4:5'],
+    ]);
+
+    $response = TryPostServer::actingAs($this->user)
+        ->tool(UpdatePostTool::class, [
+            'post_id' => $post->id,
+            'platforms' => [[
+                'id' => $platform->id,
+            ]],
+        ]);
+
+    $response->assertOk();
+
+    $meta = $platform->fresh()->meta;
+
+    expect(data_get($meta, 'collaborators'))->toBe([])
+        ->and(data_get($meta, 'aspect_ratio'))->toBe('4:5')
+        ->and($platform->fresh()->content_type)->toBe(ContentType::InstagramStory);
+});

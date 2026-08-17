@@ -145,11 +145,9 @@ class PostPlatformMetaRules
     public static function merge(?Platform $platform, ?array $existing, ?array $incoming, mixed $contentType = null, ?string $ownUsername = null): array
     {
         $incoming = $incoming ?? [];
+        $isInstagram = in_array($platform, [Platform::Instagram, Platform::InstagramFacebook], true);
 
-        if (
-            in_array($platform, [Platform::Instagram, Platform::InstagramFacebook], true)
-            && self::dropsCollaborators($contentType)
-        ) {
+        if ($isInstagram && self::dropsCollaborators($contentType)) {
             $incoming['collaborators'] = [];
         }
 
@@ -158,7 +156,7 @@ class PostPlatformMetaRules
             fn (mixed $value): bool => $value !== null,
         );
 
-        if (in_array($platform, [Platform::Instagram, Platform::InstagramFacebook], true)) {
+        if ($isInstagram) {
             unset($merged['collaborators_with']);
         }
 
@@ -180,12 +178,7 @@ class PostPlatformMetaRules
         );
     }
 
-    /**
-     * Instagram content types that cannot carry collaborators (Stories). Anchored
-     * to Instagram so another network's content type never drops the key, and
-     * shared by the validation rule and the persist-time merge so a sparse update
-     * that only changes `content_type` still reshapes the stored meta.
-     */
+    /** True for Instagram Stories so persist and validation drop the key together. */
     public static function dropsCollaborators(mixed $contentType): bool
     {
         $contentType = $contentType instanceof ContentType
@@ -196,9 +189,8 @@ class PostPlatformMetaRules
     }
 
     /**
-     * Connected account for `platforms.{i}.meta.*`, or null when the row resolves
-     * to none. For account-specific checks only ("is this me?") — use
-     * platformForAttribute() to decide whether a rule applies.
+     * Connected account for a `platforms.{i}.meta.*` field. Self-checks only —
+     * use platformForAttribute() to decide whether a rule applies.
      *
      * @param  array<string, mixed>  $data
      */
@@ -209,10 +201,8 @@ class PostPlatformMetaRules
     }
 
     /**
-     * Network the row belongs to. Mirrors platformOf() so validation and the
-     * persist-time merge agree: a disconnected row still validates against its
-     * stored `platform` column, and an `id` that resolves to nothing falls back
-     * to the submitted account instead of disabling every meta rule.
+     * Network for a `platforms.{i}.meta.*` field. Disconnected rows use the
+     * stored platform; a stale `id` falls back to `social_account_id`.
      *
      * @param  array<string, mixed>  $data
      */
@@ -226,8 +216,7 @@ class PostPlatformMetaRules
     }
 
     /**
-     * Content type the row will be saved as: the submitted value, else the stored
-     * one, so a sparse update is judged against the type it will actually have.
+     * Content type the row will be saved as (submitted, else stored).
      *
      * @param  array<string, mixed>  $data
      */

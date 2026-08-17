@@ -83,7 +83,6 @@ const { draft, rejection, add, remove } = useUsername(
     () => props.meta.collaborators ?? [],
     () => props.socialAccount?.username,
     (collaborators) => updateMeta({ collaborators }),
-    MAX_COLLABORATORS,
 );
 
 const collaboratorError = computed(
@@ -93,8 +92,15 @@ const collaboratorError = computed(
 );
 
 const pickVariant = (value: string) => {
-    if (props.disabled) return;
+    if (props.disabled) {
+        return;
+    }
+
     emit('update:contentType', value);
+
+    if (value === ContentType.InstagramStory) {
+        updateMeta({ collaborators: [] });
+    }
 };
 
 const pickAspectRatio = (value: string) => {
@@ -199,6 +205,7 @@ const warning = computed(() => getMediaValidationWarning(props.contentType, prop
                 <Input
                     v-if="!disabled && (meta.collaborators?.length ?? 0) < MAX_COLLABORATORS"
                     v-model="draft"
+                    dusk="instagram-collaborators-input"
                     :placeholder="$t('posts.form.instagram.collaborators_placeholder')"
                     @keydown.enter.prevent="add"
                     @blur="add"

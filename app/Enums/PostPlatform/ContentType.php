@@ -158,12 +158,7 @@ enum ContentType: string
         };
     }
 
-    /**
-     * Whether Instagram accepts collaborator invites for this content type.
-     * Stories cannot be co-authored, so their collaborators are dropped on save
-     * and never validated. Single source of truth for the validation rule and
-     * the persist-time merge.
-     */
+    /** Instagram Feed and Reels accept collaborator invites; Stories do not. */
     public function supportsCollaborators(): bool
     {
         return match ($this) {

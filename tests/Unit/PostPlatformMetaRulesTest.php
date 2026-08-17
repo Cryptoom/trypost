@@ -67,7 +67,7 @@ test('the meta rules share one read per platform row instead of one per rule', f
         ])->all(),
     ], ['platforms' => ['sometimes', 'array']] + PostPlatformMetaRules::rules())->fails();
 
-    expect($queries)->toBeLessThanOrEqual($platforms->count() * 2);
+    expect($queries)->toBe($platforms->count() * 2);
 });
 
 test('normalize strips instagram collaborators only on instagram platforms', function () {

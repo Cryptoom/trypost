@@ -2041,10 +2041,13 @@ test('reel container includes collaborators as a json string', function () {
 
     Http::assertSent(function (Request $request) {
         $data = $request->data();
+        $contentType = $request->header('Content-Type')[0] ?? '';
 
         return str_ends_with($request->url(), '/ig_123456789/media')
             && data_get($data, 'media_type') === 'REELS'
-            && data_get($data, 'collaborators') === '["Host_One","host_two"]';
+            && data_get($data, 'collaborators') === '["Host_One","host_two"]'
+            && str_contains($contentType, 'application/json')
+            && ! str_contains($contentType, 'application/x-www-form-urlencoded');
     });
 });
 
@@ -2178,7 +2181,70 @@ test('reel container omits the connected account from collaborators', function (
     });
 });
 
-test('empty collaborators meta omits the graph key', function () {
+test('instagram facebook reel container includes collaborators as a json string', function () {
+    $account = SocialAccount::factory()->instagramFacebook()->create([
+        'workspace_id' => $this->workspace->id,
+        'platform_user_id' => 'ig_fb_123',
+        'username' => 'testuser',
+        'token_expires_at' => null,
+    ]);
+    $this->postPlatform->update([
+        'social_account_id' => $account->id,
+        'platform' => Platform::InstagramFacebook,
+        'content_type' => ContentType::InstagramReel,
+        'meta' => ['collaborators' => ['host_one']],
+    ]);
+    $this->post->update([
+        'media' => [[
+            'id' => 'test-media-video',
+            'path' => 'media/2026-01/test-video.mp4',
+            'url' => 'https://example.com/media/2026-01/test-video.mp4',
+            'mime_type' => 'video/mp4',
+            'original_filename' => 'test.mp4',
+        ]],
+    ]);
+
+    $graph = (string) config('trypost.platforms.instagram-facebook.graph_api');
+
+    Http::fake(function (Request $request) use ($graph) {
+        expect($request->url())->toStartWith($graph)
+            ->and($request->url())->not->toContain('graph.instagram.com');
+
+        if (str_contains($request->url(), '/ig_fb_123/media_publish')) {
+            return Http::response(['id' => 'reel-123'], 200);
+        }
+
+        if (str_contains($request->url(), '/ig_fb_123/media')) {
+            return Http::response(['id' => 'container-123'], 200);
+        }
+
+        if (str_contains($request->url(), '/container-123')) {
+            return Http::response(['status_code' => 'FINISHED'], 200);
+        }
+
+        if (str_contains($request->url(), '/reel-123')) {
+            return Http::response(['permalink' => 'https://www.instagram.com/reel/ABC/'], 200);
+        }
+
+        return Http::response(['error' => ['message' => 'unexpected']], 500);
+    });
+
+    $this->publisher->publish($this->postPlatform->fresh(['socialAccount']));
+
+    Http::assertSent(function (Request $request) use ($graph) {
+        $data = $request->data();
+        $contentType = $request->header('Content-Type')[0] ?? '';
+
+        return str_starts_with($request->url(), "{$graph}/ig_fb_123/media")
+            && ! str_contains($request->url(), 'media_publish')
+            && data_get($data, 'media_type') === 'REELS'
+            && data_get($data, 'collaborators') === '["host_one"]'
+            && str_contains($contentType, 'application/json')
+            && ! str_contains($contentType, 'application/x-www-form-urlencoded');
+    });
+});
+
+test('empty collaborators are omitted from the instagram reel container payload', function () {
     $this->postPlatform->update([
         'content_type' => ContentType::InstagramReel,
         'meta' => ['collaborators' => []],

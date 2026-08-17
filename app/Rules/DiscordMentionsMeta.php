@@ -10,7 +10,6 @@ use Closure;
 use Illuminate\Contracts\Validation\DataAwareRule;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Contracts\Validation\ValidatorAwareRule;
-use Illuminate\Support\Arr;
 use Illuminate\Validation\Validator;
 
 /**
@@ -47,16 +46,18 @@ class DiscordMentionsMeta implements DataAwareRule, ValidationRule, ValidatorAwa
             return;
         }
 
-        $data = [];
-        Arr::set($data, $attribute, $value);
+        foreach ($value as $index => $mention) {
+            $token = is_array($mention) ? data_get($mention, 'token') : null;
 
-        $nested = validator($data, [
-            "{$attribute}.*.token" => ['required', 'string'],
-            "{$attribute}.*.label" => ['nullable', 'string'],
-        ]);
+            if (! is_string($token) || $token === '') {
+                $this->validator?->errors()->add("{$attribute}.{$index}.token", __('validation.required'));
+            }
 
-        if ($nested->fails()) {
-            $this->validator?->errors()->merge($nested->errors());
+            $label = is_array($mention) ? data_get($mention, 'label') : null;
+
+            if ($label !== null && ! is_string($label)) {
+                $this->validator?->errors()->add("{$attribute}.{$index}.label", __('validation.string'));
+            }
         }
     }
 }

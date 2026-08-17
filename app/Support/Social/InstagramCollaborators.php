@@ -54,9 +54,7 @@ final class InstagramCollaborators
     }
 
     /**
-     * Graph takes one `collaborators` parameter whose value is a JSON list
-     * (`["a","b"]`), the same scalar style as carousel `children`. A PHP array
-     * would be encoded as `collaborators[0]=…` on form posts.
+     * Graph wants one parameter: JSON list `["a","b"]`, not `collaborators[0]=`.
      *
      * @return array<string, string>
      */
@@ -70,8 +68,7 @@ final class InstagramCollaborators
     }
 
     /**
-     * Single pass shared by normalize() and failures() so the accepted list and
-     * the reported errors can never disagree about the same input.
+     * Shared by normalize() and failures() so accepted list and errors agree.
      *
      * @return array{accepted: list<string>, items: array<int|string, 'invalid'|'duplicate'|'self'>, exceedsMax: bool}
      */

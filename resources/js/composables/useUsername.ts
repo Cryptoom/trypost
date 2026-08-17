@@ -28,10 +28,9 @@ export const useUsername = (
     usernames: () => string[],
     ownUsername: () => string | undefined | null,
     onChange: (usernames: string[]) => void,
-    max: number,
 ) => {
     const draft = ref('');
-    const rejection = ref<'self' | 'duplicate' | 'max' | 'invalid' | null>(null);
+    const rejection = ref<'self' | 'duplicate' | 'invalid' | null>(null);
 
     watch(draft, () => {
         rejection.value = null;
@@ -53,9 +52,7 @@ export const useUsername = (
               ? 'self'
               : current.some((item) => isSameUsername(item, username))
                 ? 'duplicate'
-                : current.length >= max
-                  ? 'max'
-                  : null;
+                : null;
 
         if (rejection.value) {
             return;

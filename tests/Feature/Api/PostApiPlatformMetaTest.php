@@ -615,6 +615,35 @@ it('clears Instagram collaborators when switching to a story without sending met
         ->and($platform->fresh()->content_type)->toBe(ContentType::InstagramStory);
 });
 
+it('clears leftover Instagram collaborators on an already-story row without sending content_type', function () {
+    $instagram = SocialAccount::factory()->instagram()->create(['workspace_id' => $this->workspace->id]);
+    $post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+        'status' => PostStatus::Draft,
+    ]);
+    $platform = PostPlatform::factory()->instagram()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $instagram->id,
+        'enabled' => true,
+        'content_type' => ContentType::InstagramStory->value,
+        'meta' => ['collaborators' => ['Host_One'], 'aspect_ratio' => '4:5'],
+    ]);
+
+    $this->withHeaders($this->headers)
+        ->putJson(route('api.posts.update', $post), [
+            'status' => PostStatus::Draft->value,
+            'platforms' => [[
+                'id' => $platform->id,
+            ]],
+        ])
+        ->assertOk();
+
+    expect(data_get($platform->fresh()->meta, 'collaborators'))->toBe([])
+        ->and(data_get($platform->fresh()->meta, 'aspect_ratio'))->toBe('4:5')
+        ->and($platform->fresh()->content_type)->toBe(ContentType::InstagramStory);
+});
+
 it('rejects more than three Instagram collaborators', function () {
     $instagram = SocialAccount::factory()->instagram()->create(['workspace_id' => $this->workspace->id]);
 
