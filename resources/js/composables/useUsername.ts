@@ -6,24 +6,22 @@ const USERNAME_PATTERN = /^(?!.*\.\.)(?!\.)[A-Za-z0-9._]{1,30}(?<!\.)$/;
 export const getUsername = (value?: string | null): string =>
     (value ?? '').trim().replace(/^@+/, '');
 
+const key = (value?: string | null): string => getUsername(value).toLowerCase();
+
 export const isValidUsername = (value?: string | null): boolean => USERNAME_PATTERN.test(getUsername(value));
 
 export const isSameUsername = (left?: string | null, right?: string | null): boolean => {
-    const username = getUsername(left).toLowerCase();
+    const username = key(left);
 
-    return username !== '' && username === getUsername(right).toLowerCase();
+    return username !== '' && username === key(right);
 };
 
 export const formatUsername = (value?: string | null): string => {
     const username = getUsername(value);
 
-    return username === '' ? '' : `@${username}`;
+    return username ? `@${username}` : '';
 };
 
-/**
- * Chip input backing a list of usernames. `rejection` names the server error key
- * that would come back, so the caller translates it with the same message.
- */
 export const useUsername = (
     usernames: () => string[],
     ownUsername: () => string | undefined | null,
@@ -46,15 +44,21 @@ export const useUsername = (
             return;
         }
 
-        rejection.value = !isValidUsername(username)
-            ? 'invalid'
-            : isSameUsername(username, ownUsername())
-              ? 'self'
-              : current.some((item) => isSameUsername(item, username))
-                ? 'duplicate'
-                : null;
+        if (!isValidUsername(username)) {
+            rejection.value = 'invalid';
 
-        if (rejection.value) {
+            return;
+        }
+
+        if (isSameUsername(username, ownUsername())) {
+            rejection.value = 'self';
+
+            return;
+        }
+
+        if (current.some((item) => isSameUsername(item, username))) {
+            rejection.value = 'duplicate';
+
             return;
         }
 
