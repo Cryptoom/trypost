@@ -60,8 +60,15 @@ return [
         'other' => 'Otra cosa',
     ],
     'connect' => [
-        'title' => 'Conecta una red social',
-        'description' => 'Elige al menos una red donde TryPost pueda publicar tu contenido.',
+        'title' => '¿En qué red publicas más?',
+        'description' => 'Elige la que más usas.',
+        'follow_up' => 'Conecta tu cuenta de :network.',
+        'latest_post' => 'Esta es tu última publicación.',
+        'pitch_views' => '{0} Esta publicación tuvo :views views en :network.|{1} Esta publicación tuvo :views view en :network.|[2,*] Esta publicación tuvo :views views en :network.',
+        'pitch_no_views' => 'Esta publicación solo salió en :network.',
+        'pitch_missed' => 'La misma publicación en :first y :second podría sumar otras :each views en cada una. Son :extra personas que no la vieron.',
+        'pitch_sales' => 'Puedes estar dejando miles en ventas sobre la mesa.',
+        'change_network' => 'Cambiar de red',
         'required' => 'Conecta al menos una red social para continuar.',
     ],
 ];

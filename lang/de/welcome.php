@@ -60,8 +60,15 @@ return [
         'other' => 'Etwas anderes',
     ],
     'connect' => [
-        'title' => 'Verbinde ein soziales Konto',
-        'description' => 'Wähle mindestens ein Netzwerk, auf dem TryPost deine Inhalte veröffentlichen kann.',
+        'title' => 'Welches Netzwerk nutzt du am meisten?',
+        'description' => 'Wähle das, auf dem du am meisten postest.',
+        'follow_up' => 'Verbinde dein :network-Konto.',
+        'latest_post' => 'Das ist dein neuester Beitrag.',
+        'pitch_views' => '{0} Dieser Beitrag hatte :views Views auf :network.|{1} Dieser Beitrag hatte :views View auf :network.|[2,*] Dieser Beitrag hatte :views Views auf :network.',
+        'pitch_no_views' => 'Dieser Beitrag lief nur auf :network.',
+        'pitch_missed' => 'Derselbe Beitrag auf :first und :second könnte leicht noch :each Views auf jedem holen. Das sind :extra Leute, die ihn nie gesehen haben.',
+        'pitch_sales' => 'Du lässt vielleicht Tausende an Umsatz liegen.',
+        'change_network' => 'Netzwerk wechseln',
         'required' => 'Verbinde mindestens ein soziales Konto, um fortzufahren.',
     ],
 ];

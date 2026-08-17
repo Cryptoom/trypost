@@ -60,8 +60,15 @@ return [
         'other' => 'Something else',
     ],
     'connect' => [
-        'title' => 'Connect a social account',
-        'description' => 'Choose at least one network where TryPost can publish your content.',
+        'title' => 'Which social do you use most?',
+        'description' => 'Pick the one you post on the most.',
+        'follow_up' => 'Connect your :network account.',
+        'latest_post' => "Here's your latest post.",
+        'pitch_views' => '{0} This post got :views views on :network.|{1} This post got :views view on :network.|[2,*] This post got :views views on :network.',
+        'pitch_no_views' => 'This post only went out on :network.',
+        'pitch_missed' => 'The same post on :first and :second could easily pick up another :each views on each. That is :extra people who never saw it.',
+        'pitch_sales' => 'You might be leaving thousands in sales on the table.',
+        'change_network' => 'Change network',
         'required' => 'Connect at least one social account to continue.',
     ],
 ];

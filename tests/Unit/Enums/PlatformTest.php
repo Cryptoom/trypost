@@ -70,6 +70,29 @@ test('platform has correct max content length', function () {
     expect(Platform::Mastodon->maxContentLength())->toBe(500);
 });
 
+test('platform reports whether it exposes impression analytics', function (Platform $platform, bool $supported) {
+    expect($platform->supportsImpressionAnalytics())->toBe($supported);
+})->with([
+    [Platform::Instagram, true],
+    [Platform::InstagramFacebook, true],
+    [Platform::Facebook, true],
+    [Platform::X, true],
+    [Platform::Threads, true],
+    [Platform::TikTok, true],
+    [Platform::YouTube, true],
+    [Platform::Pinterest, true],
+    [Platform::LinkedInPage, true],
+    [Platform::LinkedIn, false],
+    [Platform::Bluesky, false],
+    [Platform::Mastodon, false],
+    [Platform::Telegram, false],
+    [Platform::Discord, false],
+]);
+
+test('every platform is classified for impression analytics', function () {
+    expect(Platform::cases())->toHaveCount(14);
+});
+
 test('platform supports text only correctly', function () {
     expect(Platform::LinkedIn->supportsTextOnly())->toBeTrue();
     expect(Platform::LinkedInPage->supportsTextOnly())->toBeTrue();

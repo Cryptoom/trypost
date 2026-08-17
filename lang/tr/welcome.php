@@ -60,8 +60,15 @@ return [
         'other' => 'Başka bir şey',
     ],
     'connect' => [
-        'title' => 'Bir sosyal hesap bağla',
-        'description' => 'TryPost’un içeriğini yayınlayabileceği en az bir ağ seç.',
+        'title' => 'En çok hangi sosyal ağı kullanıyorsun?',
+        'description' => 'En çok paylaşım yaptığın ağı seç.',
+        'follow_up' => ':network hesabını bağla.',
+        'latest_post' => 'İşte son paylaşımın.',
+        'pitch_views' => '{0} Bu gönderi :network üzerinde :views görüntüleme aldı.|{1} Bu gönderi :network üzerinde :views görüntüleme aldı.|[2,*] Bu gönderi :network üzerinde :views görüntüleme aldı.',
+        'pitch_no_views' => 'Bu gönderi yalnızca :network’te yayınlandı.',
+        'pitch_missed' => 'Aynı gönderi :first ve :second’da her birinde rahatça :each görüntüleme daha alabilir. Bunu hiç görmeyen :extra kişi var.',
+        'pitch_sales' => 'Binlerce satışı kaçırıyor olabilirsin.',
+        'change_network' => 'Ağı değiştir',
         'required' => 'Devam etmek için en az bir sosyal hesap bağla.',
     ],
 ];

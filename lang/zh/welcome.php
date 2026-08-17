@@ -60,8 +60,15 @@ return [
         'other' => '其他',
     ],
     'connect' => [
-        'title' => '连接社交账号',
-        'description' => '选择至少一个 TryPost 可以发布内容的平台。',
+        'title' => '你最常用哪个社交平台？',
+        'description' => '选你发得最多的那个。',
+        'follow_up' => '连接你的 :network 账号。',
+        'latest_post' => '这是你最近的一条帖子。',
+        'pitch_views' => '{0} 这条帖子在:network上有:views次观看。|{1} 这条帖子在:network上有:views次观看。|[2,*] 这条帖子在:network上有:views次观看。',
+        'pitch_no_views' => '这条帖子只发在了:network。',
+        'pitch_missed' => '同一条发到:first和:second，每个平台再多:each次观看很常见。等于有:extra人没看到。',
+        'pitch_sales' => '你可能正在丢掉成千上万的成交。',
+        'change_network' => '更换平台',
         'required' => '请至少连接一个社交账号后再继续。',
     ],
 ];

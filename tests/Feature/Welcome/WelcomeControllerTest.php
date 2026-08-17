@@ -22,6 +22,7 @@ use App\Models\Workspace;
 use App\Services\PostHogService;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Exceptions;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Route;
 
 beforeEach(function () {
@@ -40,7 +41,9 @@ test('persona renders for an unsubscribed account', function () {
         ->get(route('app.welcome.persona'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
-            ->component('welcome/Persona', false)
+            ->component('welcome/Chat', false)
+            ->where('step', 'persona')
+            ->where('history', [])
             ->has('personas', count(Persona::cases()))
         );
 });
@@ -84,7 +87,10 @@ test('goals renders after a persona is selected', function () {
         ->get(route('app.welcome.goals'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
-            ->component('welcome/Goals', false)
+            ->component('welcome/Chat', false)
+            ->where('step', 'goals')
+            ->where('history.0.step', 'persona')
+            ->where('history.0.values', [Persona::Agency->value])
             ->has('goals', count(Goal::cases()))
         );
 });
@@ -130,22 +136,22 @@ test('completed welcome steps remain reachable when going back', function () {
     $this->actingAs($this->user->fresh())
         ->get(route('app.welcome.persona'))
         ->assertOk()
-        ->assertInertia(fn ($page) => $page->component('welcome/Persona', false));
+        ->assertInertia(fn ($page) => $page->component('welcome/Chat', false)->where('step', 'persona'));
 
     $this->actingAs($this->user->fresh())
         ->get(route('app.welcome.goals'))
         ->assertOk()
-        ->assertInertia(fn ($page) => $page->component('welcome/Goals', false));
+        ->assertInertia(fn ($page) => $page->component('welcome/Chat', false)->where('step', 'goals'));
 
     $this->actingAs($this->user->fresh())
         ->get(route('app.welcome.referral-source'))
         ->assertOk()
-        ->assertInertia(fn ($page) => $page->component('welcome/ReferralSource', false));
+        ->assertInertia(fn ($page) => $page->component('welcome/Chat', false)->where('step', 'referral'));
 
     $this->actingAs($this->user->fresh())
         ->get(route('app.welcome.connect'))
         ->assertOk()
-        ->assertInertia(fn ($page) => $page->component('welcome/Connect', false));
+        ->assertInertia(fn ($page) => $page->component('welcome/Chat', false)->where('step', 'connect'));
 });
 
 test('referral source redirects through incomplete prior steps', function (array $attributes, string $routeName) {
@@ -175,7 +181,7 @@ test('referral source allows users who still have at least one current goal', fu
     $this->actingAs($this->user->fresh())
         ->get(route('app.welcome.referral-source'))
         ->assertOk()
-        ->assertInertia(fn ($page) => $page->component('welcome/ReferralSource', false));
+        ->assertInertia(fn ($page) => $page->component('welcome/Chat', false)->where('step', 'referral'));
 });
 
 test('referral source renders after prior steps are complete', function () {
@@ -188,7 +194,10 @@ test('referral source renders after prior steps are complete', function () {
         ->get(route('app.welcome.referral-source'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
-            ->component('welcome/ReferralSource', false)
+            ->component('welcome/Chat', false)
+            ->where('step', 'referral')
+            ->where('history.0.step', 'persona')
+            ->where('history.1.step', 'goals')
             ->has('sources', count(ReferralSource::cases()))
             ->where('sources', fn ($sources): bool => collect($sources)->contains(ReferralSource::GitHub->value)
                 && collect($sources)->contains(ReferralSource::Threads->value)
@@ -369,9 +378,13 @@ test('connect renders the network grid when the workspace has no accounts', func
         ->get(route('app.welcome.connect'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
-            ->component('welcome/Connect', false)
+            ->component('welcome/Chat', false)
+            ->where('step', 'connect')
+            ->has('history', 3)
+            ->where('history.2.step', 'referral')
             ->has('platforms', count(SocialPlatform::connectableOptions()))
             ->where('accounts', [])
+            ->where('latestPost', null)
         );
 });
 
@@ -384,18 +397,142 @@ test('connect renders connected accounts for the current workspace', function ()
         ->get(route('app.welcome.connect'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
-            ->component('welcome/Connect', false)
+            ->component('welcome/Chat', false)
+            ->where('step', 'connect')
             ->has('platforms', count(SocialPlatform::connectableOptions()))
             ->has('accounts', 1)
             ->where('accounts.0.id', $account->id)
             ->where('accounts.0.platform', SocialPlatform::LinkedIn->value)
             ->where('accounts.0.status', Status::Connected->value)
+            ->where('latestPost', null)
+        );
+});
+
+test('connect includes the latest post when the connected network exposes impressions', function () {
+    completeWelcomeThroughReferral($this->user);
+    $workspace = attachCurrentWorkspace($this->user);
+    $account = SocialAccount::factory()->instagram()->create([
+        'workspace_id' => $workspace->id,
+        'platform_user_id' => '178414000',
+    ]);
+
+    Http::fake([
+        config('trypost.platforms.instagram.graph_api').'/178414000/media*' => Http::response([
+            'data' => [[
+                'id' => '1789',
+                'caption' => 'Hello from IG',
+                'media_type' => 'IMAGE',
+                'media_url' => 'https://cdn.example/photo.jpg',
+                'permalink' => 'https://www.instagram.com/p/abc',
+                'timestamp' => '2026-08-01T12:00:00+0000',
+            ]],
+        ]),
+        config('trypost.platforms.instagram.graph_api').'/1789/insights*' => Http::response([
+            'data' => [['name' => 'views', 'values' => [['value' => 1]]]],
+        ]),
+    ]);
+
+    $this->actingAs($this->user->fresh())
+        ->get(route('app.welcome.connect'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('welcome/Chat', false)
+            ->where('step', 'connect')
+            ->where('accounts.0.id', $account->id)
+            ->missing('latestPost')
+            ->loadDeferredProps(fn ($page) => $page
+                ->where('latestPost.id', '1789')
+                ->where('latestPost.caption', 'Hello from IG')
+                ->where('latestPost.media_url', 'https://cdn.example/photo.jpg')
+                ->where('latestPost.permalink', 'https://www.instagram.com/p/abc')
+                ->where('latestPost.published_at', '2026-08-01T12:00:00+0000')
+                ->where('latestPost.impressions', 1)
+                ->where('latestPost.reach.network', 'Instagram')
+                ->where('latestPost.reach.others.0.label', 'TikTok')
+                ->where('latestPost.reach.others.1.label', 'YouTube')
+                ->where('latestPost.reach.each_views', 1000)
+                ->where('latestPost.reach.extra_views', 2000)
+            )
+        );
+});
+
+test('connect fetches the latest post from the first analytics-capable account', function () {
+    completeWelcomeThroughReferral($this->user);
+    $workspace = attachCurrentWorkspace($this->user);
+    SocialAccount::factory()->discord()->create(['workspace_id' => $workspace->id]);
+    SocialAccount::factory()->instagram()->create([
+        'workspace_id' => $workspace->id,
+        'platform_user_id' => '178414000',
+    ]);
+
+    Http::fake([
+        config('trypost.platforms.instagram.graph_api').'/178414000/media*' => Http::response([
+            'data' => [[
+                'id' => '1789',
+                'caption' => 'Hello from IG',
+                'media_type' => 'IMAGE',
+                'media_url' => 'https://cdn.example/photo.jpg',
+                'permalink' => 'https://www.instagram.com/p/abc',
+                'timestamp' => '2026-08-01T12:00:00+0000',
+            ]],
+        ]),
+        config('trypost.platforms.instagram.graph_api').'/1789/insights*' => Http::response([
+            'data' => [['name' => 'views', 'values' => [['value' => 1]]]],
+        ]),
+    ]);
+
+    $this->actingAs($this->user->fresh())
+        ->get(route('app.welcome.connect'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('welcome/Chat', false)
+            ->missing('latestPost')
+            ->loadDeferredProps(fn ($page) => $page
+                ->where('latestPost.id', '1789')
+                ->where('latestPost.reach.network', 'Instagram')
+            )
+        );
+});
+
+test('connect skips the latest post when the platform request fails', function () {
+    completeWelcomeThroughReferral($this->user);
+    $workspace = attachCurrentWorkspace($this->user);
+    SocialAccount::factory()->instagram()->create([
+        'workspace_id' => $workspace->id,
+        'platform_user_id' => '178414000',
+    ]);
+
+    Http::fake([
+        config('trypost.platforms.instagram.graph_api').'/178414000/media*' => Http::response(['error' => 'nope'], 500),
+    ]);
+
+    $this->actingAs($this->user->fresh())
+        ->get(route('app.welcome.connect'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('welcome/Chat', false)
+            ->missing('latestPost')
+            ->loadDeferredProps(fn ($page) => $page
+                ->where('latestPost', null)
+            )
         );
 });
 
 test('connect copy exists in every locale', function (string $locale) {
     expect(__('welcome.connect.title', [], $locale))->not->toBe('welcome.connect.title')
         ->and(__('welcome.connect.description', [], $locale))->not->toBe('welcome.connect.description')
+        ->and(__('welcome.connect.follow_up', ['network' => 'Instagram'], $locale))->not->toBe('welcome.connect.follow_up')
+        ->and(__('welcome.connect.latest_post', [], $locale))->not->toBe('welcome.connect.latest_post')
+        ->and(trans_choice('welcome.connect.pitch_views', 1, ['views' => '1', 'network' => 'Instagram'], $locale))->not->toBe('welcome.connect.pitch_views')
+        ->and(__('welcome.connect.pitch_no_views', ['network' => 'Instagram'], $locale))->not->toBe('welcome.connect.pitch_no_views')
+        ->and(__('welcome.connect.pitch_missed', [
+            'first' => 'TikTok',
+            'second' => 'YouTube',
+            'each' => '1,000',
+            'extra' => '2,000',
+        ], $locale))->not->toBe('welcome.connect.pitch_missed')
+        ->and(__('welcome.connect.pitch_sales', [], $locale))->not->toBe('welcome.connect.pitch_sales')
+        ->and(__('welcome.connect.change_network', [], $locale))->not->toBe('welcome.connect.change_network')
         ->and(__('welcome.connect.required', [], $locale))->not->toBe('welcome.connect.required');
 })->with(ContentLanguage::values());
 

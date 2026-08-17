@@ -268,6 +268,23 @@ enum Platform: string
         };
     }
 
+    /**
+     * Whether the network exposes post-level impressions, reach, or views.
+     * Welcome uses this to decide whether to fetch and show the latest post.
+     * Telegram has subscriber analytics only; LinkedIn personal, Bluesky,
+     * Mastodon, and Discord do not expose impression metrics.
+     */
+    public function supportsImpressionAnalytics(): bool
+    {
+        return match ($this) {
+            self::Instagram, self::InstagramFacebook, self::Facebook,
+            self::X, self::Threads, self::TikTok, self::YouTube,
+            self::Pinterest, self::LinkedInPage => true,
+            self::LinkedIn, self::Bluesky, self::Mastodon,
+            self::Telegram, self::Discord => false,
+        };
+    }
+
     public function supportsTextOnly(): bool
     {
         return match ($this) {

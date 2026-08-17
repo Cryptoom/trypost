@@ -32,6 +32,7 @@ const props = withDefaults(
         step?: number;
         totalSteps?: number;
         size?: MaxWidthSize;
+        chat?: boolean;
     }>(),
     {
         title: undefined,
@@ -39,6 +40,7 @@ const props = withDefaults(
         step: undefined,
         totalSteps: 4,
         size: 'xl',
+        chat: false,
     },
 );
 
@@ -55,11 +57,33 @@ const canNavigateTo = (stepNumber: number): boolean =>
 
 <template>
     <div
-        class="flex min-h-svh flex-col items-center justify-center gap-6 bg-background p-6 md:p-10"
+        :class="[
+            'flex min-h-svh flex-col items-center bg-background',
+            chat
+                ? 'justify-start'
+                : 'justify-center gap-6 p-6 md:p-10',
+        ]"
     >
-        <div class="w-full" :class="maxWidthClass[size]">
-            <div class="flex flex-col gap-8">
-                <div class="flex flex-col items-center gap-4">
+        <div
+            class="w-full"
+            :class="[
+                chat ? 'flex min-h-svh flex-col' : maxWidthClass[size],
+            ]"
+        >
+            <div
+                :class="
+                    chat
+                        ? 'flex min-h-svh flex-col'
+                        : 'flex flex-col gap-8'
+                "
+            >
+                <div
+                    :class="[
+                        'flex flex-col items-center gap-4',
+                        chat &&
+                            'sticky top-0 z-10 border-b border-border/60 bg-background/80 px-6 py-4 backdrop-blur-sm',
+                    ]"
+                >
                     <Link
                         :href="personaRoute()"
                         class="flex flex-col items-center gap-2 font-medium"
@@ -129,14 +153,22 @@ const canNavigateTo = (stepNumber: number): boolean =>
                         </template>
                     </nav>
 
-                    <div class="space-y-2 text-center">
+                    <div v-if="title" class="space-y-2 text-center">
                         <h1 class="text-2xl font-bold">{{ title }}</h1>
-                        <p class="text-muted-foreground">
+                        <p v-if="description" class="text-muted-foreground">
                             {{ description }}
                         </p>
                     </div>
                 </div>
-                <slot />
+                <div
+                    :class="
+                        chat
+                            ? 'flex min-h-0 flex-1 flex-col px-4 md:px-6'
+                            : undefined
+                    "
+                >
+                    <slot />
+                </div>
             </div>
         </div>
         <Toast />

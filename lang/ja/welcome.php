@@ -60,8 +60,15 @@ return [
         'other' => 'その他',
     ],
     'connect' => [
-        'title' => 'SNSアカウントを接続',
-        'description' => 'TryPostが投稿できるネットワークを少なくとも1つ選んでください。',
+        'title' => 'いちばんよく使うSNSは？',
+        'description' => 'いちばん投稿しているものを選んでください。',
+        'follow_up' => ':network アカウントを接続してください。',
+        'latest_post' => '最新の投稿はこちらです。',
+        'pitch_views' => '{0} この投稿は:networkで:views回表示されました。|{1} この投稿は:networkで:views回表示されました。|[2,*] この投稿は:networkで:views回表示されました。',
+        'pitch_no_views' => 'この投稿は:networkにしか出ていません。',
+        'pitch_missed' => '同じ投稿を:firstと:secondにも出せば、それぞれあと:each回の表示は十分あり得ます。見ていない人が:extra人いるということです。',
+        'pitch_sales' => '何千もの売上を逃しているかもしれません。',
+        'change_network' => 'ネットワークを変更',
         'required' => '続けるには、少なくとも1つのSNSアカウントを接続してください。',
     ],
 ];

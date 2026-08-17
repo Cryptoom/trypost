@@ -42,10 +42,12 @@ const props = withDefaults(
         platforms: AvailablePlatform[];
         connectedAccounts?: ConnectedAccount[];
         gridClass?: string;
+        variant?: 'grid' | 'list';
     }>(),
     {
         connectedAccounts: () => [],
         gridClass: 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-5',
+        variant: 'grid',
     },
 );
 
@@ -260,7 +262,52 @@ const cardState = computed((): Record<string, CardStateValue> => {
 
 <template>
     <div>
-        <div :class="['grid gap-4', gridClass]">
+        <div v-if="variant === 'list'" class="flex flex-col gap-2">
+            <Button
+                v-for="platform in platforms"
+                :key="platform.value"
+                size="lg"
+                class="w-full rounded-full"
+                :variant="
+                    cardState[platform.value] === CardState.Connect
+                        ? 'default'
+                        : 'outline'
+                "
+                @click="
+                    cardState[platform.value] === CardState.Reconnect
+                        ? reconnectAccount(cardConnection[platform.value]!)
+                        : cardState[platform.value] === CardState.Connected
+                          ? disconnectAccount(cardConnection[platform.value]!)
+                          : connectPlatform(platform.value)
+                "
+            >
+                <img
+                    :src="themeFor(platform.value).image"
+                    alt=""
+                    class="size-5 rounded-sm"
+                    loading="lazy"
+                />
+                <span v-if="cardState[platform.value] === CardState.Reconnect">
+                    {{ $t('accounts.reconnect') }}
+                </span>
+                <span
+                    v-else-if="
+                        cardState[platform.value] === CardState.Connected
+                    "
+                >
+                    {{ $t('accounts.disconnect') }}
+                </span>
+                <span v-else>
+                    {{ $t('accounts.connect_cta') }}
+                    {{
+                        platform.label.includes('(')
+                            ? platform.label.split('(')[0].trim()
+                            : platform.label
+                    }}
+                </span>
+            </Button>
+        </div>
+        <div v-else :class="['grid gap-4', gridClass]">
             <div
                 v-for="platform in platforms"
                 :key="platform.value"

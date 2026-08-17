@@ -60,8 +60,15 @@ return [
         'other' => 'Iets anders',
     ],
     'connect' => [
-        'title' => 'Verbind een social account',
-        'description' => 'Kies minstens één netwerk waarop TryPost je content kan plaatsen.',
+        'title' => 'Welk netwerk gebruik je het meest?',
+        'description' => 'Kies het netwerk waarop je het meest post.',
+        'follow_up' => 'Verbind je :network-account.',
+        'latest_post' => 'Dit is je laatste post.',
+        'pitch_views' => '{0} Deze post had :views views op :network.|{1} Deze post had :views view op :network.|[2,*] Deze post had :views views op :network.',
+        'pitch_no_views' => 'Deze post ging alleen naar :network.',
+        'pitch_missed' => 'Dezelfde post op :first en :second kan zomaar nog :each views per netwerk erbij krijgen. Dat zijn :extra mensen die het nooit zagen.',
+        'pitch_sales' => 'Je laat misschien duizenden aan sales liggen.',
+        'change_network' => 'Ander netwerk',
         'required' => 'Verbind minstens één social account om door te gaan.',
     ],
 ];

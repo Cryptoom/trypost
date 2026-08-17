@@ -60,8 +60,15 @@ return [
         'other' => 'Coś innego',
     ],
     'connect' => [
-        'title' => 'Połącz konto społecznościowe',
-        'description' => 'Wybierz co najmniej jedną sieć, na której TryPost może publikować Twoje treści.',
+        'title' => 'Z której sieci korzystasz najczęściej?',
+        'description' => 'Wybierz tę, na której najczęściej publikujesz.',
+        'follow_up' => 'Połącz konto :network.',
+        'latest_post' => 'Oto twój najnowszy post.',
+        'pitch_views' => '{0} Ten post miał :views wyświetleń na :network.|{1} Ten post miał :views wyświetlenie na :network.|[2,*] Ten post miał :views wyświetleń na :network.',
+        'pitch_no_views' => 'Ten post poszedł tylko na :network.',
+        'pitch_missed' => 'Ten sam post na :first i :second może łatwo dostać jeszcze po :each wyświetleń. To :extra osób, które go nie widziały.',
+        'pitch_sales' => 'Możesz tracić tysiące sprzedaży.',
+        'change_network' => 'Zmień sieć',
         'required' => 'Połącz co najmniej jedno konto społecznościowe, aby kontynuować.',
     ],
 ];

@@ -5,10 +5,12 @@ declare(strict_types=1);
 namespace App\Http\Controllers\App;
 
 use App\Actions\Billing\StartSubscriptionCheckout;
+use App\Actions\Welcome\FetchLatestSocialPost;
 use App\Enums\Plan\Slug;
 use App\Enums\PostHog\CheckoutEvent;
 use App\Enums\PostHog\WelcomeEvent;
 use App\Enums\SocialAccount\Platform as SocialPlatform;
+use App\Enums\SocialAccount\Status;
 use App\Enums\User\Goal;
 use App\Enums\User\Persona;
 use App\Enums\User\ReferralSource;
@@ -18,6 +20,8 @@ use App\Http\Requests\App\Welcome\StoreWelcomePersonaRequest;
 use App\Http\Requests\App\Welcome\StoreWelcomeReferralSourceRequest;
 use App\Http\Resources\App\SocialAccountResource;
 use App\Models\Plan;
+use App\Models\SocialAccount;
+use App\Models\User;
 use App\Services\PostHogService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -34,9 +38,13 @@ class WelcomeController extends Controller
             return $redirect;
         }
 
-        return Inertia::render('welcome/Persona', [
+        $user = $request->user();
+
+        return Inertia::render('welcome/Chat', [
+            'step' => 'persona',
+            'history' => $this->chatHistory($user, 'persona'),
             'personas' => array_map(fn (Persona $persona): string => $persona->value, Persona::cases()),
-            'selected' => $request->user()->persona?->value,
+            'selectedPersona' => $user->persona?->value,
         ]);
     }
 
@@ -72,9 +80,11 @@ class WelcomeController extends Controller
 
         $user = $request->user();
 
-        return Inertia::render('welcome/Goals', [
+        return Inertia::render('welcome/Chat', [
+            'step' => 'goals',
+            'history' => $this->chatHistory($user, 'goals'),
             'goals' => array_map(fn (Goal $goal): string => $goal->value, Goal::cases()),
-            'selected' => $user->goals ?? [],
+            'selectedGoals' => $user->goals ?? [],
         ]);
     }
 
@@ -110,9 +120,11 @@ class WelcomeController extends Controller
 
         $user = $request->user();
 
-        return Inertia::render('welcome/ReferralSource', [
+        return Inertia::render('welcome/Chat', [
+            'step' => 'referral',
+            'history' => $this->chatHistory($user, 'referral'),
             'sources' => array_map(fn (ReferralSource $source): string => $source->value, ReferralSource::cases()),
-            'selected' => $user->referral_source?->value,
+            'selectedReferral' => $user->referral_source?->value,
         ]);
     }
 
@@ -142,7 +154,7 @@ class WelcomeController extends Controller
         return redirect()->route('app.welcome.connect');
     }
 
-    public function connect(Request $request): InertiaResponse|RedirectResponse
+    public function connect(Request $request, FetchLatestSocialPost $fetchLatest): InertiaResponse|RedirectResponse
     {
         if ($redirect = $this->redirectIfStepIncomplete($request, requireGoals: true, requireReferral: true)) {
             return $redirect;
@@ -152,11 +164,20 @@ class WelcomeController extends Controller
 
         abort_unless($workspace !== null, Response::HTTP_NOT_FOUND);
 
-        return Inertia::render('welcome/Connect', [
+        $accounts = $workspace->socialAccounts()->orderBy('id')->get();
+        $connected = $accounts->first(
+            fn (SocialAccount $account): bool => $account->status === Status::Connected
+                && $account->platform->supportsImpressionAnalytics(),
+        );
+
+        return Inertia::render('welcome/Chat', [
+            'step' => 'connect',
+            'history' => $this->chatHistory($request->user(), 'connect'),
             'platforms' => SocialPlatform::connectableOptions(),
-            'accounts' => SocialAccountResource::collection(
-                $workspace->socialAccounts()->orderBy('id')->get(),
-            )->resolve(),
+            'accounts' => SocialAccountResource::collection($accounts)->resolve(),
+            'latestPost' => $connected !== null
+                ? Inertia::defer(fn (): ?array => $fetchLatest->handle($connected))
+                : null,
         ]);
     }
 
@@ -246,6 +267,42 @@ class WelcomeController extends Controller
         }
 
         return null;
+    }
+
+    /**
+     * Answered welcome turns before the current step, reconstructed from
+     * stored user fields so a reload still looks like a chat thread.
+     *
+     * @return list<array{step: 'persona'|'goals'|'referral', values: list<string>}>
+     */
+    private function chatHistory(User $user, string $currentStep): array
+    {
+        $history = [];
+
+        if ($currentStep !== 'persona' && $user->persona) {
+            $history[] = [
+                'step' => 'persona',
+                'values' => [$user->persona->value],
+            ];
+        }
+
+        if (in_array($currentStep, ['referral', 'connect'], true) && Goal::containsCurrent($user->goals)) {
+            $allowed = array_map(fn (Goal $goal): string => $goal->value, Goal::cases());
+
+            $history[] = [
+                'step' => 'goals',
+                'values' => array_values(array_intersect($user->goals ?? [], $allowed)),
+            ];
+        }
+
+        if ($currentStep === 'connect' && $user->referral_source) {
+            $history[] = [
+                'step' => 'referral',
+                'values' => [$user->referral_source->value],
+            ];
+        }
+
+        return $history;
     }
 
     private function redirectIfUnavailable(Request $request): ?RedirectResponse
