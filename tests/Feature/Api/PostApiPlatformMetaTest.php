@@ -389,11 +389,10 @@ it('persists Instagram collaborators and strips at signs', function () {
     expect(PostPlatform::where('social_account_id', $instagram->id)->sole()->meta)
         ->toMatchArray([
             'collaborators' => ['Host_One', 'host_two'],
-            'collaborators_with' => '@Host_One, @host_two',
         ]);
 });
 
-it('persists Instagram collaborators from a comma-separated string', function () {
+it('rejects Instagram collaborators sent as a comma-separated string', function () {
     $instagram = SocialAccount::factory()->instagram()->create(['workspace_id' => $this->workspace->id]);
 
     $this->withHeaders($this->headers)
@@ -402,16 +401,11 @@ it('persists Instagram collaborators from a comma-separated string', function ()
             'platforms' => [[
                 'social_account_id' => $instagram->id,
                 'content_type' => ContentType::InstagramReel->value,
-                'meta' => ['collaborators' => '@Host_One, host_two'],
+                'meta' => ['collaborators' => 'Host_One,host_two'],
             ]],
         ])
-        ->assertCreated();
-
-    expect(PostPlatform::where('social_account_id', $instagram->id)->sole()->meta)
-        ->toMatchArray([
-            'collaborators' => ['Host_One', 'host_two'],
-            'collaborators_with' => '@Host_One, @host_two',
-        ]);
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['platforms.0.meta.collaborators']);
 });
 
 it('persists Instagram Facebook collaborators', function () {
@@ -656,6 +650,48 @@ it('rejects tagging the connected Instagram account as a collaborator', function
         ->assertJsonValidationErrors(['platforms.0.meta.collaborators.0']);
 });
 
+it('still enforces collaborator rules when a create payload carries a stale platform id', function () {
+    $instagram = SocialAccount::factory()->instagram()->create([
+        'workspace_id' => $this->workspace->id,
+        'username' => 'testuser',
+    ]);
+
+    $this->withHeaders($this->headers)
+        ->postJson(route('api.posts.store'), [
+            'content' => 'A round-tripped GET response still carries id',
+            'platforms' => [[
+                'id' => '0198c3f1-1111-7abc-9def-000000000000',
+                'social_account_id' => $instagram->id,
+                'content_type' => ContentType::InstagramFeed->value,
+                'meta' => ['collaborators' => ['not valid!!']],
+            ]],
+        ])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['platforms.0.meta.collaborators.0']);
+});
+
+it('accepts a story without complaining about collaborators it is going to drop', function () {
+    $instagram = SocialAccount::factory()->instagram()->create([
+        'workspace_id' => $this->workspace->id,
+        'username' => 'testuser',
+    ]);
+
+    $this->withHeaders($this->headers)
+        ->postJson(route('api.posts.store'), [
+            'content' => 'Stories cannot be co-authored',
+            'platforms' => [[
+                'social_account_id' => $instagram->id,
+                'content_type' => ContentType::InstagramStory->value,
+                'meta' => ['collaborators' => ['@TestUser', 'a', 'b', 'c', 'not valid!!']],
+            ]],
+        ])
+        ->assertCreated();
+
+    $meta = PostPlatform::where('social_account_id', $instagram->id)->sole()->meta;
+
+    expect(data_get($meta, 'collaborators'))->toBe([]);
+});
+
 it('does not apply Instagram collaborator rules to TikTok meta', function () {
     $tiktok = SocialAccount::factory()->tiktok()->create([
         'workspace_id' => $this->workspace->id,
@@ -671,7 +707,7 @@ it('does not apply Instagram collaborator rules to TikTok meta', function () {
                 'meta' => [
                     'privacy_level' => 'SELF_ONLY',
                     'collaborators' => ['@TestUser', 'a', 'b', 'c', 'not valid!!'],
-                    'mentions' => ['@someone'],
+                    'mentions' => [['token' => '@someone', 'label' => 'Someone']],
                 ],
             ]],
         ])
@@ -680,7 +716,29 @@ it('does not apply Instagram collaborator rules to TikTok meta', function () {
     $meta = PostPlatform::where('social_account_id', $tiktok->id)->sole()->meta;
 
     expect(data_get($meta, 'collaborators'))->toBe(['@TestUser', 'a', 'b', 'c', 'not valid!!'])
-        ->and(data_get($meta, 'mentions'))->toBe(['@someone']);
+        ->and(data_get($meta, 'mentions'))->toBe([['token' => '@someone', 'label' => 'Someone']]);
+});
+
+it('strips unknown keys from mentions instead of persisting arbitrary json', function () {
+    $discord = SocialAccount::factory()->discord()->create(['workspace_id' => $this->workspace->id]);
+
+    $this->withHeaders($this->headers)
+        ->postJson(route('api.posts.store'), [
+            'content' => 'Mentions are whitelisted',
+            'platforms' => [[
+                'social_account_id' => $discord->id,
+                'content_type' => ContentType::DiscordMessage->value,
+                'meta' => [
+                    'channel_id' => '123',
+                    'mentions' => [['token' => '<@1>', 'label' => 'One', 'payload' => ['deep' => 'junk']]],
+                ],
+            ]],
+        ])
+        ->assertCreated();
+
+    $meta = PostPlatform::where('social_account_id', $discord->id)->sole()->meta;
+
+    expect(data_get($meta, 'mentions'))->toBe([['token' => '<@1>', 'label' => 'One']]);
 });
 
 it('rejects an invalid Instagram collaborator username', function () {

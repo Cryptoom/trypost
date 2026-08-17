@@ -26,7 +26,6 @@ use Illuminate\Validation\Validator;
  *
  * Persist-time `normalize()` / `merge()` dispatch on the platform enum so
  * Instagram collaborator shaping never rewrites another network's meta.
- * Add a match arm when YouTube/TikTok mentions (or similar) land.
  */
 class PostPlatformMetaRules
 {
@@ -55,7 +54,7 @@ class PostPlatformMetaRules
 
             // Instagram / Facebook
             'platforms.*.meta.aspect_ratio' => ['sometimes', 'nullable', 'string', Rule::enum(AspectRatio::class)],
-            'platforms.*.meta.collaborators' => ['sometimes', 'nullable', new InstagramCollaboratorsMeta],
+            'platforms.*.meta.collaborators' => ['sometimes', 'nullable', 'bail', 'array', 'max:50', new InstagramCollaboratorsMeta],
 
             // LinkedIn — title shown on a document (PDF carousel) post
             'platforms.*.meta.document_title' => ['sometimes', 'nullable', 'string', 'max:300'],
@@ -79,7 +78,9 @@ class PostPlatformMetaRules
             // Discord
             'platforms.*.meta.channel_id' => ['sometimes', 'nullable', 'string'],
             'platforms.*.meta.channel_name' => ['sometimes', 'nullable', 'string'],
-            'platforms.*.meta.mentions' => ['sometimes', 'nullable', 'array', new DiscordMentionsMeta],
+            'platforms.*.meta.mentions' => ['sometimes', 'nullable', 'array', 'max:50', new DiscordMentionsMeta],
+            'platforms.*.meta.mentions.*.token' => ['sometimes', 'nullable', 'string', 'max:100'],
+            'platforms.*.meta.mentions.*.label' => ['sometimes', 'nullable', 'string', 'max:100'],
             'platforms.*.meta.embeds' => ['sometimes', 'nullable', 'array', 'max:10'],
             'platforms.*.meta.embeds.*.title' => ['sometimes', 'nullable', 'string', 'max:256'],
             'platforms.*.meta.embeds.*.description' => ['sometimes', 'nullable', 'string', 'max:4096'],
@@ -125,10 +126,10 @@ class PostPlatformMetaRules
      * @param  array<string, mixed>  $meta
      * @return array<string, mixed>
      */
-    public static function normalize(?Platform $platform, array $meta): array
+    public static function normalize(?Platform $platform, array $meta, ?string $ownUsername = null): array
     {
         return match ($platform) {
-            Platform::Instagram, Platform::InstagramFacebook => InstagramCollaborators::applyToMeta($meta),
+            Platform::Instagram, Platform::InstagramFacebook => InstagramCollaborators::applyToMeta($meta, $ownUsername),
             default => $meta,
         };
     }
@@ -141,21 +142,27 @@ class PostPlatformMetaRules
      * @param  ContentType|string|null  $contentType
      * @return array<string, mixed>
      */
-    public static function merge(?Platform $platform, ?array $existing, ?array $incoming, mixed $contentType = null): array
+    public static function merge(?Platform $platform, ?array $existing, ?array $incoming, mixed $contentType = null, ?string $ownUsername = null): array
     {
         $incoming = $incoming ?? [];
 
         if (
             in_array($platform, [Platform::Instagram, Platform::InstagramFacebook], true)
-            && in_array($contentType, [ContentType::InstagramStory, ContentType::InstagramStory->value], true)
+            && self::dropsCollaborators($contentType)
         ) {
             $incoming['collaborators'] = [];
         }
 
-        return array_filter(
-            array_merge($existing ?? [], self::normalize($platform, $incoming)),
+        $merged = array_filter(
+            array_merge($existing ?? [], self::normalize($platform, $incoming, $ownUsername)),
             fn (mixed $value): bool => $value !== null,
         );
+
+        if (in_array($platform, [Platform::Instagram, Platform::InstagramFacebook], true)) {
+            unset($merged['collaborators_with']);
+        }
+
+        return $merged;
     }
 
     /**
@@ -169,46 +176,92 @@ class PostPlatformMetaRules
             $postPlatform->meta,
             $incoming,
             $contentType ?? $postPlatform->content_type,
+            $postPlatform->socialAccount?->username,
         );
     }
 
     /**
-     * Sparse updates that only change `content_type` still need merge() when
-     * the new type forbids stored keys (Instagram Stories drop collaborators).
+     * Instagram content types that cannot carry collaborators (Stories). Anchored
+     * to Instagram so another network's content type never drops the key, and
+     * shared by the validation rule and the persist-time merge so a sparse update
+     * that only changes `content_type` still reshapes the stored meta.
      */
-    public static function mustMergeForContentType(mixed $contentType): bool
+    public static function dropsCollaborators(mixed $contentType): bool
     {
-        return in_array($contentType, [ContentType::InstagramStory, ContentType::InstagramStory->value], true);
+        $contentType = $contentType instanceof ContentType
+            ? $contentType
+            : ContentType::tryFrom(is_string($contentType) ? $contentType : '');
+
+        return $contentType?->platform() === Platform::Instagram && ! $contentType->supportsCollaborators();
     }
 
     /**
-     * Connected account for `platforms.{i}.meta.*`. Update `id` wins so a leftover
-     * create-shape `social_account_id` cannot skip Instagram/Discord rules.
+     * Connected account for `platforms.{i}.meta.*`, or null when the row resolves
+     * to none. For account-specific checks only ("is this me?") — use
+     * platformForAttribute() to decide whether a rule applies.
      *
      * @param  array<string, mixed>  $data
      */
     public static function accountForAttribute(array $data, string $attribute): ?SocialAccount
     {
-        $row = data_get($data, Str::before($attribute, '.meta.'));
-        $postPlatformId = data_get($row, 'id');
-
-        if (is_string($postPlatformId) && Str::isUuid($postPlatformId)) {
-            return PostPlatform::query()->with('socialAccount')->find($postPlatformId)?->socialAccount;
-        }
-
-        $accountId = data_get($row, 'social_account_id');
-
-        return is_string($accountId) && Str::isUuid($accountId)
-            ? SocialAccount::query()->find($accountId)
-            : null;
+        return self::postPlatformFor($data, $attribute)?->socialAccount
+            ?? self::findSocialAccount(self::rowValue($data, $attribute, 'social_account_id'));
     }
 
     /**
+     * Network the row belongs to. Mirrors platformOf() so validation and the
+     * persist-time merge agree: a disconnected row still validates against its
+     * stored `platform` column, and an `id` that resolves to nothing falls back
+     * to the submitted account instead of disabling every meta rule.
+     *
      * @param  array<string, mixed>  $data
      */
     public static function platformForAttribute(array $data, string $attribute): ?Platform
     {
-        return self::accountForAttribute($data, $attribute)?->platform;
+        $postPlatform = self::postPlatformFor($data, $attribute);
+
+        return $postPlatform !== null
+            ? self::platformOf($postPlatform)
+            : self::findSocialAccount(self::rowValue($data, $attribute, 'social_account_id'))?->platform;
+    }
+
+    /**
+     * Content type the row will be saved as: the submitted value, else the stored
+     * one, so a sparse update is judged against the type it will actually have.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    public static function contentTypeForAttribute(array $data, string $attribute): mixed
+    {
+        return self::rowValue($data, $attribute, 'content_type')
+            ?? self::postPlatformFor($data, $attribute)?->content_type;
+    }
+
+    /** @param  array<string, mixed>  $data */
+    private static function rowValue(array $data, string $attribute, string $key): mixed
+    {
+        return data_get($data, Str::before($attribute, '.meta.').".{$key}");
+    }
+
+    /** @param  array<string, mixed>  $data */
+    private static function postPlatformFor(array $data, string $attribute): ?PostPlatform
+    {
+        return self::findPostPlatform(self::rowValue($data, $attribute, 'id'));
+    }
+
+    /** Memoized so every meta rule validating the same row shares one read. */
+    private static function findPostPlatform(mixed $id): ?PostPlatform
+    {
+        return is_string($id) && Str::isUuid($id)
+            ? once(fn (): ?PostPlatform => PostPlatform::query()->with('socialAccount')->find($id))
+            : null;
+    }
+
+    private static function findSocialAccount(mixed $id): ?SocialAccount
+    {
+        return is_string($id) && Str::isUuid($id)
+            ? once(fn (): ?SocialAccount => SocialAccount::query()->find($id))
+            : null;
     }
 
     /**

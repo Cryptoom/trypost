@@ -58,7 +58,7 @@ class UpdatePost
                         $updateData['content_type'] = $contentType;
                     }
 
-                    if ($incomingMeta !== null || PostPlatformMetaRules::mustMergeForContentType($contentType)) {
+                    if ($incomingMeta !== null || PostPlatformMetaRules::dropsCollaborators($contentType)) {
                         $postPlatform = $post->postPlatforms()
                             ->with('socialAccount')
                             ->where('id', data_get($platformData, 'id'))

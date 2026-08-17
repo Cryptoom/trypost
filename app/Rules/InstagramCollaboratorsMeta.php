@@ -43,16 +43,19 @@ class InstagramCollaboratorsMeta implements DataAwareRule, ValidationRule, Valid
 
     public function validate(string $attribute, mixed $value, Closure $fail): void
     {
-        $account = PostPlatformMetaRules::accountForAttribute($this->data, $attribute);
+        $platform = PostPlatformMetaRules::platformForAttribute($this->data, $attribute);
 
         if (
-            (! is_array($value) && ! is_string($value))
-            || ! in_array($account?->platform, [Platform::Instagram, Platform::InstagramFacebook], true)
+            ! is_array($value)
+            || ! in_array($platform, [Platform::Instagram, Platform::InstagramFacebook], true)
+            || PostPlatformMetaRules::dropsCollaborators(PostPlatformMetaRules::contentTypeForAttribute($this->data, $attribute))
         ) {
             return;
         }
 
-        ['items' => $items, 'exceedsMax' => $exceedsMax] = InstagramCollaborators::failures($value, $account->username);
+        $ownUsername = PostPlatformMetaRules::accountForAttribute($this->data, $attribute)?->username;
+
+        ['items' => $items, 'exceedsMax' => $exceedsMax] = InstagramCollaborators::failures($value, $ownUsername);
 
         foreach ($items as $index => $reason) {
             $this->validator?->errors()->add("{$attribute}.{$index}", __("posts.form.instagram.collaborators_{$reason}"));

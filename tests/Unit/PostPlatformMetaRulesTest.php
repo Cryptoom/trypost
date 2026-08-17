@@ -11,6 +11,8 @@ use App\Models\User;
 use App\Models\Workspace;
 use App\Support\PostPlatformMetaRules;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Validator;
 
 uses(RefreshDatabase::class);
 
@@ -44,15 +46,39 @@ test('shared meta rules still include non-pinterest platform fields', function (
     ]);
 });
 
+test('the meta rules share one read per platform row instead of one per rule', function () {
+    $post = Post::factory()->create([
+        'workspace_id' => Workspace::factory(),
+        'user_id' => User::factory(),
+    ]);
+    $platforms = collect(range(1, 5))->map(fn (): PostPlatform => PostPlatform::factory()->instagram()->create([
+        'post_id' => $post->id,
+    ]));
+
+    $queries = 0;
+    DB::listen(function () use (&$queries): void {
+        $queries++;
+    });
+
+    Validator::make([
+        'platforms' => $platforms->map(fn (PostPlatform $platform): array => [
+            'id' => $platform->id,
+            'meta' => ['collaborators' => ['a'], 'mentions' => []],
+        ])->all(),
+    ], ['platforms' => ['sometimes', 'array']] + PostPlatformMetaRules::rules())->fails();
+
+    expect($queries)->toBeLessThanOrEqual($platforms->count() * 2);
+});
+
 test('normalize strips instagram collaborators only on instagram platforms', function () {
     $incoming = ['collaborators' => ['@Host_One', 'host_two'], 'aspect_ratio' => '4:5'];
 
-    expect(PostPlatformMetaRules::normalize(Platform::Instagram, $incoming))->toMatchArray([
+    expect(PostPlatformMetaRules::normalize(Platform::Instagram, $incoming))->toBe([
         'collaborators' => ['Host_One', 'host_two'],
-        'collaborators_with' => '@Host_One, @host_two',
         'aspect_ratio' => '4:5',
     ])
-        ->and(PostPlatformMetaRules::normalize(Platform::InstagramFacebook, $incoming)['collaborators_with'])->toBe('@Host_One, @host_two');
+        ->and(PostPlatformMetaRules::normalize(Platform::InstagramFacebook, $incoming))
+        ->toBe(PostPlatformMetaRules::normalize(Platform::Instagram, $incoming));
 });
 
 test('normalize leaves other networks meta untouched so future mentions stay intact', function () {
@@ -71,8 +97,19 @@ test('merge applies instagram normalize then keeps existing keys', function () {
     ))->toBe([
         'aspect_ratio' => '4:5',
         'collaborators' => ['Host_One'],
-        'collaborators_with' => '@Host_One',
     ]);
+});
+
+test('merge drops leftover collaborators_with from stored instagram meta', function () {
+    expect(PostPlatformMetaRules::merge(
+        Platform::Instagram,
+        ['collaborators' => ['Host_One'], 'collaborators_with' => 'with @Host_One', 'aspect_ratio' => '4:5'],
+        ['collaborators' => ['host_two']],
+    ))->toMatchArray([
+        'aspect_ratio' => '4:5',
+        'collaborators' => ['host_two'],
+    ])
+        ->not->toHaveKey('collaborators_with');
 });
 
 test('merge clears instagram collaborators on stories', function () {
@@ -84,7 +121,6 @@ test('merge clears instagram collaborators on stories', function () {
     ))->toMatchArray([
         'aspect_ratio' => '4:5',
         'collaborators' => [],
-        'collaborators_with' => '',
     ]);
 });
 
@@ -97,15 +133,16 @@ test('merge clears instagram collaborators on stories even when incoming meta is
     ))->toMatchArray([
         'aspect_ratio' => '4:5',
         'collaborators' => [],
-        'collaborators_with' => '',
     ]);
 });
 
-test('must merge stored meta when switching to an instagram story', function () {
-    expect(PostPlatformMetaRules::mustMergeForContentType(ContentType::InstagramStory))->toBeTrue()
-        ->and(PostPlatformMetaRules::mustMergeForContentType(ContentType::InstagramStory->value))->toBeTrue()
-        ->and(PostPlatformMetaRules::mustMergeForContentType(ContentType::InstagramReel))->toBeFalse()
-        ->and(PostPlatformMetaRules::mustMergeForContentType(null))->toBeFalse();
+test('only instagram stories drop collaborators', function () {
+    expect(PostPlatformMetaRules::dropsCollaborators(ContentType::InstagramStory))->toBeTrue()
+        ->and(PostPlatformMetaRules::dropsCollaborators(ContentType::InstagramStory->value))->toBeTrue()
+        ->and(PostPlatformMetaRules::dropsCollaborators(ContentType::InstagramReel))->toBeFalse()
+        ->and(PostPlatformMetaRules::dropsCollaborators(ContentType::LinkedInPost))->toBeFalse()
+        ->and(PostPlatformMetaRules::dropsCollaborators(ContentType::FacebookStory))->toBeFalse()
+        ->and(PostPlatformMetaRules::dropsCollaborators(null))->toBeFalse();
 });
 
 test('platformForAttribute uses the social account network on create and update', function () {
