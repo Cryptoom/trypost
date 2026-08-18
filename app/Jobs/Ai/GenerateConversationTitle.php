@@ -57,28 +57,64 @@ class GenerateConversationTitle implements ShouldQueue
     }
 
     /**
-     * Defend against a chatty model response landing verbatim in the sidebar:
-     * strip a conversational preamble, wrapping quotes and trailing
-     * punctuation, then enforce the `title` column's length limit.
+     * Defend against a chatty model response landing verbatim in the sidebar.
+     *
+     * The reliable signal that a model wrapped its answer in a preamble is
+     * that it quoted the answer, so when the response contains a quoted
+     * segment we take that segment as the title; otherwise we take the whole
+     * response as-is. A leading-word-list heuristic ("Sure!", "Here's...")
+     * was tried and rejected: it both damages legitimate titles that start
+     * with one of those words followed by a colon (e.g. "Okay Computer: A
+     * Retrospective") and misses chatty forms that don't use those words
+     * (e.g. "I would say: Draft post count"). An occasionally chatty title
+     * is a far better failure than a silently damaged one.
+     *
+     * Wrapping quotes and trailing punctuation are trimmed with a
+     * Unicode-aware regex, never `trim()`'s byte-wise charlist — passing
+     * multi-byte characters to `trim()` corrupts adjacent multi-byte text
+     * (e.g. CJK) whose bytes happen to collide with the charlist bytes.
      */
     private function sanitizeTitle(string $text): ?string
     {
         $title = Str::squish($text);
-
-        $title = (string) preg_replace(
-            '/^(sure|okay|ok|certainly|alright|here)\b[^:]{0,60}:\s*/i',
-            '',
-            $title,
-        );
-
-        $title = trim($title, " \t\n\r\0\x0B\"'“”‘’");
-        $title = rtrim($title, '.!?,;:');
-        $title = trim($title);
+        $title = $this->extractQuoted($title) ?? $title;
+        $title = $this->trimWrappingQuotesAndSpace($title);
+        $title = (string) preg_replace('/\p{P}+$/u', '', $title);
+        $title = trim($this->trimWrappingQuotesAndSpace($title));
 
         if ($title === '') {
             return null;
         }
 
         return Str::limit($title, 250, '');
+    }
+
+    /**
+     * Extract the contents of the first quoted segment in the given text, if
+     * any. Matches straight and curly quote pairs; a mismatched or missing
+     * pair yields null.
+     */
+    private function extractQuoted(string $text): ?string
+    {
+        if (preg_match('/"([^"]+)"|\'([^\']+)\'|“([^”]+)”|‘([^’]+)’/u', $text, $matches) !== 1) {
+            return null;
+        }
+
+        foreach (array_slice($matches, 1) as $group) {
+            if ($group !== '') {
+                return $group;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Trim leading/trailing whitespace and wrapping quote characters,
+     * Unicode-aware.
+     */
+    private function trimWrappingQuotesAndSpace(string $text): string
+    {
+        return (string) preg_replace('/^[\s"\'“”‘’]+|[\s"\'“”‘’]+$/u', '', $text);
     }
 }

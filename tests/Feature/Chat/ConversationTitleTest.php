@@ -81,3 +81,31 @@ test('it truncates a title that would overflow the column', function () {
 
     expect(strlen((string) $conversation->fresh()->title))->toBeLessThanOrEqual(250);
 });
+
+test('it leaves a legitimate title containing a colon unchanged', function () {
+    ConversationTitleGenerator::fake(['Okay Computer: A Retrospective']);
+
+    $conversation = WorkspaceConversation::factory()->untitled()->create();
+    WorkspaceConversationMessage::factory()->for($conversation, 'conversation')->create([
+        'role' => Role::User,
+        'content' => 'Tell me about the album',
+    ]);
+
+    (new GenerateConversationTitle($conversation->id))->handle();
+
+    expect($conversation->fresh()->title)->toBe('Okay Computer: A Retrospective');
+});
+
+test('it round-trips a non-Latin title byte-for-byte intact', function () {
+    ConversationTitleGenerator::fake(['株式会社の設立準備']);
+
+    $conversation = WorkspaceConversation::factory()->untitled()->create();
+    WorkspaceConversationMessage::factory()->for($conversation, 'conversation')->create([
+        'role' => Role::User,
+        'content' => '会社の設立について教えてください',
+    ]);
+
+    (new GenerateConversationTitle($conversation->id))->handle();
+
+    expect($conversation->fresh()->title)->toBe('株式会社の設立準備');
+});
