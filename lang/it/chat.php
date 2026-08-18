@@ -16,5 +16,6 @@ return [
     'coming_soon' => 'Potrò cercarlo quando la chat sarà collegata. Per ora è solo il layout.',
     'tools' => [
         'post_not_found' => 'Post non trovato.',
+        'error' => 'Qualcosa è andato storto. Riprova.',
     ],
 ];

@@ -16,5 +16,6 @@ return [
     'coming_soon' => 'Je pourrai chercher ça une fois le chat connecté. Pour l’instant, c’est juste la mise en page.',
     'tools' => [
         'post_not_found' => 'Post introuvable.',
+        'error' => 'Une erreur s’est produite. Réessayez.',
     ],
 ];

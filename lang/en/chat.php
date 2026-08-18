@@ -16,5 +16,6 @@ return [
     'coming_soon' => 'I can look that up once chat is connected. This is just the layout for now.',
     'tools' => [
         'post_not_found' => 'Post not found.',
+        'error' => 'Something went wrong. Please try again.',
     ],
 ];

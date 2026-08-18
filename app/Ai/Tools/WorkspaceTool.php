@@ -19,7 +19,12 @@ use Throwable;
  *    starts from $this->workspace, so a prompt injection has nowhere to write
  *    one.
  * 2. Containment. A thrown exception becomes an error string the model can
- *    recover from, rather than a 500 that kills the stream.
+ *    recover from, rather than a 500 that kills the stream. The real
+ *    exception message is only ever logged — a caught Throwable can carry
+ *    database internals (table/column names, host, the substituted SQL, in
+ *    the case of a QueryException), so the model only ever sees a generic,
+ *    translated message for that path. Errors raised deliberately inside
+ *    run() (e.g. "post not found") are untouched and still reach the model.
  */
 abstract class WorkspaceTool implements Tool
 {
@@ -46,7 +51,7 @@ abstract class WorkspaceTool implements Tool
                 'error' => $e->getMessage(),
             ]);
 
-            return $this->error($e->getMessage());
+            return $this->error(__('chat.tools.error'));
         }
     }
 

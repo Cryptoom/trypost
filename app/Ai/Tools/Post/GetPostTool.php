@@ -35,7 +35,7 @@ class GetPostTool extends WorkspaceTool
 
     protected function run(Request $request): string
     {
-        $post = $this->resolvePost(data_get($request->toArray(), 'post_id'));
+        $post = $this->resolvePost($request->string('post_id')->value());
 
         if (! $post) {
             return $this->error(__('chat.tools.post_not_found'));

@@ -33,11 +33,27 @@ test('get_post refuses a post from another workspace with an error string, not a
     expect($output)->toContain('error');
 });
 
-test('a tool that throws returns an error string instead of bubbling', function () {
+test('a tool that throws returns a generic error string instead of leaking database internals', function () {
     $workspace = Workspace::factory()->create();
     $user = User::factory()->create();
 
     $output = (new GetPostTool($workspace, $user))->handle(new Request(['post_id' => 'not-a-uuid']));
+    $decoded = json_decode($output, true);
 
-    expect($output)->toContain('error');
+    expect($decoded['error'])->toBe(__('chat.tools.error'))
+        ->and($output)->not->toContain('select')
+        ->and($output)->not->toContain('pgsql')
+        ->and($output)->not->toContain('posts')
+        ->and($output)->not->toContain((string) config('database.connections.pgsql.host'));
+});
+
+test('list_posts clamps an out-of-range limit instead of trusting the schema', function () {
+    $workspace = Workspace::factory()->create();
+    $user = User::factory()->create();
+
+    Post::factory()->for($workspace)->count(30)->create();
+
+    $output = json_decode((new ListPostsTool($workspace, $user))->handle(new Request(['limit' => 999999])), true);
+
+    expect($output['data'])->toHaveCount(25);
 });

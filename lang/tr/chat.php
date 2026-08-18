@@ -16,5 +16,6 @@ return [
     'coming_soon' => 'Sohbet bağlandığında bakabilirim. Şimdilik yalnızca düzen.',
     'tools' => [
         'post_not_found' => 'Gönderi bulunamadı.',
+        'error' => 'Bir şeyler ters gitti. Lütfen tekrar deneyin.',
     ],
 ];

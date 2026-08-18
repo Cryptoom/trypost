@@ -16,5 +16,6 @@ return [
     'coming_soon' => 'Dat kan ik opzoeken zodra chat verbonden is. Dit is voorlopig alleen de layout.',
     'tools' => [
         'post_not_found' => 'Post niet gevonden.',
+        'error' => 'Er is iets misgegaan. Probeer het opnieuw.',
     ],
 ];

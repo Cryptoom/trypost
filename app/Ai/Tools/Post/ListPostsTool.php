@@ -38,23 +38,25 @@ class ListPostsTool extends WorkspaceTool
 
     protected function run(Request $request): string
     {
-        $arguments = $request->toArray();
-
         $query = $this->workspace->posts()->with(['postPlatforms.socialAccount']);
 
-        $query = match (data_get($arguments, 'status')) {
-            Status::Draft->value => $query->draft(),
-            Status::Scheduled->value => $query->scheduled(),
-            Status::Published->value => $query->published(),
-            Status::Failed->value => $query->failed(),
+        $query = match ($request->enum('status', Status::class)) {
+            Status::Draft => $query->draft(),
+            Status::Scheduled => $query->scheduled(),
+            Status::Published => $query->published(),
+            Status::Failed => $query->failed(),
             default => $query,
         };
 
-        if ($search = data_get($arguments, 'search')) {
+        $search = $request->string('search')->value();
+
+        if ($search !== '') {
             $query->where('content', 'ilike', "%{$search}%");
         }
 
-        $posts = $query->latest('created_at')->limit((int) data_get($arguments, 'limit', 10))->get();
+        $limit = (int) $request->clamp('limit', 1, 25, 10);
+
+        $posts = $query->latest('created_at')->limit($limit)->get();
 
         return $this->json(['data' => ChatPostResource::collection($posts)->resolve()]);
     }
