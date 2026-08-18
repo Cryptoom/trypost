@@ -26,6 +26,8 @@ use App\Models\Subscription;
 use App\Models\SubscriptionItem;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Models\WorkspaceConversation;
+use App\Models\WorkspaceConversationMessage;
 use App\Models\WorkspaceInvite;
 use App\Models\WorkspaceLabel;
 use App\Models\WorkspaceSignature;
@@ -119,6 +121,8 @@ class AppServiceProvider extends ServiceProvider
             'subscriptionItem' => SubscriptionItem::class,
             'user' => User::class,
             'workspace' => Workspace::class,
+            'workspaceConversation' => WorkspaceConversation::class,
+            'workspaceConversationMessage' => WorkspaceConversationMessage::class,
             'workspaceInvite' => WorkspaceInvite::class,
             'workspaceLabel' => WorkspaceLabel::class,
             'workspaceSignature' => WorkspaceSignature::class,
