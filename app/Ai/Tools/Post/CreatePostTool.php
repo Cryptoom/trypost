@@ -6,6 +6,7 @@ namespace App\Ai\Tools\Post;
 
 use App\Actions\Post\CreatePost;
 use App\Ai\Tools\WorkspaceTool;
+use App\Enums\Post\CreatedVia;
 use App\Http\Resources\Chat\ChatPostResource;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Illuminate\JsonSchema\Types\Type;
@@ -38,6 +39,7 @@ class CreatePostTool extends WorkspaceTool
     {
         $post = CreatePost::execute($this->workspace, $this->user, [
             'content' => $request->string('content')->value(),
+            'created_via' => CreatedVia::Chat,
         ]);
 
         return $this->json([

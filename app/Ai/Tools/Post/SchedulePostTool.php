@@ -12,6 +12,7 @@ use App\Http\Resources\Chat\ChatPostResource;
 use App\Support\PostStatusRules;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Illuminate\JsonSchema\Types\Type;
+use Illuminate\Support\Facades\Validator;
 use Laravel\Ai\Tools\Request;
 use Stringable;
 
@@ -46,12 +47,19 @@ class SchedulePostTool extends WorkspaceTool
             return $this->error(__('chat.tools.post_not_found'));
         }
 
-        if (! $request->filled('scheduled_at')) {
-            return $this->error(__('chat.tools.scheduled_at_required'));
+        $scheduledAt = $request->filled('scheduled_at') ? $request->string('scheduled_at')->value() : null;
+
+        $validator = Validator::make(
+            ['scheduled_at' => $scheduledAt],
+            ['scheduled_at' => PostStatusRules::scheduledAtRules($post, Status::Scheduled->value)],
+        );
+
+        if ($validator->fails()) {
+            return $this->error((string) $validator->errors()->first('scheduled_at'));
         }
 
         $result = UpdatePost::execute($this->workspace, $post, [
-            'scheduled_at' => $request->string('scheduled_at')->value(),
+            'scheduled_at' => $scheduledAt,
             'status' => Status::Scheduled->value,
         ]);
 

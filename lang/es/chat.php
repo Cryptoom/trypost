@@ -16,7 +16,6 @@ return [
     'coming_soon' => 'Podré buscarlo cuando el chat esté conectado. Por ahora solo es el diseño.',
     'tools' => [
         'post_not_found' => 'Post no encontrado.',
-        'scheduled_at_required' => 'Se requiere una fecha y hora para programar un post.',
         'error' => 'Algo salió mal. Inténtalo de nuevo.',
     ],
 ];

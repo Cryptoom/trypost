@@ -16,7 +16,6 @@ return [
     'coming_soon' => 'Dat kan ik opzoeken zodra chat verbonden is. Dit is voorlopig alleen de layout.',
     'tools' => [
         'post_not_found' => 'Post niet gevonden.',
-        'scheduled_at_required' => 'Om een post in te plannen is een datum en tijd vereist.',
         'error' => 'Er is iets misgegaan. Probeer het opnieuw.',
     ],
 ];

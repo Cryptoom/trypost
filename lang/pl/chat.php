@@ -16,7 +16,6 @@ return [
     'coming_soon' => 'Sprawdzę to, gdy czat będzie podłączony. Na razie to tylko układ.',
     'tools' => [
         'post_not_found' => 'Nie znaleziono posta.',
-        'scheduled_at_required' => 'Do zaplanowania posta wymagana jest data i godzina.',
         'error' => 'Coś poszło nie tak. Spróbuj ponownie.',
     ],
 ];

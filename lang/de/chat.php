@@ -16,7 +16,6 @@ return [
     'coming_soon' => 'Das kann ich nachschlagen, sobald der Chat verbunden ist. Das ist vorerst nur das Layout.',
     'tools' => [
         'post_not_found' => 'Beitrag nicht gefunden.',
-        'scheduled_at_required' => 'Für die Planung eines Posts sind Datum und Uhrzeit erforderlich.',
         'error' => 'Etwas ist schiefgelaufen. Bitte versuche es erneut.',
     ],
 ];
