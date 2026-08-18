@@ -26,6 +26,26 @@ use Symfony\Component\HttpFoundation\Response;
 class ChatMessageController extends Controller
 {
     /**
+     * How long a claimed turn may hold a conversation before another request may
+     * take it over.
+     *
+     * then() only runs when the stream iterator completes normally, so a provider
+     * error surviving failover, a mid-stream throw or a client disconnect leaves
+     * the row in progress with nobody left to release it. Waiting on
+     * ReleaseStalledConversations means locking the user out of their own
+     * conversation for up to ten minutes behind a 409 that is no longer true, so
+     * the claim heals itself first and the command stays the backstop for rows
+     * nobody comes back to.
+     *
+     * A real turn is bounded by the agent's #[Timeout(180)] and finishes well
+     * inside a minute, so five minutes never reclaims a healthy turn in practice.
+     * Reclaiming one slightly early is bounded anyway: messages are append-only,
+     * the last then() wins the Idle write, usage is recorded per HTTP turn (which
+     * is what was actually spent), and GenerateConversationTitle self-guards.
+     */
+    private const STALE_TURN_MINUTES = 5;
+
+    /**
      * Run one chat turn and stream it back over Vercel's data stream protocol.
      */
     public function store(StoreChatMessageRequest $request, string $conversation): StreamableAgentResponse|JsonResponse
@@ -85,6 +105,11 @@ class ChatMessageController extends Controller
      * The conversation is looked up with its client-supplied id rather than
      * route-model binding: the very first message of a conversation targets a
      * row that does not exist yet.
+     *
+     * The retries matter only off Postgres: when the row does not exist yet, MySQL
+     * and MariaDB take gap locks and deadlock the loser (1213) instead of blocking
+     * it. Retrying sends that request down the row-exists path, where it gets its
+     * 409 instead of a 500.
      */
     private function claim(
         string $conversation,
@@ -111,7 +136,11 @@ class ChatMessageController extends Controller
 
             abort_if($model->trashed(), Response::HTTP_NOT_FOUND);
 
-            abort_if(! $model->isIdle(), Response::HTTP_CONFLICT, __('chat.errors.turn_in_progress'));
+            abort_if(
+                ! $model->isIdle() && ! $this->hasStalledTurn($model),
+                Response::HTTP_CONFLICT,
+                __('chat.errors.turn_in_progress'),
+            );
 
             // The user's message is persisted before the stream opens so a dropped
             // connection never loses what they typed. The exact same string is handed
@@ -127,10 +156,29 @@ class ChatMessageController extends Controller
                 ]);
             }
 
-            $model->update(['status' => Status::InProgress]);
+            // forceFill + save(), not update(): reclaiming a stalled turn leaves the
+            // status attribute unchanged, and Eloquent skips the query — and the
+            // timestamp — when nothing is dirty. The next request would then see the
+            // same stale updated_at and reclaim the conversation all over again...
+            $model->forceFill([
+                'status' => Status::InProgress,
+                'updated_at' => now(),
+            ])->save();
 
             return $model;
-        });
+        }, attempts: 3);
+    }
+
+    /**
+     * Determine whether an in-progress turn has been abandoned and may be taken over.
+     *
+     * updated_at is restamped every time a turn is claimed, so it doubles as the
+     * turn's start time.
+     */
+    private function hasStalledTurn(WorkspaceConversation $model): bool
+    {
+        return $model->updated_at !== null
+            && $model->updated_at->lt(now()->subMinutes(self::STALE_TURN_MINUTES));
     }
 
     /**
