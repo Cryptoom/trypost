@@ -14,4 +14,7 @@ return [
         'metrics' => 'Métricas dos posts',
     ],
     'coming_soon' => 'Consigo buscar isso quando o chat estiver conectado. Por enquanto é só o esqueleto.',
+    'tools' => [
+        'post_not_found' => 'Post não encontrado.',
+    ],
 ];

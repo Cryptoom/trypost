@@ -14,4 +14,7 @@ return [
         'metrics' => 'Gönderi metrikleri',
     ],
     'coming_soon' => 'Sohbet bağlandığında bakabilirim. Şimdilik yalnızca düzen.',
+    'tools' => [
+        'post_not_found' => 'Gönderi bulunamadı.',
+    ],
 ];

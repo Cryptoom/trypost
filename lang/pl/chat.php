@@ -14,4 +14,7 @@ return [
         'metrics' => 'Statystyki postów',
     ],
     'coming_soon' => 'Sprawdzę to, gdy czat będzie podłączony. Na razie to tylko układ.',
+    'tools' => [
+        'post_not_found' => 'Nie znaleziono posta.',
+    ],
 ];
