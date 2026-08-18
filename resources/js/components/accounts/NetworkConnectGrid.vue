@@ -7,7 +7,7 @@ import { toast } from 'vue-sonner';
 
 import InstagramConnectDialog from '@/components/accounts/InstagramConnectDialog.vue';
 import TelegramConnectDialog from '@/components/accounts/TelegramConnectDialog.vue';
-import { welcomePlatformLabel } from '@/components/welcome/welcomePlatformLabel';
+import { onboardingPlatformLabel } from '@/components/onboarding/onboardingPlatformLabel';
 import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.vue';
 import { Button } from '@/components/ui/button';
 import { useOAuthPopup } from '@/composables/useOAuthPopup';
@@ -322,7 +322,7 @@ defineExpose({ startConnect });
                 </span>
                 <span v-else>
                     {{ $t('accounts.connect_cta') }}
-                    {{ welcomePlatformLabel(platform.label) }}
+                    {{ onboardingPlatformLabel(platform.label) }}
                 </span>
             </Button>
         </div>

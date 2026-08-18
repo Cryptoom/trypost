@@ -9,8 +9,8 @@ test('platform has correct labels', function () {
     expect(Platform::LinkedIn->label())->toBe('LinkedIn');
     expect(Platform::LinkedInPage->label())->toBe('LinkedIn Page');
     expect(Platform::X->label())->toBe('X');
-    expect(Platform::X->welcomeLabel())->toBe('X (Twitter)');
-    expect(Platform::Instagram->welcomeLabel())->toBe('Instagram');
+    expect(Platform::X->onboardingLabel())->toBe('X (Twitter)');
+    expect(Platform::Instagram->onboardingLabel())->toBe('Instagram');
     expect(Platform::TikTok->label())->toBe('TikTok');
     expect(Platform::YouTube->label())->toBe('YouTube Shorts');
     expect(Platform::Facebook->label())->toBe('Facebook Page');
@@ -96,7 +96,7 @@ test('every platform is classified for impression analytics', function () {
 });
 
 test('welcome reach comparisons stay inside the same content group', function (Platform $platform, array $expected) {
-    expect($platform->welcomeReachComparisons())->toBe($expected);
+    expect($platform->onboardingReachComparisons())->toBe($expected);
 })->with([
     'instagram' => [Platform::Instagram, [Platform::TikTok, Platform::YouTube, Platform::Instagram, Platform::Pinterest, Platform::Facebook]],
     'instagram facebook' => [Platform::InstagramFacebook, [Platform::TikTok, Platform::YouTube, Platform::Instagram, Platform::Pinterest, Platform::Facebook]],

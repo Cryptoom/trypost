@@ -2,7 +2,7 @@
 import { Link } from '@inertiajs/vue3';
 
 import Toast from '@/components/Toast.vue';
-import { welcome } from '@/routes/app';
+import { onboarding } from '@/routes/app';
 
 const maxWidthClass = {
     sm: 'max-w-sm',
@@ -73,7 +73,7 @@ const canNavigateTo = (stepNumber: number): boolean =>
                     class="flex flex-col items-center gap-4"
                 >
                     <Link
-                        :href="welcome()"
+                        :href="onboarding()"
                         class="flex flex-col items-center gap-2 font-medium"
                     >
                         <img
@@ -91,7 +91,7 @@ const canNavigateTo = (stepNumber: number): boolean =>
                     <nav
                         v-if="step !== undefined"
                         class="flex items-center gap-2"
-                        :aria-label="$t('welcome.progress')"
+                        :aria-label="$t('onboarding.progress')"
                     >
                         <template
                             v-for="stepNumber in totalSteps"
@@ -102,12 +102,12 @@ const canNavigateTo = (stepNumber: number): boolean =>
                                 type="button"
                                 class="flex h-6 w-8 items-center"
                                 :aria-label="
-                                    $t('welcome.go_to_step', {
+                                    $t('onboarding.go_to_step', {
                                         step: String(stepNumber),
                                     })
                                 "
-                                :data-testid="`welcome-step-${stepNumber}`"
-                                :dusk="`welcome-step-${stepNumber}`"
+                                :data-testid="`onboarding-step-${stepNumber}`"
+                                :dusk="`onboarding-step-${stepNumber}`"
                                 @click="emit('selectStep', stepNumber)"
                             >
                                 <span
@@ -117,14 +117,14 @@ const canNavigateTo = (stepNumber: number): boolean =>
                             <div
                                 v-else
                                 class="flex h-6 w-8 items-center"
-                                :data-testid="`welcome-step-${stepNumber}`"
-                                :dusk="`welcome-step-${stepNumber}`"
+                                :data-testid="`onboarding-step-${stepNumber}`"
+                                :dusk="`onboarding-step-${stepNumber}`"
                                 :aria-current="
                                     stepNumber === step ? 'step' : undefined
                                 "
                                 :aria-label="
                                     stepNumber === step
-                                        ? $t('welcome.step_current', {
+                                        ? $t('onboarding.step_current', {
                                               step: String(stepNumber),
                                           })
                                         : undefined

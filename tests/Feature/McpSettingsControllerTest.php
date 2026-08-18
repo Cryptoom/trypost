@@ -370,5 +370,5 @@ it('redirects to welcome when the account has no app access', function (): void 
 
     $this->actingAs($this->user->fresh())
         ->get(route('app.mcp.index'))
-        ->assertRedirect(route('app.welcome'));
+        ->assertRedirect(route('app.onboarding'));
 });

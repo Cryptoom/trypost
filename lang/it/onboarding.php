@@ -10,7 +10,7 @@ return [
     'subscription_required_description' => 'Questo account non ha ancora un abbonamento attivo. Chiedi al proprietario di completare il checkout: avrai accesso completo non appena sarà attivo.',
     'subscription_required_owner' => 'Il proprietario del tuo account è :name.',
     'subscription_required_auto' => 'Questa pagina si aggiorna automaticamente: non serve ricaricarla.',
-    'progress' => 'Progresso di benvenuto',
+    'progress' => 'Progresso onboarding',
     'go_to_step' => 'Vai al passaggio :step',
     'step_current' => 'Passaggio :step (attuale)',
     'personas' => [

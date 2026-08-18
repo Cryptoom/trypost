@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace App\Http\Requests\App\Welcome;
+namespace App\Http\Requests\App\Onboarding;
 
 use App\Enums\User\PublishMethod;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
-class StoreWelcomePublishMethodRequest extends FormRequest
+class StoreOnboardingPublishMethodRequest extends FormRequest
 {
     public function authorize(): bool
     {

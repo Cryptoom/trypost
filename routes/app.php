@@ -7,6 +7,7 @@ use App\Http\Controllers\App\ApiKeyController;
 use App\Http\Controllers\App\AssetController;
 use App\Http\Controllers\App\AutomationController;
 use App\Http\Controllers\App\BillingController;
+use App\Http\Controllers\App\ChatController;
 use App\Http\Controllers\App\DiscordController as AppDiscordController;
 use App\Http\Controllers\App\GiphyController;
 use App\Http\Controllers\App\LinkPreviewController;
@@ -28,7 +29,6 @@ use App\Http\Controllers\App\Settings\ProfileController;
 use App\Http\Controllers\App\Settings\SettingsController;
 use App\Http\Controllers\App\Settings\UsageController;
 use App\Http\Controllers\App\UnsplashController;
-use App\Http\Controllers\App\WelcomeController;
 use App\Http\Controllers\App\WorkspaceController;
 use App\Http\Controllers\App\WorkspaceInviteController;
 use App\Http\Controllers\App\WorkspaceLabelController;
@@ -59,24 +59,27 @@ Route::middleware(['auth'])->group(function () {
     })->name('app.home');
 
     Route::get('subscribe', [BillingController::class, 'subscribe'])->name('app.subscribe');
-    Route::get('welcome', [WelcomeController::class, 'show'])->name('app.welcome');
-    Route::get('welcome/persona', fn () => redirect()->route('app.welcome'))->name('app.welcome.persona');
-    Route::post('welcome/persona', [WelcomeController::class, 'storePersona'])->name('app.welcome.persona.store');
-    Route::get('welcome/goals', fn () => redirect()->route('app.welcome'))->name('app.welcome.goals');
-    Route::post('welcome/goals', [WelcomeController::class, 'storeGoals'])->name('app.welcome.goals.store');
-    Route::get('welcome/referral-source', fn () => redirect()->route('app.welcome'))->name('app.welcome.referral-source');
-    Route::post('welcome/referral-source', [WelcomeController::class, 'storeReferralSource'])
+    Route::get('onboarding', [OnboardingController::class, 'show'])->name('app.onboarding');
+    Route::get('onboarding/persona', fn () => redirect()->route('app.onboarding'))->name('app.onboarding.persona');
+    Route::post('onboarding/persona', [OnboardingController::class, 'storePersona'])->name('app.onboarding.persona.store');
+    Route::get('onboarding/goals', fn () => redirect()->route('app.onboarding'))->name('app.onboarding.goals');
+    Route::post('onboarding/goals', [OnboardingController::class, 'storeGoals'])->name('app.onboarding.goals.store');
+    Route::get('onboarding/referral-source', fn () => redirect()->route('app.onboarding'))->name('app.onboarding.referral-source');
+    Route::post('onboarding/referral-source', [OnboardingController::class, 'storeReferralSource'])
         ->middleware('throttle:6,1')
-        ->name('app.welcome.referral-source.store');
-    Route::get('welcome/publish-method', fn () => redirect()->route('app.welcome'))->name('app.welcome.publish-method');
-    Route::post('welcome/publish-method', [WelcomeController::class, 'storePublishMethod'])
+        ->name('app.onboarding.referral-source.store');
+    Route::get('onboarding/publish-method', fn () => redirect()->route('app.onboarding'))->name('app.onboarding.publish-method');
+    Route::post('onboarding/publish-method', [OnboardingController::class, 'storePublishMethod'])
         ->middleware('throttle:6,1')
-        ->name('app.welcome.publish-method.store');
-    Route::get('welcome/connect', fn () => redirect()->route('app.welcome'))->name('app.welcome.connect');
-    Route::post('welcome/connect', [WelcomeController::class, 'storeConnect'])
+        ->name('app.onboarding.publish-method.store');
+    Route::get('onboarding/connect', fn () => redirect()->route('app.onboarding'))->name('app.onboarding.connect');
+    Route::post('onboarding/connect', [OnboardingController::class, 'storeConnect'])
         ->middleware('throttle:6,1')
-        ->name('app.welcome.connect.store');
-    Route::get('welcome/subscription-required', [WelcomeController::class, 'subscriptionRequired'])->name('app.welcome.subscription-required');
+        ->name('app.onboarding.connect.store');
+    Route::get('onboarding/subscription-required', [OnboardingController::class, 'subscriptionRequired'])->name('app.onboarding.subscription-required');
+    Route::get('welcome/{path?}', fn () => redirect()->route('app.onboarding'))
+        ->where('path', '.*')
+        ->name('app.welcome');
     Route::get('billing/processing', [BillingController::class, 'processing'])->name('app.billing.processing');
 
     Route::get('workspaces/create', [WorkspaceController::class, 'create'])->name('app.workspaces.create');
@@ -158,10 +161,6 @@ Route::middleware(['auth'])->group(function () {
 
 // Routes that require account access and a current workspace
 Route::middleware(['auth', EnsureAccountReady::class, EnsureHasWorkspace::class])->group(function () {
-    Route::get('onboarding', [OnboardingController::class, 'index'])->name('app.onboarding');
-    Route::post('onboarding/mcp/skip', [OnboardingController::class, 'skipMcp'])->name('app.onboarding.mcp.skip');
-    Route::post('onboarding/complete', [OnboardingController::class, 'complete'])->name('app.onboarding.complete');
-
     // Discord — live lookups for the composer (channel picker + mention autocomplete).
     // Throttled because they proxy the shared bot's (rate-limited) Discord API.
     Route::get('discord/accounts/{account}/channels', [AppDiscordController::class, 'channels'])
@@ -188,6 +187,9 @@ Route::middleware(['auth', EnsureAccountReady::class, EnsureHasWorkspace::class]
     // Social Accounts
     Route::get('accounts', [SocialController::class, 'index'])->name('app.accounts');
     Route::put('accounts/{account}/toggle', [SocialController::class, 'toggleActive'])->name('app.accounts.toggle');
+
+    // Chat
+    Route::get('chat', [ChatController::class, 'index'])->name('app.chat');
 
     // Analytics
     Route::get('analytics', [AnalyticsController::class, 'index'])->name('app.analytics');

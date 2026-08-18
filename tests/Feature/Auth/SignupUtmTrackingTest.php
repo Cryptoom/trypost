@@ -31,7 +31,7 @@ test('email registration saves utm parameters from the register page query strin
         'email' => 'utm@example.com',
         'password' => 'Password123!',
     ])
-        ->assertRedirect(route('app.welcome', absolute: false));
+        ->assertRedirect(route('app.onboarding', absolute: false));
 
     $this->assertDatabaseHas('users', [
         'email' => 'utm@example.com',
@@ -45,7 +45,7 @@ test('email registration without utm parameters saves null utm columns', functio
         'email' => 'no-utm@example.com',
         'password' => 'Password123!',
     ])
-        ->assertRedirect(route('app.welcome', absolute: false));
+        ->assertRedirect(route('app.onboarding', absolute: false));
 
     $this->assertDatabaseHas('users', [
         'email' => 'no-utm@example.com',
@@ -98,7 +98,7 @@ test('google registration saves utm parameters captured before the oauth round-t
         ->andReturn($socialiteUser);
 
     $this->get(route('auth.google.callback'))
-        ->assertRedirect(route('app.welcome', absolute: false));
+        ->assertRedirect(route('app.onboarding', absolute: false));
 
     $this->assertDatabaseHas('users', [
         'email' => 'google-utm@example.com',
@@ -126,7 +126,7 @@ test('utm parameters captured on the register page survive a google oauth round-
         ->andReturn($socialiteUser);
 
     $this->get(route('auth.google.callback'))
-        ->assertRedirect(route('app.welcome', absolute: false));
+        ->assertRedirect(route('app.onboarding', absolute: false));
 
     $this->assertDatabaseHas('users', [
         'email' => 'cross-flow@example.com',
@@ -160,7 +160,7 @@ test('existing google user login consumes the utm session so utms do not leak to
     expect(session()->get('attribution_parameters'))->toBeNull();
 });
 
-test('invitation registration redirects to the invite page instead of app.welcome', function () {
+test('invitation registration redirects to the invite page instead of app.onboarding', function () {
     $account = Account::factory()->create();
     $owner = User::factory()->create(['account_id' => $account->id]);
     $account->update(['owner_id' => $owner->id]);
@@ -259,7 +259,7 @@ test('github registration saves utm parameters captured before the oauth round-t
         ->andReturn($socialiteUser);
 
     $this->get(route('auth.github.callback'))
-        ->assertRedirect(route('app.welcome', absolute: false));
+        ->assertRedirect(route('app.onboarding', absolute: false));
 
     $this->assertDatabaseHas('users', [
         'email' => 'github-utm@example.com',

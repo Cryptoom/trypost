@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Http\Requests\App\Welcome;
+namespace App\Http\Requests\App\Onboarding;
 
 use App\Enums\SocialAccount\Status;
 use App\Enums\User\Goal;
@@ -10,7 +10,7 @@ use App\Models\SocialAccount;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Validator;
 
-class StoreWelcomeConnectRequest extends FormRequest
+class StoreOnboardingConnectRequest extends FormRequest
 {
     /**
      * @var list<string>|null
@@ -63,11 +63,11 @@ class StoreWelcomeConnectRequest extends FormRequest
             }
 
             if ($user->publish_method === null) {
-                $validator->errors()->add('publish_method', __('welcome.publish_method.required'));
+                $validator->errors()->add('publish_method', __('onboarding.publish_method.required'));
             }
 
             if ($this->connectedPlatforms() === []) {
-                $validator->errors()->add('connect', __('welcome.connect.required'));
+                $validator->errors()->add('connect', __('onboarding.connect.required'));
             }
         });
     }

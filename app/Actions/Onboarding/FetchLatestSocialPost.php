@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Actions\Welcome;
+namespace App\Actions\Onboarding;
 
 use App\Enums\SocialAccount\Platform;
 use App\Enums\SocialAccount\Status;
@@ -437,7 +437,7 @@ class FetchLatestSocialPost
      */
     private function missedNetworks(Platform $platform, int $eachViews): array
     {
-        return collect($platform->welcomeReachComparisons())
+        return collect($platform->onboardingReachComparisons())
             ->filter(fn (Platform $candidate): bool => $candidate->isConnectable())
             ->reject(fn (Platform $candidate): bool => $candidate->network() === $platform->network())
             ->take(2)

@@ -17,7 +17,7 @@ test('redirects owners to welcome when account has no active subscription', func
 
     $this->actingAs($user)
         ->get(route('app.calendar'))
-        ->assertRedirect(route('app.welcome'));
+        ->assertRedirect(route('app.onboarding'));
 });
 
 test('redirects members without app access straight to subscription required', function () {
@@ -32,7 +32,7 @@ test('redirects members without app access straight to subscription required', f
 
     $this->actingAs($member->fresh())
         ->get(route('app.calendar'))
-        ->assertRedirect(route('app.welcome.subscription-required'));
+        ->assertRedirect(route('app.onboarding.subscription-required'));
 });
 
 test('redirects to workspace create when subscribed but no workspace', function () {

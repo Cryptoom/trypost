@@ -10,7 +10,7 @@ return [
     'subscription_required_description' => 'このアカウントにはまだ有効なサブスクリプションがありません。オーナーにチェックアウトの完了を依頼してください — 有効になり次第、フルアクセスできます。',
     'subscription_required_owner' => 'アカウントのオーナーは :name です。',
     'subscription_required_auto' => 'このページは自動で更新されます — 再読み込みは不要です。',
-    'progress' => 'ようこそ進捗',
+    'progress' => 'オンボーディングの進捗',
     'go_to_step' => 'ステップ :step へ',
     'step_current' => 'ステップ :step（現在）',
     'personas' => [

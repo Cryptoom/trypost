@@ -1,2 +1,2 @@
-export const welcomePlatformLabel = (label: string): string =>
+export const onboardingPlatformLabel = (label: string): string =>
     label.replace(/\s*\(Facebook Business\)$/, '').trim();

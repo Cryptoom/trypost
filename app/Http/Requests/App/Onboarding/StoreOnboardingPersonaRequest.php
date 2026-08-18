@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace App\Http\Requests\App\Welcome;
+namespace App\Http\Requests\App\Onboarding;
 
 use App\Enums\User\Persona;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
-class StoreWelcomePersonaRequest extends FormRequest
+class StoreOnboardingPersonaRequest extends FormRequest
 {
     public function authorize(): bool
     {

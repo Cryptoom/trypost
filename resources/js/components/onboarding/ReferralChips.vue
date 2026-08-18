@@ -141,7 +141,7 @@ const metaFor = (value: string): SourceMeta =>
     };
 
 const sourceLabel = (value: string): string =>
-    trans(`welcome.referral_source.${value}`);
+    trans(`onboarding.referral_source.${value}`);
 
 const isSelected = (value: string): boolean => props.modelValue === value;
 
@@ -162,8 +162,8 @@ const select = (value: string): void => {
             type="button"
             :aria-pressed="isSelected(source)"
             :disabled="props.disabled || props.readonly"
-            :data-testid="`welcome-source-${source}`"
-            :dusk="`welcome-source-${source}`"
+            :data-testid="`onboarding-source-${source}`"
+            :dusk="`onboarding-source-${source}`"
             :class="[
                 'inline-flex items-center gap-2 rounded-full border-2 border-foreground py-1.5 ps-1.5 pe-3 text-start shadow-2xs',
                 props.readonly

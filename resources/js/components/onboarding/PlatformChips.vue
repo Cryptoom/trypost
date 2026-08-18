@@ -2,7 +2,7 @@
 import { IconCheck } from '@tabler/icons-vue';
 
 import type { AvailablePlatform } from '@/components/accounts/NetworkConnectGrid.vue';
-import { welcomePlatformLabel } from '@/components/welcome/welcomePlatformLabel';
+import { onboardingPlatformLabel } from '@/components/onboarding/onboardingPlatformLabel';
 import { getPlatformLogo } from '@/composables/usePlatformLogo';
 
 const props = withDefaults(
@@ -36,8 +36,8 @@ const select = (value: string): void => {
             :key="platform.value"
             type="button"
             :aria-pressed="props.modelValue === platform.value"
-            :data-testid="`welcome-platform-${platform.value}`"
-            :dusk="`welcome-platform-${platform.value}`"
+            :data-testid="`onboarding-platform-${platform.value}`"
+            :dusk="`onboarding-platform-${platform.value}`"
             :disabled="props.readonly"
             :class="[
                 'inline-flex items-center gap-2 rounded-full border-2 border-foreground py-1.5 ps-1.5 pe-3 text-start shadow-2xs',
@@ -60,7 +60,7 @@ const select = (value: string): void => {
                 />
             </span>
             <span class="text-sm font-bold tracking-tight text-foreground">
-                {{ welcomePlatformLabel(platform.label) }}
+                {{ onboardingPlatformLabel(platform.label) }}
             </span>
             <span
                 v-if="props.modelValue === platform.value"

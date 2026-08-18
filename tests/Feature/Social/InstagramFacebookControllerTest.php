@@ -349,7 +349,7 @@ test('instagram-facebook select connects the page in self-hosted mode', function
     $response->assertInertia(fn (AssertableInertia $page) => $page
         ->component('accounts/PopupCallback')
         ->where('success', true)
-        ->where('onboardingProgress', false)
+        ->missing('onboardingProgress')
     );
 
     $this->assertDatabaseHas('social_accounts', [
@@ -359,8 +359,6 @@ test('instagram-facebook select connects the page in self-hosted mode', function
         'username' => 'mybiz',
     ]);
 
-    // After connect the session is cleared; PopupCallback sets onboardingProgress
-    // inline so Inertia does not deferred-reload this select URL into /accounts.
     $this->actingAs($this->user)
         ->get(route('app.social.instagram-facebook.select-page'))
         ->assertOk()
@@ -368,7 +366,7 @@ test('instagram-facebook select connects the page in self-hosted mode', function
             ->component('accounts/PopupCallback')
             ->where('success', false)
             ->where('message', __('accounts.popup_callback.session_expired'))
-            ->where('onboardingProgress', false)
+            ->missing('onboardingProgress')
         );
 });
 
@@ -380,7 +378,7 @@ test('instagram-facebook select page returns popup callback when the session exp
             ->component('accounts/PopupCallback')
             ->where('success', false)
             ->where('message', __('accounts.popup_callback.session_expired'))
-            ->where('onboardingProgress', false)
+            ->missing('onboardingProgress')
         );
 });
 

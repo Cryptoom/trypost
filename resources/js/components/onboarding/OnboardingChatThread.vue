@@ -1,26 +1,12 @@
 <script setup lang="ts">
-import { ref } from 'vue';
-
-import { useChatScroll } from '@/composables/useChatScroll';
-
-const root = ref<HTMLElement | null>(null);
-
-useChatScroll(root);
+import ChatThread from '@/components/chat/ChatThread.vue';
 </script>
 
 <template>
-    <div
-        ref="root"
-        class="flex flex-col gap-5"
-        data-testid="welcome-chat-thread"
-        dusk="welcome-chat-thread"
+    <ChatThread
+        test-id="onboarding-chat-thread"
+        end-test-id="onboarding-chat-end"
     >
         <slot />
-        <div
-            data-testid="welcome-chat-end"
-            dusk="welcome-chat-end"
-            class="h-24 shrink-0"
-            aria-hidden="true"
-        />
-    </div>
+    </ChatThread>
 </template>

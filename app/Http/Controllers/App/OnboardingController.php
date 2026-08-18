@@ -6,21 +6,21 @@ namespace App\Http\Controllers\App;
 
 use App\Actions\AccessToken\ListConnectedMcpClients;
 use App\Actions\Billing\StartSubscriptionCheckout;
-use App\Actions\Welcome\FetchLatestSocialPost;
+use App\Actions\Onboarding\FetchLatestSocialPost;
 use App\Enums\Plan\Slug;
 use App\Enums\PostHog\CheckoutEvent;
-use App\Enums\PostHog\WelcomeEvent;
+use App\Enums\PostHog\OnboardingEvent;
 use App\Enums\SocialAccount\Platform as SocialPlatform;
 use App\Enums\SocialAccount\Status;
 use App\Enums\User\Goal;
 use App\Enums\User\Persona;
 use App\Enums\User\PublishMethod;
 use App\Enums\User\ReferralSource;
-use App\Http\Requests\App\Welcome\StoreWelcomeConnectRequest;
-use App\Http\Requests\App\Welcome\StoreWelcomeGoalsRequest;
-use App\Http\Requests\App\Welcome\StoreWelcomePersonaRequest;
-use App\Http\Requests\App\Welcome\StoreWelcomePublishMethodRequest;
-use App\Http\Requests\App\Welcome\StoreWelcomeReferralSourceRequest;
+use App\Http\Requests\App\Onboarding\StoreOnboardingConnectRequest;
+use App\Http\Requests\App\Onboarding\StoreOnboardingGoalsRequest;
+use App\Http\Requests\App\Onboarding\StoreOnboardingPersonaRequest;
+use App\Http\Requests\App\Onboarding\StoreOnboardingPublishMethodRequest;
+use App\Http\Requests\App\Onboarding\StoreOnboardingReferralSourceRequest;
 use App\Http\Resources\App\SocialAccountResource;
 use App\Models\Plan;
 use App\Models\SocialAccount;
@@ -34,7 +34,7 @@ use Inertia\Response as InertiaResponse;
 use Symfony\Component\HttpFoundation\Response;
 use Throwable;
 
-class WelcomeController extends Controller
+class OnboardingController extends Controller
 {
     public function show(Request $request, FetchLatestSocialPost $fetchLatest): InertiaResponse|RedirectResponse
     {
@@ -51,10 +51,10 @@ class WelcomeController extends Controller
             $props = [...$props, ...$this->connectState($user, $fetchLatest, deferLatestPost: true)];
         }
 
-        return Inertia::render('welcome/Chat', $props);
+        return Inertia::render('onboarding/Chat', $props);
     }
 
-    public function storePersona(StoreWelcomePersonaRequest $request, PostHogService $postHog): RedirectResponse|JsonResponse
+    public function storePersona(StoreOnboardingPersonaRequest $request, PostHogService $postHog): RedirectResponse|JsonResponse
     {
         if ($redirect = $this->redirectIfUnavailable($request)) {
             return $redirect;
@@ -70,7 +70,7 @@ class WelcomeController extends Controller
         ]);
         $postHog->capture(
             $user->id,
-            WelcomeEvent::Persona->value,
+            OnboardingEvent::Persona->value,
             ['persona' => $persona],
             $user->account,
         );
@@ -78,7 +78,7 @@ class WelcomeController extends Controller
         return $this->advance($request, $user->fresh());
     }
 
-    public function storeGoals(StoreWelcomeGoalsRequest $request, PostHogService $postHog): RedirectResponse|JsonResponse
+    public function storeGoals(StoreOnboardingGoalsRequest $request, PostHogService $postHog): RedirectResponse|JsonResponse
     {
         if ($redirect = $this->redirectIfStepIncomplete($request)) {
             return $redirect;
@@ -94,7 +94,7 @@ class WelcomeController extends Controller
         ]);
         $postHog->capture(
             $user->id,
-            WelcomeEvent::Goals->value,
+            OnboardingEvent::Goals->value,
             ['goals' => $goals],
             $user->account,
         );
@@ -103,7 +103,7 @@ class WelcomeController extends Controller
     }
 
     public function storeReferralSource(
-        StoreWelcomeReferralSourceRequest $request,
+        StoreOnboardingReferralSourceRequest $request,
         FetchLatestSocialPost $fetchLatest,
         PostHogService $postHog,
     ): RedirectResponse|JsonResponse {
@@ -121,7 +121,7 @@ class WelcomeController extends Controller
         ]);
         $postHog->capture(
             $user->id,
-            WelcomeEvent::Referral->value,
+            OnboardingEvent::Referral->value,
             ['referral_source' => $referralSource],
             $user->account,
         );
@@ -130,7 +130,7 @@ class WelcomeController extends Controller
     }
 
     public function storePublishMethod(
-        StoreWelcomePublishMethodRequest $request,
+        StoreOnboardingPublishMethodRequest $request,
         FetchLatestSocialPost $fetchLatest,
         PostHogService $postHog,
     ): RedirectResponse|JsonResponse {
@@ -157,7 +157,7 @@ class WelcomeController extends Controller
         ]);
         $postHog->capture(
             $user->id,
-            WelcomeEvent::PublishMethod->value,
+            OnboardingEvent::PublishMethod->value,
             ['publish_method' => $publishMethod],
             $user->account,
         );
@@ -166,7 +166,7 @@ class WelcomeController extends Controller
     }
 
     public function storeConnect(
-        StoreWelcomeConnectRequest $request,
+        StoreOnboardingConnectRequest $request,
         StartSubscriptionCheckout $checkout,
         PostHogService $postHog,
     ): Response|RedirectResponse {
@@ -187,13 +187,13 @@ class WelcomeController extends Controller
         $response = $checkout->redirect(
             $user->account,
             $priceId,
-            route('app.welcome'),
+            route('app.onboarding'),
         );
 
         try {
             $postHog->capture(
                 $user->id,
-                WelcomeEvent::Connect->value,
+                OnboardingEvent::Connect->value,
                 ['platforms' => $platforms],
                 $user->account,
             );
@@ -219,10 +219,10 @@ class WelcomeController extends Controller
         }
 
         if ($user->isAccountOwner()) {
-            return redirect()->route('app.welcome');
+            return redirect()->route('app.onboarding');
         }
 
-        return Inertia::render('welcome/SubscriptionRequired', [
+        return Inertia::render('onboarding/SubscriptionRequired', [
             'ownerName' => $user->account?->owner?->name,
         ]);
     }
@@ -277,7 +277,7 @@ class WelcomeController extends Controller
                     $platform = SocialPlatform::tryFrom((string) data_get($option, 'value'));
 
                     if ($platform !== null) {
-                        $option['label'] = $platform->welcomeLabel();
+                        $option['label'] = $platform->onboardingLabel();
                     }
 
                     return $option;
@@ -295,7 +295,7 @@ class WelcomeController extends Controller
     private function advance(Request $request, User $user, ?FetchLatestSocialPost $fetchLatest = null): RedirectResponse|JsonResponse
     {
         if (! $request->expectsJson()) {
-            return redirect()->route('app.welcome');
+            return redirect()->route('app.onboarding');
         }
 
         $state = $this->chatState($user);
@@ -338,22 +338,22 @@ class WelcomeController extends Controller
         $user = $request->user();
 
         if (! $user->persona) {
-            return redirect()->route('app.welcome');
+            return redirect()->route('app.onboarding');
         }
 
         if ($requireGoals && ! Goal::containsCurrent($user->goals)) {
-            return redirect()->route('app.welcome');
+            return redirect()->route('app.onboarding');
         }
 
         if ($requireReferral && ! $user->referral_source) {
-            return redirect()->route('app.welcome');
+            return redirect()->route('app.onboarding');
         }
 
         return null;
     }
 
     /**
-     * Answered welcome turns before the current step, reconstructed from
+     * Answered onboarding turns before the current step, reconstructed from
      * stored user fields so a reload still looks like a chat thread.
      *
      * @return list<array{step: 'persona'|'goals'|'referral', values: list<string>}>
@@ -394,7 +394,7 @@ class WelcomeController extends Controller
 
         // Match EnsureAccountReady — generic-trial (no-card) users already have
         // app access and must not be sent through Stripe checkout again.
-        // Self-hosted always has app access, so welcome/checkout is skipped too.
+        // Self-hosted always has app access, so onboarding/checkout is skipped too.
         if ($user->account?->hasAppAccess()) {
             return redirect()->route('app.calendar');
         }
@@ -402,7 +402,7 @@ class WelcomeController extends Controller
         // Members can't check out — hold them on a dedicated screen instead of
         // walking an ICP flow they can never finish.
         if (! $user->isAccountOwner()) {
-            return redirect()->route('app.welcome.subscription-required');
+            return redirect()->route('app.onboarding.subscription-required');
         }
 
         return null;

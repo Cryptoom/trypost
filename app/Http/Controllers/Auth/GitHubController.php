@@ -130,6 +130,6 @@ class GitHubController extends Controller
             return redirect()->route('app.invites.show', $invite);
         }
 
-        return redirect()->route('app.welcome');
+        return redirect()->route('app.onboarding');
     }
 }

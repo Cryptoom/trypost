@@ -16,7 +16,7 @@ class BillingController extends Controller
 {
     public function subscribe(): RedirectResponse
     {
-        return redirect()->route('app.welcome');
+        return redirect()->route('app.onboarding');
     }
 
     public function processing(Request $request): Response|RedirectResponse
@@ -25,16 +25,10 @@ class BillingController extends Controller
             return redirect()->route('app.calendar');
         }
 
-        $user = $request->user();
-        $account = $user->accountOrFail();
-
-        $subscriptionActive = $account->subscribed(Account::SUBSCRIPTION_NAME);
-        $redirectToOnboarding = $user->isAccountOwner()
-            && $account->isOnboardingOpen();
+        $account = $request->user()->accountOrFail();
 
         return Inertia::render('billing/Processing', [
-            'subscriptionActive' => $subscriptionActive,
-            'redirectToOnboarding' => $redirectToOnboarding,
+            'subscriptionActive' => $account->subscribed(Account::SUBSCRIPTION_NAME),
         ]);
     }
 

@@ -10,7 +10,7 @@ return [
     'subscription_required_description' => 'This account doesn\'t have an active subscription yet. Ask the account owner to finish checkout — you\'ll get full access as soon as it is active.',
     'subscription_required_owner' => 'Your account owner is :name.',
     'subscription_required_auto' => 'This page updates automatically — no need to refresh.',
-    'progress' => 'Welcome progress',
+    'progress' => 'Onboarding progress',
     'go_to_step' => 'Go to step :step',
     'step_current' => 'Step :step (current)',
     'personas' => [

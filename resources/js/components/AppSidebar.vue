@@ -30,8 +30,10 @@ import {
 import NavMain from '@/components/NavMain.vue';
 import NavSupport from '@/components/NavSupport.vue';
 import NotificationBell from '@/components/NotificationBell.vue';
-import SidebarOnboarding from '@/components/onboarding/SidebarOnboarding.vue';
+import SidebarChatHistory from '@/components/SidebarChatHistory.vue';
+import SidebarModeToggle from '@/components/SidebarModeToggle.vue';
 import { Avatar } from '@/components/ui/avatar';
+import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import {
     DropdownMenu,
@@ -49,8 +51,9 @@ import {
     useSidebar,
 } from '@/components/ui/sidebar';
 import WorkspaceMenuContent from '@/components/WorkspaceMenuContent.vue';
+import { useActiveUrl } from '@/composables/useActiveUrl';
 import { useWorkspaceRole } from '@/composables/useWorkspaceRole';
-import { accounts, analytics, calendar } from '@/routes/app';
+import { accounts, analytics, calendar, chat } from '@/routes/app';
 import { index as assets } from '@/routes/app/assets';
 import { index as automations } from '@/routes/app/automations';
 import { portal } from '@/routes/app/billing';
@@ -84,6 +87,9 @@ const {
     canCreateWorkspace,
 } = useWorkspaceRole();
 const { isMobile } = useSidebar();
+const { urlIsActive } = useActiveUrl();
+const isChatMode = computed(() => urlIsActive(chat.url(), { prefix: true }));
+const sidebarMode = computed(() => (isChatMode.value ? 'chat' : 'browse'));
 
 const mainNavItems = computed<NavItem[]>(() => [
     {
@@ -254,25 +260,52 @@ const bottomNavItems = computed(() => [
         </SidebarHeader>
 
         <SidebarContent class="gap-px">
-            <div v-if="currentWorkspace && canCreatePost" class="px-2 py-2">
-                <Link :href="createPost.url()" class="block">
-                    <Button class="w-full">
-                        {{ $t('sidebar.create_post') }}
-                    </Button>
-                </Link>
-            </div>
-
-            <NavMain v-if="currentWorkspace" :items="mainNavItems" />
-            <NavMain
+            <Tabs
                 v-if="currentWorkspace"
-                :items="postsNavItems"
-                :label="$t('sidebar.groups.posts')"
-            />
-            <NavMain
-                v-if="currentWorkspace && workspaceNavItems.length"
-                :items="workspaceNavItems"
-                :label="$t('sidebar.groups.workspace')"
-            />
+                :model-value="sidebarMode"
+                class="flex min-h-0 flex-1 flex-col gap-2"
+            >
+                <SidebarModeToggle />
+
+                <TabsContent
+                    value="browse"
+                    force-mount
+                    :class="[
+                        'mt-0 flex min-h-0 flex-1 flex-col outline-none',
+                        { hidden: sidebarMode !== 'browse' },
+                    ]"
+                >
+                    <div v-if="canCreatePost" class="px-2 py-2">
+                        <Link :href="createPost.url()" class="block">
+                            <Button class="w-full">
+                                {{ $t('sidebar.create_post') }}
+                            </Button>
+                        </Link>
+                    </div>
+
+                    <NavMain :items="mainNavItems" />
+                    <NavMain
+                        :items="postsNavItems"
+                        :label="$t('sidebar.groups.posts')"
+                    />
+                    <NavMain
+                        v-if="workspaceNavItems.length"
+                        :items="workspaceNavItems"
+                        :label="$t('sidebar.groups.workspace')"
+                    />
+                </TabsContent>
+
+                <TabsContent
+                    value="chat"
+                    force-mount
+                    :class="[
+                        'mt-0 flex min-h-0 flex-1 flex-col outline-none',
+                        { hidden: sidebarMode !== 'chat' },
+                    ]"
+                >
+                    <SidebarChatHistory />
+                </TabsContent>
+            </Tabs>
 
             <div class="mt-auto">
                 <NavSupport
@@ -283,8 +316,6 @@ const bottomNavItems = computed(() => [
             </div>
         </SidebarContent>
         <SidebarFooter>
-            <SidebarOnboarding v-if="currentWorkspace" />
-
             <div
                 v-if="subscriptionPastDue"
                 dusk="past-due-notice"

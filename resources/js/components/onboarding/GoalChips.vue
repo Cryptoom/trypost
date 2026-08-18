@@ -99,7 +99,7 @@ const metaFor = (
         badge: 'bg-muted',
     };
 
-const goalLabel = (value: string): string => trans(`welcome.goals.${value}`);
+const goalLabel = (value: string): string => trans(`onboarding.goals.${value}`);
 
 const isSelected = (value: string): boolean => props.modelValue.includes(value);
 
@@ -134,8 +134,8 @@ const toggle = (value: string): void => {
             :key="goal"
             type="button"
             :aria-pressed="isSelected(goal)"
-            :data-testid="`welcome-goal-${goal}`"
-            :dusk="`welcome-goal-${goal}`"
+            :data-testid="`onboarding-goal-${goal}`"
+            :dusk="`onboarding-goal-${goal}`"
             :disabled="props.disabled || props.readonly"
             :class="[
                 'inline-flex items-center gap-2 rounded-full border-2 border-foreground py-1.5 ps-1.5 pe-3 text-start shadow-2xs',

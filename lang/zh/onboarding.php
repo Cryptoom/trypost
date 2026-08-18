@@ -10,7 +10,7 @@ return [
     'subscription_required_description' => '此账户还没有有效订阅。请让账户所有者完成结账 — 订阅生效后您即可获得完整访问权限。',
     'subscription_required_owner' => '您的账户所有者是 :name。',
     'subscription_required_auto' => '此页面会自动更新 — 无需刷新。',
-    'progress' => '欢迎进度',
+    'progress' => '新手引导进度',
     'go_to_step' => '前往第 :step 步',
     'step_current' => '第 :step 步（当前）',
     'personas' => [

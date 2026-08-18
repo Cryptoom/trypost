@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use App\Actions\Welcome\FetchLatestSocialPost;
+use App\Actions\Onboarding\FetchLatestSocialPost;
 use App\Enums\SocialAccount\Platform;
 use App\Models\SocialAccount;
 use Illuminate\Support\Facades\Http;

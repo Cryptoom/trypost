@@ -46,7 +46,7 @@ const metaFor = (
     };
 
 const methodLabel = (value: string): string =>
-    trans(`welcome.publish_method.${value}`);
+    trans(`onboarding.publish_method.${value}`);
 
 const select = (value: string): void => {
     if (props.disabled || props.readonly) {
@@ -65,8 +65,8 @@ const select = (value: string): void => {
             type="button"
             :aria-pressed="props.modelValue === method"
             :disabled="props.disabled || props.readonly"
-            :data-testid="`welcome-publish-${method}`"
-            :dusk="`welcome-publish-${method}`"
+            :data-testid="`onboarding-publish-${method}`"
+            :dusk="`onboarding-publish-${method}`"
             :class="[
                 'inline-flex items-center gap-2 rounded-full border-2 border-foreground py-1.5 ps-1.5 pe-3 text-start shadow-2xs',
                 props.readonly

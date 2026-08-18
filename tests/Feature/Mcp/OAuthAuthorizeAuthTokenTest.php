@@ -33,19 +33,13 @@ beforeEach(function () {
     ]);
 });
 
-/**
- * Happy path: mid-activation owners must get onboardingProgress inline (false), not
- * deferred. Deferred props re-request /oauth/authorize and rotate Passport's authToken
- * while the consent page still holds the old value.
- */
-test('mid-activation owner oauth consent shares onboarding progress inline instead of deferring', function () {
+test('mid-activation owner oauth consent does not share onboarding progress', function () {
     $this->actingAs($this->user)
         ->get(route('passport.authorizations.authorize', oauthAuthorizeQuery($this->clientId)))
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->component('mcp/Authorize')
-            // Must be present as false — missing() would mean Inertia::defer() came back.
-            ->where('onboardingProgress', false)
+            ->missing('onboardingProgress')
             ->has('authToken')
         );
 });
@@ -56,7 +50,7 @@ test('mid-activation owner can approve oauth consent with the auth token from th
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->component('mcp/Authorize')
-            ->where('onboardingProgress', false)
+            ->missing('onboardingProgress')
             ->has('authToken')
         );
 
@@ -86,7 +80,7 @@ test('workspace member can approve oauth consent with the auth token from the co
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->component('mcp/Authorize')
-            ->where('onboardingProgress', false)
+            ->missing('onboardingProgress')
             ->has('authToken')
         );
 

@@ -18,29 +18,29 @@ import InputError from '@/components/InputError.vue';
 import McpPrimarySetup from '@/components/mcp/McpPrimarySetup.vue';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import GoalChips from '@/components/welcome/GoalChips.vue';
-import PersonaChips from '@/components/welcome/PersonaChips.vue';
-import PlatformChips from '@/components/welcome/PlatformChips.vue';
-import PublishMethodChips from '@/components/welcome/PublishMethodChips.vue';
-import ReferralChips from '@/components/welcome/ReferralChips.vue';
-import WelcomeChatThread from '@/components/welcome/WelcomeChatThread.vue';
-import WelcomeQuestion from '@/components/welcome/WelcomeQuestion.vue';
-import { welcomePlatformLabel } from '@/components/welcome/welcomePlatformLabel';
+import GoalChips from '@/components/onboarding/GoalChips.vue';
+import PersonaChips from '@/components/onboarding/PersonaChips.vue';
+import PlatformChips from '@/components/onboarding/PlatformChips.vue';
+import PublishMethodChips from '@/components/onboarding/PublishMethodChips.vue';
+import ReferralChips from '@/components/onboarding/ReferralChips.vue';
+import OnboardingChatThread from '@/components/onboarding/OnboardingChatThread.vue';
+import OnboardingQuestion from '@/components/onboarding/OnboardingQuestion.vue';
+import { onboardingPlatformLabel } from '@/components/onboarding/onboardingPlatformLabel';
 import { getPlatformLogo } from '@/composables/usePlatformLogo';
 import { useTypedText } from '@/composables/useTypedText';
 import date from '@/date';
-import WelcomeLayout from '@/layouts/WelcomeLayout.vue';
-import { store as storeConnect } from '@/routes/app/welcome/connect';
-import { store as storeGoals } from '@/routes/app/welcome/goals';
-import { store as storePersona } from '@/routes/app/welcome/persona';
-import { store as storePublishMethod } from '@/routes/app/welcome/publish-method';
-import { store as storeReferral } from '@/routes/app/welcome/referral-source';
+import OnboardingLayout from '@/layouts/OnboardingLayout.vue';
+import { store as storeConnect } from '@/routes/app/onboarding/connect';
+import { store as storeGoals } from '@/routes/app/onboarding/goals';
+import { store as storePersona } from '@/routes/app/onboarding/persona';
+import { store as storePublishMethod } from '@/routes/app/onboarding/publish-method';
+import { store as storeReferral } from '@/routes/app/onboarding/referral-source';
 import { SocialAccountStatus } from '@/types/social-account-status';
 
-type WelcomeStep = 'persona' | 'goals' | 'referral' | 'connect';
+type OnboardingStep = 'persona' | 'goals' | 'referral' | 'connect';
 
 type HistoryItem = {
-    step: Exclude<WelcomeStep, 'connect'>;
+    step: Exclude<OnboardingStep, 'connect'>;
     values: string[];
 };
 
@@ -75,7 +75,7 @@ type LatestPost = {
 
 const props = withDefaults(
     defineProps<{
-        step: WelcomeStep;
+        step: OnboardingStep;
         history: HistoryItem[];
         personas?: string[];
         selectedPersona?: string | null;
@@ -109,29 +109,29 @@ const props = withDefaults(
     },
 );
 
-const stepNumber: Record<WelcomeStep, number> = {
+const stepNumber: Record<OnboardingStep, number> = {
     persona: 1,
     goals: 2,
     referral: 3,
     connect: 4,
 };
 
-const questionKey: Record<WelcomeStep, string> = {
-    persona: 'welcome.title',
-    goals: 'welcome.goals_title',
-    referral: 'welcome.referral_source_title',
-    connect: 'welcome.connect.title',
+const questionKey: Record<OnboardingStep, string> = {
+    persona: 'onboarding.title',
+    goals: 'onboarding.goals_title',
+    referral: 'onboarding.referral_source_title',
+    connect: 'onboarding.connect.title',
 };
 
-const descriptionKey: Record<WelcomeStep, string> = {
-    persona: 'welcome.description',
-    goals: 'welcome.goals_description',
-    referral: 'welcome.referral_source_description',
-    connect: 'welcome.connect.description',
+const descriptionKey: Record<OnboardingStep, string> = {
+    persona: 'onboarding.description',
+    goals: 'onboarding.goals_description',
+    referral: 'onboarding.referral_source_description',
+    connect: 'onboarding.connect.description',
 };
 
-type WelcomeState = {
-    step: WelcomeStep;
+type OnboardingState = {
+    step: OnboardingStep;
     history: HistoryItem[];
     selectedPersona?: string | null;
     selectedGoals?: string[] | null;
@@ -145,7 +145,7 @@ type WelcomeState = {
     connectedClients?: ConnectedMcpClient[];
 };
 
-const step = ref<WelcomeStep>(props.step);
+const step = ref<OnboardingStep>(props.step);
 const history = ref<HistoryItem[]>([...props.history]);
 const platforms = ref<AvailablePlatform[]>([...props.platforms]);
 const accounts = ref<ConnectedAccount[]>([...props.accounts]);
@@ -156,28 +156,28 @@ const connectedClients = ref<ConnectedMcpClient[]>([
     ...props.connectedClients,
 ]);
 
-const personaForm = useHttp<{ persona: string }, WelcomeState>({
+const personaForm = useHttp<{ persona: string }, OnboardingState>({
     persona: props.selectedPersona ?? '',
 });
-const goalsForm = useHttp<{ goals: string[] }, WelcomeState>({
+const goalsForm = useHttp<{ goals: string[] }, OnboardingState>({
     goals: (props.selectedGoals ?? []).filter((goal) =>
         props.goals.includes(goal),
     ),
 });
-const referralForm = useHttp<{ referral_source: string }, WelcomeState>({
+const referralForm = useHttp<{ referral_source: string }, OnboardingState>({
     referral_source: props.selectedReferral ?? '',
 });
-const publishMethodForm = useHttp<{ publish_method: string }, WelcomeState>({
+const publishMethodForm = useHttp<{ publish_method: string }, OnboardingState>({
     publish_method: props.selectedPublishMethod ?? '',
 });
 const connectForm = useForm({});
 const question = useTypedText();
 
 const questionCopy = (
-    welcomeStep: WelcomeStep,
+    onboardingStep: OnboardingStep,
 ): { title: string; description: string } => ({
-    title: trans(questionKey[welcomeStep]),
-    description: trans(descriptionKey[welcomeStep]),
+    title: trans(questionKey[onboardingStep]),
+    description: trans(descriptionKey[onboardingStep]),
 });
 
 const ensureLanguage = async (): Promise<void> => {
@@ -197,7 +197,7 @@ const visibleHistory = computed((): HistoryItem[] =>
 type TranscriptQuestion = {
     kind: 'question';
     id: string;
-    step: WelcomeStep;
+    step: OnboardingStep;
     live: boolean;
 };
 
@@ -244,12 +244,12 @@ const liveTitle = computed((): string => question.title.value);
 
 const liveDescription = computed((): string => question.description.value);
 
-type WelcomeSnapshot = {
-    step: WelcomeStep;
+type OnboardingSnapshot = {
+    step: OnboardingStep;
     history: HistoryItem[];
 };
 
-let snapshot: WelcomeSnapshot | null = null;
+let snapshot: OnboardingSnapshot | null = null;
 
 const rollbackOptimistic = (): void => {
     if (snapshot === null) {
@@ -353,7 +353,7 @@ const selectedNetworkNeedsAction = computed((): boolean => {
 
 const advanceOptimistically = (
     item: HistoryItem,
-    next: WelcomeStep,
+    next: OnboardingStep,
 ): void => {
     snapshot = {
         step: step.value,
@@ -371,7 +371,7 @@ const advanceOptimistically = (
     });
 };
 
-const applyWelcomeState = (state: WelcomeState, stream = true): void => {
+const applyOnboardingState = (state: OnboardingState, stream = true): void => {
     snapshot = null;
     step.value = state.step;
     history.value = state.history;
@@ -430,7 +430,7 @@ const submitPersona = async (): Promise<void> => {
             return;
         }
 
-        applyWelcomeState(state, false);
+        applyOnboardingState(state, false);
     } catch {
         rollbackOptimistic();
     }
@@ -456,7 +456,7 @@ const submitGoals = async (): Promise<void> => {
             return;
         }
 
-        applyWelcomeState(state, false);
+        applyOnboardingState(state, false);
     } catch {
         rollbackOptimistic();
     }
@@ -482,7 +482,7 @@ const submitReferral = async (): Promise<void> => {
             return;
         }
 
-        applyWelcomeState(state, false);
+        applyOnboardingState(state, false);
     } catch {
         rollbackOptimistic();
     }
@@ -512,7 +512,7 @@ const submitPublishMethod = async (): Promise<void> => {
             return;
         }
 
-        applyWelcomeState(state, false);
+        applyOnboardingState(state, false);
     } catch {
         return;
     }
@@ -533,7 +533,7 @@ const submitConnect = (): void => {
 
 const composerDraft = computed((): string => {
     if (step.value === 'connect' && hasConnectedAccount.value) {
-        return trans('welcome.continue');
+        return trans('onboarding.continue');
     }
 
     return '';
@@ -664,13 +664,13 @@ const pitchViewsCopy = computed((): string => {
     }
 
     if (latestPost.value.impressions === null) {
-        return trans('welcome.connect.pitch_no_views', {
+        return trans('onboarding.connect.pitch_no_views', {
             network: latestPost.value.reach.network,
         });
     }
 
     return transChoice(
-        'welcome.connect.pitch_views',
+        'onboarding.connect.pitch_views',
         latestPost.value.impressions,
         {
             views: formatCount(latestPost.value.impressions),
@@ -741,7 +741,7 @@ const pitchMissedCopy = computed((): string => {
 
     const [first, second] = others;
 
-    return transChoice('welcome.connect.pitch_missed', others.length, {
+    return transChoice('onboarding.connect.pitch_missed', others.length, {
         first: first?.label ?? '',
         second: second?.label ?? '',
         each: formatCount(latestPost.value.reach.each_views),
@@ -754,22 +754,22 @@ const pitchMissedCopy = computed((): string => {
 <template>
     <Head :title="$t(questionKey[step])" />
 
-    <WelcomeLayout
+    <OnboardingLayout
         size="2xl"
         chat
     >
         <div
             class="mx-auto flex w-full max-w-2xl flex-1 flex-col"
-            data-testid="welcome-chat"
-            dusk="welcome-chat"
+            data-testid="onboarding-chat"
+            dusk="onboarding-chat"
         >
             <div
                 class="flex-1 px-2 pt-[22vh]"
                 :class="showComposer ? 'pb-36' : 'pb-28'"
-                data-testid="welcome-chat-transcript"
-                dusk="welcome-chat-transcript"
+                data-testid="onboarding-chat-transcript"
+                dusk="onboarding-chat-transcript"
             >
-                <WelcomeChatThread>
+                <OnboardingChatThread>
                 <template
                     v-for="row in transcript"
                     :key="row.id"
@@ -777,9 +777,9 @@ const pitchMissedCopy = computed((): string => {
                     <div
                         v-if="row.kind === 'question'"
                         class="scroll-mt-24 sm:scroll-mt-32"
-                        :data-welcome-turn="row.live ? 'current' : 'past'"
+                        :data-onboarding-turn="row.live ? 'current' : 'past'"
                     >
-                        <WelcomeQuestion
+                        <OnboardingQuestion
                             v-if="
                                 !row.live ||
                                 liveTitle !== '' ||
@@ -865,17 +865,17 @@ const pitchMissedCopy = computed((): string => {
                         <button
                             type="button"
                             class="px-1 text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
-                            data-testid="welcome-change-network"
-                            dusk="welcome-change-network"
+                            data-testid="onboarding-change-network"
+                            dusk="onboarding-change-network"
                             @click="clearSelectedNetwork"
                         >
-                            {{ $t('welcome.connect.change_network') }}
+                            {{ $t('onboarding.connect.change_network') }}
                         </button>
                     </div>
-                    <WelcomeQuestion
+                    <OnboardingQuestion
                         :title="
-                            $t('welcome.connect.follow_up', {
-                                network: welcomePlatformLabel(
+                            $t('onboarding.connect.follow_up', {
+                                network: onboardingPlatformLabel(
                                     selectedPlatform.label,
                                 ),
                             })
@@ -890,10 +890,10 @@ const pitchMissedCopy = computed((): string => {
                             : 'hidden'
                     "
                     :data-testid="
-                        showConnectAction ? 'welcome-connect-grid' : undefined
+                        showConnectAction ? 'onboarding-connect-grid' : undefined
                     "
                     :dusk="
-                        showConnectAction ? 'welcome-connect-grid' : undefined
+                        showConnectAction ? 'onboarding-connect-grid' : undefined
                     "
                 >
                     <span class="size-7 shrink-0" aria-hidden="true" />
@@ -906,9 +906,9 @@ const pitchMissedCopy = computed((): string => {
                 </div>
 
                 <template v-if="isLatestPostLoading">
-                    <WelcomeQuestion
-                        data-testid="welcome-latest-post-loading"
-                        dusk="welcome-latest-post-loading"
+                    <OnboardingQuestion
+                        data-testid="onboarding-latest-post-loading"
+                        dusk="onboarding-latest-post-loading"
                     >
                         <div class="space-y-3">
                             <Skeleton class="h-4 w-48" />
@@ -916,11 +916,11 @@ const pitchMissedCopy = computed((): string => {
                             <Skeleton class="h-4 w-full max-w-sm" />
                             <Skeleton class="h-16 max-w-sm rounded-2xl" />
                         </div>
-                    </WelcomeQuestion>
+                    </OnboardingQuestion>
                 </template>
 
                 <template v-if="showLatestPost && latestPost">
-                    <WelcomeQuestion :title="$t('welcome.connect.latest_post')">
+                    <OnboardingQuestion :title="$t('onboarding.connect.latest_post')">
                             <component
                                 :is="latestPost.permalink ? 'a' : 'div'"
                                 :href="latestPost.permalink ?? undefined"
@@ -935,8 +935,8 @@ const pitchMissedCopy = computed((): string => {
                                         : undefined
                                 "
                                 class="block max-w-sm overflow-hidden rounded-2xl border-2 border-foreground bg-card shadow-2xs"
-                                data-testid="welcome-latest-post"
-                                dusk="welcome-latest-post"
+                                data-testid="onboarding-latest-post"
+                                dusk="onboarding-latest-post"
                             >
                                 <img
                                     v-if="latestPost.media_url"
@@ -969,12 +969,12 @@ const pitchMissedCopy = computed((): string => {
                                     </p>
                                 </div>
                             </component>
-                    </WelcomeQuestion>
+                    </OnboardingQuestion>
 
-                    <WelcomeQuestion
+                    <OnboardingQuestion
                         :title="pitchViewsCopy"
-                        data-testid="welcome-reach-pitch"
-                        dusk="welcome-reach-pitch"
+                        data-testid="onboarding-reach-pitch"
+                        dusk="onboarding-reach-pitch"
                     >
                         <div class="space-y-3">
                             <p
@@ -1043,17 +1043,17 @@ const pitchMissedCopy = computed((): string => {
                             <p
                                 class="text-sm leading-relaxed text-foreground"
                             >
-                                {{ $t('welcome.connect.pitch_sales') }}
+                                {{ $t('onboarding.connect.pitch_sales') }}
                             </p>
                         </div>
-                    </WelcomeQuestion>
+                    </OnboardingQuestion>
                 </template>
 
                 <template v-if="showPublishMethod">
-                    <WelcomeQuestion
+                    <OnboardingQuestion
                         class="animate-in fade-in slide-in-from-bottom-2 duration-300 motion-reduce:animate-none"
-                        :title="$t('welcome.publish_method.title')"
-                        :description="$t('welcome.publish_method.description')"
+                        :title="$t('onboarding.publish_method.title')"
+                        :description="$t('onboarding.publish_method.description')"
                     />
                     <PublishMethodChips
                         class="animate-in fade-in slide-in-from-bottom-2 duration-300 motion-reduce:animate-none"
@@ -1062,35 +1062,35 @@ const pitchMissedCopy = computed((): string => {
                         :disabled="publishMethodForm.processing"
                         @update:model-value="onPublishMethodSelected"
                     />
-                    <WelcomeQuestion
+                    <OnboardingQuestion
                         v-if="showMcpSetup"
                         :title="
                             mcpConnected
-                                ? $t('welcome.publish_method.connected')
-                                : $t('welcome.publish_method.mcp')
+                                ? $t('onboarding.publish_method.connected')
+                                : $t('onboarding.publish_method.mcp')
                         "
                         :description="
                             mcpConnected
                                 ? $t(
-                                      'welcome.publish_method.connected_description',
+                                      'onboarding.publish_method.connected_description',
                                       { name: connectedClientNames },
                                   )
                                 : undefined
                         "
-                        data-testid="welcome-mcp-setup"
-                        dusk="welcome-mcp-setup"
+                        data-testid="onboarding-mcp-setup"
+                        dusk="onboarding-mcp-setup"
                     >
                         <div
                             v-if="mcpConnected"
                             class="space-y-2"
-                            data-testid="welcome-mcp-connected"
-                            dusk="welcome-mcp-connected"
+                            data-testid="onboarding-mcp-connected"
+                            dusk="onboarding-mcp-connected"
                         >
                             <div
                                 v-for="client in connectedClients"
                                 :key="client.client_id"
                                 class="flex items-center gap-3 rounded-xl border-2 border-foreground bg-emerald-100 p-3 shadow-2xs"
-                                :data-testid="`welcome-mcp-connected-${client.client_id}`"
+                                :data-testid="`onboarding-mcp-connected-${client.client_id}`"
                             >
                                 <span
                                     class="inline-flex size-8 shrink-0 items-center justify-center rounded-full border-2 border-foreground bg-emerald-300 shadow-2xs"
@@ -1112,9 +1112,9 @@ const pitchMissedCopy = computed((): string => {
                             :mcp-url="mcpUrl"
                             :copied-message="$t('mcp.copied')"
                         />
-                    </WelcomeQuestion>
+                    </OnboardingQuestion>
                 </template>
-                </WelcomeChatThread>
+                </OnboardingChatThread>
             </div>
 
             <div
@@ -1136,7 +1136,7 @@ const pitchMissedCopy = computed((): string => {
                 <InputError
                     v-else-if="connectForm.errors.connect"
                     :message="connectForm.errors.connect"
-                    dusk="welcome-connect-error"
+                    dusk="onboarding-connect-error"
                 />
                 <InputError
                     v-else
@@ -1162,9 +1162,9 @@ const pitchMissedCopy = computed((): string => {
                         size="icon"
                         class="rounded-full"
                         :disabled="!canSubmit"
-                        :aria-label="$t('welcome.continue')"
-                        data-testid="welcome-start-checkout"
-                        dusk="welcome-start-checkout"
+                        :aria-label="$t('onboarding.continue')"
+                        data-testid="onboarding-start-checkout"
+                        dusk="onboarding-start-checkout"
                         @click="submitConnect"
                     >
                         <IconArrowUp class="size-5" />
@@ -1172,5 +1172,5 @@ const pitchMissedCopy = computed((): string => {
                 </div>
             </div>
         </div>
-    </WelcomeLayout>
+    </OnboardingLayout>
 </template>

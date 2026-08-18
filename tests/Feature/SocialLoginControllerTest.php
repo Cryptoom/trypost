@@ -65,7 +65,7 @@ test('google callback creates new user when email does not exist', function () {
 
     $response = $this->get(route('auth.google.callback'));
 
-    $response->assertRedirect(route('app.welcome'));
+    $response->assertRedirect(route('app.onboarding'));
 
     $user = User::where('email', 'new@example.com')->first();
     expect($user)->not->toBeNull();
@@ -93,7 +93,7 @@ test('github callback creates new user with a default workspace', function () {
 
     $response = $this->get(route('auth.github.callback'));
 
-    $response->assertRedirect(route('app.welcome'));
+    $response->assertRedirect(route('app.onboarding'));
 
     $user = User::where('email', 'newdev@example.com')->first();
     expect($user)->not->toBeNull();
@@ -380,7 +380,7 @@ test('a stale invite id from an aborted oauth attempt does not leak into a later
 
     $response = $this->get(route('auth.google.callback'));
 
-    $response->assertRedirect(route('app.welcome'));
+    $response->assertRedirect(route('app.onboarding'));
 
     $user = User::where('email', 'unrelated@example.com')->first();
     expect($user)->not->toBeNull();

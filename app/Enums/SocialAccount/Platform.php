@@ -72,7 +72,7 @@ enum Platform: string
         };
     }
 
-    public function welcomeLabel(): string
+    public function onboardingLabel(): string
     {
         return match ($this) {
             self::X => 'X (Twitter)',
@@ -278,7 +278,7 @@ enum Platform: string
 
     /**
      * Whether the network exposes post-level impressions, reach, or views.
-     * Welcome uses this to decide whether to fetch and show the latest post.
+     * Onboarding uses this to decide whether to fetch and show the latest post.
      * Telegram has subscriber analytics only; LinkedIn personal, Bluesky,
      * Mastodon, and Discord do not expose impression metrics.
      */
@@ -294,12 +294,12 @@ enum Platform: string
     }
 
     /**
-     * Welcome reach pitch: compare video/visual networks with other visual
+     * Onboarding reach pitch: compare video/visual networks with other visual
      * networks, and text/feed networks with other text networks.
      *
      * @return list<self>
      */
-    public function welcomeReachComparisons(): array
+    public function onboardingReachComparisons(): array
     {
         $video = [
             self::TikTok,

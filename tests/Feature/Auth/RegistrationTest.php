@@ -42,7 +42,7 @@ test('new users can register', function () {
 
     $response->assertSessionHasNoErrors();
     $this->assertAuthenticated();
-    $response->assertRedirect(route('app.welcome', absolute: false));
+    $response->assertRedirect(route('app.onboarding', absolute: false));
 });
 
 test('new users get a default workspace on registration', function () {

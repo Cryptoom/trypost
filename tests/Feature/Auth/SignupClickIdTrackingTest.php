@@ -29,7 +29,7 @@ test('email registration saves ad click ids from the register page query string'
         'email' => 'click@example.com',
         'password' => 'Password123!',
     ])
-        ->assertRedirect(route('app.welcome', absolute: false));
+        ->assertRedirect(route('app.onboarding', absolute: false));
 
     $this->assertDatabaseHas('users', [
         'email' => 'click@example.com',
@@ -89,7 +89,7 @@ test('google registration saves ad click ids captured before the oauth round-tri
         ->andReturn($socialiteUser);
 
     $this->get(route('auth.google.callback'))
-        ->assertRedirect(route('app.welcome', absolute: false));
+        ->assertRedirect(route('app.onboarding', absolute: false));
 
     $this->assertDatabaseHas('users', [
         'email' => 'google-click@example.com',
@@ -118,7 +118,7 @@ test('github registration saves ad click ids captured before the oauth round-tri
         ->andReturn($socialiteUser);
 
     $this->get(route('auth.github.callback'))
-        ->assertRedirect(route('app.welcome', absolute: false));
+        ->assertRedirect(route('app.onboarding', absolute: false));
 
     $this->assertDatabaseHas('users', [
         'email' => 'github-click@example.com',

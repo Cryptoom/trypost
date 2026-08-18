@@ -10,7 +10,7 @@ return [
     'subscription_required_description' => 'Bu hesabın henüz etkin bir aboneliği yok. Hesap sahibinden ödemeyi tamamlamasını isteyin — abonelik etkinleşir etkinleşmez tam erişiminiz olur.',
     'subscription_required_owner' => 'Hesap sahibiniz :name.',
     'subscription_required_auto' => 'Bu sayfa otomatik olarak güncellenir — yenilemenize gerek yok.',
-    'progress' => 'Karşılama ilerlemesi',
+    'progress' => 'Onboarding ilerlemesi',
     'go_to_step' => ':step. adıma git',
     'step_current' => 'Adım :step (şu anki)',
     'personas' => [

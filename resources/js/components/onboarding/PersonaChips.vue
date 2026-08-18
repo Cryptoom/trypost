@@ -92,7 +92,7 @@ const metaFor = (
     };
 
 const personaLabel = (value: string): string =>
-    trans(`welcome.personas.${value}`);
+    trans(`onboarding.personas.${value}`);
 
 const select = (value: string): void => {
     if (props.disabled || props.readonly) {
@@ -111,8 +111,8 @@ const select = (value: string): void => {
             type="button"
             :aria-pressed="props.modelValue === persona"
             :disabled="props.disabled || props.readonly"
-            :data-testid="`welcome-persona-${persona}`"
-            :dusk="`welcome-persona-${persona}`"
+            :data-testid="`onboarding-persona-${persona}`"
+            :dusk="`onboarding-persona-${persona}`"
             :class="[
                 'inline-flex items-center gap-2 rounded-full border-2 border-foreground py-1.5 ps-1.5 pe-3 text-start shadow-2xs',
                 props.readonly

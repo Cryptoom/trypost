@@ -5,7 +5,7 @@ declare(strict_types=1);
 use App\Actions\Billing\StartSubscriptionCheckout;
 use App\Enums\Plan\Slug;
 use App\Enums\PostHog\CheckoutEvent;
-use App\Enums\PostHog\WelcomeEvent;
+use App\Enums\PostHog\OnboardingEvent;
 use App\Enums\SocialAccount\Platform as SocialPlatform;
 use App\Enums\SocialAccount\Status;
 use App\Enums\User\Goal;
@@ -31,12 +31,12 @@ beforeEach(function () {
     $this->user = User::factory()->create();
 });
 
-test('welcome renders the persona step for an unsubscribed account', function () {
+test('onboarding renders the persona step for an unsubscribed account', function () {
     $this->actingAs($this->user)
-        ->get(route('app.welcome'))
+        ->get(route('app.onboarding'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
-            ->component('welcome/Chat', false)
+            ->component('onboarding/Chat', false)
             ->where('step', 'persona')
             ->where('history', [])
             ->has('personas', count(Persona::cases()))
@@ -48,21 +48,21 @@ test('welcome renders the persona step for an unsubscribed account', function ()
         );
 });
 
-test('legacy welcome step urls redirect to welcome', function (string $routeName) {
+test('legacy onboarding step urls redirect to onboarding', function (string $routeName) {
     $this->actingAs($this->user)
         ->get(route($routeName))
-        ->assertRedirect(route('app.welcome'));
+        ->assertRedirect(route('app.onboarding'));
 })->with([
-    'persona' => ['app.welcome.persona'],
-    'goals' => ['app.welcome.goals'],
-    'referral source' => ['app.welcome.referral-source'],
-    'publish method' => ['app.welcome.publish-method'],
-    'connect' => ['app.welcome.connect'],
+    'persona' => ['app.onboarding.persona'],
+    'goals' => ['app.onboarding.goals'],
+    'referral source' => ['app.onboarding.referral-source'],
+    'publish method' => ['app.onboarding.publish-method'],
+    'connect' => ['app.onboarding.connect'],
 ]);
 
 test('persona requires a valid selection', function (array $payload) {
     $this->actingAs($this->user)
-        ->post(route('app.welcome.persona.store'), $payload)
+        ->post(route('app.onboarding.persona.store'), $payload)
         ->assertSessionHasErrors('persona');
 
     expect($this->user->fresh()->persona)->toBeNull();
@@ -76,19 +76,19 @@ test('persona store saves the selection mirrors it to PostHog and advances to go
     Bus::fake();
 
     $this->actingAs($this->user)
-        ->post(route('app.welcome.persona.store'), ['persona' => Persona::Agency->value])
-        ->assertRedirect(route('app.welcome'));
+        ->post(route('app.onboarding.persona.store'), ['persona' => Persona::Agency->value])
+        ->assertRedirect(route('app.onboarding'));
 
     expect($this->user->fresh()->persona)->toBe(Persona::Agency);
     Bus::assertDispatched(SendEvent::class, fn (SendEvent $event): bool => $event->method === 'capture'
         && data_get($event->payload, 'distinctId') === $this->user->id
-        && data_get($event->payload, 'event') === WelcomeEvent::Persona->value
+        && data_get($event->payload, 'event') === OnboardingEvent::Persona->value
         && data_get($event->payload, 'properties.persona') === Persona::Agency->value);
 });
 
 test('persona store returns the next chat state as json without a redirect', function () {
     $this->actingAs($this->user)
-        ->postJson(route('app.welcome.persona.store'), ['persona' => Persona::Agency->value])
+        ->postJson(route('app.onboarding.persona.store'), ['persona' => Persona::Agency->value])
         ->assertOk()
         ->assertJsonPath('step', 'goals')
         ->assertJsonPath('history.0.step', 'persona')
@@ -99,12 +99,12 @@ test('persona store returns the next chat state as json without a redirect', fun
 });
 
 test('referral store json includes connect props', function () {
-    completeWelcomeThroughReferral($this->user);
+    completeOnboardingThroughReferral($this->user);
     $this->user->update(['referral_source' => null]);
     attachCurrentWorkspace($this->user);
 
     $this->actingAs($this->user->fresh())
-        ->postJson(route('app.welcome.referral-source.store'), [
+        ->postJson(route('app.onboarding.referral-source.store'), [
             'referral_source' => ReferralSource::ProductHunt->value,
         ])
         ->assertOk()
@@ -114,24 +114,24 @@ test('referral store json includes connect props', function () {
         ->assertJsonPath('connectedClients', []);
 });
 
-test('welcome stays on persona until a persona is selected', function () {
+test('onboarding stays on persona until a persona is selected', function () {
     $this->actingAs($this->user)
-        ->get(route('app.welcome'))
+        ->get(route('app.onboarding'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
-            ->component('welcome/Chat', false)
+            ->component('onboarding/Chat', false)
             ->where('step', 'persona')
         );
 });
 
-test('welcome opens goals after a persona is selected', function () {
+test('onboarding opens goals after a persona is selected', function () {
     $this->user->update(['persona' => Persona::Agency->value]);
 
     $this->actingAs($this->user->fresh())
-        ->get(route('app.welcome'))
+        ->get(route('app.onboarding'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
-            ->component('welcome/Chat', false)
+            ->component('onboarding/Chat', false)
             ->where('step', 'goals')
             ->where('history.0.step', 'persona')
             ->where('history.0.values', [Persona::Agency->value])
@@ -143,7 +143,7 @@ test('goals requires at least one valid goal', function (array $goals, string $e
     $this->user->update(['persona' => Persona::Agency->value]);
 
     $this->actingAs($this->user->fresh())
-        ->post(route('app.welcome.goals.store'), ['goals' => $goals])
+        ->post(route('app.onboarding.goals.store'), ['goals' => $goals])
         ->assertSessionHasErrors($error);
 
     expect($this->user->fresh()->goals)->toBeNull();
@@ -160,16 +160,16 @@ test('goals store saves choices mirrors them to PostHog and advances to referral
     $goals = [Goal::AiContent->value, Goal::SaveTime->value];
 
     $this->actingAs($this->user->fresh())
-        ->post(route('app.welcome.goals.store'), ['goals' => $goals])
-        ->assertRedirect(route('app.welcome'));
+        ->post(route('app.onboarding.goals.store'), ['goals' => $goals])
+        ->assertRedirect(route('app.onboarding'));
 
     expect($this->user->fresh()->goals)->toBe($goals);
     Bus::assertDispatched(SendEvent::class, fn (SendEvent $event): bool => $event->method === 'capture'
-        && data_get($event->payload, 'event') === WelcomeEvent::Goals->value
+        && data_get($event->payload, 'event') === OnboardingEvent::Goals->value
         && data_get($event->payload, 'properties.goals') === $goals);
 });
 
-test('welcome includes prior answers so the chat can go back without leaving the page', function () {
+test('onboarding includes prior answers so the chat can go back without leaving the page', function () {
     attachCurrentWorkspace($this->user);
     $this->user->update([
         'persona' => Persona::Agency->value,
@@ -178,10 +178,10 @@ test('welcome includes prior answers so the chat can go back without leaving the
     ]);
 
     $this->actingAs($this->user->fresh())
-        ->get(route('app.welcome'))
+        ->get(route('app.onboarding'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
-            ->component('welcome/Chat', false)
+            ->component('onboarding/Chat', false)
             ->where('step', 'connect')
             ->has('history', 3)
             ->has('personas', count(Persona::cases()))
@@ -190,14 +190,14 @@ test('welcome includes prior answers so the chat can go back without leaving the
         );
 });
 
-test('welcome opens the first incomplete step', function (array $attributes, string $step) {
+test('onboarding opens the first incomplete step', function (array $attributes, string $step) {
     $this->user->update($attributes);
 
     $this->actingAs($this->user->fresh())
-        ->get(route('app.welcome'))
+        ->get(route('app.onboarding'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
-            ->component('welcome/Chat', false)
+            ->component('onboarding/Chat', false)
             ->where('step', $step)
         );
 })->with([
@@ -219,29 +219,29 @@ test('welcome opens the first incomplete step', function (array $attributes, str
     ],
 ]);
 
-test('welcome allows users who still have at least one current goal', function () {
+test('onboarding allows users who still have at least one current goal', function () {
     $this->user->update([
         'persona' => Persona::Agency->value,
         'goals' => [Goal::SaveTime->value, 'team_collaboration'],
     ]);
 
     $this->actingAs($this->user->fresh())
-        ->get(route('app.welcome'))
+        ->get(route('app.onboarding'))
         ->assertOk()
-        ->assertInertia(fn ($page) => $page->component('welcome/Chat', false)->where('step', 'referral'));
+        ->assertInertia(fn ($page) => $page->component('onboarding/Chat', false)->where('step', 'referral'));
 });
 
-test('welcome opens referral after prior steps are complete', function () {
+test('onboarding opens referral after prior steps are complete', function () {
     $this->user->update([
         'persona' => Persona::Agency->value,
         'goals' => [Goal::SaveTime->value],
     ]);
 
     $this->actingAs($this->user->fresh())
-        ->get(route('app.welcome'))
+        ->get(route('app.onboarding'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
-            ->component('welcome/Chat', false)
+            ->component('onboarding/Chat', false)
             ->where('step', 'referral')
             ->where('history.0.step', 'persona')
             ->where('history.1.step', 'goals')
@@ -262,7 +262,7 @@ test('referral source requires a valid selection', function (array $payload) {
     ]);
 
     $this->actingAs($this->user->fresh())
-        ->post(route('app.welcome.referral-source.store'), $payload)
+        ->post(route('app.onboarding.referral-source.store'), $payload)
         ->assertSessionHasErrors('referral_source');
 
     expect($this->user->fresh()->referral_source)->toBeNull();
@@ -271,7 +271,7 @@ test('referral source requires a valid selection', function (array $payload) {
     'invalid' => [['referral_source' => 'not-a-source']],
 ]);
 
-test('welcome funnel captures connect between referral and checkout.started', function () {
+test('onboarding funnel captures connect between referral and checkout.started', function () {
     config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test']);
     Bus::fake();
     $workspace = attachCurrentWorkspace($this->user);
@@ -287,30 +287,30 @@ test('welcome funnel captures connect between referral and checkout.started', fu
         ->andReturn(redirect('https://checkout.stripe.test/session'));
 
     $this->actingAs($this->user->fresh())
-        ->post(route('app.welcome.persona.store'), ['persona' => Persona::Agency->value])
-        ->assertRedirect(route('app.welcome'));
+        ->post(route('app.onboarding.persona.store'), ['persona' => Persona::Agency->value])
+        ->assertRedirect(route('app.onboarding'));
 
     $this->actingAs($this->user->fresh())
-        ->post(route('app.welcome.goals.store'), ['goals' => [Goal::SaveTime->value]])
-        ->assertRedirect(route('app.welcome'));
+        ->post(route('app.onboarding.goals.store'), ['goals' => [Goal::SaveTime->value]])
+        ->assertRedirect(route('app.onboarding'));
 
     $this->actingAs($this->user->fresh())
-        ->post(route('app.welcome.referral-source.store'), [
+        ->post(route('app.onboarding.referral-source.store'), [
             'referral_source' => ReferralSource::ProductHunt->value,
         ])
-        ->assertRedirect(route('app.welcome'));
+        ->assertRedirect(route('app.onboarding'));
 
     $this->actingAs($this->user->fresh())
-        ->post(route('app.welcome.publish-method.store'), [
+        ->post(route('app.onboarding.publish-method.store'), [
             'publish_method' => PublishMethod::Manual->value,
         ])
-        ->assertRedirect(route('app.welcome'));
+        ->assertRedirect(route('app.onboarding'));
 
     $this->actingAs($this->user->fresh())
-        ->post(route('app.welcome.connect.store'))
+        ->post(route('app.onboarding.connect.store'))
         ->assertRedirect('https://checkout.stripe.test/session');
 
-    $funnel = WelcomeEvent::funnel();
+    $funnel = OnboardingEvent::funnel();
 
     $captured = collect(Bus::dispatched(SendEvent::class))
         ->filter(fn (SendEvent $event): bool => $event->method === 'capture')
@@ -333,14 +333,14 @@ test('referral source store saves the source mirrors it to PostHog and advances 
     $this->mock(StartSubscriptionCheckout::class)->shouldNotReceive('redirect');
 
     $this->actingAs($this->user->fresh())
-        ->post(route('app.welcome.referral-source.store'), [
+        ->post(route('app.onboarding.referral-source.store'), [
             'referral_source' => ReferralSource::ProductHunt->value,
         ])
-        ->assertRedirect(route('app.welcome'));
+        ->assertRedirect(route('app.onboarding'));
 
     expect($this->user->fresh()->referral_source)->toBe(ReferralSource::ProductHunt);
     Bus::assertDispatched(SendEvent::class, fn (SendEvent $event): bool => $event->method === 'capture'
-        && data_get($event->payload, 'event') === WelcomeEvent::Referral->value
+        && data_get($event->payload, 'event') === OnboardingEvent::Referral->value
         && data_get($event->payload, 'properties.referral_source') === ReferralSource::ProductHunt->value);
     Bus::assertNotDispatched(
         SendEvent::class,
@@ -349,12 +349,12 @@ test('referral source store saves the source mirrors it to PostHog and advances 
 });
 
 test('publish method requires a valid selection', function (array $payload) {
-    completeWelcomeThroughReferral($this->user);
+    completeOnboardingThroughReferral($this->user);
     $workspace = attachCurrentWorkspace($this->user);
     SocialAccount::factory()->linkedin()->create(['workspace_id' => $workspace->id]);
 
     $this->actingAs($this->user->fresh())
-        ->post(route('app.welcome.publish-method.store'), $payload)
+        ->post(route('app.onboarding.publish-method.store'), $payload)
         ->assertSessionHasErrors('publish_method');
 
     expect($this->user->fresh()->publish_method)->toBeNull();
@@ -366,45 +366,45 @@ test('publish method requires a valid selection', function (array $payload) {
 test('publish method store saves the selection and mirrors it to PostHog', function () {
     config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test']);
     Bus::fake();
-    completeWelcomeThroughReferral($this->user);
+    completeOnboardingThroughReferral($this->user);
     $workspace = attachCurrentWorkspace($this->user);
     SocialAccount::factory()->linkedin()->create(['workspace_id' => $workspace->id]);
 
     $this->actingAs($this->user->fresh())
-        ->post(route('app.welcome.publish-method.store'), [
+        ->post(route('app.onboarding.publish-method.store'), [
             'publish_method' => PublishMethod::Ai->value,
         ])
-        ->assertRedirect(route('app.welcome'));
+        ->assertRedirect(route('app.onboarding'));
 
     expect($this->user->fresh()->publish_method)->toBe(PublishMethod::Ai);
 
     $this->actingAs($this->user->fresh())
-        ->get(route('app.welcome'))
+        ->get(route('app.onboarding'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
-            ->component('welcome/Chat', false)
+            ->component('onboarding/Chat', false)
             ->where('selectedPublishMethod', PublishMethod::Ai->value)
         );
 
     Bus::assertDispatched(SendEvent::class, fn (SendEvent $event): bool => $event->method === 'capture'
-        && data_get($event->payload, 'event') === WelcomeEvent::PublishMethod->value
+        && data_get($event->payload, 'event') === OnboardingEvent::PublishMethod->value
         && data_get($event->payload, 'properties.publish_method') === PublishMethod::Ai->value);
 });
 
 test('publish method store redirects when no social account is connected', function () {
-    completeWelcomeThroughReferral($this->user);
+    completeOnboardingThroughReferral($this->user);
     attachCurrentWorkspace($this->user);
 
     $this->actingAs($this->user->fresh())
-        ->post(route('app.welcome.publish-method.store'), [
+        ->post(route('app.onboarding.publish-method.store'), [
             'publish_method' => PublishMethod::Manual->value,
         ])
-        ->assertRedirect(route('app.welcome'));
+        ->assertRedirect(route('app.onboarding'));
 
     expect($this->user->fresh()->publish_method)->toBeNull();
 });
 
-test('connect store redirects to welcome when prior steps are incomplete', function (array $attributes, bool $withWorkspace) {
+test('connect store redirects to onboarding when prior steps are incomplete', function (array $attributes, bool $withWorkspace) {
     $this->user->update($attributes);
 
     if ($withWorkspace) {
@@ -414,8 +414,8 @@ test('connect store redirects to welcome when prior steps are incomplete', funct
     $this->mock(StartSubscriptionCheckout::class)->shouldNotReceive('redirect');
 
     $this->actingAs($this->user->fresh())
-        ->post(route('app.welcome.connect.store'))
-        ->assertRedirect(route('app.welcome'));
+        ->post(route('app.onboarding.connect.store'))
+        ->assertRedirect(route('app.onboarding'));
 })->with([
     'missing persona' => [[]],
     'missing goals' => [['persona' => Persona::Agency->value]],
@@ -434,22 +434,22 @@ test('connect store redirects to welcome when prior steps are incomplete', funct
 ]);
 
 test('connect returns 404 when prior steps are complete but the user has no workspace', function () {
-    completeWelcomeThroughReferral($this->user);
+    completeOnboardingThroughReferral($this->user);
 
     $this->mock(StartSubscriptionCheckout::class)->shouldNotReceive('redirect');
 
     $this->actingAs($this->user->fresh())
-        ->get(route('app.welcome'))
+        ->get(route('app.onboarding'))
         ->assertNotFound();
 
     $this->actingAs($this->user->fresh())
-        ->from(route('app.welcome'))
-        ->post(route('app.welcome.connect.store'))
+        ->from(route('app.onboarding'))
+        ->post(route('app.onboarding.connect.store'))
         ->assertNotFound();
 });
 
 test('connect labels X as X (Twitter)', function () {
-    completeWelcomeThroughReferral($this->user);
+    completeOnboardingThroughReferral($this->user);
     attachCurrentWorkspace($this->user);
 
     $xIndex = collect(SocialPlatform::connectableOptions())->search(
@@ -459,24 +459,24 @@ test('connect labels X as X (Twitter)', function () {
     expect($xIndex)->toBeInt();
 
     $this->actingAs($this->user->fresh())
-        ->get(route('app.welcome'))
+        ->get(route('app.onboarding'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
-            ->component('welcome/Chat', false)
+            ->component('onboarding/Chat', false)
             ->where("platforms.{$xIndex}.value", SocialPlatform::X->value)
             ->where("platforms.{$xIndex}.label", 'X (Twitter)')
         );
 });
 
 test('connect renders the network grid when the workspace has no accounts', function () {
-    completeWelcomeThroughReferral($this->user);
+    completeOnboardingThroughReferral($this->user);
     attachCurrentWorkspace($this->user);
 
     $this->actingAs($this->user->fresh())
-        ->get(route('app.welcome'))
+        ->get(route('app.onboarding'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
-            ->component('welcome/Chat', false)
+            ->component('onboarding/Chat', false)
             ->where('step', 'connect')
             ->has('history', 3)
             ->where('history.2.step', 'referral')
@@ -491,16 +491,16 @@ test('connect renders the network grid when the workspace has no accounts', func
 });
 
 test('connect lists connected mcp clients', function () {
-    completeWelcomeThroughReferral($this->user);
+    completeOnboardingThroughReferral($this->user);
     $workspace = attachCurrentWorkspace($this->user);
     $clientId = mcpOauthClient('Claude');
     mcpAccessToken($this->user, $clientId, $workspace);
 
     $this->actingAs($this->user->fresh())
-        ->get(route('app.welcome'))
+        ->get(route('app.onboarding'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
-            ->component('welcome/Chat', false)
+            ->component('onboarding/Chat', false)
             ->where('step', 'connect')
             ->has('connectedClients', 1)
             ->where('connectedClients.0.client_id', $clientId)
@@ -509,15 +509,15 @@ test('connect lists connected mcp clients', function () {
 });
 
 test('connect renders connected accounts for the current workspace', function () {
-    completeWelcomeThroughReferral($this->user);
+    completeOnboardingThroughReferral($this->user);
     $workspace = attachCurrentWorkspace($this->user);
     $account = SocialAccount::factory()->linkedin()->create(['workspace_id' => $workspace->id]);
 
     $this->actingAs($this->user->fresh())
-        ->get(route('app.welcome'))
+        ->get(route('app.onboarding'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
-            ->component('welcome/Chat', false)
+            ->component('onboarding/Chat', false)
             ->where('step', 'connect')
             ->has('platforms', count(SocialPlatform::connectableOptions()))
             ->has('accounts', 1)
@@ -530,7 +530,7 @@ test('connect renders connected accounts for the current workspace', function ()
 });
 
 test('connect includes the latest post when the connected network exposes impressions', function () {
-    completeWelcomeThroughReferral($this->user);
+    completeOnboardingThroughReferral($this->user);
     $workspace = attachCurrentWorkspace($this->user);
     $account = SocialAccount::factory()->instagram()->create([
         'workspace_id' => $workspace->id,
@@ -554,10 +554,10 @@ test('connect includes the latest post when the connected network exposes impres
     ]);
 
     $this->actingAs($this->user->fresh())
-        ->get(route('app.welcome'))
+        ->get(route('app.onboarding'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
-            ->component('welcome/Chat', false)
+            ->component('onboarding/Chat', false)
             ->where('step', 'connect')
             ->where('accounts.0.id', $account->id)
             ->where('latestPostNetwork', 'instagram')
@@ -579,7 +579,7 @@ test('connect includes the latest post when the connected network exposes impres
 });
 
 test('connect fetches the latest post from the first analytics-capable account', function () {
-    completeWelcomeThroughReferral($this->user);
+    completeOnboardingThroughReferral($this->user);
     $workspace = attachCurrentWorkspace($this->user);
     SocialAccount::factory()->discord()->create(['workspace_id' => $workspace->id]);
     SocialAccount::factory()->instagram()->create([
@@ -604,10 +604,10 @@ test('connect fetches the latest post from the first analytics-capable account',
     ]);
 
     $this->actingAs($this->user->fresh())
-        ->get(route('app.welcome'))
+        ->get(route('app.onboarding'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
-            ->component('welcome/Chat', false)
+            ->component('onboarding/Chat', false)
             ->where('latestPostNetwork', 'instagram')
             ->missing('latestPost')
             ->loadDeferredProps(fn ($page) => $page
@@ -618,7 +618,7 @@ test('connect fetches the latest post from the first analytics-capable account',
 });
 
 test('connect skips the latest post when the platform request fails', function () {
-    completeWelcomeThroughReferral($this->user);
+    completeOnboardingThroughReferral($this->user);
     $workspace = attachCurrentWorkspace($this->user);
     SocialAccount::factory()->instagram()->create([
         'workspace_id' => $workspace->id,
@@ -630,10 +630,10 @@ test('connect skips the latest post when the platform request fails', function (
     ]);
 
     $this->actingAs($this->user->fresh())
-        ->get(route('app.welcome'))
+        ->get(route('app.onboarding'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
-            ->component('welcome/Chat', false)
+            ->component('onboarding/Chat', false)
             ->where('latestPostNetwork', 'instagram')
             ->missing('latestPost')
             ->loadDeferredProps(fn ($page) => $page
@@ -643,78 +643,78 @@ test('connect skips the latest post when the platform request fails', function (
 });
 
 test('connect copy exists in every locale', function (string $locale) {
-    expect(__('welcome.connect.title', [], $locale))->not->toBe('welcome.connect.title')
-        ->and(__('welcome.connect.description', [], $locale))->not->toBe('welcome.connect.description')
-        ->and(__('welcome.connect.follow_up', ['network' => 'Instagram'], $locale))->not->toBe('welcome.connect.follow_up')
-        ->and(__('welcome.connect.latest_post', [], $locale))->not->toBe('welcome.connect.latest_post')
-        ->and(trans_choice('welcome.connect.pitch_views', 1, ['views' => '1', 'network' => 'Instagram'], $locale))->not->toBe('welcome.connect.pitch_views')
-        ->and(__('welcome.connect.pitch_no_views', ['network' => 'Instagram'], $locale))->not->toBe('welcome.connect.pitch_no_views')
-        ->and(trans_choice('welcome.connect.pitch_missed', 0, [], $locale))->toBe('')
-        ->and(trans_choice('welcome.connect.pitch_missed', 1, [
+    expect(__('onboarding.connect.title', [], $locale))->not->toBe('onboarding.connect.title')
+        ->and(__('onboarding.connect.description', [], $locale))->not->toBe('onboarding.connect.description')
+        ->and(__('onboarding.connect.follow_up', ['network' => 'Instagram'], $locale))->not->toBe('onboarding.connect.follow_up')
+        ->and(__('onboarding.connect.latest_post', [], $locale))->not->toBe('onboarding.connect.latest_post')
+        ->and(trans_choice('onboarding.connect.pitch_views', 1, ['views' => '1', 'network' => 'Instagram'], $locale))->not->toBe('onboarding.connect.pitch_views')
+        ->and(__('onboarding.connect.pitch_no_views', ['network' => 'Instagram'], $locale))->not->toBe('onboarding.connect.pitch_no_views')
+        ->and(trans_choice('onboarding.connect.pitch_missed', 0, [], $locale))->toBe('')
+        ->and(trans_choice('onboarding.connect.pitch_missed', 1, [
             'first' => 'TikTok',
             'each' => '1,000',
             'extra' => '1,000',
         ], $locale))
-        ->not->toBe('welcome.connect.pitch_missed')
+        ->not->toBe('onboarding.connect.pitch_missed')
         ->toContain('TikTok')
         ->not->toContain(':first')
         ->not->toContain(':second')
-        ->and(trans_choice('welcome.connect.pitch_missed', 2, [
+        ->and(trans_choice('onboarding.connect.pitch_missed', 2, [
             'first' => 'TikTok',
             'second' => 'YouTube',
             'each' => '1,000',
             'extra' => '2,000',
         ], $locale))
-        ->not->toBe('welcome.connect.pitch_missed')
+        ->not->toBe('onboarding.connect.pitch_missed')
         ->toContain('TikTok')
         ->toContain('YouTube')
-        ->and(__('welcome.connect.pitch_sales', [], $locale))->not->toBe('welcome.connect.pitch_sales')
-        ->and(__('welcome.connect.change_network', [], $locale))->not->toBe('welcome.connect.change_network')
-        ->and(__('welcome.connect.required', [], $locale))->not->toBe('welcome.connect.required')
-        ->and(__('welcome.publish_method.title', [], $locale))->not->toBe('welcome.publish_method.title')
-        ->and(__('welcome.publish_method.description', [], $locale))->not->toBe('welcome.publish_method.description')
-        ->and(__('welcome.publish_method.manual', [], $locale))->not->toBe('welcome.publish_method.manual')
-        ->and(__('welcome.publish_method.ai', [], $locale))->not->toBe('welcome.publish_method.ai')
-        ->and(__('welcome.publish_method.mcp', [], $locale))->not->toBe('welcome.publish_method.mcp')
-        ->and(__('welcome.publish_method.connected', [], $locale))->not->toBe('welcome.publish_method.connected')
-        ->and(__('welcome.publish_method.connected_description', ['name' => 'Claude'], $locale))->not->toBe('welcome.publish_method.connected_description')
+        ->and(__('onboarding.connect.pitch_sales', [], $locale))->not->toBe('onboarding.connect.pitch_sales')
+        ->and(__('onboarding.connect.change_network', [], $locale))->not->toBe('onboarding.connect.change_network')
+        ->and(__('onboarding.connect.required', [], $locale))->not->toBe('onboarding.connect.required')
+        ->and(__('onboarding.publish_method.title', [], $locale))->not->toBe('onboarding.publish_method.title')
+        ->and(__('onboarding.publish_method.description', [], $locale))->not->toBe('onboarding.publish_method.description')
+        ->and(__('onboarding.publish_method.manual', [], $locale))->not->toBe('onboarding.publish_method.manual')
+        ->and(__('onboarding.publish_method.ai', [], $locale))->not->toBe('onboarding.publish_method.ai')
+        ->and(__('onboarding.publish_method.mcp', [], $locale))->not->toBe('onboarding.publish_method.mcp')
+        ->and(__('onboarding.publish_method.connected', [], $locale))->not->toBe('onboarding.publish_method.connected')
+        ->and(__('onboarding.publish_method.connected_description', ['name' => 'Claude'], $locale))->not->toBe('onboarding.publish_method.connected_description')
         ->toContain('Claude')
-        ->and(__('welcome.publish_method.required', [], $locale))->not->toBe('welcome.publish_method.required')
-        ->and(__('welcome.goals_description', [], $locale))->not->toBe('welcome.goals_description');
+        ->and(__('onboarding.publish_method.required', [], $locale))->not->toBe('onboarding.publish_method.required')
+        ->and(__('onboarding.goals_description', [], $locale))->not->toBe('onboarding.goals_description');
 })->with(ContentLanguage::values());
 
 test('goals description asks for a single choice', function () {
-    expect(__('welcome.goals_description', [], 'en'))->not->toContain('everything')
-        ->and(__('welcome.goals_description', [], 'pt-BR'))->not->toContain('tudo');
+    expect(__('onboarding.goals_description', [], 'en'))->not->toContain('everything')
+        ->and(__('onboarding.goals_description', [], 'pt-BR'))->not->toContain('tudo');
 });
 
 test('connect store requires a publish method', function () {
-    completeWelcomeThroughReferral($this->user);
+    completeOnboardingThroughReferral($this->user);
     $workspace = attachCurrentWorkspace($this->user);
     SocialAccount::factory()->linkedin()->create(['workspace_id' => $workspace->id]);
 
     $this->mock(StartSubscriptionCheckout::class)->shouldNotReceive('redirect');
 
     $this->actingAs($this->user->fresh())
-        ->post(route('app.welcome.connect.store'))
+        ->post(route('app.onboarding.connect.store'))
         ->assertSessionHasErrors('publish_method');
 });
 
 test('connect store requires a connected social account', function () {
     config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test']);
     Bus::fake();
-    completeWelcomeThroughPublishMethod($this->user);
+    completeOnboardingThroughPublishMethod($this->user);
     attachCurrentWorkspace($this->user);
 
     $this->mock(StartSubscriptionCheckout::class)->shouldNotReceive('redirect');
 
     $this->actingAs($this->user->fresh())
-        ->post(route('app.welcome.connect.store'))
+        ->post(route('app.onboarding.connect.store'))
         ->assertSessionHasErrors('connect');
 
     Bus::assertNotDispatched(
         SendEvent::class,
-        fn (SendEvent $event): bool => data_get($event->payload, 'event') === WelcomeEvent::Connect->value,
+        fn (SendEvent $event): bool => data_get($event->payload, 'event') === OnboardingEvent::Connect->value,
     );
     Bus::assertNotDispatched(
         SendEvent::class,
@@ -723,7 +723,7 @@ test('connect store requires a connected social account', function () {
 });
 
 test('connect store rejects disconnected or expired social accounts', function () {
-    completeWelcomeThroughPublishMethod($this->user);
+    completeOnboardingThroughPublishMethod($this->user);
     $workspace = attachCurrentWorkspace($this->user);
     SocialAccount::factory()->linkedin()->disconnected()->create(['workspace_id' => $workspace->id]);
     SocialAccount::factory()->x()->tokenExpired()->create(['workspace_id' => $workspace->id]);
@@ -731,12 +731,12 @@ test('connect store rejects disconnected or expired social accounts', function (
     $this->mock(StartSubscriptionCheckout::class)->shouldNotReceive('redirect');
 
     $this->actingAs($this->user->fresh())
-        ->post(route('app.welcome.connect.store'))
+        ->post(route('app.onboarding.connect.store'))
         ->assertSessionHasErrors('connect');
 });
 
 test('connect store ignores social accounts on another workspace', function () {
-    completeWelcomeThroughPublishMethod($this->user);
+    completeOnboardingThroughPublishMethod($this->user);
     attachCurrentWorkspace($this->user);
 
     $otherWorkspace = Workspace::factory()->create([
@@ -748,14 +748,14 @@ test('connect store ignores social accounts on another workspace', function () {
     $this->mock(StartSubscriptionCheckout::class)->shouldNotReceive('redirect');
 
     $this->actingAs($this->user->fresh())
-        ->post(route('app.welcome.connect.store'))
+        ->post(route('app.onboarding.connect.store'))
         ->assertSessionHasErrors('connect');
 });
 
 test('connect store starts Stripe checkout when a social account is connected', function () {
     config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test']);
     Bus::fake();
-    completeWelcomeThroughPublishMethod($this->user);
+    completeOnboardingThroughPublishMethod($this->user);
     $workspace = attachCurrentWorkspace($this->user);
     SocialAccount::factory()->linkedin()->create(['workspace_id' => $workspace->id]);
 
@@ -768,22 +768,22 @@ test('connect store starts Stripe checkout when a social account is connected', 
         ->once()
         ->withArgs(fn (Account $account, string $priceId, string $cancelUrl): bool => $account->is($this->user->account)
             && $priceId === 'price_monthly_test'
-            && $cancelUrl === route('app.welcome'))
+            && $cancelUrl === route('app.onboarding'))
         ->andReturn(redirect('https://checkout.stripe.test/session'));
 
     $this->actingAs($this->user->fresh())
-        ->post(route('app.welcome.connect.store'))
+        ->post(route('app.onboarding.connect.store'))
         ->assertRedirect('https://checkout.stripe.test/session');
 
     Bus::assertDispatched(SendEvent::class, fn (SendEvent $event): bool => $event->method === 'capture'
-        && data_get($event->payload, 'event') === WelcomeEvent::Connect->value
+        && data_get($event->payload, 'event') === OnboardingEvent::Connect->value
         && data_get($event->payload, 'properties.platforms') === [SocialPlatform::LinkedIn->value]);
 });
 
 test('connect store captures checkout.started with the plan name and interval', function () {
     config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test']);
     Bus::fake();
-    completeWelcomeThroughPublishMethod($this->user);
+    completeOnboardingThroughPublishMethod($this->user);
     $workspace = attachCurrentWorkspace($this->user);
     SocialAccount::factory()->linkedin()->create(['workspace_id' => $workspace->id]);
 
@@ -796,7 +796,7 @@ test('connect store captures checkout.started with the plan name and interval', 
         ->andReturn(redirect('https://checkout.stripe.test/session'));
 
     $this->actingAs($this->user->fresh())
-        ->post(route('app.welcome.connect.store'));
+        ->post(route('app.onboarding.connect.store'));
 
     Bus::assertDispatched(SendEvent::class, fn (SendEvent $event): bool => $event->method === 'capture'
         && data_get($event->payload, 'event') === CheckoutEvent::Started->value
@@ -807,7 +807,7 @@ test('connect store captures checkout.started with the plan name and interval', 
 test('connect store does not capture checkout.started when Stripe checkout creation fails', function () {
     config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test']);
     Bus::fake();
-    completeWelcomeThroughPublishMethod($this->user);
+    completeOnboardingThroughPublishMethod($this->user);
     $workspace = attachCurrentWorkspace($this->user);
     SocialAccount::factory()->linkedin()->create(['workspace_id' => $workspace->id]);
 
@@ -821,11 +821,11 @@ test('connect store does not capture checkout.started when Stripe checkout creat
         ->andThrow(new RuntimeException('Stripe checkout could not be created.'));
 
     $this->actingAs($this->user->fresh())
-        ->post(route('app.welcome.connect.store'));
+        ->post(route('app.onboarding.connect.store'));
 
     Bus::assertNotDispatched(
         SendEvent::class,
-        fn (SendEvent $event): bool => data_get($event->payload, 'event') === WelcomeEvent::Connect->value,
+        fn (SendEvent $event): bool => data_get($event->payload, 'event') === OnboardingEvent::Connect->value,
     );
     Bus::assertNotDispatched(
         SendEvent::class,
@@ -835,7 +835,7 @@ test('connect store does not capture checkout.started when Stripe checkout creat
 
 test('connect store still redirects to stripe when posthog capture fails', function () {
     Exceptions::fake();
-    completeWelcomeThroughPublishMethod($this->user);
+    completeOnboardingThroughPublishMethod($this->user);
     $workspace = attachCurrentWorkspace($this->user);
     SocialAccount::factory()->linkedin()->create(['workspace_id' => $workspace->id]);
 
@@ -853,13 +853,13 @@ test('connect store still redirects to stripe when posthog capture fails', funct
         ->andThrow(new RuntimeException('PostHog is down.'));
 
     $this->actingAs($this->user->fresh())
-        ->post(route('app.welcome.connect.store'))
+        ->post(route('app.onboarding.connect.store'))
         ->assertRedirect('https://checkout.stripe.test/session');
 
     Exceptions::assertReported(RuntimeException::class);
 });
 
-test('welcome steps redirect to calendar for subscribed accounts', function (string $routeName, string $method, array $payload = []) {
+test('onboarding steps redirect to calendar for subscribed accounts', function (string $routeName, string $method, array $payload = []) {
     subscribeAccount($this->user->account);
 
     $this->actingAs($this->user->fresh());
@@ -870,15 +870,15 @@ test('welcome steps redirect to calendar for subscribed accounts', function (str
 
     $response->assertRedirect(route('app.calendar'));
 })->with([
-    'welcome' => ['app.welcome', 'get'],
-    'persona store' => ['app.welcome.persona.store', 'post', ['persona' => Persona::Agency->value]],
-    'goals store' => ['app.welcome.goals.store', 'post', ['goals' => [Goal::SaveTime->value]]],
-    'referral source store' => ['app.welcome.referral-source.store', 'post', ['referral_source' => ReferralSource::Google->value]],
-    'publish method store' => ['app.welcome.publish-method.store', 'post', ['publish_method' => PublishMethod::Manual->value]],
-    'connect store' => ['app.welcome.connect.store', 'post'],
+    'welcome' => ['app.onboarding', 'get'],
+    'persona store' => ['app.onboarding.persona.store', 'post', ['persona' => Persona::Agency->value]],
+    'goals store' => ['app.onboarding.goals.store', 'post', ['goals' => [Goal::SaveTime->value]]],
+    'referral source store' => ['app.onboarding.referral-source.store', 'post', ['referral_source' => ReferralSource::Google->value]],
+    'publish method store' => ['app.onboarding.publish-method.store', 'post', ['publish_method' => PublishMethod::Manual->value]],
+    'connect store' => ['app.onboarding.connect.store', 'post'],
 ]);
 
-test('welcome redirects generic-trial accounts with app access to calendar', function () {
+test('onboarding redirects generic-trial accounts with app access to calendar', function () {
     config(['trypost.billing.require_card_for_trial' => false]);
 
     $this->user->account->forceFill([
@@ -889,11 +889,11 @@ test('welcome redirects generic-trial accounts with app access to calendar', fun
         ->and($this->user->account->fresh()->subscribed(Account::SUBSCRIPTION_NAME))->toBeFalse();
 
     $this->actingAs($this->user->fresh())
-        ->get(route('app.welcome'))
+        ->get(route('app.onboarding'))
         ->assertRedirect(route('app.calendar'));
 });
 
-test('welcome steps redirect to calendar in self hosted mode', function (string $routeName, string $method, array $payload = []) {
+test('onboarding steps redirect to calendar in self hosted mode', function (string $routeName, string $method, array $payload = []) {
     config(['trypost.self_hosted' => true]);
 
     $this->actingAs($this->user);
@@ -904,30 +904,30 @@ test('welcome steps redirect to calendar in self hosted mode', function (string 
 
     $response->assertRedirect(route('app.calendar'));
 })->with([
-    'welcome' => ['app.welcome', 'get'],
-    'persona store' => ['app.welcome.persona.store', 'post', ['persona' => Persona::Agency->value]],
-    'goals store' => ['app.welcome.goals.store', 'post', ['goals' => [Goal::SaveTime->value]]],
-    'referral source store' => ['app.welcome.referral-source.store', 'post', ['referral_source' => ReferralSource::Google->value]],
-    'publish method store' => ['app.welcome.publish-method.store', 'post', ['publish_method' => PublishMethod::Manual->value]],
-    'connect store' => ['app.welcome.connect.store', 'post'],
+    'welcome' => ['app.onboarding', 'get'],
+    'persona store' => ['app.onboarding.persona.store', 'post', ['persona' => Persona::Agency->value]],
+    'goals store' => ['app.onboarding.goals.store', 'post', ['goals' => [Goal::SaveTime->value]]],
+    'referral source store' => ['app.onboarding.referral-source.store', 'post', ['referral_source' => ReferralSource::Google->value]],
+    'publish method store' => ['app.onboarding.publish-method.store', 'post', ['publish_method' => PublishMethod::Manual->value]],
+    'connect store' => ['app.onboarding.connect.store', 'post'],
 ]);
 
 test('old onboarding icp routes are not registered', function (string $routeName) {
     expect(Route::has($routeName))->toBeFalse();
 })->with([
-    // `app.onboarding` is reused for the post-subscription activation checklist.
     'store' => 'app.onboarding.store',
-    'goals' => 'app.onboarding.goals',
-    'goals store' => 'app.onboarding.goals.store',
-    'referral source' => 'app.onboarding.referral-source',
-    'referral source store' => 'app.onboarding.referral-source.store',
-    'connect' => 'app.onboarding.connect',
     'checkout' => 'app.onboarding.checkout',
 ]);
 
-test('members cannot start Stripe checkout from welcome', function (bool $withWorkspace) {
+test('legacy welcome urls redirect to onboarding', function () {
+    $this->actingAs($this->user)
+        ->get(route('app.welcome'))
+        ->assertRedirect(route('app.onboarding'));
+});
+
+test('members cannot start Stripe checkout from onboarding', function (bool $withWorkspace) {
     $member = User::factory()->create(['account_id' => $this->user->account_id]);
-    completeWelcomeThroughReferral($member);
+    completeOnboardingThroughReferral($member);
 
     if ($withWorkspace) {
         attachCurrentWorkspace($member);
@@ -936,12 +936,12 @@ test('members cannot start Stripe checkout from welcome', function (bool $withWo
     $this->mock(StartSubscriptionCheckout::class)->shouldNotReceive('redirect');
 
     $this->actingAs($member->fresh())
-        ->get(route('app.welcome'))
-        ->assertRedirect(route('app.welcome.subscription-required'));
+        ->get(route('app.onboarding'))
+        ->assertRedirect(route('app.onboarding.subscription-required'));
 
     $this->actingAs($member->fresh())
-        ->post(route('app.welcome.connect.store'))
-        ->assertRedirect(route('app.welcome.subscription-required'));
+        ->post(route('app.onboarding.connect.store'))
+        ->assertRedirect(route('app.onboarding.subscription-required'));
 })->with([
     'without workspace' => [false],
     'with empty workspace' => [true],
@@ -949,13 +949,13 @@ test('members cannot start Stripe checkout from welcome', function (bool $withWo
 
 test('subscribed owners skip connect validation and go to calendar', function () {
     subscribeAccount($this->user->account);
-    completeWelcomeThroughReferral($this->user);
+    completeOnboardingThroughReferral($this->user);
     attachCurrentWorkspace($this->user);
 
     $this->mock(StartSubscriptionCheckout::class)->shouldNotReceive('redirect');
 
     $this->actingAs($this->user->fresh())
-        ->post(route('app.welcome.connect.store'))
+        ->post(route('app.onboarding.connect.store'))
         ->assertRedirect(route('app.calendar'));
 });
 
@@ -968,39 +968,39 @@ test('members without app access are held on the subscription required screen', 
         ? $this->get(route($routeName))
         : $this->post(route($routeName), $payload);
 
-    $response->assertRedirect(route('app.welcome.subscription-required'));
+    $response->assertRedirect(route('app.onboarding.subscription-required'));
 })->with([
-    'welcome' => ['app.welcome', 'get'],
-    'persona store' => ['app.welcome.persona.store', 'post', ['persona' => Persona::Agency->value]],
-    'goals store' => ['app.welcome.goals.store', 'post', ['goals' => [Goal::SaveTime->value]]],
-    'referral source store' => ['app.welcome.referral-source.store', 'post', ['referral_source' => ReferralSource::Google->value]],
-    'publish method store' => ['app.welcome.publish-method.store', 'post', ['publish_method' => PublishMethod::Manual->value]],
-    'connect store' => ['app.welcome.connect.store', 'post'],
+    'welcome' => ['app.onboarding', 'get'],
+    'persona store' => ['app.onboarding.persona.store', 'post', ['persona' => Persona::Agency->value]],
+    'goals store' => ['app.onboarding.goals.store', 'post', ['goals' => [Goal::SaveTime->value]]],
+    'referral source store' => ['app.onboarding.referral-source.store', 'post', ['referral_source' => ReferralSource::Google->value]],
+    'publish method store' => ['app.onboarding.publish-method.store', 'post', ['publish_method' => PublishMethod::Manual->value]],
+    'connect store' => ['app.onboarding.connect.store', 'post'],
 ]);
 
 test('subscription required screen renders for members without app access', function () {
     $member = User::factory()->create(['account_id' => $this->user->account_id]);
 
     $this->actingAs($member->fresh())
-        ->get(route('app.welcome.subscription-required'))
+        ->get(route('app.onboarding.subscription-required'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
-            ->component('welcome/SubscriptionRequired', false)
+            ->component('onboarding/SubscriptionRequired', false)
             ->where('ownerName', $this->user->name)
         );
 });
 
-test('subscription required screen sends owners back to the welcome flow', function () {
+test('subscription required screen sends owners back to the onboarding flow', function () {
     $this->actingAs($this->user)
-        ->get(route('app.welcome.subscription-required'))
-        ->assertRedirect(route('app.welcome'));
+        ->get(route('app.onboarding.subscription-required'))
+        ->assertRedirect(route('app.onboarding'));
 });
 
 test('subscription required screen sends subscribed users to the calendar', function () {
     subscribeAccount($this->user->account);
 
     $this->actingAs($this->user->fresh())
-        ->get(route('app.welcome.subscription-required'))
+        ->get(route('app.onboarding.subscription-required'))
         ->assertRedirect(route('app.calendar'));
 });
 
@@ -1009,7 +1009,7 @@ test('subscription required screen sends members with app access to the calendar
     subscribeAccount($owner->account);
 
     $this->actingAs($member)
-        ->get(route('app.welcome.subscription-required'))
+        ->get(route('app.onboarding.subscription-required'))
         ->assertRedirect(route('app.calendar'));
 });
 
@@ -1019,23 +1019,23 @@ test('subscription required screen redirects to calendar in self hosted mode', f
     $member = User::factory()->create(['account_id' => $this->user->account_id]);
 
     $this->actingAs($member->fresh())
-        ->get(route('app.welcome.subscription-required'))
+        ->get(route('app.onboarding.subscription-required'))
         ->assertRedirect(route('app.calendar'));
 });
 
-test('welcome sends members with app access to the calendar', function () {
+test('onboarding sends members with app access to the calendar', function () {
     ['owner' => $owner, 'member' => $member] = strandedMemberOnSharedAccount();
     subscribeAccount($owner->account);
 
     $this->actingAs($member)
-        ->get(route('app.welcome'))
+        ->get(route('app.onboarding'))
         ->assertRedirect(route('app.calendar'));
 });
 
 test('connect store fails loudly when the monthly price is not configured', function () {
     config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test']);
     Bus::fake();
-    completeWelcomeThroughPublishMethod($this->user);
+    completeOnboardingThroughPublishMethod($this->user);
     $workspace = attachCurrentWorkspace($this->user);
     SocialAccount::factory()->linkedin()->create(['workspace_id' => $workspace->id]);
     Plan::where('slug', Slug::Workspace)->update(['stripe_monthly_price_id' => null]);
@@ -1043,12 +1043,12 @@ test('connect store fails loudly when the monthly price is not configured', func
     $this->mock(StartSubscriptionCheckout::class)->shouldNotReceive('redirect');
 
     $this->actingAs($this->user->fresh())
-        ->post(route('app.welcome.connect.store'))
+        ->post(route('app.onboarding.connect.store'))
         ->assertServerError();
 
     Bus::assertNotDispatched(
         SendEvent::class,
-        fn (SendEvent $event): bool => data_get($event->payload, 'event') === WelcomeEvent::Connect->value,
+        fn (SendEvent $event): bool => data_get($event->payload, 'event') === OnboardingEvent::Connect->value,
     );
     Bus::assertNotDispatched(
         SendEvent::class,
@@ -1056,7 +1056,7 @@ test('connect store fails loudly when the monthly price is not configured', func
     );
 });
 
-function completeWelcomeThroughReferral(User $user): void
+function completeOnboardingThroughReferral(User $user): void
 {
     $user->update([
         'persona' => Persona::Agency->value,
@@ -1065,9 +1065,9 @@ function completeWelcomeThroughReferral(User $user): void
     ]);
 }
 
-function completeWelcomeThroughPublishMethod(User $user): void
+function completeOnboardingThroughPublishMethod(User $user): void
 {
-    completeWelcomeThroughReferral($user);
+    completeOnboardingThroughReferral($user);
     $user->update(['publish_method' => PublishMethod::Manual]);
 }
 

@@ -15,7 +15,7 @@ class LoadWorkspaceFromToken
 {
     /**
      * MCP methods that only complete the client handshake. They must work
-     * during Welcome (no subscription yet) so Claude / ChatGPT / Cursor can
+     * during onboarding (no subscription yet) so Claude / ChatGPT / Cursor can
      * connect. Any other method — especially tools/call — stays gated.
      *
      * @var list<string>
@@ -81,7 +81,7 @@ class LoadWorkspaceFromToken
 
         // Match web access (EnsureAccountReady): Stripe subscription OR generic
         // no-card trial when REQUIRE_CARD_FOR_TRIAL is disabled. MCP handshake
-        // is the Welcome exception — connect the client, but do no work.
+        // is the onboarding exception — connect the client, but do no work.
         if (
             ! config('trypost.self_hosted')
             && ! $workspace->account?->hasAppAccess()

@@ -9,7 +9,9 @@ import { createApp, h } from 'vue';
 
 import { initializeDataLayer } from './datalayer';
 import dayjs from './dayjs';
+import { usesAppShell } from './lib/appShell';
 import { syncContentTypeMediaRules } from './lib/contentTypeMediaRules';
+import AppShell from './layouts/AppShell.vue';
 import { capturePageview, initializePostHog, syncPostHogContext } from './posthog';
 import type { Auth } from './types';
 
@@ -17,6 +19,7 @@ const appName = import.meta.env.VITE_APP_NAME || 'TryPost.it';
 
 createInertiaApp({
     title: (title) => (title ? `${title} - ${appName}` : appName),
+    layout: (name) => (usesAppShell(name) ? AppShell : undefined),
     resolve: (name) =>
         resolvePageComponent(
             `./pages/${name}.vue`,

@@ -23,7 +23,7 @@ test('redirect applies checkout configuration before opening the stripe session'
     $account = Account::factory()->create();
     Workspace::factory()->create(['account_id' => $account->id]);
 
-    $cancelUrl = route('app.welcome');
+    $cancelUrl = route('app.onboarding');
 
     $builder = Mockery::mock(SubscriptionBuilder::class);
     $builder->shouldReceive('quantity')->once()->with(1)->andReturnSelf();

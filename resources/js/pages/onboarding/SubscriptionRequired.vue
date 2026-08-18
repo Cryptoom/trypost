@@ -2,7 +2,7 @@
 import { Head, usePoll } from '@inertiajs/vue3';
 import { IconCreditCard } from '@tabler/icons-vue';
 
-import WelcomeLayout from '@/layouts/WelcomeLayout.vue';
+import OnboardingLayout from '@/layouts/OnboardingLayout.vue';
 
 defineProps<{
     ownerName: string | null;
@@ -16,15 +16,15 @@ usePoll(10000, { only: ['auth'] });
 </script>
 
 <template>
-    <Head :title="$t('welcome.subscription_required_title')" />
+    <Head :title="$t('onboarding.subscription_required_title')" />
 
-    <WelcomeLayout
-        :title="$t('welcome.subscription_required_title')"
-        :description="$t('welcome.subscription_required_description')"
+    <OnboardingLayout
+        :title="$t('onboarding.subscription_required_title')"
+        :description="$t('onboarding.subscription_required_description')"
     >
         <div
             class="flex flex-col items-center gap-4 text-center"
-            data-testid="welcome-subscription-required"
+            data-testid="onboarding-subscription-required"
         >
             <span
                 class="inline-flex size-14 -rotate-2 items-center justify-center rounded-2xl border-2 border-foreground bg-violet-100 shadow-2xs"
@@ -36,14 +36,14 @@ usePoll(10000, { only: ['auth'] });
                 class="text-sm font-semibold text-muted-foreground"
             >
                 {{
-                    $t('welcome.subscription_required_owner', {
+                    $t('onboarding.subscription_required_owner', {
                         name: ownerName,
                     })
                 }}
             </p>
             <p class="text-xs text-muted-foreground/80">
-                {{ $t('welcome.subscription_required_auto') }}
+                {{ $t('onboarding.subscription_required_auto') }}
             </p>
         </div>
-    </WelcomeLayout>
+    </OnboardingLayout>
 </template>

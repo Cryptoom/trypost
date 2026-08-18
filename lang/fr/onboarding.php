@@ -10,7 +10,7 @@ return [
     'subscription_required_description' => 'Ce compte n\'a pas encore d\'abonnement actif. Demandez au propriétaire de finaliser le paiement — vous aurez un accès complet dès qu\'il sera actif.',
     'subscription_required_owner' => 'Le propriétaire de votre compte est :name.',
     'subscription_required_auto' => 'Cette page se met à jour automatiquement — inutile de la recharger.',
-    'progress' => 'Progression d’accueil',
+    'progress' => 'Progression de l’onboarding',
     'go_to_step' => 'Aller à l’étape :step',
     'step_current' => 'Étape :step (actuelle)',
     'personas' => [
