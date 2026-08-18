@@ -31,6 +31,7 @@ use App\Models\WorkspaceConversationMessage;
 use App\Models\WorkspaceInvite;
 use App\Models\WorkspaceLabel;
 use App\Models\WorkspaceSignature;
+use App\Services\Ai\Conversations\WorkspaceConversationStore;
 use App\Services\PostHogService;
 use App\Services\PostTemplate\Registry as PostTemplateRegistry;
 use App\Socialite\DiscordProvider;
@@ -51,6 +52,7 @@ use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
+use Laravel\Ai\Contracts\ConversationStore;
 use Laravel\Cashier\Cashier;
 use Laravel\Cashier\Events\WebhookReceived;
 use Laravel\Nightwatch\Facades\Nightwatch;
@@ -72,6 +74,7 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->singleton(PostTemplateRegistry::class);
+        $this->app->singleton(ConversationStore::class, WorkspaceConversationStore::class);
 
         if ($this->app->environment('local') && class_exists(\Laravel\Telescope\TelescopeServiceProvider::class)) {
             $this->app->register(\Laravel\Telescope\TelescopeServiceProvider::class);
