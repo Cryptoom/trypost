@@ -16,6 +16,7 @@ return [
     'coming_soon' => 'Sohbet bağlandığında bakabilirim. Şimdilik yalnızca düzen.',
     'tools' => [
         'post_not_found' => 'Gönderi bulunamadı.',
+        'scheduled_at_required' => 'Bir gönderiyi zamanlamak için tarih ve saat gereklidir.',
         'error' => 'Bir şeyler ters gitti. Lütfen tekrar deneyin.',
     ],
 ];

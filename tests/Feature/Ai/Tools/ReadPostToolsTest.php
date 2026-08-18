@@ -57,3 +57,12 @@ test('list_posts clamps an out-of-range limit instead of trusting the schema', f
 
     expect($output['data'])->toHaveCount(25);
 });
+
+test('get_post with an absent post_id returns post_not_found, not the generic error', function () {
+    $workspace = Workspace::factory()->create();
+    $user = User::factory()->create();
+
+    $output = json_decode((new GetPostTool($workspace, $user))->handle(new Request([])), true);
+
+    expect($output['error'])->toBe(__('chat.tools.post_not_found'));
+});

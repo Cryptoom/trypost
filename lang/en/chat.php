@@ -16,6 +16,7 @@ return [
     'coming_soon' => 'I can look that up once chat is connected. This is just the layout for now.',
     'tools' => [
         'post_not_found' => 'Post not found.',
+        'scheduled_at_required' => 'A date and time is required to schedule a post.',
         'error' => 'Something went wrong. Please try again.',
     ],
 ];

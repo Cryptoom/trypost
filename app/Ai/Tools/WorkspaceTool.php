@@ -69,12 +69,14 @@ abstract class WorkspaceTool implements Tool
 
     /**
      * Resolve a post inside this tool's workspace. Returns null for a missing
-     * id, a malformed id, or a post belonging to another workspace — the three
-     * are indistinguishable to the model on purpose.
+     * id (including an empty or whitespace-only string, which is what
+     * `$request->string('post_id')->value()` yields when the argument is
+     * absent), a malformed id, or a post belonging to another workspace — the
+     * four are indistinguishable to the model on purpose.
      */
     protected function resolvePost(?string $postId): ?Post
     {
-        if ($postId === null) {
+        if (blank($postId)) {
             return null;
         }
 

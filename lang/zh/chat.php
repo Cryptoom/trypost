@@ -16,6 +16,7 @@ return [
     'coming_soon' => '聊天接通后我就能查。现在只是界面骨架。',
     'tools' => [
         'post_not_found' => '未找到该帖子。',
+        'scheduled_at_required' => '安排帖子需要提供日期和时间。',
         'error' => '出了点问题，请重试。',
     ],
 ];
