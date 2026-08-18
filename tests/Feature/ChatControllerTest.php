@@ -40,7 +40,7 @@ test('subscribed owners can open the workspace chat', function (): void {
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->component('chat/Index', false)
-            ->where('threads', []));
+            ->where('conversations', []));
 });
 
 test('workspace members can open the workspace chat', function (): void {

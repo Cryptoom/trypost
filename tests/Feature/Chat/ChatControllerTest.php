@@ -1,0 +1,41 @@
+<?php
+
+declare(strict_types=1);
+
+use App\Models\WorkspaceConversation;
+
+test('the sidebar lists only this users titled conversations, newest first', function () {
+    [$user, $workspace] = actingAsWorkspaceUser();
+
+    $older = WorkspaceConversation::factory()->for($workspace)->for($user)->create(['title' => 'Older']);
+    $older->forceFill(['updated_at' => now()->subDay()])->saveQuietly();
+
+    $newer = WorkspaceConversation::factory()->for($workspace)->for($user)->create(['title' => 'Newer']);
+    WorkspaceConversation::factory()->for($workspace)->for($user)->untitled()->create();
+    WorkspaceConversation::factory()->for($workspace)->create(['title' => 'Someone else']);
+
+    $this->get(route('app.chat'))
+        ->assertInertia(fn ($page) => $page
+            ->component('chat/Index')
+            ->has('conversations', 2)
+            ->where('conversations.0.title', 'Newer')
+            ->where('conversations.1.title', 'Older'));
+});
+
+test('another users conversation cannot be opened', function () {
+    [$user, $workspace] = actingAsWorkspaceUser();
+    $foreign = WorkspaceConversation::factory()->for($workspace)->create(['title' => 'Not yours']);
+
+    $this->get(route('app.chat.show', $foreign->id))->assertNotFound();
+});
+
+test('a conversation can be renamed and soft deleted', function () {
+    [$user, $workspace] = actingAsWorkspaceUser();
+    $conversation = WorkspaceConversation::factory()->for($workspace)->for($user)->create(['title' => 'Before']);
+
+    $this->patch(route('app.chat.update', $conversation->id), ['title' => 'After']);
+    expect($conversation->fresh()->title)->toBe('After');
+
+    $this->delete(route('app.chat.destroy', $conversation->id));
+    expect($conversation->fresh()->trashed())->toBeTrue();
+});

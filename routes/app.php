@@ -194,6 +194,15 @@ Route::middleware(['auth', EnsureAccountReady::class, EnsureHasWorkspace::class]
     Route::post('chat/{conversation}', [ChatMessageController::class, 'store'])
         ->whereUuid('conversation')
         ->name('app.chat.messages.store');
+    Route::get('chat/{conversation}', [ChatController::class, 'show'])
+        ->whereUuid('conversation')
+        ->name('app.chat.show');
+    Route::patch('chat/{conversation}', [ChatController::class, 'update'])
+        ->whereUuid('conversation')
+        ->name('app.chat.update');
+    Route::delete('chat/{conversation}', [ChatController::class, 'destroy'])
+        ->whereUuid('conversation')
+        ->name('app.chat.destroy');
 
     // Analytics
     Route::get('analytics', [AnalyticsController::class, 'index'])->name('app.analytics');
