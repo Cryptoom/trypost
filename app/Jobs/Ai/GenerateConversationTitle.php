@@ -60,14 +60,17 @@ class GenerateConversationTitle implements ShouldQueue
      * Defend against a chatty model response landing verbatim in the sidebar.
      *
      * The reliable signal that a model wrapped its answer in a preamble is
-     * that it quoted the answer, so when the response contains a quoted
-     * segment we take that segment as the title; otherwise we take the whole
-     * response as-is. A leading-word-list heuristic ("Sure!", "Here's...")
-     * was tried and rejected: it both damages legitimate titles that start
-     * with one of those words followed by a colon (e.g. "Okay Computer: A
-     * Retrospective") and misses chatty forms that don't use those words
-     * (e.g. "I would say: Draft post count"). An occasionally chatty title
-     * is a far better failure than a silently damaged one.
+     * that it double-quoted the answer, so extraction only fires in two
+     * narrow, unambiguous shapes (see extractQuoted()): the entire response
+     * is one quoted segment, or the response ends with a colon followed by a
+     * quoted segment. Anything else is used as-is. An apostrophe or single
+     * quote is never treated as a quote delimiter — pairing arbitrary
+     * apostrophes (e.g. two contractions anywhere in the response) matches
+     * the wrong span and corrupts the title. A leading-word-list heuristic
+     * ("Sure!", "Here's...") was also tried and rejected: it damages
+     * legitimate titles that start with one of those words followed by a
+     * colon (e.g. "Okay Computer: A Retrospective"). An occasionally chatty
+     * title is a far better failure than a silently corrupted one.
      *
      * Wrapping quotes and trailing punctuation are trimmed with a
      * Unicode-aware regex, never `trim()`'s byte-wise charlist — passing
@@ -90,20 +93,29 @@ class GenerateConversationTitle implements ShouldQueue
     }
 
     /**
-     * Extract the contents of the first quoted segment in the given text, if
-     * any. Matches straight and curly quote pairs; a mismatched or missing
-     * pair yields null.
+     * Extract a title the model wrapped in double quotes, in one of two
+     * unambiguous shapes only:
+     *
+     * 1. The entire trimmed response is one double-quoted segment
+     *    (straight `"…"` or curly `"…"`) — unwrap it.
+     * 2. The response ends with a colon, optional whitespace, and a
+     *    double-quoted segment — take that segment.
+     *
+     * Anything else returns null so the caller falls back to the response
+     * unchanged. Single/curly-apostrophe quotes never delimit a match: an
+     * apostrophe is not a quote, and pairing arbitrary apostrophes in the
+     * response (e.g. two contractions) would capture the wrong span.
      */
     private function extractQuoted(string $text): ?string
     {
-        if (preg_match('/"([^"]+)"|\'([^\']+)\'|“([^”]+)”|‘([^’]+)’/u', $text, $matches) !== 1) {
-            return null;
+        if (preg_match('/^"(.+)"$/u', $text, $matches) === 1
+            || preg_match('/^“(.+)”$/u', $text, $matches) === 1) {
+            return $matches[1];
         }
 
-        foreach (array_slice($matches, 1) as $group) {
-            if ($group !== '') {
-                return $group;
-            }
+        if (preg_match('/:\s*"([^"]+)"$/u', $text, $matches) === 1
+            || preg_match('/:\s*“([^”]+)”$/u', $text, $matches) === 1) {
+            return $matches[1];
         }
 
         return null;
