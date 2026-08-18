@@ -47,6 +47,9 @@ class UserFactory extends Factory
             'utm_content' => null,
             'registration_ip' => null,
             'persona' => null,
+            'goals' => null,
+            'referral_source' => null,
+            'publish_method' => null,
         ];
     }
 

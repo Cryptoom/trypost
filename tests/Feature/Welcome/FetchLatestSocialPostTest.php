@@ -146,7 +146,10 @@ test('it maps the latest x post including media and impressions', function () {
         'permalink' => 'https://x.com/i/web/status/123',
         'published_at' => '2026-08-01T12:00:00.000Z',
         'impressions' => 8,
-        'reach' => reachPitch('X', 'x'),
+        'reach' => reachPitch('X', 'x', others: [
+            ['value' => 'threads', 'label' => 'Threads', 'views' => 1000],
+            ['value' => 'linkedin', 'label' => 'LinkedIn', 'views' => 1000],
+        ]),
     ]);
 });
 
@@ -273,7 +276,10 @@ test('it maps the latest threads post and its views', function () {
         'media_url' => 'https://cdn.example/th.jpg',
         'permalink' => 'https://www.threads.net/t/1',
         'impressions' => 9,
-        'reach' => reachPitch('Threads', 'threads'),
+        'reach' => reachPitch('Threads', 'threads', others: [
+            ['value' => 'linkedin', 'label' => 'LinkedIn', 'views' => 1000],
+            ['value' => 'bluesky', 'label' => 'Bluesky', 'views' => 1000],
+        ]),
     ]);
 });
 
@@ -363,7 +369,10 @@ test('it maps the latest linkedin page post', function () {
         'caption' => 'Hello from the page',
         'permalink' => 'https://www.linkedin.com/feed/update/urn:li:share:99',
         'impressions' => null,
-        'reach' => reachPitch('LinkedIn Page', 'linkedin'),
+        'reach' => reachPitch('LinkedIn Page', 'linkedin', others: [
+            ['value' => 'threads', 'label' => 'Threads', 'views' => 1000],
+            ['value' => 'bluesky', 'label' => 'Bluesky', 'views' => 1000],
+        ]),
     ]);
 });
 
@@ -426,7 +435,7 @@ test('it omits disabled networks from the reach pitch', function () {
             'network_value' => 'instagram',
             'others' => [
                 ['value' => 'youtube', 'label' => 'YouTube', 'views' => 1000],
-                ['value' => 'facebook', 'label' => 'Facebook', 'views' => 1000],
+                ['value' => 'pinterest', 'label' => 'Pinterest', 'views' => 1000],
             ],
             'each_views' => 1000,
             'extra_views' => 2000,
@@ -466,7 +475,7 @@ test('it pitches a single remaining network when only one other is enabled', fun
             'network' => 'Instagram',
             'network_value' => 'instagram',
             'others' => [
-                ['value' => 'x', 'label' => 'X', 'views' => 1000],
+                ['value' => 'pinterest', 'label' => 'Pinterest', 'views' => 1000],
             ],
             'each_views' => 1000,
             'extra_views' => 1000,
@@ -478,8 +487,8 @@ test('it pitches no other networks when every alternative is disabled', function
     config([
         'trypost.platforms.tiktok.enabled' => false,
         'trypost.platforms.youtube.enabled' => false,
+        'trypost.platforms.pinterest.enabled' => false,
         'trypost.platforms.facebook.enabled' => false,
-        'trypost.platforms.x.enabled' => false,
     ]);
 
     $account = SocialAccount::factory()->instagram()->create([
@@ -578,18 +587,21 @@ test('it skips linkedin personal accounts', function () {
 });
 
 /**
+ * @param  list<array{value: string, label: string, views: int}>|null  $others
  * @return array{network: string, network_value: string, others: list<array{value: string, label: string, views: int}>, each_views: int, extra_views: int}
  */
-function reachPitch(string $network, string $networkValue, int $eachViews = 1000): array
+function reachPitch(string $network, string $networkValue, int $eachViews = 1000, ?array $others = null): array
 {
+    $others ??= [
+        ['value' => 'tiktok', 'label' => 'TikTok', 'views' => $eachViews],
+        ['value' => 'youtube', 'label' => 'YouTube', 'views' => $eachViews],
+    ];
+
     return [
         'network' => $network,
         'network_value' => $networkValue,
-        'others' => [
-            ['value' => 'tiktok', 'label' => 'TikTok', 'views' => $eachViews],
-            ['value' => 'youtube', 'label' => 'YouTube', 'views' => $eachViews],
-        ],
+        'others' => $others,
         'each_views' => $eachViews,
-        'extra_views' => $eachViews * 2,
+        'extra_views' => $eachViews * count($others),
     ];
 }

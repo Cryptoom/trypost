@@ -9,6 +9,7 @@ enum WelcomeEvent: string
     case Persona = 'welcome.persona';
     case Goals = 'welcome.goals';
     case Referral = 'welcome.referral';
+    case PublishMethod = 'welcome.publish_method';
     case Connect = 'welcome.connect';
 
     /**
@@ -22,6 +23,7 @@ enum WelcomeEvent: string
             self::Persona->value,
             self::Goals->value,
             self::Referral->value,
+            self::PublishMethod->value,
             self::Connect->value,
             CheckoutEvent::Started->value,
         ];

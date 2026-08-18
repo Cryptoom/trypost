@@ -71,4 +71,12 @@ return [
         'change_network' => 'Trocar rede',
         'required' => 'Conecte pelo menos uma rede social para continuar.',
     ],
+    'publish_method' => [
+        'title' => 'Você vai agendar os seus posts manualmente ou usando IA?',
+        'description' => 'Manualmente, você escreve e agenda aqui no TryPost. Com IA, o Claude, o ChatGPT ou o Cursor publicam pra você.',
+        'manual' => 'Manualmente',
+        'ai' => 'Com IA',
+        'mcp' => 'Conecte o Claude, ChatGPT ou Cursor pra publicar por aqui.',
+        'required' => 'Escolha se você vai agendar manualmente ou com IA.',
+    ],
 ];

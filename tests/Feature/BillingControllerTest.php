@@ -41,7 +41,7 @@ test('subscribe redirects to welcome', function () {
 
     $response = $this->actingAs($this->user)->get(route('app.subscribe'));
 
-    $response->assertRedirect(route('app.welcome.persona'));
+    $response->assertRedirect(route('app.welcome'));
 });
 
 test('swapToYearly redirects to calendar in self hosted mode', function () {

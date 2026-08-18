@@ -7,6 +7,7 @@ namespace App\Models;
 use App\Enums\Auth\SocialAuthProvider;
 use App\Enums\Notification\Type as NotificationType;
 use App\Enums\User\Persona;
+use App\Enums\User\PublishMethod;
 use App\Enums\User\ReferralSource;
 use App\Models\Traits\HasAccount;
 use App\Models\Traits\HasMedia;
@@ -55,6 +56,7 @@ class User extends Authenticatable implements MustVerifyEmail, OAuthenticatable
         'persona',
         'goals',
         'referral_source',
+        'publish_method',
     ];
 
     /**
@@ -99,6 +101,7 @@ class User extends Authenticatable implements MustVerifyEmail, OAuthenticatable
             'persona' => Persona::class,
             'goals' => 'array',
             'referral_source' => ReferralSource::class,
+            'publish_method' => PublishMethod::class,
         ];
     }
 

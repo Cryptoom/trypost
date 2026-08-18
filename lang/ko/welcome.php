@@ -71,4 +71,12 @@ return [
         'change_network' => '네트워크 바꾸기',
         'required' => '계속하려면 소셜 계정을 하나 이상 연결하세요.',
     ],
+    'publish_method' => [
+            'title' => 'Will you schedule your posts manually or with AI?',
+            'description' => 'Manually, you write and schedule in TryPost. With AI, Claude, ChatGPT, or Cursor publish for you.',
+            'manual' => 'Manually',
+            'ai' => 'With AI',
+            'mcp' => 'Connect Claude, ChatGPT, or Cursor to publish from there.',
+            'required' => 'Choose whether you\'ll schedule manually or with AI.',
+    ],
 ];

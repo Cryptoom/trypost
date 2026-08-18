@@ -59,16 +59,20 @@ Route::middleware(['auth'])->group(function () {
     })->name('app.home');
 
     Route::get('subscribe', [BillingController::class, 'subscribe'])->name('app.subscribe');
-    Route::get('welcome', fn () => redirect()->route('app.welcome.persona'))->name('app.welcome');
-    Route::get('welcome/persona', [WelcomeController::class, 'persona'])->name('app.welcome.persona');
+    Route::get('welcome', [WelcomeController::class, 'show'])->name('app.welcome');
+    Route::get('welcome/persona', fn () => redirect()->route('app.welcome'))->name('app.welcome.persona');
     Route::post('welcome/persona', [WelcomeController::class, 'storePersona'])->name('app.welcome.persona.store');
-    Route::get('welcome/goals', [WelcomeController::class, 'goals'])->name('app.welcome.goals');
+    Route::get('welcome/goals', fn () => redirect()->route('app.welcome'))->name('app.welcome.goals');
     Route::post('welcome/goals', [WelcomeController::class, 'storeGoals'])->name('app.welcome.goals.store');
-    Route::get('welcome/referral-source', [WelcomeController::class, 'referralSource'])->name('app.welcome.referral-source');
+    Route::get('welcome/referral-source', fn () => redirect()->route('app.welcome'))->name('app.welcome.referral-source');
     Route::post('welcome/referral-source', [WelcomeController::class, 'storeReferralSource'])
         ->middleware('throttle:6,1')
         ->name('app.welcome.referral-source.store');
-    Route::get('welcome/connect', [WelcomeController::class, 'connect'])->name('app.welcome.connect');
+    Route::get('welcome/publish-method', fn () => redirect()->route('app.welcome'))->name('app.welcome.publish-method');
+    Route::post('welcome/publish-method', [WelcomeController::class, 'storePublishMethod'])
+        ->middleware('throttle:6,1')
+        ->name('app.welcome.publish-method.store');
+    Route::get('welcome/connect', fn () => redirect()->route('app.welcome'))->name('app.welcome.connect');
     Route::post('welcome/connect', [WelcomeController::class, 'storeConnect'])
         ->middleware('throttle:6,1')
         ->name('app.welcome.connect.store');

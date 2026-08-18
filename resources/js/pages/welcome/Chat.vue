@@ -2,25 +2,30 @@
 import { Head, useForm } from '@inertiajs/vue3';
 import { IconArrowUp } from '@tabler/icons-vue';
 import { trans, transChoice } from 'laravel-vue-i18n';
-import { computed, ref } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
 import NetworkConnectGrid, {
     type AvailablePlatform,
     type ConnectedAccount,
 } from '@/components/accounts/NetworkConnectGrid.vue';
 import InputError from '@/components/InputError.vue';
+import McpPrimarySetup from '@/components/mcp/McpPrimarySetup.vue';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import GoalChips from '@/components/welcome/GoalChips.vue';
 import PersonaChips from '@/components/welcome/PersonaChips.vue';
 import PlatformChips from '@/components/welcome/PlatformChips.vue';
+import PublishMethodChips from '@/components/welcome/PublishMethodChips.vue';
 import ReferralChips from '@/components/welcome/ReferralChips.vue';
+import WelcomeQuestion from '@/components/welcome/WelcomeQuestion.vue';
+import { welcomePlatformLabel } from '@/components/welcome/welcomePlatformLabel';
 import { getPlatformLogo } from '@/composables/usePlatformLogo';
 import date from '@/date';
 import WelcomeLayout from '@/layouts/WelcomeLayout.vue';
 import { store as storeConnect } from '@/routes/app/welcome/connect';
 import { store as storeGoals } from '@/routes/app/welcome/goals';
 import { store as storePersona } from '@/routes/app/welcome/persona';
+import { store as storePublishMethod } from '@/routes/app/welcome/publish-method';
 import { store as storeReferral } from '@/routes/app/welcome/referral-source';
 import { SocialAccountStatus } from '@/types/social-account-status';
 
@@ -63,10 +68,13 @@ const props = withDefaults(
         selectedGoals?: string[] | null;
         sources?: string[];
         selectedReferral?: string | null;
+        publishMethods?: string[];
+        selectedPublishMethod?: string | null;
         platforms?: AvailablePlatform[];
         accounts?: ConnectedAccount[];
         latestPostNetwork?: string | null;
         latestPost?: LatestPost | null;
+        mcpUrl?: string;
     }>(),
     {
         personas: () => [],
@@ -75,9 +83,12 @@ const props = withDefaults(
         selectedGoals: () => [],
         sources: () => [],
         selectedReferral: null,
+        publishMethods: () => [],
+        selectedPublishMethod: null,
         platforms: () => [],
         accounts: () => [],
         latestPostNetwork: null,
+        mcpUrl: '',
     },
 );
 
@@ -87,6 +98,12 @@ const stepNumber: Record<WelcomeStep, number> = {
     referral: 3,
     connect: 4,
 };
+
+const visibleHistory = computed((): HistoryItem[] =>
+    props.history.filter(
+        (item) => stepNumber[item.step] < stepNumber[props.step],
+    ),
+);
 
 const questionKey: Record<WelcomeStep, string> = {
     persona: 'welcome.title',
@@ -102,21 +119,6 @@ const descriptionKey: Record<WelcomeStep, string> = {
     connect: 'welcome.connect.description',
 };
 
-const labelFor = (step: HistoryItem['step'], value: string): string => {
-    if (step === 'persona') {
-        return trans(`welcome.personas.${value}`);
-    }
-
-    if (step === 'goals') {
-        return trans(`welcome.goals.${value}`);
-    }
-
-    return trans(`welcome.referral_source.${value}`);
-};
-
-const answerLabel = (item: HistoryItem): string =>
-    item.values.map((value) => labelFor(item.step, value)).join(', ');
-
 const personaForm = useForm({ persona: props.selectedPersona ?? '' });
 const goalsForm = useForm<{ goals: string[] }>({
     goals: (props.selectedGoals ?? []).filter((goal) =>
@@ -125,6 +127,9 @@ const goalsForm = useForm<{ goals: string[] }>({
 });
 const referralForm = useForm({
     referral_source: props.selectedReferral ?? '',
+});
+const publishMethodForm = useForm({
+    publish_method: props.selectedPublishMethod ?? '',
 });
 const connectForm = useForm({});
 
@@ -207,15 +212,17 @@ const selectedNetworkNeedsAction = computed((): boolean => {
     );
 });
 
-const platformShortLabel = (label: string): string =>
-    label.includes('(') ? label.split('(')[0].trim() : label;
-
 const submitPersona = (): void => {
     if (!personaForm.persona || personaForm.processing) {
         return;
     }
 
     personaForm.submit(storePersona());
+};
+
+const onPersonaSelected = (value: string): void => {
+    personaForm.persona = value;
+    submitPersona();
 };
 
 const submitGoals = (): void => {
@@ -226,12 +233,38 @@ const submitGoals = (): void => {
     goalsForm.submit(storeGoals());
 };
 
+const onGoalsSelected = (value: string[]): void => {
+    goalsForm.goals = value;
+    submitGoals();
+};
+
 const submitReferral = (): void => {
     if (referralForm.referral_source === '' || referralForm.processing) {
         return;
     }
 
     referralForm.submit(storeReferral());
+};
+
+const onReferralSelected = (value: string): void => {
+    referralForm.referral_source = value;
+    submitReferral();
+};
+
+const submitPublishMethod = (): void => {
+    if (
+        publishMethodForm.publish_method === '' ||
+        publishMethodForm.processing
+    ) {
+        return;
+    }
+
+    publishMethodForm.submit(storePublishMethod());
+};
+
+const onPublishMethodSelected = (value: string): void => {
+    publishMethodForm.publish_method = value;
+    submitPublishMethod();
 };
 
 const submitConnect = (): void => {
@@ -243,22 +276,6 @@ const submitConnect = (): void => {
 };
 
 const composerDraft = computed((): string => {
-    if (props.step === 'persona' && personaForm.persona !== '') {
-        return trans(`welcome.personas.${personaForm.persona}`);
-    }
-
-    if (props.step === 'goals' && goalsForm.goals.length > 0) {
-        return goalsForm.goals
-            .map((goal) => trans(`welcome.goals.${goal}`))
-            .join(', ');
-    }
-
-    if (props.step === 'referral' && referralForm.referral_source !== '') {
-        return trans(
-            `welcome.referral_source.${referralForm.referral_source}`,
-        );
-    }
-
     if (props.step === 'connect' && hasConnectedAccount.value) {
         return trans('welcome.continue');
     }
@@ -266,23 +283,64 @@ const composerDraft = computed((): string => {
     return '';
 });
 
-const canSubmit = computed((): boolean => {
-    if (props.step === 'persona') {
-        return personaForm.persona !== '' && !personaForm.processing;
-    }
+const canSubmit = computed(
+    (): boolean => hasConnectedAccount.value && !connectForm.processing,
+);
 
-    if (props.step === 'goals') {
-        return goalsForm.goals.length > 0 && !goalsForm.processing;
-    }
+const showPlatformPicker = computed(
+    (): boolean =>
+        props.step === 'connect' &&
+        selectedNetwork.value === '' &&
+        props.platforms.length > 0,
+);
 
-    if (props.step === 'referral') {
-        return (
-            referralForm.referral_source !== '' && !referralForm.processing
-        );
-    }
+const showConnectAction = computed(
+    (): boolean =>
+        props.step === 'connect' &&
+        selectedNetworkNeedsAction.value &&
+        selectedPlatforms.value.length > 0,
+);
 
-    return hasConnectedAccount.value && !connectForm.processing;
-});
+const showPublishMethod = computed(
+    (): boolean =>
+        props.step === 'connect' &&
+        hasConnectedAccount.value &&
+        selectedNetwork.value !== '' &&
+        !selectedNetworkNeedsAction.value &&
+        !isLatestPostLoading.value,
+);
+
+const showMcpSetup = computed(
+    (): boolean =>
+        showPublishMethod.value &&
+        publishMethodForm.publish_method === 'ai',
+);
+
+const showComposer = computed(
+    (): boolean =>
+        showPublishMethod.value && publishMethodForm.publish_method !== '',
+);
+
+const showStickyPicker = computed(
+    (): boolean =>
+        props.step === 'persona' ||
+        props.step === 'goals' ||
+        props.step === 'referral' ||
+        showPlatformPicker.value,
+);
+
+const showStickyFooter = computed(
+    (): boolean =>
+        showStickyPicker.value ||
+        showComposer.value ||
+                Boolean(
+            personaForm.errors.persona ||
+                goalsForm.errors.goals ||
+                referralForm.errors.referral_source ||
+                publishMethodForm.errors.publish_method ||
+                connectForm.errors.connect,
+        ),
+);
 
 const formatPostDate = (value: string | null): string =>
     value ? date.formatDate(value) : '';
@@ -336,6 +394,63 @@ const pitchViewsCopy = computed((): string => {
     );
 });
 
+const transcriptContent = ref<HTMLElement | null>(null);
+let transcriptObserver: ResizeObserver | null = null;
+
+const scrollToBottom = (): void => {
+    const top = Math.max(
+        document.documentElement.scrollHeight,
+        document.body.scrollHeight,
+    );
+
+    window.scrollTo({ top, left: 0, behavior: 'auto' });
+};
+
+const scheduleScrollToBottom = (): void => {
+    void nextTick(() => {
+        scrollToBottom();
+        requestAnimationFrame(scrollToBottom);
+    });
+};
+
+onMounted(() => {
+    scheduleScrollToBottom();
+
+    if (
+        transcriptContent.value === null ||
+        typeof ResizeObserver === 'undefined'
+    ) {
+        return;
+    }
+
+    transcriptObserver = new ResizeObserver(() => {
+        scrollToBottom();
+    });
+    transcriptObserver.observe(transcriptContent.value);
+});
+
+onBeforeUnmount(() => {
+    transcriptObserver?.disconnect();
+});
+
+watch(
+    () => [
+        props.step,
+        visibleHistory.value.length,
+        selectedNetwork.value,
+        isLatestPostLoading.value,
+        showLatestPost.value,
+        showConnectAction.value,
+        showComposer.value,
+        showPublishMethod.value,
+        showMcpSetup.value,
+        props.latestPost === undefined ? 'loading' : (props.latestPost?.id ?? 'none'),
+    ],
+    () => {
+        scheduleScrollToBottom();
+    },
+);
+
 const pitchMissedCopy = computed((): string => {
     if (props.latestPost == null) {
         return '';
@@ -362,62 +477,64 @@ const pitchMissedCopy = computed((): string => {
 <template>
     <Head :title="$t(questionKey[step])" />
 
-    <WelcomeLayout :step="stepNumber[step]" size="2xl" chat>
+    <WelcomeLayout
+        size="2xl"
+        chat
+    >
         <div
             class="mx-auto flex w-full max-w-2xl flex-1 flex-col"
             data-testid="welcome-chat"
             dusk="welcome-chat"
         >
             <div
-                class="flex flex-1 flex-col justify-end gap-5 overflow-y-auto py-6"
+                class="flex-1 px-2 py-6"
+                data-testid="welcome-chat-transcript"
+                dusk="welcome-chat-transcript"
             >
                 <div
-                    v-for="item in history"
+                    ref="transcriptContent"
+                    class="flex min-h-full flex-col justify-end gap-5"
+                >
+                <div
+                    v-for="item in visibleHistory"
                     :key="item.step"
                     class="flex flex-col gap-3"
                 >
-                    <div class="flex items-start gap-3">
-                        <img
-                            src="/images/trypost/icon.png"
-                            alt=""
-                            class="mt-0.5 size-7 shrink-0 rounded-full"
-                        />
-                        <p class="pt-1 text-[15px] leading-relaxed text-foreground">
-                            {{ $t(questionKey[item.step]) }}
-                        </p>
-                    </div>
+                    <WelcomeQuestion :title="$t(questionKey[item.step])" />
                     <div class="flex justify-end">
-                        <p
-                            class="max-w-[80%] rounded-2xl bg-muted px-4 py-2.5 text-[15px] leading-relaxed text-foreground"
-                        >
-                            {{ answerLabel(item) }}
-                        </p>
+                        <PersonaChips
+                            v-if="item.step === 'persona'"
+                            :personas="item.values"
+                            :model-value="item.values[0] ?? ''"
+                            readonly
+                        />
+                        <GoalChips
+                            v-else-if="item.step === 'goals'"
+                            :goals="item.values"
+                            :model-value="item.values"
+                            readonly
+                        />
+                        <ReferralChips
+                            v-else
+                            :sources="item.values"
+                            :model-value="item.values[0] ?? ''"
+                            readonly
+                        />
                     </div>
                 </div>
 
-                <div class="flex items-start gap-3">
-                    <img
-                        src="/images/trypost/icon.png"
-                        alt=""
-                        class="mt-0.5 size-7 shrink-0 rounded-full"
-                    />
-                    <div class="pt-1">
-                        <p class="text-[15px] leading-relaxed font-medium text-foreground">
-                            {{ $t(questionKey[step]) }}
-                        </p>
-                        <p class="mt-1 text-sm leading-relaxed text-muted-foreground">
-                            {{ $t(descriptionKey[step]) }}
-                        </p>
-                    </div>
-                </div>
+                <WelcomeQuestion
+                    :title="$t(questionKey[step])"
+                    :description="$t(descriptionKey[step])"
+                />
 
                 <template v-if="step === 'connect' && selectedPlatform">
                     <div class="flex flex-col items-end gap-1">
-                        <p
-                            class="max-w-[80%] rounded-2xl bg-muted px-4 py-2.5 text-[15px] leading-relaxed text-foreground"
-                        >
-                            {{ platformShortLabel(selectedPlatform.label) }}
-                        </p>
+                        <PlatformChips
+                            :platforms="[selectedPlatform]"
+                            :model-value="selectedNetwork"
+                            readonly
+                        />
                         <button
                             type="button"
                             class="px-1 text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
@@ -428,57 +545,46 @@ const pitchMissedCopy = computed((): string => {
                             {{ $t('welcome.connect.change_network') }}
                         </button>
                     </div>
-                    <div class="flex items-start gap-3">
-                        <img
-                            src="/images/trypost/icon.png"
-                            alt=""
-                            class="mt-0.5 size-7 shrink-0 rounded-full"
+                    <WelcomeQuestion
+                        :title="
+                            $t('welcome.connect.follow_up', {
+                                network: welcomePlatformLabel(
+                                    selectedPlatform.label,
+                                ),
+                            })
+                        "
+                    />
+                    <div
+                        v-if="showConnectAction"
+                        class="flex items-start gap-2.5"
+                    >
+                        <span class="size-7 shrink-0" aria-hidden="true" />
+                        <NetworkConnectGrid
+                            variant="list"
+                            :platforms="selectedPlatforms"
+                            :connected-accounts="accounts"
+                            data-testid="welcome-connect-grid"
+                            dusk="welcome-connect-grid"
                         />
-                        <p class="pt-1 text-[15px] leading-relaxed text-foreground">
-                            {{
-                                $t('welcome.connect.follow_up', {
-                                    network: platformShortLabel(
-                                        selectedPlatform.label,
-                                    ),
-                                })
-                            }}
-                        </p>
                     </div>
                 </template>
 
                 <template v-if="isLatestPostLoading">
-                    <div
-                        class="flex items-start gap-3"
+                    <WelcomeQuestion
                         data-testid="welcome-latest-post-loading"
                         dusk="welcome-latest-post-loading"
                     >
-                        <img
-                            src="/images/trypost/icon.png"
-                            alt=""
-                            class="mt-0.5 size-7 shrink-0 rounded-full"
-                        />
-                        <div class="min-w-0 flex-1 space-y-3 pt-1">
+                        <div class="space-y-3">
                             <Skeleton class="h-4 w-48" />
                             <Skeleton class="aspect-square max-w-sm rounded-2xl" />
                             <Skeleton class="h-4 w-full max-w-sm" />
                             <Skeleton class="h-16 max-w-sm rounded-2xl" />
                         </div>
-                    </div>
+                    </WelcomeQuestion>
                 </template>
 
                 <template v-if="showLatestPost && latestPost">
-                    <div class="flex items-start gap-3">
-                        <img
-                            src="/images/trypost/icon.png"
-                            alt=""
-                            class="mt-0.5 size-7 shrink-0 rounded-full"
-                        />
-                        <div class="min-w-0 flex-1 pt-1">
-                            <p
-                                class="text-[15px] leading-relaxed text-foreground"
-                            >
-                                {{ $t('welcome.connect.latest_post') }}
-                            </p>
+                    <WelcomeQuestion :title="$t('welcome.connect.latest_post')">
                             <component
                                 :is="latestPost.permalink ? 'a' : 'div'"
                                 :href="latestPost.permalink ?? undefined"
@@ -492,7 +598,7 @@ const pitchMissedCopy = computed((): string => {
                                         ? 'noopener noreferrer'
                                         : undefined
                                 "
-                                class="mt-3 block max-w-sm overflow-hidden rounded-2xl border border-border bg-card"
+                                class="block max-w-sm overflow-hidden rounded-2xl border-2 border-foreground bg-card shadow-2xs"
                                 data-testid="welcome-latest-post"
                                 dusk="welcome-latest-post"
                             >
@@ -527,33 +633,22 @@ const pitchMissedCopy = computed((): string => {
                                     </p>
                                 </div>
                             </component>
-                        </div>
-                    </div>
+                    </WelcomeQuestion>
 
-                    <div class="flex items-start gap-3">
-                        <img
-                            src="/images/trypost/icon.png"
-                            alt=""
-                            class="mt-0.5 size-7 shrink-0 rounded-full"
-                        />
-                        <div
-                            class="min-w-0 flex-1 space-y-3 pt-1"
-                            data-testid="welcome-reach-pitch"
-                            dusk="welcome-reach-pitch"
-                        >
-                            <p
-                                class="text-[15px] leading-relaxed text-foreground"
-                            >
-                                {{ pitchViewsCopy }}
-                            </p>
+                    <WelcomeQuestion
+                        :title="pitchViewsCopy"
+                        data-testid="welcome-reach-pitch"
+                        dusk="welcome-reach-pitch"
+                    >
+                        <div class="space-y-3">
                             <p
                                 v-if="pitchMissedCopy"
-                                class="text-[15px] leading-relaxed text-foreground"
+                                class="text-sm leading-relaxed text-foreground"
                             >
                                 {{ pitchMissedCopy }}
                             </p>
                             <div
-                                class="max-w-sm space-y-2 rounded-2xl border border-border bg-card px-4 py-3"
+                                class="max-w-sm space-y-2 rounded-2xl border-2 border-foreground bg-card px-4 py-3 shadow-2xs"
                             >
                                 <div
                                     v-for="row in reachRows"
@@ -606,52 +701,70 @@ const pitchMissedCopy = computed((): string => {
                                 </div>
                             </div>
                             <p
-                                class="text-[15px] leading-relaxed text-foreground"
+                                class="text-sm leading-relaxed text-foreground"
                             >
                                 {{ $t('welcome.connect.pitch_sales') }}
                             </p>
                         </div>
-                    </div>
+                    </WelcomeQuestion>
                 </template>
+
+                <template v-if="showPublishMethod">
+                    <WelcomeQuestion
+                        :title="$t('welcome.publish_method.title')"
+                        :description="$t('welcome.publish_method.description')"
+                    />
+                    <PublishMethodChips
+                        :methods="publishMethods"
+                        :model-value="publishMethodForm.publish_method"
+                        :disabled="publishMethodForm.processing"
+                        @update:model-value="onPublishMethodSelected"
+                    />
+                    <WelcomeQuestion
+                        v-if="showMcpSetup"
+                        :title="$t('welcome.publish_method.mcp')"
+                        data-testid="welcome-mcp-setup"
+                        dusk="welcome-mcp-setup"
+                    >
+                        <McpPrimarySetup
+                            :mcp-url="mcpUrl"
+                            :copied-message="$t('mcp.copied')"
+                        />
+                    </WelcomeQuestion>
+                </template>
+                </div>
             </div>
 
-            <div class="sticky bottom-0 bg-background pt-2 pb-5">
-                <div class="mb-3">
+            <div
+                v-if="showStickyFooter"
+                class="sticky bottom-0 bg-background pt-2 pb-5"
+            >
+                <div v-if="showStickyPicker" class="mb-3">
                     <PersonaChips
                         v-if="step === 'persona'"
-                        v-model="personaForm.persona"
+                        :model-value="personaForm.persona"
                         :personas="personas"
+                        :disabled="personaForm.processing"
+                        @update:model-value="onPersonaSelected"
                     />
                     <GoalChips
                         v-else-if="step === 'goals'"
-                        v-model="goalsForm.goals"
+                        :model-value="goalsForm.goals"
                         :goals="goals"
+                        :disabled="goalsForm.processing"
+                        @update:model-value="onGoalsSelected"
                     />
                     <ReferralChips
                         v-else-if="step === 'referral'"
-                        v-model="referralForm.referral_source"
+                        :model-value="referralForm.referral_source"
                         :sources="sources"
+                        :disabled="referralForm.processing"
+                        @update:model-value="onReferralSelected"
                     />
                     <PlatformChips
-                        v-else-if="
-                            step === 'connect' &&
-                            selectedNetwork === '' &&
-                            platforms.length > 0
-                        "
+                        v-else-if="showPlatformPicker"
                         v-model="selectedNetwork"
                         :platforms="platforms"
-                    />
-                    <NetworkConnectGrid
-                        v-else-if="
-                            step === 'connect' &&
-                            selectedNetworkNeedsAction &&
-                            selectedPlatforms.length > 0
-                        "
-                        variant="list"
-                        :platforms="selectedPlatforms"
-                        :connected-accounts="accounts"
-                        data-testid="welcome-connect-grid"
-                        dusk="welcome-connect-grid"
                     />
                 </div>
 
@@ -668,13 +781,18 @@ const pitchMissedCopy = computed((): string => {
                     :message="referralForm.errors.referral_source"
                 />
                 <InputError
-                    v-else
+                    v-else-if="connectForm.errors.connect"
                     :message="connectForm.errors.connect"
                     dusk="welcome-connect-error"
                 />
+                <InputError
+                    v-else
+                    :message="publishMethodForm.errors.publish_method"
+                />
 
                 <div
-                    class="mt-2 flex items-end gap-2 rounded-3xl border border-border bg-card p-2 shadow-xs"
+                    v-if="showComposer"
+                    class="mt-2 flex items-end gap-2 rounded-3xl border-2 border-foreground bg-card p-2 shadow-2xs"
                 >
                     <p
                         class="min-h-10 flex-1 px-3 py-2 text-sm leading-relaxed"
@@ -687,46 +805,6 @@ const pitchMissedCopy = computed((): string => {
                         {{ composerDraft }}
                     </p>
                     <Button
-                        v-if="step === 'persona'"
-                        type="button"
-                        size="icon"
-                        class="rounded-full"
-                        :disabled="!canSubmit"
-                        :aria-label="$t('welcome.continue')"
-                        data-testid="welcome-persona-continue"
-                        dusk="welcome-persona-continue"
-                        @click="submitPersona"
-                    >
-                        <IconArrowUp class="size-5" />
-                    </Button>
-                    <Button
-                        v-else-if="step === 'goals'"
-                        type="button"
-                        size="icon"
-                        class="rounded-full"
-                        :disabled="!canSubmit"
-                        :aria-label="$t('welcome.continue')"
-                        data-testid="welcome-goals-continue"
-                        dusk="welcome-goals-continue"
-                        @click="submitGoals"
-                    >
-                        <IconArrowUp class="size-5" />
-                    </Button>
-                    <Button
-                        v-else-if="step === 'referral'"
-                        type="button"
-                        size="icon"
-                        class="rounded-full"
-                        :disabled="!canSubmit"
-                        :aria-label="$t('welcome.continue')"
-                        data-testid="welcome-referral-continue"
-                        dusk="welcome-referral-continue"
-                        @click="submitReferral"
-                    >
-                        <IconArrowUp class="size-5" />
-                    </Button>
-                    <Button
-                        v-else
                         type="button"
                         size="icon"
                         class="rounded-full"

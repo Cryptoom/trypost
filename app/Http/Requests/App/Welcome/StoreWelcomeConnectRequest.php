@@ -62,6 +62,10 @@ class StoreWelcomeConnectRequest extends FormRequest
                 return;
             }
 
+            if ($user->publish_method === null) {
+                $validator->errors()->add('publish_method', __('welcome.publish_method.required'));
+            }
+
             if ($this->connectedPlatforms() === []) {
                 $validator->errors()->add('connect', __('welcome.connect.required'));
             }

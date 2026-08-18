@@ -32,7 +32,7 @@ test('user without subscription is redirected to subscribe', function () {
 
     $response = $this->actingAs($user->fresh())->get(route('app.accounts'));
 
-    $response->assertRedirect(route('app.welcome.persona'));
+    $response->assertRedirect(route('app.welcome'));
 });
 
 test('user with active subscription can access the app', function () {

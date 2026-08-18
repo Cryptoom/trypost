@@ -31,7 +31,7 @@ class EnsureAccountReady
                     return redirect()->route('app.welcome.subscription-required');
                 }
 
-                return redirect()->route('app.welcome.persona');
+                return redirect()->route('app.welcome');
             }
         }
 

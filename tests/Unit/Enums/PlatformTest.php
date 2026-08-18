@@ -9,6 +9,8 @@ test('platform has correct labels', function () {
     expect(Platform::LinkedIn->label())->toBe('LinkedIn');
     expect(Platform::LinkedInPage->label())->toBe('LinkedIn Page');
     expect(Platform::X->label())->toBe('X');
+    expect(Platform::X->welcomeLabel())->toBe('X (Twitter)');
+    expect(Platform::Instagram->welcomeLabel())->toBe('Instagram');
     expect(Platform::TikTok->label())->toBe('TikTok');
     expect(Platform::YouTube->label())->toBe('YouTube Shorts');
     expect(Platform::Facebook->label())->toBe('Facebook Page');
@@ -92,6 +94,25 @@ test('platform reports whether it exposes impression analytics', function (Platf
 test('every platform is classified for impression analytics', function () {
     expect(Platform::cases())->toHaveCount(14);
 });
+
+test('welcome reach comparisons stay inside the same content group', function (Platform $platform, array $expected) {
+    expect($platform->welcomeReachComparisons())->toBe($expected);
+})->with([
+    'instagram' => [Platform::Instagram, [Platform::TikTok, Platform::YouTube, Platform::Instagram, Platform::Pinterest, Platform::Facebook]],
+    'instagram facebook' => [Platform::InstagramFacebook, [Platform::TikTok, Platform::YouTube, Platform::Instagram, Platform::Pinterest, Platform::Facebook]],
+    'tiktok' => [Platform::TikTok, [Platform::TikTok, Platform::YouTube, Platform::Instagram, Platform::Pinterest, Platform::Facebook]],
+    'youtube' => [Platform::YouTube, [Platform::TikTok, Platform::YouTube, Platform::Instagram, Platform::Pinterest, Platform::Facebook]],
+    'pinterest' => [Platform::Pinterest, [Platform::TikTok, Platform::YouTube, Platform::Instagram, Platform::Pinterest, Platform::Facebook]],
+    'facebook' => [Platform::Facebook, [Platform::TikTok, Platform::YouTube, Platform::Instagram, Platform::Pinterest, Platform::Facebook]],
+    'x' => [Platform::X, [Platform::Threads, Platform::LinkedIn, Platform::Bluesky, Platform::Mastodon, Platform::X]],
+    'threads' => [Platform::Threads, [Platform::Threads, Platform::LinkedIn, Platform::Bluesky, Platform::Mastodon, Platform::X]],
+    'linkedin' => [Platform::LinkedIn, [Platform::Threads, Platform::LinkedIn, Platform::Bluesky, Platform::Mastodon, Platform::X]],
+    'linkedin page' => [Platform::LinkedInPage, [Platform::Threads, Platform::LinkedIn, Platform::Bluesky, Platform::Mastodon, Platform::X]],
+    'bluesky' => [Platform::Bluesky, [Platform::Threads, Platform::LinkedIn, Platform::Bluesky, Platform::Mastodon, Platform::X]],
+    'mastodon' => [Platform::Mastodon, [Platform::Threads, Platform::LinkedIn, Platform::Bluesky, Platform::Mastodon, Platform::X]],
+    'telegram' => [Platform::Telegram, [Platform::Threads, Platform::LinkedIn, Platform::Bluesky, Platform::Mastodon, Platform::X]],
+    'discord' => [Platform::Discord, [Platform::Threads, Platform::LinkedIn, Platform::Bluesky, Platform::Mastodon, Platform::X]],
+]);
 
 test('platform supports text only correctly', function () {
     expect(Platform::LinkedIn->supportsTextOnly())->toBeTrue();

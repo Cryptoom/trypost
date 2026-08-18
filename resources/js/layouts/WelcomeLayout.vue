@@ -1,14 +1,8 @@
 <script setup lang="ts">
 import { Link } from '@inertiajs/vue3';
-import { computed } from 'vue';
 
 import Toast from '@/components/Toast.vue';
-import {
-    connect as connectRoute,
-    goals as goalsRoute,
-    persona as personaRoute,
-    referralSource as referralSourceRoute,
-} from '@/routes/app/welcome';
+import { welcome } from '@/routes/app';
 
 const maxWidthClass = {
     sm: 'max-w-sm',
@@ -44,12 +38,9 @@ const props = withDefaults(
     },
 );
 
-const stepRoutes = computed(() => [
-    personaRoute(),
-    goalsRoute(),
-    referralSourceRoute(),
-    connectRoute(),
-]);
+const emit = defineEmits<{
+    selectStep: [step: number];
+}>();
 
 const canNavigateTo = (stepNumber: number): boolean =>
     props.step !== undefined && stepNumber < props.step;
@@ -78,14 +69,11 @@ const canNavigateTo = (stepNumber: number): boolean =>
                 "
             >
                 <div
-                    :class="[
-                        'flex flex-col items-center gap-4',
-                        chat &&
-                            'sticky top-0 z-10 border-b border-border/60 bg-background/80 px-6 py-4 backdrop-blur-sm',
-                    ]"
+                    v-if="!chat"
+                    class="flex flex-col items-center gap-4"
                 >
                     <Link
-                        :href="personaRoute()"
+                        :href="welcome()"
                         class="flex flex-col items-center gap-2 font-medium"
                     >
                         <img
@@ -109,9 +97,9 @@ const canNavigateTo = (stepNumber: number): boolean =>
                             v-for="stepNumber in totalSteps"
                             :key="stepNumber"
                         >
-                            <Link
+                            <button
                                 v-if="canNavigateTo(stepNumber)"
-                                :href="stepRoutes[stepNumber - 1]"
+                                type="button"
                                 class="flex h-6 w-8 items-center"
                                 :aria-label="
                                     $t('welcome.go_to_step', {
@@ -120,11 +108,12 @@ const canNavigateTo = (stepNumber: number): boolean =>
                                 "
                                 :data-testid="`welcome-step-${stepNumber}`"
                                 :dusk="`welcome-step-${stepNumber}`"
+                                @click="emit('selectStep', stepNumber)"
                             >
                                 <span
                                     class="h-2 w-full rounded-full bg-primary transition-opacity hover:opacity-70 motion-reduce:transition-none"
                                 />
-                            </Link>
+                            </button>
                             <div
                                 v-else
                                 class="flex h-6 w-8 items-center"
@@ -163,7 +152,7 @@ const canNavigateTo = (stepNumber: number): boolean =>
                 <div
                     :class="
                         chat
-                            ? 'flex min-h-0 flex-1 flex-col px-4 md:px-6'
+                            ? 'flex flex-1 flex-col px-4 md:px-6'
                             : undefined
                     "
                 >

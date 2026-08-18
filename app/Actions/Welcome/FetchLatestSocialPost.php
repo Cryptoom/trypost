@@ -437,16 +437,8 @@ class FetchLatestSocialPost
      */
     private function missedNetworks(Platform $platform, int $eachViews): array
     {
-        $preferred = [
-            Platform::TikTok,
-            Platform::YouTube,
-            Platform::Instagram,
-            Platform::Facebook,
-            Platform::X,
-        ];
-
-        return collect($preferred)
-            ->filter(fn (Platform $candidate): bool => $candidate->isEnabled())
+        return collect($platform->welcomeReachComparisons())
+            ->filter(fn (Platform $candidate): bool => $candidate->isConnectable())
             ->reject(fn (Platform $candidate): bool => $candidate->network() === $platform->network())
             ->take(2)
             ->map(fn (Platform $candidate): array => [

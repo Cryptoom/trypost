@@ -72,6 +72,14 @@ enum Platform: string
         };
     }
 
+    public function welcomeLabel(): string
+    {
+        return match ($this) {
+            self::X => 'X (Twitter)',
+            default => $this->label(),
+        };
+    }
+
     public function color(): string
     {
         return match ($this) {
@@ -282,6 +290,37 @@ enum Platform: string
             self::Pinterest, self::LinkedInPage => true,
             self::LinkedIn, self::Bluesky, self::Mastodon,
             self::Telegram, self::Discord => false,
+        };
+    }
+
+    /**
+     * Welcome reach pitch: compare video/visual networks with other visual
+     * networks, and text/feed networks with other text networks.
+     *
+     * @return list<self>
+     */
+    public function welcomeReachComparisons(): array
+    {
+        $video = [
+            self::TikTok,
+            self::YouTube,
+            self::Instagram,
+            self::Pinterest,
+            self::Facebook,
+        ];
+
+        $text = [
+            self::Threads,
+            self::LinkedIn,
+            self::Bluesky,
+            self::Mastodon,
+            self::X,
+        ];
+
+        return match ($this) {
+            self::Instagram, self::InstagramFacebook, self::TikTok,
+            self::YouTube, self::Pinterest, self::Facebook => $video,
+            default => $text,
         };
     }
 

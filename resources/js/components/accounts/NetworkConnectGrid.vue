@@ -7,6 +7,7 @@ import { toast } from 'vue-sonner';
 
 import InstagramConnectDialog from '@/components/accounts/InstagramConnectDialog.vue';
 import TelegramConnectDialog from '@/components/accounts/TelegramConnectDialog.vue';
+import { welcomePlatformLabel } from '@/components/welcome/welcomePlatformLabel';
 import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.vue';
 import { Button } from '@/components/ui/button';
 import { useOAuthPopup } from '@/composables/useOAuthPopup';
@@ -262,12 +263,12 @@ const cardState = computed((): Record<string, CardStateValue> => {
 
 <template>
     <div>
-        <div v-if="variant === 'list'" class="flex flex-col gap-2">
+        <div v-if="variant === 'list'" class="flex flex-wrap gap-2">
             <Button
                 v-for="platform in platforms"
                 :key="platform.value"
-                size="lg"
-                class="w-full rounded-full"
+                size="sm"
+                class="rounded-full px-3.5"
                 :variant="
                     cardState[platform.value] === CardState.Connect
                         ? 'default'
@@ -284,7 +285,7 @@ const cardState = computed((): Record<string, CardStateValue> => {
                 <img
                     :src="themeFor(platform.value).image"
                     alt=""
-                    class="size-5 rounded-sm"
+                    class="size-4 rounded-sm"
                     loading="lazy"
                 />
                 <span v-if="cardState[platform.value] === CardState.Reconnect">
@@ -299,11 +300,7 @@ const cardState = computed((): Record<string, CardStateValue> => {
                 </span>
                 <span v-else>
                     {{ $t('accounts.connect_cta') }}
-                    {{
-                        platform.label.includes('(')
-                            ? platform.label.split('(')[0].trim()
-                            : platform.label
-                    }}
+                    {{ welcomePlatformLabel(platform.label) }}
                 </span>
             </Button>
         </div>

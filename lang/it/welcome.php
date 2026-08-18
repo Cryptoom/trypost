@@ -71,4 +71,12 @@ return [
         'change_network' => 'Cambia rete',
         'required' => 'Collega almeno un account social per continuare.',
     ],
+    'publish_method' => [
+        'title' => 'Will you schedule your posts manually or with AI?',
+        'description' => 'Manually, you write and schedule in TryPost. With AI, Claude, ChatGPT, or Cursor publish for you.',
+        'manual' => 'Manually',
+        'ai' => 'With AI',
+        'mcp' => 'Connect Claude, ChatGPT, or Cursor to publish from there.',
+        'required' => 'Choose whether you\'ll schedule manually or with AI.',
+    ],
 ];

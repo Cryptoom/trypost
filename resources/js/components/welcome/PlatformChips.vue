@@ -2,25 +2,29 @@
 import { IconCheck } from '@tabler/icons-vue';
 
 import type { AvailablePlatform } from '@/components/accounts/NetworkConnectGrid.vue';
+import { welcomePlatformLabel } from '@/components/welcome/welcomePlatformLabel';
+import { getPlatformLogo } from '@/composables/usePlatformLogo';
 
-const props = defineProps<{
-    platforms: AvailablePlatform[];
-    modelValue: string;
-}>();
+const props = withDefaults(
+    defineProps<{
+        platforms: AvailablePlatform[];
+        modelValue: string;
+        readonly?: boolean;
+    }>(),
+    {
+        readonly: false,
+    },
+);
 
 const emit = defineEmits<{
     'update:modelValue': [value: string];
 }>();
 
-const logoFor = (value: string): string =>
-    value === 'instagram-facebook'
-        ? '/images/accounts/instagram.png'
-        : `/images/accounts/${value}.png`;
-
-const shortLabel = (label: string): string =>
-    label.includes('(') ? label.split('(')[0].trim() : label;
-
 const select = (value: string): void => {
+    if (props.readonly) {
+        return;
+    }
+
     emit('update:modelValue', value);
 };
 </script>
@@ -34,25 +38,39 @@ const select = (value: string): void => {
             :aria-pressed="props.modelValue === platform.value"
             :data-testid="`welcome-platform-${platform.value}`"
             :dusk="`welcome-platform-${platform.value}`"
+            :disabled="props.readonly"
             :class="[
-                'inline-flex cursor-pointer items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm transition-colors',
+                'inline-flex items-center gap-2 rounded-full border-2 border-foreground py-1.5 ps-1.5 pe-3 text-start shadow-2xs',
+                props.readonly
+                    ? 'cursor-default'
+                    : 'cursor-pointer transition-shadow hover:shadow-md',
                 props.modelValue === platform.value
-                    ? 'border-primary/40 bg-primary/10 text-foreground'
-                    : 'border-border bg-background text-foreground hover:bg-muted',
+                    ? 'bg-violet-100'
+                    : 'bg-card',
             ]"
             @click="select(platform.value)"
         >
-            <img
-                :src="logoFor(platform.value)"
-                alt=""
-                class="size-3.5 rounded-sm"
-            />
-            <span>{{ shortLabel(platform.label) }}</span>
-            <IconCheck
+            <span
+                class="inline-flex size-6 shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-foreground shadow-2xs"
+            >
+                <img
+                    :src="getPlatformLogo(platform.value)"
+                    alt=""
+                    class="size-full object-cover"
+                />
+            </span>
+            <span class="text-sm font-bold tracking-tight text-foreground">
+                {{ welcomePlatformLabel(platform.label) }}
+            </span>
+            <span
                 v-if="props.modelValue === platform.value"
-                class="size-3.5 text-primary"
-                stroke-width="2.5"
-            />
+                class="inline-flex size-4 shrink-0 items-center justify-center rounded-full border-2 border-foreground bg-foreground"
+            >
+                <IconCheck
+                    class="size-2.5 text-background"
+                    stroke-width="3"
+                />
+            </span>
         </button>
     </div>
 </template>

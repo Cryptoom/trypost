@@ -588,7 +588,7 @@ test('unsubscribed accounts are redirected to welcome by middleware', function (
         ? $this->get(route($routeName, $params))
         : $this->post(route($routeName, $params));
 
-    $response->assertRedirect(route('app.welcome.persona'));
+    $response->assertRedirect(route('app.welcome'));
 })->with([
     'index' => ['app.onboarding', 'get'],
     'skip step' => ['app.onboarding.mcp.skip', 'post'],

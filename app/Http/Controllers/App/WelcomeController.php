@@ -13,10 +13,12 @@ use App\Enums\SocialAccount\Platform as SocialPlatform;
 use App\Enums\SocialAccount\Status;
 use App\Enums\User\Goal;
 use App\Enums\User\Persona;
+use App\Enums\User\PublishMethod;
 use App\Enums\User\ReferralSource;
 use App\Http\Requests\App\Welcome\StoreWelcomeConnectRequest;
 use App\Http\Requests\App\Welcome\StoreWelcomeGoalsRequest;
 use App\Http\Requests\App\Welcome\StoreWelcomePersonaRequest;
+use App\Http\Requests\App\Welcome\StoreWelcomePublishMethodRequest;
 use App\Http\Requests\App\Welcome\StoreWelcomeReferralSourceRequest;
 use App\Http\Resources\App\SocialAccountResource;
 use App\Models\Plan;
@@ -32,20 +34,60 @@ use Throwable;
 
 class WelcomeController extends Controller
 {
-    public function persona(Request $request): InertiaResponse|RedirectResponse
+    public function show(Request $request, FetchLatestSocialPost $fetchLatest): InertiaResponse|RedirectResponse
     {
         if ($redirect = $this->redirectIfUnavailable($request)) {
             return $redirect;
         }
 
         $user = $request->user();
+        $step = $this->currentStep($user);
 
-        return Inertia::render('welcome/Chat', [
-            'step' => 'persona',
-            'history' => $this->chatHistory($user, 'persona'),
+        $props = [
+            'step' => $step,
+            'history' => $this->chatHistory($user, $step),
             'personas' => array_map(fn (Persona $persona): string => $persona->value, Persona::cases()),
             'selectedPersona' => $user->persona?->value,
-        ]);
+            'goals' => array_map(fn (Goal $goal): string => $goal->value, Goal::cases()),
+            'selectedGoals' => $user->goals ?? [],
+            'sources' => array_map(fn (ReferralSource $source): string => $source->value, ReferralSource::cases()),
+            'selectedReferral' => $user->referral_source?->value,
+            'publishMethods' => array_map(fn (PublishMethod $method): string => $method->value, PublishMethod::cases()),
+            'selectedPublishMethod' => $user->publish_method?->value,
+        ];
+
+        if ($step === 'connect') {
+            $workspace = $user->currentWorkspace;
+
+            abort_unless($workspace !== null, Response::HTTP_NOT_FOUND);
+
+            $accounts = $workspace->socialAccounts()->orderBy('id')->get();
+            $connected = $accounts->first(
+                fn (SocialAccount $account): bool => $account->status === Status::Connected
+                    && $account->platform->supportsImpressionAnalytics(),
+            );
+
+            $props['platforms'] = array_map(
+                function (array $option): array {
+                    $platform = SocialPlatform::tryFrom((string) data_get($option, 'value'));
+
+                    if ($platform !== null) {
+                        $option['label'] = $platform->welcomeLabel();
+                    }
+
+                    return $option;
+                },
+                SocialPlatform::connectableOptions(),
+            );
+            $props['accounts'] = SocialAccountResource::collection($accounts)->resolve();
+            $props['latestPostNetwork'] = $connected?->platform->network();
+            $props['latestPost'] = $connected !== null
+                ? Inertia::defer(fn (): ?array => $fetchLatest->handle($connected))
+                : null;
+            $props['mcpUrl'] = route('mcp.trypost');
+        }
+
+        return Inertia::render('welcome/Chat', $props);
     }
 
     public function storePersona(StoreWelcomePersonaRequest $request, PostHogService $postHog): RedirectResponse
@@ -69,23 +111,7 @@ class WelcomeController extends Controller
             $user->account,
         );
 
-        return redirect()->route('app.welcome.goals');
-    }
-
-    public function goals(Request $request): InertiaResponse|RedirectResponse
-    {
-        if ($redirect = $this->redirectIfStepIncomplete($request)) {
-            return $redirect;
-        }
-
-        $user = $request->user();
-
-        return Inertia::render('welcome/Chat', [
-            'step' => 'goals',
-            'history' => $this->chatHistory($user, 'goals'),
-            'goals' => array_map(fn (Goal $goal): string => $goal->value, Goal::cases()),
-            'selectedGoals' => $user->goals ?? [],
-        ]);
+        return redirect()->route('app.welcome');
     }
 
     public function storeGoals(StoreWelcomeGoalsRequest $request, PostHogService $postHog): RedirectResponse
@@ -109,23 +135,7 @@ class WelcomeController extends Controller
             $user->account,
         );
 
-        return redirect()->route('app.welcome.referral-source');
-    }
-
-    public function referralSource(Request $request): InertiaResponse|RedirectResponse
-    {
-        if ($redirect = $this->redirectIfStepIncomplete($request, requireGoals: true)) {
-            return $redirect;
-        }
-
-        $user = $request->user();
-
-        return Inertia::render('welcome/Chat', [
-            'step' => 'referral',
-            'history' => $this->chatHistory($user, 'referral'),
-            'sources' => array_map(fn (ReferralSource $source): string => $source->value, ReferralSource::cases()),
-            'selectedReferral' => $user->referral_source?->value,
-        ]);
+        return redirect()->route('app.welcome');
     }
 
     public function storeReferralSource(
@@ -151,35 +161,42 @@ class WelcomeController extends Controller
             $user->account,
         );
 
-        return redirect()->route('app.welcome.connect');
+        return redirect()->route('app.welcome');
     }
 
-    public function connect(Request $request, FetchLatestSocialPost $fetchLatest): InertiaResponse|RedirectResponse
-    {
+    public function storePublishMethod(
+        StoreWelcomePublishMethodRequest $request,
+        PostHogService $postHog,
+    ): RedirectResponse {
         if ($redirect = $this->redirectIfStepIncomplete($request, requireGoals: true, requireReferral: true)) {
             return $redirect;
         }
 
-        $workspace = $request->user()->currentWorkspace;
+        $user = $request->user();
+        $workspace = $user->currentWorkspace;
 
-        abort_unless($workspace !== null, Response::HTTP_NOT_FOUND);
+        if (
+            $workspace === null
+            || $workspace->socialAccounts()->where('status', Status::Connected)->doesntExist()
+        ) {
+            return redirect()->route('app.welcome');
+        }
 
-        $accounts = $workspace->socialAccounts()->orderBy('id')->get();
-        $connected = $accounts->first(
-            fn (SocialAccount $account): bool => $account->status === Status::Connected
-                && $account->platform->supportsImpressionAnalytics(),
+        $publishMethod = (string) $request->validated('publish_method');
+
+        $user->update(['publish_method' => $publishMethod]);
+
+        $postHog->identify($user->id, [
+            'publish_method' => $publishMethod,
+        ]);
+        $postHog->capture(
+            $user->id,
+            WelcomeEvent::PublishMethod->value,
+            ['publish_method' => $publishMethod],
+            $user->account,
         );
 
-        return Inertia::render('welcome/Chat', [
-            'step' => 'connect',
-            'history' => $this->chatHistory($request->user(), 'connect'),
-            'platforms' => SocialPlatform::connectableOptions(),
-            'accounts' => SocialAccountResource::collection($accounts)->resolve(),
-            'latestPostNetwork' => $connected?->platform->network(),
-            'latestPost' => $connected !== null
-                ? Inertia::defer(fn (): ?array => $fetchLatest->handle($connected))
-                : null,
-        ]);
+        return redirect()->route('app.welcome');
     }
 
     public function storeConnect(
@@ -204,7 +221,7 @@ class WelcomeController extends Controller
         $response = $checkout->redirect(
             $user->account,
             $priceId,
-            route('app.welcome.connect'),
+            route('app.welcome'),
         );
 
         try {
@@ -236,12 +253,29 @@ class WelcomeController extends Controller
         }
 
         if ($user->isAccountOwner()) {
-            return redirect()->route('app.welcome.persona');
+            return redirect()->route('app.welcome');
         }
 
         return Inertia::render('welcome/SubscriptionRequired', [
             'ownerName' => $user->account?->owner?->name,
         ]);
+    }
+
+    private function currentStep(User $user): string
+    {
+        if (! $user->persona) {
+            return 'persona';
+        }
+
+        if (! Goal::containsCurrent($user->goals)) {
+            return 'goals';
+        }
+
+        if (! $user->referral_source) {
+            return 'referral';
+        }
+
+        return 'connect';
     }
 
     private function redirectIfStepIncomplete(
@@ -256,15 +290,15 @@ class WelcomeController extends Controller
         $user = $request->user();
 
         if (! $user->persona) {
-            return redirect()->route('app.welcome.persona');
+            return redirect()->route('app.welcome');
         }
 
         if ($requireGoals && ! Goal::containsCurrent($user->goals)) {
-            return redirect()->route('app.welcome.goals');
+            return redirect()->route('app.welcome');
         }
 
         if ($requireReferral && ! $user->referral_source) {
-            return redirect()->route('app.welcome.referral-source');
+            return redirect()->route('app.welcome');
         }
 
         return null;

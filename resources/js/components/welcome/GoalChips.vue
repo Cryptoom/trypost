@@ -15,10 +15,18 @@ import {
 import { trans } from 'laravel-vue-i18n';
 import type { FunctionalComponent } from 'vue';
 
-const props = defineProps<{
-    goals: string[];
-    modelValue: string[];
-}>();
+const props = withDefaults(
+    defineProps<{
+        goals: string[];
+        modelValue: string[];
+        disabled?: boolean;
+        readonly?: boolean;
+    }>(),
+    {
+        disabled: false,
+        readonly: false,
+    },
+);
 
 const emit = defineEmits<{
     'update:modelValue': [value: string[]];
@@ -96,6 +104,10 @@ const goalLabel = (value: string): string => trans(`welcome.goals.${value}`);
 const isSelected = (value: string): boolean => props.modelValue.includes(value);
 
 const toggle = (value: string): void => {
+    if (props.readonly || props.disabled) {
+        return;
+    }
+
     if (value === EXCLUSIVE_GOAL) {
         emit('update:modelValue', isSelected(value) ? [] : [value]);
 
@@ -124,25 +136,40 @@ const toggle = (value: string): void => {
             :aria-pressed="isSelected(goal)"
             :data-testid="`welcome-goal-${goal}`"
             :dusk="`welcome-goal-${goal}`"
+            :disabled="props.disabled || props.readonly"
             :class="[
-                'inline-flex cursor-pointer items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm transition-colors',
-                isSelected(goal)
-                    ? 'border-primary/40 bg-primary/10 text-foreground'
-                    : 'border-border bg-background text-foreground hover:bg-muted',
+                'inline-flex items-center gap-2 rounded-full border-2 border-foreground py-1.5 ps-1.5 pe-3 text-start shadow-2xs',
+                props.readonly
+                    ? 'cursor-default'
+                    : 'cursor-pointer transition-shadow hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60',
+                isSelected(goal) ? 'bg-violet-100' : 'bg-card',
             ]"
             @click="toggle(goal)"
         >
-            <component
-                :is="metaFor(goal).icon"
-                :class="[metaFor(goal).iconClass, 'size-3.5']"
-                stroke-width="2"
-            />
-            <span>{{ goalLabel(goal) }}</span>
-            <IconCheck
+            <span
+                :class="[
+                    'inline-flex size-6 shrink-0 items-center justify-center rounded-full border-2 border-foreground shadow-2xs',
+                    metaFor(goal).badge,
+                ]"
+            >
+                <component
+                    :is="metaFor(goal).icon"
+                    :class="[metaFor(goal).iconClass, 'size-3.5']"
+                    stroke-width="2"
+                />
+            </span>
+            <span class="text-sm font-bold tracking-tight text-foreground">
+                {{ goalLabel(goal) }}
+            </span>
+            <span
                 v-if="isSelected(goal)"
-                class="size-3.5 text-primary"
-                stroke-width="2.5"
-            />
+                class="inline-flex size-4 shrink-0 items-center justify-center rounded-full border-2 border-foreground bg-foreground"
+            >
+                <IconCheck
+                    class="size-2.5 text-background"
+                    stroke-width="3"
+                />
+            </span>
         </button>
     </div>
 </template>

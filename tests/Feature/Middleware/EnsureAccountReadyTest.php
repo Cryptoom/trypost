@@ -17,7 +17,7 @@ test('redirects owners to welcome when account has no active subscription', func
 
     $this->actingAs($user)
         ->get(route('app.calendar'))
-        ->assertRedirect(route('app.welcome.persona'));
+        ->assertRedirect(route('app.welcome'));
 });
 
 test('redirects members without app access straight to subscription required', function () {

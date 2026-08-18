@@ -21,10 +21,18 @@ import {
 import { trans } from 'laravel-vue-i18n';
 import type { FunctionalComponent } from 'vue';
 
-const props = defineProps<{
-    sources: string[];
-    modelValue: string;
-}>();
+const props = withDefaults(
+    defineProps<{
+        sources: string[];
+        modelValue: string;
+        disabled?: boolean;
+        readonly?: boolean;
+    }>(),
+    {
+        disabled: false,
+        readonly: false,
+    },
+);
 
 const emit = defineEmits<{
     'update:modelValue': [value: string];
@@ -138,6 +146,10 @@ const sourceLabel = (value: string): string =>
 const isSelected = (value: string): boolean => props.modelValue === value;
 
 const select = (value: string): void => {
+    if (props.disabled || props.readonly) {
+        return;
+    }
+
     emit('update:modelValue', value);
 };
 </script>
@@ -149,19 +161,21 @@ const select = (value: string): void => {
             :key="source"
             type="button"
             :aria-pressed="isSelected(source)"
+            :disabled="props.disabled || props.readonly"
             :data-testid="`welcome-source-${source}`"
             :dusk="`welcome-source-${source}`"
             :class="[
-                'inline-flex cursor-pointer items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm transition-colors',
-                isSelected(source)
-                    ? 'border-primary/40 bg-primary/10 text-foreground'
-                    : 'border-border bg-background text-foreground hover:bg-muted',
+                'inline-flex items-center gap-2 rounded-full border-2 border-foreground py-1.5 ps-1.5 pe-3 text-start shadow-2xs',
+                props.readonly
+                    ? 'cursor-default'
+                    : 'cursor-pointer transition-shadow hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60',
+                isSelected(source) ? 'bg-violet-100' : 'bg-card',
             ]"
             @click="select(source)"
         >
             <span
                 :class="[
-                    'inline-flex size-5 shrink-0 items-center justify-center rounded-full',
+                    'inline-flex size-6 shrink-0 items-center justify-center rounded-full border-2 border-foreground shadow-2xs',
                     metaFor(source).badge,
                 ]"
             >
@@ -178,12 +192,18 @@ const select = (value: string): void => {
                     stroke-width="2"
                 />
             </span>
-            <span>{{ sourceLabel(source) }}</span>
-            <IconCheck
+            <span class="text-sm font-bold tracking-tight text-foreground">
+                {{ sourceLabel(source) }}
+            </span>
+            <span
                 v-if="isSelected(source)"
-                class="size-3.5 text-primary"
-                stroke-width="2.5"
-            />
+                class="inline-flex size-4 shrink-0 items-center justify-center rounded-full border-2 border-foreground bg-foreground"
+            >
+                <IconCheck
+                    class="size-2.5 text-background"
+                    stroke-width="3"
+                />
+            </span>
         </button>
     </div>
 </template>
