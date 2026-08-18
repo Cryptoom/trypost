@@ -32,7 +32,7 @@ test('the instructions carry the workspace brand and content language', function
 
     expect($instructions)->toContain('Acme Co')
         ->and($instructions)->toContain('We sell anvils.')
-        ->and($instructions)->toContain('es')
+        ->and($instructions)->toContain('Content language: es')
         ->and($instructions)->toContain('playful')
         ->and($instructions)->toContain('confident')
         ->and($instructions)->toContain('linkedin');
