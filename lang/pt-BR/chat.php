@@ -22,6 +22,6 @@ return [
     ],
     'approvals' => [
         'publish' => 'Publicar este post agora? Ele ficará no ar imediatamente em todas as plataformas habilitadas, e algumas — como o TikTok — não oferecem forma de despublicar depois.',
-        'delete_published' => 'Este post não é um rascunho, então excluí-lo não pode ser desfeito no TryPost. Se ele já estiver no ar em uma plataforma que não oferece remoção automática, como o TikTok, continuará visível lá até você excluí-lo manualmente. Excluir mesmo assim?',
+        'delete_scheduled' => 'Excluir este post não pode ser desfeito. Se ele estiver agendado para publicar, isso também cancela o agendamento. Excluir mesmo assim?',
     ],
 ];

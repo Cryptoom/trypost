@@ -22,6 +22,6 @@ return [
     ],
     'approvals' => [
         'publish' => 'Opublikować ten post teraz? Pojawi się natychmiast na każdej włączonej platformie, a niektóre platformy — jak TikTok — nie dają możliwości cofnięcia publikacji.',
-        'delete_published' => 'Ten post nie jest szkicem, więc usunięcia nie da się cofnąć w TryPost. Jeśli jest już widoczny na platformie, która nie obsługuje automatycznego usuwania, np. TikTok, pozostanie tam widoczny, dopóki nie usuniesz go ręcznie. Usunąć mimo to?',
+        'delete_scheduled' => 'Usunięcia tego posta nie da się cofnąć. Jeśli jest zaplanowany do publikacji, to również anuluje ten plan. Usunąć mimo to?',
     ],
 ];

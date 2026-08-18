@@ -22,6 +22,6 @@ return [
     ],
     'approvals' => [
         'publish' => 'Diesen Beitrag jetzt veröffentlichen? Er geht sofort auf allen aktivierten Plattformen live, und manche — wie TikTok — bieten danach keine Möglichkeit, ihn wieder zu entfernen.',
-        'delete_published' => 'Dieser Beitrag ist kein Entwurf, das Löschen lässt sich in TryPost also nicht rückgängig machen. Ist er bereits auf einer Plattform live, die keine automatische Entfernung unterstützt, etwa TikTok, bleibt er dort sichtbar, bis du ihn manuell löschst. Trotzdem löschen?',
+        'delete_scheduled' => 'Das Löschen dieses Beitrags lässt sich nicht rückgängig machen. Ist er zur Veröffentlichung geplant, wird dadurch auch das abgebrochen. Trotzdem löschen?',
     ],
 ];

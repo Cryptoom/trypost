@@ -22,6 +22,6 @@ return [
     ],
     'approvals' => [
         'publish' => 'Publier ce post maintenant ? Il sera immédiatement en ligne sur chaque plateforme activée, et certaines — comme TikTok — n’offrent aucun moyen de le dépublier ensuite.',
-        'delete_published' => 'Ce post n’est pas un brouillon, sa suppression est donc irréversible dans TryPost. S’il est déjà en ligne sur une plateforme qui ne prend pas en charge la suppression automatique, comme TikTok, il y restera visible jusqu’à ce que vous le supprimiez manuellement. Le supprimer quand même ?',
+        'delete_scheduled' => 'La suppression de ce post est irréversible. S’il est programmé pour être publié, cela l’annule aussi. Le supprimer quand même ?',
     ],
 ];

@@ -22,6 +22,6 @@ return [
     ],
     'approvals' => [
         'publish' => '¿Publicar este post ahora? Se publicará de inmediato en todas las plataformas activadas, y algunas — como TikTok — no ofrecen forma de despublicarlo después.',
-        'delete_published' => 'Este post no es un borrador, así que eliminarlo no se puede deshacer en TryPost. Si ya está activo en una plataforma que no admite la eliminación automática, como TikTok, seguirá visible allí hasta que lo elimines a mano. ¿Eliminar de todas formas?',
+        'delete_scheduled' => 'Eliminar este post no se puede deshacer. Si está programado para publicarse, esto también lo cancela. ¿Eliminar de todas formas?',
     ],
 ];

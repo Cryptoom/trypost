@@ -22,6 +22,6 @@ return [
     ],
     'approvals' => [
         'publish' => 'Pubblicare subito questo post? Sarà immediatamente attivo su ogni piattaforma abilitata, e alcune — come TikTok — non offrono modo di rimuoverlo in seguito.',
-        'delete_published' => 'Questo post non è una bozza, quindi eliminarlo non può essere annullato in TryPost. Se è già attivo su una piattaforma che non supporta la rimozione automatica, come TikTok, resterà visibile lì finché non lo elimini manualmente. Eliminare comunque?',
+        'delete_scheduled' => 'L’eliminazione di questo post non può essere annullata. Se è programmato per la pubblicazione, questo lo annulla anche. Eliminare comunque?',
     ],
 ];

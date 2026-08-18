@@ -22,6 +22,6 @@ return [
     ],
     'approvals' => [
         'publish' => 'Bu gönderi şimdi yayınlansın mı? Etkin olan her platformda hemen yayına girer ve TikTok gibi bazı platformlarda daha sonra yayından kaldırmanın bir yolu yoktur.',
-        'delete_published' => 'Bu gönderi taslak değil, bu yüzden TryPost’ta silme işlemi geri alınamaz. Otomatik kaldırmayı desteklemeyen bir platformda zaten yayındaysa, örneğin TikTok, siz elle silene kadar orada görünmeye devam eder. Yine de silinsin mi?',
+        'delete_scheduled' => 'Bu gönderiyi silmek geri alınamaz. Yayınlanmak üzere zamanlanmışsa, bu işlem onu da iptal eder. Yine de silinsin mi?',
     ],
 ];

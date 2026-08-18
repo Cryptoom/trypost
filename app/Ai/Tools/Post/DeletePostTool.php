@@ -18,12 +18,14 @@ use Stringable;
 
 /**
  * Deleting a draft is reversible in every sense that matters — nothing has
- * gone out anywhere — so it runs straight through. Deleting anything else
- * asks for human approval first, and the actual deletion still respects
- * {@see PostStatusRules::blocksDeletion()} — the same rule the web UI
- * enforces — so an approved request against a post that's live on a
- * platform still fails with an honest explanation instead of quietly
- * deleting TryPost's only record of it.
+ * gone out anywhere — so it runs straight through. A post that's already
+ * live on a platform ({@see PostStatusRules::blocksDeletion()} — the same
+ * rule the web UI enforces) can never actually be deleted, so there's
+ * nothing to approve: refuse immediately and say why, rather than asking
+ * the user to confirm an action that's going to fail regardless of their
+ * answer. Approval is reserved for the one case it's meaningful — a
+ * scheduled or failed post, where confirming genuinely cancels something
+ * that would otherwise still happen.
  */
 class DeletePostTool extends WorkspaceTool implements Approvable
 {
@@ -36,7 +38,7 @@ class DeletePostTool extends WorkspaceTool implements Approvable
 
     public function description(): Stringable|string
     {
-        return 'Delete a post from the current workspace. Deleting a draft happens immediately; deleting anything else asks the user to confirm first, and posts that are already live on a platform cannot be deleted at all.';
+        return 'Delete a post from the current workspace. Deleting a draft happens immediately. Deleting a scheduled or failed post asks the user to confirm first, since it cancels something queued to go out. A post already live on a platform cannot be deleted at all.';
     }
 
     /**
@@ -53,11 +55,11 @@ class DeletePostTool extends WorkspaceTool implements Approvable
     {
         $post = $this->resolvePost($request->string('post_id')->value());
 
-        if ($post === null || $post->status === Status::Draft) {
+        if ($post === null || $post->status === Status::Draft || PostStatusRules::blocksDeletion($post)) {
             return false;
         }
 
-        return Approval::required(__('chat.approvals.delete_published'));
+        return Approval::required(__('chat.approvals.delete_scheduled'));
     }
 
     protected function run(Request $request): string

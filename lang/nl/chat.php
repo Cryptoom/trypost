@@ -22,6 +22,6 @@ return [
     ],
     'approvals' => [
         'publish' => 'Deze post nu publiceren? Hij komt meteen live op elk geactiveerd platform, en sommige platforms — zoals TikTok — bieden achteraf geen manier om hem weer offline te halen.',
-        'delete_published' => 'Deze post is geen concept, dus verwijderen kan niet ongedaan worden gemaakt in TryPost. Staat hij al live op een platform dat geen automatische verwijdering ondersteunt, zoals TikTok, dan blijft hij daar zichtbaar tot je hem handmatig verwijdert. Toch verwijderen?',
+        'delete_scheduled' => 'Het verwijderen van deze post kan niet ongedaan worden gemaakt. Staat hij gepland om te publiceren, dan wordt dat hiermee ook geannuleerd. Toch verwijderen?',
     ],
 ];

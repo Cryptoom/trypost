@@ -22,6 +22,6 @@ return [
     ],
     'approvals' => [
         'publish' => 'Publish this post now? It will go live immediately on every enabled platform, and some platforms — like TikTok — offer no way to unpublish afterward.',
-        'delete_published' => "This post isn't a draft, so deleting it can't be undone in TryPost. If it's already live on a platform that doesn't support automatic removal, like TikTok, it will stay live there until you delete it by hand. Delete anyway?",
+        'delete_scheduled' => 'Deleting this post can\'t be undone. If it\'s scheduled to publish, this also cancels that. Delete anyway?',
     ],
 ];
