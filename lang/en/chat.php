@@ -17,5 +17,11 @@ return [
     'tools' => [
         'post_not_found' => 'Post not found.',
         'error' => 'Something went wrong. Please try again.',
+        'publish_no_enabled_platforms' => 'This post has no enabled platforms. Enable at least one before publishing.',
+        'delete_blocked' => "This post has already been published and can't be deleted from TryPost. If it's live on a platform that doesn't support automatic removal, like TikTok, remove it there manually.",
+    ],
+    'approvals' => [
+        'publish' => 'Publish this post now? It will go live immediately on every enabled platform, and some platforms — like TikTok — offer no way to unpublish afterward.',
+        'delete_published' => "This post isn't a draft, so deleting it can't be undone in TryPost. If it's already live on a platform that doesn't support automatic removal, like TikTok, it will stay live there until you delete it by hand. Delete anyway?",
     ],
 ];

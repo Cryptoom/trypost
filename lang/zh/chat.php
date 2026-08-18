@@ -17,5 +17,11 @@ return [
     'tools' => [
         'post_not_found' => '未找到该帖子。',
         'error' => '出了点问题，请重试。',
+        'publish_no_enabled_platforms' => '这条帖子没有启用任何平台，发布前请至少启用一个。',
+        'delete_blocked' => '这条帖子已经发布，无法从 TryPost 中删除。如果它发布在不支持自动删除的平台上（比如 TikTok），你需要去那边手动删除。',
+    ],
+    'approvals' => [
+        'publish' => '现在发布这条帖子吗？它会立即在每个已启用的平台上线，其中有些平台 — 比如 TikTok — 之后没有办法取消发布。',
+        'delete_published' => '这条帖子不是草稿，所以在 TryPost 中删除后无法恢复。如果它已经发布在不支持自动删除的平台上（比如 TikTok），在你手动删除之前它会一直保持上线状态。仍要删除吗？',
     ],
 ];

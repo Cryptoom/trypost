@@ -17,5 +17,11 @@ return [
     'tools' => [
         'post_not_found' => 'Gönderi bulunamadı.',
         'error' => 'Bir şeyler ters gitti. Lütfen tekrar deneyin.',
+        'publish_no_enabled_platforms' => 'Bu gönderide etkin platform yok. Yayınlamadan önce en az birini etkinleştirin.',
+        'delete_blocked' => 'Bu gönderi zaten yayınlandı ve TryPost’tan silinemez. Otomatik kaldırmayı desteklemeyen bir platformda yayındaysa, örneğin TikTok, orada elle silmeniz gerekir.',
+    ],
+    'approvals' => [
+        'publish' => 'Bu gönderi şimdi yayınlansın mı? Etkin olan her platformda hemen yayına girer ve TikTok gibi bazı platformlarda daha sonra yayından kaldırmanın bir yolu yoktur.',
+        'delete_published' => 'Bu gönderi taslak değil, bu yüzden TryPost’ta silme işlemi geri alınamaz. Otomatik kaldırmayı desteklemeyen bir platformda zaten yayındaysa, örneğin TikTok, siz elle silene kadar orada görünmeye devam eder. Yine de silinsin mi?',
     ],
 ];

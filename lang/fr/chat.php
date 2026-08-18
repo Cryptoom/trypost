@@ -17,5 +17,11 @@ return [
     'tools' => [
         'post_not_found' => 'Post introuvable.',
         'error' => 'Une erreur s’est produite. Réessayez.',
+        'publish_no_enabled_platforms' => 'Ce post n’a aucune plateforme activée. Activez-en au moins une avant de publier.',
+        'delete_blocked' => 'Ce post a déjà été publié et ne peut pas être supprimé de TryPost. S’il est en ligne sur une plateforme qui ne prend pas en charge la suppression automatique, comme TikTok, vous devrez le supprimer vous-même là-bas.',
+    ],
+    'approvals' => [
+        'publish' => 'Publier ce post maintenant ? Il sera immédiatement en ligne sur chaque plateforme activée, et certaines — comme TikTok — n’offrent aucun moyen de le dépublier ensuite.',
+        'delete_published' => 'Ce post n’est pas un brouillon, sa suppression est donc irréversible dans TryPost. S’il est déjà en ligne sur une plateforme qui ne prend pas en charge la suppression automatique, comme TikTok, il y restera visible jusqu’à ce que vous le supprimiez manuellement. Le supprimer quand même ?',
     ],
 ];

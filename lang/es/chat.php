@@ -17,5 +17,11 @@ return [
     'tools' => [
         'post_not_found' => 'Post no encontrado.',
         'error' => 'Algo salió mal. Inténtalo de nuevo.',
+        'publish_no_enabled_platforms' => 'Este post no tiene plataformas activadas. Activa al menos una antes de publicar.',
+        'delete_blocked' => 'Este post ya se publicó y no se puede eliminar de TryPost. Si está activo en una plataforma que no admite la eliminación automática, como TikTok, tendrás que eliminarlo allí manualmente.',
+    ],
+    'approvals' => [
+        'publish' => '¿Publicar este post ahora? Se publicará de inmediato en todas las plataformas activadas, y algunas — como TikTok — no ofrecen forma de despublicarlo después.',
+        'delete_published' => 'Este post no es un borrador, así que eliminarlo no se puede deshacer en TryPost. Si ya está activo en una plataforma que no admite la eliminación automática, como TikTok, seguirá visible allí hasta que lo elimines a mano. ¿Eliminar de todas formas?',
     ],
 ];
