@@ -1,0 +1,18 @@
+<?php
+
+declare(strict_types=1);
+
+use App\Enums\WorkspaceConversation\Status;
+use App\Models\WorkspaceConversation;
+
+test('it releases in-progress conversations older than ten minutes', function () {
+    $stalled = WorkspaceConversation::factory()->inProgress()->create();
+    $stalled->forceFill(['updated_at' => now()->subMinutes(11)])->saveQuietly();
+
+    $fresh = WorkspaceConversation::factory()->inProgress()->create();
+
+    $this->artisan('chat:release-stalled')->assertSuccessful();
+
+    expect($stalled->fresh()->status)->toBe(Status::Idle)
+        ->and($fresh->fresh()->status)->toBe(Status::InProgress);
+});
