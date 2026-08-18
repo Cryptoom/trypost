@@ -38,10 +38,17 @@ class ChatMessageController extends Controller
      * nobody comes back to.
      *
      * A real turn is bounded by the agent's #[Timeout(180)] and finishes well
-     * inside a minute, so five minutes never reclaims a healthy turn in practice.
-     * Reclaiming one slightly early is bounded anyway: messages are append-only,
-     * the last then() wins the Idle write, usage is recorded per HTTP turn (which
-     * is what was actually spent), and GenerateConversationTitle self-guards.
+     * inside a minute, so five minutes never reclaims a healthy turn in
+     * practice. Reclaiming one that is genuinely still streaming is not free:
+     * WorkspaceConversationStore::storeUserMessage() only guards against the
+     * single trailing message row, so the reclaimed turn's end-of-turn write
+     * misses that guard once a newer turn has appended its own user message,
+     * and duplicates the older prompt at the tail of the conversation. Its
+     * then() also still writes status = Idle after the newer turn has taken
+     * over, disarming the 409 guard early and allowing a third concurrent
+     * turn to start. Both are accepted as the lesser failure mode: a rare
+     * duplicated prompt beats locking a user out of their own conversation
+     * for up to ten minutes after a routine provider error.
      */
     private const STALE_TURN_MINUTES = 5;
 

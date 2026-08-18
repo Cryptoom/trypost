@@ -51,7 +51,7 @@ class ListPostsTool extends WorkspaceTool
         $search = $request->string('search')->value();
 
         if ($search !== '') {
-            $query->where('content', 'ilike', "%{$search}%");
+            $query->whereLike('content', "%{$search}%", caseSensitive: false);
         }
 
         $limit = (int) $request->clamp('limit', 1, 25, 10);
