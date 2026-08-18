@@ -73,6 +73,25 @@ expect()->extend('toBeOne', function () {
 */
 
 /**
+ * Create a user with a workspace they belong to, set it as their current
+ * workspace, and authenticate them. The setup every workspace-scoped feature
+ * test needs before hitting an app route.
+ *
+ * @return array{0: User, 1: Workspace}
+ */
+function actingAsWorkspaceUser(): array
+{
+    $user = User::factory()->create();
+    $workspace = Workspace::factory()->create(['user_id' => $user->id]);
+    $workspace->members()->attach($user->id, ['role' => Role::Member->value]);
+    $user->update(['current_workspace_id' => $workspace->id]);
+
+    test()->actingAs($user);
+
+    return [$user->refresh(), $workspace];
+}
+
+/**
  * Issue a real Passport personal access token bound to a workspace and return
  * the plain JWT string. Use the returned token in `Authorization: Bearer ...`
  * to exercise the auth:api + workspace.token middleware stack.

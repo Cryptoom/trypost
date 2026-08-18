@@ -8,6 +8,7 @@ use App\Http\Controllers\App\AssetController;
 use App\Http\Controllers\App\AutomationController;
 use App\Http\Controllers\App\BillingController;
 use App\Http\Controllers\App\ChatController;
+use App\Http\Controllers\App\ChatMessageController;
 use App\Http\Controllers\App\DiscordController as AppDiscordController;
 use App\Http\Controllers\App\GiphyController;
 use App\Http\Controllers\App\LinkPreviewController;
@@ -190,6 +191,9 @@ Route::middleware(['auth', EnsureAccountReady::class, EnsureHasWorkspace::class]
 
     // Chat
     Route::get('chat', [ChatController::class, 'index'])->name('app.chat');
+    Route::post('chat/{conversation}', [ChatMessageController::class, 'store'])
+        ->whereUuid('conversation')
+        ->name('app.chat.messages.store');
 
     // Analytics
     Route::get('analytics', [AnalyticsController::class, 'index'])->name('app.analytics');

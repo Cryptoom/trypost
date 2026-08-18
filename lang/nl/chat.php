@@ -24,4 +24,7 @@ return [
         'publish' => 'Deze post nu publiceren? Hij komt meteen live op elk geactiveerd platform, en sommige platforms — zoals TikTok — bieden achteraf geen manier om hem weer offline te halen.',
         'delete_scheduled' => 'Het verwijderen van deze post kan niet ongedaan worden gemaakt. Staat hij gepland om te publiceren, dan wordt dat hiermee ook geannuleerd. Toch verwijderen?',
     ],
+    'errors' => [
+        'turn_in_progress' => 'Dit gesprek is nog aan het antwoorden. Wacht tot het klaar is voordat je een nieuw bericht stuurt.',
+    ],
 ];

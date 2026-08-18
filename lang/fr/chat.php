@@ -24,4 +24,7 @@ return [
         'publish' => 'Publier ce post maintenant ? Il sera immédiatement en ligne sur chaque plateforme activée, et certaines — comme TikTok — n’offrent aucun moyen de le dépublier ensuite.',
         'delete_scheduled' => 'La suppression de ce post est irréversible. S’il est programmé pour être publié, cela l’annule aussi. Le supprimer quand même ?',
     ],
+    'errors' => [
+        'turn_in_progress' => 'Cette conversation est encore en train de répondre. Attendez la fin avant d\'envoyer un autre message.',
+    ],
 ];

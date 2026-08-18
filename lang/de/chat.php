@@ -24,4 +24,7 @@ return [
         'publish' => 'Diesen Beitrag jetzt veröffentlichen? Er geht sofort auf allen aktivierten Plattformen live, und manche — wie TikTok — bieten danach keine Möglichkeit, ihn wieder zu entfernen.',
         'delete_scheduled' => 'Das Löschen dieses Beitrags lässt sich nicht rückgängig machen. Ist er zur Veröffentlichung geplant, wird dadurch auch das abgebrochen. Trotzdem löschen?',
     ],
+    'errors' => [
+        'turn_in_progress' => 'Diese Unterhaltung antwortet noch. Warte, bis sie fertig ist, bevor du eine weitere Nachricht sendest.',
+    ],
 ];

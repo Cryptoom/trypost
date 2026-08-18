@@ -24,4 +24,7 @@ return [
         'publish' => 'Bu gönderi şimdi yayınlansın mı? Etkin olan her platformda hemen yayına girer ve TikTok gibi bazı platformlarda daha sonra yayından kaldırmanın bir yolu yoktur.',
         'delete_scheduled' => 'Bu gönderiyi silmek geri alınamaz. Yayınlanmak üzere zamanlanmışsa, bu işlem onu da iptal eder. Yine de silinsin mi?',
     ],
+    'errors' => [
+        'turn_in_progress' => 'Bu sohbet hâlâ yanıt veriyor. Yeni bir mesaj göndermeden önce bitmesini bekleyin.',
+    ],
 ];

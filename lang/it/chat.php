@@ -24,4 +24,7 @@ return [
         'publish' => 'Pubblicare subito questo post? Sarà immediatamente attivo su ogni piattaforma abilitata, e alcune — come TikTok — non offrono modo di rimuoverlo in seguito.',
         'delete_scheduled' => 'L’eliminazione di questo post non può essere annullata. Se è programmato per la pubblicazione, questo lo annulla anche. Eliminare comunque?',
     ],
+    'errors' => [
+        'turn_in_progress' => 'Questa conversazione sta ancora rispondendo. Attendi che finisca prima di inviare un altro messaggio.',
+    ],
 ];

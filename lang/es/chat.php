@@ -24,4 +24,7 @@ return [
         'publish' => '¿Publicar este post ahora? Se publicará de inmediato en todas las plataformas activadas, y algunas — como TikTok — no ofrecen forma de despublicarlo después.',
         'delete_scheduled' => 'Eliminar este post no se puede deshacer. Si está programado para publicarse, esto también lo cancela. ¿Eliminar de todas formas?',
     ],
+    'errors' => [
+        'turn_in_progress' => 'Esta conversación todavía está respondiendo. Espera a que termine antes de enviar otro mensaje.',
+    ],
 ];

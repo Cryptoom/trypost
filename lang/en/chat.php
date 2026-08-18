@@ -24,4 +24,7 @@ return [
         'publish' => 'Publish this post now? It will go live immediately on every enabled platform, and some platforms — like TikTok — offer no way to unpublish afterward.',
         'delete_scheduled' => 'Deleting this post can\'t be undone. If it\'s scheduled to publish, this also cancels that. Delete anyway?',
     ],
+    'errors' => [
+        'turn_in_progress' => 'This conversation is still replying. Wait for it to finish before sending another message.',
+    ],
 ];

@@ -24,4 +24,7 @@ return [
         'publish' => 'Opublikować ten post teraz? Pojawi się natychmiast na każdej włączonej platformie, a niektóre platformy — jak TikTok — nie dają możliwości cofnięcia publikacji.',
         'delete_scheduled' => 'Usunięcia tego posta nie da się cofnąć. Jeśli jest zaplanowany do publikacji, to również anuluje ten plan. Usunąć mimo to?',
     ],
+    'errors' => [
+        'turn_in_progress' => 'Ta rozmowa wciąż generuje odpowiedź. Poczekaj, aż się zakończy, zanim wyślesz kolejną wiadomość.',
+    ],
 ];
