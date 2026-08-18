@@ -175,3 +175,46 @@ test('it drops a leading tool result when the window starts mid turn', function 
         ->and($messages->first())->toBeInstanceOf(AssistantMessage::class)
         ->and($messages->first()->content)->toBe('Deleted.');
 });
+
+test('it emits a prior turn tool result before the assistant message that carries its own call', function () {
+    $conversation = WorkspaceConversation::factory()->create();
+
+    WorkspaceConversationMessage::factory()->for($conversation, 'conversation')->create([
+        'role' => Role::User,
+        'content' => 'Delete the draft, then archive it.',
+        'created_at' => now(),
+    ]);
+
+    WorkspaceConversationMessage::factory()->for($conversation, 'conversation')->create([
+        'role' => Role::Assistant,
+        'content' => '',
+        'tool_calls' => [['id' => 'call_1', 'name' => 'delete_post', 'arguments' => ['id' => 'p1']]],
+        'tool_results' => [],
+        'approval_state' => ['pending' => ['call_1' => 'Destructive action.']],
+        'meta' => ['provider' => 'anthropic', 'provider_content_blocks' => [['type' => 'tool_use', 'id' => 'call_1']]],
+        'created_at' => now()->addSecond(),
+    ]);
+
+    WorkspaceConversationMessage::factory()->for($conversation, 'conversation')->create([
+        'role' => Role::Assistant,
+        'content' => 'Archiving it now.',
+        'tool_calls' => [['id' => 'call_2', 'name' => 'archive_post', 'arguments' => ['id' => 'p1']]],
+        'tool_results' => [['id' => 'call_1', 'name' => 'delete_post', 'arguments' => ['id' => 'p1'], 'result' => 'ok']],
+        'approval_state' => ['pending' => ['call_2' => 'Destructive action.']],
+        'created_at' => now()->addSeconds(2),
+    ]);
+
+    $messages = app(WorkspaceConversationStore::class)
+        ->getLatestConversationMessages($conversation->id, 10);
+
+    expect($messages->map(fn ($message): string => $message::class)->all())->toBe([
+        UserMessage::class,
+        AssistantMessage::class,
+        ToolResultMessage::class,
+        AssistantMessage::class,
+    ])
+        ->and($messages[1]->toolCalls->pluck('id')->all())->toBe(['call_1'])
+        ->and($messages[2]->toolResults->pluck('id')->all())->toBe(['call_1'])
+        ->and($messages[3]->toolCalls->pluck('id')->all())->toBe(['call_2'])
+        ->and($messages[3]->content)->toBe('Archiving it now.');
+});

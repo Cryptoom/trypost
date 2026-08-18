@@ -10,6 +10,7 @@ use App\Models\WorkspaceConversationMessage;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Laravel\Ai\Approvals\PendingApproval;
 use Laravel\Ai\Contracts\ConversationStore;
 use Laravel\Ai\Exceptions\ApprovalMismatchException;
 use Laravel\Ai\Messages\AssistantMessage;
@@ -34,10 +35,9 @@ class WorkspaceConversationStore implements ConversationStore
 {
     public function latestConversationId(string $participantType, string|int $participantId): ?string
     {
-        return WorkspaceConversation::query()
-            ->where('user_id', $participantId)
-            ->latest('updated_at')
-            ->value('id');
+        throw new RuntimeException(
+            'The conversation store cannot resume a conversation from a participant alone; the contract carries no workspace id, so a user-only lookup can return a conversation from another of their workspaces. Query WorkspaceConversation::listable($workspaceId, $userId) instead.'
+        );
     }
 
     public function storeConversation(?string $participantType, string|int|null $participantId, string $title): string
@@ -197,11 +197,8 @@ class WorkspaceConversationStore implements ConversationStore
 
             $pending = collect(data_get($row->approval_state, 'pending', []))->except($resultIds);
 
-            /**
-             * Keep the marker after resolution so the resume dedup scan stays
-             * bounded to ever-paused rows, while each call's outcome lives in
-             * the merged tool results.
-             */
+            // Keep the marker after resolution so the resume dedup scan stays bounded
+            // to ever-paused rows, while each call's outcome lives in the merged results...
             $row->forceFill([
                 'tool_results' => $merged->values()->all(),
                 'approval_state' => ['pending' => $pending->all()],
@@ -311,7 +308,7 @@ class WorkspaceConversationStore implements ConversationStore
 
         return [
             'pending' => $response->pendingApprovals
-                ->mapWithKeys(fn ($approval): array => [$approval->id => $approval->reason])
+                ->mapWithKeys(fn (PendingApproval $approval): array => [$approval->id => $approval->reason])
                 ->all(),
         ];
     }
