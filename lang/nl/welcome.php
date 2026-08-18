@@ -66,7 +66,7 @@ return [
         'latest_post' => 'Dit is je laatste post.',
         'pitch_views' => '{0} Deze post had :views views op :network.|{1} Deze post had :views view op :network.|[2,*] Deze post had :views views op :network.',
         'pitch_no_views' => 'Deze post ging alleen naar :network.',
-        'pitch_missed' => 'Dezelfde post op :first en :second kan zomaar nog :each views per netwerk erbij krijgen. Dat zijn :extra mensen die het nooit zagen.',
+        'pitch_missed' => '{0}|{1} Dezelfde post op :first kan zomaar nog :each views erbij krijgen. Dat zijn :extra mensen die het nooit zagen.|[2,*] Dezelfde post op :first en :second kan zomaar nog :each views per netwerk erbij krijgen. Dat zijn :extra mensen die het nooit zagen.',
         'pitch_sales' => 'Je laat misschien duizenden aan sales liggen.',
         'change_network' => 'Ander netwerk',
         'required' => 'Verbind minstens één social account om door te gaan.',

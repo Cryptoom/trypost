@@ -66,7 +66,7 @@ return [
         'latest_post' => "Here's your latest post.",
         'pitch_views' => '{0} This post got :views views on :network.|{1} This post got :views view on :network.|[2,*] This post got :views views on :network.',
         'pitch_no_views' => 'This post only went out on :network.',
-        'pitch_missed' => 'The same post on :first and :second could easily pick up another :each views on each. That is :extra people who never saw it.',
+        'pitch_missed' => '{0}|{1} The same post on :first could easily pick up another :each views. That is :extra people who never saw it.|[2,*] The same post on :first and :second could easily pick up another :each views on each. That is :extra people who never saw it.',
         'pitch_sales' => 'You might be leaving thousands in sales on the table.',
         'change_network' => 'Change network',
         'required' => 'Connect at least one social account to continue.',

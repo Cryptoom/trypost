@@ -66,7 +66,7 @@ return [
         'latest_post' => '最新の投稿はこちらです。',
         'pitch_views' => '{0} この投稿は:networkで:views回表示されました。|{1} この投稿は:networkで:views回表示されました。|[2,*] この投稿は:networkで:views回表示されました。',
         'pitch_no_views' => 'この投稿は:networkにしか出ていません。',
-        'pitch_missed' => '同じ投稿を:firstと:secondにも出せば、それぞれあと:each回の表示は十分あり得ます。見ていない人が:extra人いるということです。',
+        'pitch_missed' => '{0}|{1} 同じ投稿を:firstにも出せば、あと:each回の表示は十分あり得ます。見ていない人が:extra人いるということです。|[2,*] 同じ投稿を:firstと:secondにも出せば、それぞれあと:each回の表示は十分あり得ます。見ていない人が:extra人いるということです。',
         'pitch_sales' => '何千もの売上を逃しているかもしれません。',
         'change_network' => 'ネットワークを変更',
         'required' => '続けるには、少なくとも1つのSNSアカウントを接続してください。',

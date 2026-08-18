@@ -384,6 +384,7 @@ test('connect renders the network grid when the workspace has no accounts', func
             ->where('history.2.step', 'referral')
             ->has('platforms', count(SocialPlatform::connectableOptions()))
             ->where('accounts', [])
+            ->where('latestPostNetwork', null)
             ->where('latestPost', null)
         );
 });
@@ -404,6 +405,7 @@ test('connect renders connected accounts for the current workspace', function ()
             ->where('accounts.0.id', $account->id)
             ->where('accounts.0.platform', SocialPlatform::LinkedIn->value)
             ->where('accounts.0.status', Status::Connected->value)
+            ->where('latestPostNetwork', null)
             ->where('latestPost', null)
         );
 });
@@ -439,6 +441,7 @@ test('connect includes the latest post when the connected network exposes impres
             ->component('welcome/Chat', false)
             ->where('step', 'connect')
             ->where('accounts.0.id', $account->id)
+            ->where('latestPostNetwork', 'instagram')
             ->missing('latestPost')
             ->loadDeferredProps(fn ($page) => $page
                 ->where('latestPost.id', '1789')
@@ -486,6 +489,7 @@ test('connect fetches the latest post from the first analytics-capable account',
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->component('welcome/Chat', false)
+            ->where('latestPostNetwork', 'instagram')
             ->missing('latestPost')
             ->loadDeferredProps(fn ($page) => $page
                 ->where('latestPost.id', '1789')
@@ -511,6 +515,7 @@ test('connect skips the latest post when the platform request fails', function (
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->component('welcome/Chat', false)
+            ->where('latestPostNetwork', 'instagram')
             ->missing('latestPost')
             ->loadDeferredProps(fn ($page) => $page
                 ->where('latestPost', null)
@@ -525,12 +530,25 @@ test('connect copy exists in every locale', function (string $locale) {
         ->and(__('welcome.connect.latest_post', [], $locale))->not->toBe('welcome.connect.latest_post')
         ->and(trans_choice('welcome.connect.pitch_views', 1, ['views' => '1', 'network' => 'Instagram'], $locale))->not->toBe('welcome.connect.pitch_views')
         ->and(__('welcome.connect.pitch_no_views', ['network' => 'Instagram'], $locale))->not->toBe('welcome.connect.pitch_no_views')
-        ->and(__('welcome.connect.pitch_missed', [
+        ->and(trans_choice('welcome.connect.pitch_missed', 0, [], $locale))->toBe('')
+        ->and(trans_choice('welcome.connect.pitch_missed', 1, [
+            'first' => 'TikTok',
+            'each' => '1,000',
+            'extra' => '1,000',
+        ], $locale))
+        ->not->toBe('welcome.connect.pitch_missed')
+        ->toContain('TikTok')
+        ->not->toContain(':first')
+        ->not->toContain(':second')
+        ->and(trans_choice('welcome.connect.pitch_missed', 2, [
             'first' => 'TikTok',
             'second' => 'YouTube',
             'each' => '1,000',
             'extra' => '2,000',
-        ], $locale))->not->toBe('welcome.connect.pitch_missed')
+        ], $locale))
+        ->not->toBe('welcome.connect.pitch_missed')
+        ->toContain('TikTok')
+        ->toContain('YouTube')
         ->and(__('welcome.connect.pitch_sales', [], $locale))->not->toBe('welcome.connect.pitch_sales')
         ->and(__('welcome.connect.change_network', [], $locale))->not->toBe('welcome.connect.change_network')
         ->and(__('welcome.connect.required', [], $locale))->not->toBe('welcome.connect.required');

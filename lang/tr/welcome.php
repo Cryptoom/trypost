@@ -66,7 +66,7 @@ return [
         'latest_post' => 'İşte son paylaşımın.',
         'pitch_views' => '{0} Bu gönderi :network üzerinde :views görüntüleme aldı.|{1} Bu gönderi :network üzerinde :views görüntüleme aldı.|[2,*] Bu gönderi :network üzerinde :views görüntüleme aldı.',
         'pitch_no_views' => 'Bu gönderi yalnızca :network’te yayınlandı.',
-        'pitch_missed' => 'Aynı gönderi :first ve :second’da her birinde rahatça :each görüntüleme daha alabilir. Bunu hiç görmeyen :extra kişi var.',
+        'pitch_missed' => '{0}|{1} Aynı gönderi :first’da rahatça :each görüntüleme daha alabilir. Bunu hiç görmeyen :extra kişi var.|[2,*] Aynı gönderi :first ve :second’da her birinde rahatça :each görüntüleme daha alabilir. Bunu hiç görmeyen :extra kişi var.',
         'pitch_sales' => 'Binlerce satışı kaçırıyor olabilirsin.',
         'change_network' => 'Ağı değiştir',
         'required' => 'Devam etmek için en az bir sosyal hesap bağla.',

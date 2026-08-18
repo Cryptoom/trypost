@@ -66,7 +66,7 @@ return [
         'latest_post' => '这是你最近的一条帖子。',
         'pitch_views' => '{0} 这条帖子在:network上有:views次观看。|{1} 这条帖子在:network上有:views次观看。|[2,*] 这条帖子在:network上有:views次观看。',
         'pitch_no_views' => '这条帖子只发在了:network。',
-        'pitch_missed' => '同一条发到:first和:second，每个平台再多:each次观看很常见。等于有:extra人没看到。',
+        'pitch_missed' => '{0}|{1} 同一条发到:first，再多:each次观看很常见。等于有:extra人没看到。|[2,*] 同一条发到:first和:second，每个平台再多:each次观看很常见。等于有:extra人没看到。',
         'pitch_sales' => '你可能正在丢掉成千上万的成交。',
         'change_network' => '更换平台',
         'required' => '请至少连接一个社交账号后再继续。',

@@ -175,6 +175,7 @@ class WelcomeController extends Controller
             'history' => $this->chatHistory($request->user(), 'connect'),
             'platforms' => SocialPlatform::connectableOptions(),
             'accounts' => SocialAccountResource::collection($accounts)->resolve(),
+            'latestPostNetwork' => $connected?->platform->network(),
             'latestPost' => $connected !== null
                 ? Inertia::defer(fn (): ?array => $fetchLatest->handle($connected))
                 : null,

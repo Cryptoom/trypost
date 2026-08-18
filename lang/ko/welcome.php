@@ -66,7 +66,7 @@ return [
         'latest_post' => '가장 최근 게시물입니다.',
         'pitch_views' => '{0} 이 게시물은 :network에서 :views회 봤습니다.|{1} 이 게시물은 :network에서 :views회 봤습니다.|[2,*] 이 게시물은 :network에서 :views회 봤습니다.',
         'pitch_no_views' => '이 게시물은 :network에만 올라갔습니다.',
-        'pitch_missed' => '같은 게시물을 :first와 :second에도 올리면 각각 :each회는 더 나올 수 있습니다. :extra명이 이걸 못 본 거예요.',
+        'pitch_missed' => '{0}|{1} 같은 게시물을 :first에도 올리면 :each회는 더 나올 수 있습니다. :extra명이 이걸 못 본 거예요.|[2,*] 같은 게시물을 :first와 :second에도 올리면 각각 :each회는 더 나올 수 있습니다. :extra명이 이걸 못 본 거예요.',
         'pitch_sales' => '매출 수천을 놓치고 있을 수 있어요.',
         'change_network' => '네트워크 바꾸기',
         'required' => '계속하려면 소셜 계정을 하나 이상 연결하세요.',

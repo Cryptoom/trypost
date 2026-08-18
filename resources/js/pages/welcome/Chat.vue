@@ -15,8 +15,9 @@ import GoalChips from '@/components/welcome/GoalChips.vue';
 import PersonaChips from '@/components/welcome/PersonaChips.vue';
 import PlatformChips from '@/components/welcome/PlatformChips.vue';
 import ReferralChips from '@/components/welcome/ReferralChips.vue';
-import WelcomeLayout from '@/layouts/WelcomeLayout.vue';
+import { getPlatformLogo } from '@/composables/usePlatformLogo';
 import date from '@/date';
+import WelcomeLayout from '@/layouts/WelcomeLayout.vue';
 import { store as storeConnect } from '@/routes/app/welcome/connect';
 import { store as storeGoals } from '@/routes/app/welcome/goals';
 import { store as storePersona } from '@/routes/app/welcome/persona';
@@ -64,6 +65,7 @@ const props = withDefaults(
         selectedReferral?: string | null;
         platforms?: AvailablePlatform[];
         accounts?: ConnectedAccount[];
+        latestPostNetwork?: string | null;
         latestPost?: LatestPost | null;
     }>(),
     {
@@ -75,6 +77,7 @@ const props = withDefaults(
         selectedReferral: null,
         platforms: () => [],
         accounts: () => [],
+        latestPostNetwork: null,
     },
 );
 
@@ -132,6 +135,10 @@ const hasConnectedAccount = computed((): boolean =>
 );
 
 const firstConnectedNetwork = computed((): string | null => {
+    if (props.latestPostNetwork) {
+        return props.latestPostNetwork;
+    }
+
     const account = props.accounts.find(
         (item) => item.status === SocialAccountStatus.Connected,
     );
@@ -266,19 +273,6 @@ const formatCount = (value: number): string =>
         value,
     );
 
-const platformImage = (value: string): string => {
-    const images: Record<string, string> = {
-        instagram: '/images/accounts/instagram.png',
-        'instagram-facebook': '/images/accounts/instagram.png',
-        tiktok: '/images/accounts/tiktok.png',
-        youtube: '/images/accounts/youtube.png',
-        facebook: '/images/accounts/facebook.png',
-        x: '/images/accounts/x.png',
-    };
-
-    return images[value] ?? '/images/trypost/icon.png';
-};
-
 const reachRows = computed((): Array<ReachNetwork & { current?: boolean }> => {
     if (props.latestPost == null) {
         return [];
@@ -328,9 +322,15 @@ const pitchMissedCopy = computed((): string => {
         return '';
     }
 
-    const [first, second] = props.latestPost.reach.others;
+    const others = props.latestPost.reach.others;
 
-    return trans('welcome.connect.pitch_missed', {
+    if (others.length === 0) {
+        return '';
+    }
+
+    const [first, second] = others;
+
+    return transChoice('welcome.connect.pitch_missed', others.length, {
         first: first?.label ?? '',
         second: second?.label ?? '',
         each: formatCount(props.latestPost.reach.each_views),
@@ -528,6 +528,7 @@ const pitchMissedCopy = computed((): string => {
                                 {{ pitchViewsCopy }}
                             </p>
                             <p
+                                v-if="pitchMissedCopy"
                                 class="text-[15px] leading-relaxed text-foreground"
                             >
                                 {{ pitchMissedCopy }}
@@ -541,7 +542,7 @@ const pitchMissedCopy = computed((): string => {
                                     class="flex items-center gap-3"
                                 >
                                     <img
-                                        :src="platformImage(row.value)"
+                                        :src="getPlatformLogo(row.value)"
                                         alt=""
                                         class="size-5 shrink-0"
                                     />

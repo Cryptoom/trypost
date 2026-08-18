@@ -434,6 +434,85 @@ test('it omits disabled networks from the reach pitch', function () {
     ]);
 });
 
+test('it pitches a single remaining network when only one other is enabled', function () {
+    config([
+        'trypost.platforms.tiktok.enabled' => false,
+        'trypost.platforms.youtube.enabled' => false,
+        'trypost.platforms.facebook.enabled' => false,
+    ]);
+
+    $account = SocialAccount::factory()->instagram()->create([
+        'platform_user_id' => '178414000',
+    ]);
+
+    Http::fake([
+        config('trypost.platforms.instagram.graph_api').'/178414000/media*' => Http::response([
+            'data' => [[
+                'id' => '1789',
+                'caption' => 'Hello from IG',
+                'media_type' => 'IMAGE',
+                'media_url' => 'https://cdn.example/photo.jpg',
+                'permalink' => 'https://www.instagram.com/p/abc',
+                'timestamp' => '2026-08-01T12:00:00+0000',
+            ]],
+        ]),
+        config('trypost.platforms.instagram.graph_api').'/1789/insights*' => Http::response([
+            'data' => [['name' => 'views', 'values' => [['value' => 1]]]],
+        ]),
+    ]);
+
+    expect(app(FetchLatestSocialPost::class)->handle($account))->toMatchArray([
+        'reach' => [
+            'network' => 'Instagram',
+            'network_value' => 'instagram',
+            'others' => [
+                ['value' => 'x', 'label' => 'X', 'views' => 1000],
+            ],
+            'each_views' => 1000,
+            'extra_views' => 1000,
+        ],
+    ]);
+});
+
+test('it pitches no other networks when every alternative is disabled', function () {
+    config([
+        'trypost.platforms.tiktok.enabled' => false,
+        'trypost.platforms.youtube.enabled' => false,
+        'trypost.platforms.facebook.enabled' => false,
+        'trypost.platforms.x.enabled' => false,
+    ]);
+
+    $account = SocialAccount::factory()->instagram()->create([
+        'platform_user_id' => '178414000',
+    ]);
+
+    Http::fake([
+        config('trypost.platforms.instagram.graph_api').'/178414000/media*' => Http::response([
+            'data' => [[
+                'id' => '1789',
+                'caption' => 'Hello from IG',
+                'media_type' => 'IMAGE',
+                'media_url' => 'https://cdn.example/photo.jpg',
+                'permalink' => 'https://www.instagram.com/p/abc',
+                'timestamp' => '2026-08-01T12:00:00+0000',
+            ]],
+        ]),
+        config('trypost.platforms.instagram.graph_api').'/1789/insights*' => Http::response([
+            'data' => [['name' => 'views', 'values' => [['value' => 1]]]],
+        ]),
+    ]);
+
+    expect(app(FetchLatestSocialPost::class)->handle($account))->toMatchArray([
+        'reach' => [
+            'network' => 'Instagram',
+            'network_value' => 'instagram',
+            'others' => [],
+            'each_views' => 1000,
+            'extra_views' => 0,
+        ],
+    ]);
+});
+
 test('it never pitches fewer views than the real post already got', function () {
     $account = SocialAccount::factory()->instagram()->create([
         'platform_user_id' => '178414000',
