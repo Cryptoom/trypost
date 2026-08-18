@@ -88,7 +88,7 @@ test('connect step enables continue when a social account is connected', functio
     waitForWelcomeTestId($page, 'welcome-start-checkout');
 
     $page->assertRoute('app.welcome.connect')
-        ->assertVisible('@welcome-connect-grid')
+        ->assertMissing('@welcome-connect-grid')
         ->assertEnabled('@welcome-start-checkout')
         ->assertMissing('@welcome-latest-post')
         ->assertNoJavaScriptErrors();
@@ -236,6 +236,7 @@ test('welcome chat screenshots the latest post reach pitch', function () {
             ->assertVisible('@welcome-reach-pitch')
             ->assertVisible('@welcome-start-checkout')
             ->assertVisible('@welcome-change-network')
+            ->assertMissing('@welcome-connect-grid')
             ->screenshot(filename: 'welcome-chat-reach-pitch')
             ->assertNoJavaScriptErrors();
 

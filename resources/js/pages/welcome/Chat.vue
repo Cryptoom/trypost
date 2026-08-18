@@ -188,6 +188,25 @@ const selectedPlatforms = computed((): AvailablePlatform[] => {
     );
 });
 
+const selectedNetworkNeedsAction = computed((): boolean => {
+    if (selectedPlatform.value === null) {
+        return false;
+    }
+
+    const account = props.accounts.find(
+        (item) => item.network === selectedPlatform.value?.network,
+    );
+
+    if (account === undefined) {
+        return true;
+    }
+
+    return (
+        account.status === SocialAccountStatus.Disconnected ||
+        account.status === SocialAccountStatus.TokenExpired
+    );
+});
+
 const platformShortLabel = (label: string): string =>
     label.includes('(') ? label.split('(')[0].trim() : label;
 
@@ -624,7 +643,9 @@ const pitchMissedCopy = computed((): string => {
                     />
                     <NetworkConnectGrid
                         v-else-if="
-                            step === 'connect' && selectedPlatforms.length > 0
+                            step === 'connect' &&
+                            selectedNetworkNeedsAction &&
+                            selectedPlatforms.length > 0
                         "
                         variant="list"
                         :platforms="selectedPlatforms"

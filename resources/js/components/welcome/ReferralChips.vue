@@ -159,18 +159,25 @@ const select = (value: string): void => {
             ]"
             @click="select(source)"
         >
-            <img
-                v-if="metaFor(source).logo"
-                :src="metaFor(source).logo"
-                alt=""
-                class="size-3.5"
-            />
-            <component
-                :is="metaFor(source).icon"
-                v-else
-                :class="[metaFor(source).iconClass, 'size-3.5']"
-                stroke-width="2"
-            />
+            <span
+                :class="[
+                    'inline-flex size-5 shrink-0 items-center justify-center rounded-full',
+                    metaFor(source).badge,
+                ]"
+            >
+                <img
+                    v-if="metaFor(source).logo"
+                    :src="metaFor(source).logo"
+                    alt=""
+                    class="size-3.5"
+                />
+                <component
+                    :is="metaFor(source).icon"
+                    v-else
+                    :class="[metaFor(source).iconClass, 'size-3.5']"
+                    stroke-width="2"
+                />
+            </span>
             <span>{{ sourceLabel(source) }}</span>
             <IconCheck
                 v-if="isSelected(source)"
