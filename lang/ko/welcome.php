@@ -25,7 +25,7 @@ return [
         'other' => '기타',
     ],
     'goals_title' => '목표가 무엇인가요?',
-    'goals_description' => '해당되는 항목을 모두 선택하면 TryPost를 맞춤 설정해 드립니다.',
+    'goals_description' => '가장 가까운 항목을 선택하면 TryPost를 맞춤 설정해 드립니다.',
     'goals' => [
         'save_time' => '한 번에 여러 곳에 게시하여 시간 절약',
         'ai_content' => 'TryPost AI로 게시물 생성',
@@ -72,11 +72,13 @@ return [
         'required' => '계속하려면 소셜 계정을 하나 이상 연결하세요.',
     ],
     'publish_method' => [
-            'title' => 'Will you schedule your posts manually or with AI?',
-            'description' => 'Manually, you write and schedule in TryPost. With AI, Claude, ChatGPT, or Cursor publish for you.',
-            'manual' => 'Manually',
-            'ai' => 'With AI',
-            'mcp' => 'Connect Claude, ChatGPT, or Cursor to publish from there.',
-            'required' => 'Choose whether you\'ll schedule manually or with AI.',
+        'title' => 'Will you schedule your posts manually or with AI?',
+        'description' => 'Manually, you write and schedule in TryPost. With AI, Claude, ChatGPT, or Cursor publish for you.',
+        'manual' => 'Manually',
+        'ai' => 'With AI',
+        'mcp' => 'Connect Claude, ChatGPT, or Cursor to publish from there.',
+        'connected' => 'You\'re connected.',
+        'connected_description' => ':name is connected to TryPost.',
+        'required' => 'Choose whether you\'ll schedule manually or with AI.',
     ],
 ];

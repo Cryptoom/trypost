@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\App;
 
+use App\Actions\AccessToken\ListConnectedMcpClients;
 use App\Actions\Billing\StartSubscriptionCheckout;
 use App\Actions\Welcome\FetchLatestSocialPost;
 use App\Enums\Plan\Slug;
@@ -25,6 +26,7 @@ use App\Models\Plan;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Services\PostHogService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -43,54 +45,16 @@ class WelcomeController extends Controller
         $user = $request->user();
         $step = $this->currentStep($user);
 
-        $props = [
-            'step' => $step,
-            'history' => $this->chatHistory($user, $step),
-            'personas' => array_map(fn (Persona $persona): string => $persona->value, Persona::cases()),
-            'selectedPersona' => $user->persona?->value,
-            'goals' => array_map(fn (Goal $goal): string => $goal->value, Goal::cases()),
-            'selectedGoals' => $user->goals ?? [],
-            'sources' => array_map(fn (ReferralSource $source): string => $source->value, ReferralSource::cases()),
-            'selectedReferral' => $user->referral_source?->value,
-            'publishMethods' => array_map(fn (PublishMethod $method): string => $method->value, PublishMethod::cases()),
-            'selectedPublishMethod' => $user->publish_method?->value,
-        ];
+        $props = $this->chatState($user);
 
         if ($step === 'connect') {
-            $workspace = $user->currentWorkspace;
-
-            abort_unless($workspace !== null, Response::HTTP_NOT_FOUND);
-
-            $accounts = $workspace->socialAccounts()->orderBy('id')->get();
-            $connected = $accounts->first(
-                fn (SocialAccount $account): bool => $account->status === Status::Connected
-                    && $account->platform->supportsImpressionAnalytics(),
-            );
-
-            $props['platforms'] = array_map(
-                function (array $option): array {
-                    $platform = SocialPlatform::tryFrom((string) data_get($option, 'value'));
-
-                    if ($platform !== null) {
-                        $option['label'] = $platform->welcomeLabel();
-                    }
-
-                    return $option;
-                },
-                SocialPlatform::connectableOptions(),
-            );
-            $props['accounts'] = SocialAccountResource::collection($accounts)->resolve();
-            $props['latestPostNetwork'] = $connected?->platform->network();
-            $props['latestPost'] = $connected !== null
-                ? Inertia::defer(fn (): ?array => $fetchLatest->handle($connected))
-                : null;
-            $props['mcpUrl'] = route('mcp.trypost');
+            $props = [...$props, ...$this->connectState($user, $fetchLatest, deferLatestPost: true)];
         }
 
         return Inertia::render('welcome/Chat', $props);
     }
 
-    public function storePersona(StoreWelcomePersonaRequest $request, PostHogService $postHog): RedirectResponse
+    public function storePersona(StoreWelcomePersonaRequest $request, PostHogService $postHog): RedirectResponse|JsonResponse
     {
         if ($redirect = $this->redirectIfUnavailable($request)) {
             return $redirect;
@@ -111,10 +75,10 @@ class WelcomeController extends Controller
             $user->account,
         );
 
-        return redirect()->route('app.welcome');
+        return $this->advance($request, $user->fresh());
     }
 
-    public function storeGoals(StoreWelcomeGoalsRequest $request, PostHogService $postHog): RedirectResponse
+    public function storeGoals(StoreWelcomeGoalsRequest $request, PostHogService $postHog): RedirectResponse|JsonResponse
     {
         if ($redirect = $this->redirectIfStepIncomplete($request)) {
             return $redirect;
@@ -135,13 +99,14 @@ class WelcomeController extends Controller
             $user->account,
         );
 
-        return redirect()->route('app.welcome');
+        return $this->advance($request, $user->fresh());
     }
 
     public function storeReferralSource(
         StoreWelcomeReferralSourceRequest $request,
+        FetchLatestSocialPost $fetchLatest,
         PostHogService $postHog,
-    ): RedirectResponse {
+    ): RedirectResponse|JsonResponse {
         if ($redirect = $this->redirectIfStepIncomplete($request, requireGoals: true)) {
             return $redirect;
         }
@@ -161,13 +126,14 @@ class WelcomeController extends Controller
             $user->account,
         );
 
-        return redirect()->route('app.welcome');
+        return $this->advance($request, $user->fresh(), $fetchLatest);
     }
 
     public function storePublishMethod(
         StoreWelcomePublishMethodRequest $request,
+        FetchLatestSocialPost $fetchLatest,
         PostHogService $postHog,
-    ): RedirectResponse {
+    ): RedirectResponse|JsonResponse {
         if ($redirect = $this->redirectIfStepIncomplete($request, requireGoals: true, requireReferral: true)) {
             return $redirect;
         }
@@ -179,7 +145,7 @@ class WelcomeController extends Controller
             $workspace === null
             || $workspace->socialAccounts()->where('status', Status::Connected)->doesntExist()
         ) {
-            return redirect()->route('app.welcome');
+            return $this->advance($request, $user, $fetchLatest);
         }
 
         $publishMethod = (string) $request->validated('publish_method');
@@ -196,7 +162,7 @@ class WelcomeController extends Controller
             $user->account,
         );
 
-        return redirect()->route('app.welcome');
+        return $this->advance($request, $user->fresh(), $fetchLatest);
     }
 
     public function storeConnect(
@@ -259,6 +225,88 @@ class WelcomeController extends Controller
         return Inertia::render('welcome/SubscriptionRequired', [
             'ownerName' => $user->account?->owner?->name,
         ]);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function chatState(User $user): array
+    {
+        $step = $this->currentStep($user);
+
+        return [
+            'step' => $step,
+            'history' => $this->chatHistory($user, $step),
+            'personas' => array_map(fn (Persona $persona): string => $persona->value, Persona::cases()),
+            'selectedPersona' => $user->persona?->value,
+            'goals' => array_map(fn (Goal $goal): string => $goal->value, Goal::cases()),
+            'selectedGoals' => $user->goals ?? [],
+            'sources' => array_map(fn (ReferralSource $source): string => $source->value, ReferralSource::cases()),
+            'selectedReferral' => $user->referral_source?->value,
+            'publishMethods' => array_map(fn (PublishMethod $method): string => $method->value, PublishMethod::cases()),
+            'selectedPublishMethod' => $user->publish_method?->value,
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function connectState(User $user, FetchLatestSocialPost $fetchLatest, bool $deferLatestPost = false): array
+    {
+        $workspace = $user->currentWorkspace;
+
+        abort_unless($workspace !== null, Response::HTTP_NOT_FOUND);
+
+        $accounts = $workspace->socialAccounts()->orderBy('id')->get();
+        $connected = $accounts->first(
+            fn (SocialAccount $account): bool => $account->status === Status::Connected
+                && $account->platform->supportsImpressionAnalytics(),
+        );
+
+        $latestPost = null;
+
+        if ($connected !== null) {
+            $latestPost = $deferLatestPost
+                ? Inertia::defer(fn (): ?array => $fetchLatest->handle($connected))
+                : $fetchLatest->handle($connected);
+        }
+
+        return [
+            'platforms' => array_map(
+                function (array $option): array {
+                    $platform = SocialPlatform::tryFrom((string) data_get($option, 'value'));
+
+                    if ($platform !== null) {
+                        $option['label'] = $platform->welcomeLabel();
+                    }
+
+                    return $option;
+                },
+                SocialPlatform::connectableOptions(),
+            ),
+            'accounts' => SocialAccountResource::collection($accounts)->resolve(),
+            'latestPostNetwork' => $connected?->platform->network(),
+            'latestPost' => $latestPost,
+            'mcpUrl' => route('mcp.trypost'),
+            'connectedClients' => ListConnectedMcpClients::forUser($user, $workspace),
+        ];
+    }
+
+    private function advance(Request $request, User $user, ?FetchLatestSocialPost $fetchLatest = null): RedirectResponse|JsonResponse
+    {
+        if (! $request->expectsJson()) {
+            return redirect()->route('app.welcome');
+        }
+
+        $state = $this->chatState($user);
+
+        if (data_get($state, 'step') === 'connect') {
+            abort_unless($fetchLatest instanceof FetchLatestSocialPost, Response::HTTP_INTERNAL_SERVER_ERROR);
+
+            $state = [...$state, ...$this->connectState($user, $fetchLatest)];
+        }
+
+        return response()->json($state);
     }
 
     private function currentStep(User $user): string

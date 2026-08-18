@@ -44,6 +44,7 @@ test('welcome renders the persona step for an unsubscribed account', function ()
             ->has('sources', count(ReferralSource::cases()))
             ->has('publishMethods', count(PublishMethod::cases()))
             ->where('selectedPublishMethod', null)
+            ->missing('connectedClients')
         );
 });
 
@@ -83,6 +84,34 @@ test('persona store saves the selection mirrors it to PostHog and advances to go
         && data_get($event->payload, 'distinctId') === $this->user->id
         && data_get($event->payload, 'event') === WelcomeEvent::Persona->value
         && data_get($event->payload, 'properties.persona') === Persona::Agency->value);
+});
+
+test('persona store returns the next chat state as json without a redirect', function () {
+    $this->actingAs($this->user)
+        ->postJson(route('app.welcome.persona.store'), ['persona' => Persona::Agency->value])
+        ->assertOk()
+        ->assertJsonPath('step', 'goals')
+        ->assertJsonPath('history.0.step', 'persona')
+        ->assertJsonPath('history.0.values.0', Persona::Agency->value)
+        ->assertJsonPath('selectedPersona', Persona::Agency->value);
+
+    expect($this->user->fresh()->persona)->toBe(Persona::Agency);
+});
+
+test('referral store json includes connect props', function () {
+    completeWelcomeThroughReferral($this->user);
+    $this->user->update(['referral_source' => null]);
+    attachCurrentWorkspace($this->user);
+
+    $this->actingAs($this->user->fresh())
+        ->postJson(route('app.welcome.referral-source.store'), [
+            'referral_source' => ReferralSource::ProductHunt->value,
+        ])
+        ->assertOk()
+        ->assertJsonPath('step', 'connect')
+        ->assertJsonPath('history.2.step', 'referral')
+        ->assertJsonPath('mcpUrl', route('mcp.trypost'))
+        ->assertJsonPath('connectedClients', []);
 });
 
 test('welcome stays on persona until a persona is selected', function () {
@@ -456,7 +485,26 @@ test('connect renders the network grid when the workspace has no accounts', func
             ->where('latestPostNetwork', null)
             ->where('latestPost', null)
             ->where('mcpUrl', route('mcp.trypost'))
+            ->where('connectedClients', [])
             ->where('selectedPublishMethod', null)
+        );
+});
+
+test('connect lists connected mcp clients', function () {
+    completeWelcomeThroughReferral($this->user);
+    $workspace = attachCurrentWorkspace($this->user);
+    $clientId = mcpOauthClient('Claude');
+    mcpAccessToken($this->user, $clientId, $workspace);
+
+    $this->actingAs($this->user->fresh())
+        ->get(route('app.welcome'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('welcome/Chat', false)
+            ->where('step', 'connect')
+            ->has('connectedClients', 1)
+            ->where('connectedClients.0.client_id', $clientId)
+            ->where('connectedClients.0.name', 'Claude')
         );
 });
 
@@ -628,8 +676,17 @@ test('connect copy exists in every locale', function (string $locale) {
         ->and(__('welcome.publish_method.manual', [], $locale))->not->toBe('welcome.publish_method.manual')
         ->and(__('welcome.publish_method.ai', [], $locale))->not->toBe('welcome.publish_method.ai')
         ->and(__('welcome.publish_method.mcp', [], $locale))->not->toBe('welcome.publish_method.mcp')
-        ->and(__('welcome.publish_method.required', [], $locale))->not->toBe('welcome.publish_method.required');
+        ->and(__('welcome.publish_method.connected', [], $locale))->not->toBe('welcome.publish_method.connected')
+        ->and(__('welcome.publish_method.connected_description', ['name' => 'Claude'], $locale))->not->toBe('welcome.publish_method.connected_description')
+        ->toContain('Claude')
+        ->and(__('welcome.publish_method.required', [], $locale))->not->toBe('welcome.publish_method.required')
+        ->and(__('welcome.goals_description', [], $locale))->not->toBe('welcome.goals_description');
 })->with(ContentLanguage::values());
+
+test('goals description asks for a single choice', function () {
+    expect(__('welcome.goals_description', [], 'en'))->not->toContain('everything')
+        ->and(__('welcome.goals_description', [], 'pt-BR'))->not->toContain('tudo');
+});
 
 test('connect store requires a publish method', function () {
     completeWelcomeThroughReferral($this->user);

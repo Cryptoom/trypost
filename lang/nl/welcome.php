@@ -25,7 +25,7 @@ return [
         'other' => 'Anders',
     ],
     'goals_title' => 'Wat is je doel?',
-    'goals_description' => 'Kies alles wat past en we stellen TryPost voor je in.',
+    'goals_description' => 'Kies de optie die het beste past, dan stellen we TryPost voor je in.',
     'goals' => [
         'save_time' => 'Tijd besparen door overal tegelijk te posten',
         'ai_content' => 'Posts genereren met TryPost AI',
@@ -77,6 +77,8 @@ return [
         'manual' => 'Manually',
         'ai' => 'With AI',
         'mcp' => 'Connect Claude, ChatGPT, or Cursor to publish from there.',
+        'connected' => 'You\'re connected.',
+        'connected_description' => ':name is connected to TryPost.',
         'required' => 'Choose whether you\'ll schedule manually or with AI.',
     ],
 ];

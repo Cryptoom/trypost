@@ -29,6 +29,80 @@ test('rejects api requests when the account has no app access', function () {
         ->assertJson(['message' => 'Active subscription required.']);
 });
 
+test('allows mcp handshake without a subscription', function (string $method) {
+    $issued = mcpBearerToken($this->user, $this->workspace);
+
+    $this->withHeaders([
+        'Authorization' => "Bearer {$issued['plain_token']}",
+        'Accept' => 'application/json, text/event-stream',
+    ])->postJson(route('mcp.trypost'), [
+        'jsonrpc' => '2.0',
+        'id' => 1,
+        'method' => $method,
+        'params' => [
+            'protocolVersion' => '2025-03-26',
+            'capabilities' => (object) [],
+            'clientInfo' => ['name' => 'Pest', 'version' => '1.0'],
+        ],
+    ])->assertSuccessful();
+})->with([
+    'initialize',
+    'tools/list',
+    'ping',
+    'resources/list',
+    'prompts/list',
+]);
+
+test('rejects mcp tool calls without a subscription', function () {
+    $issued = mcpBearerToken($this->user, $this->workspace);
+
+    $this->withHeaders([
+        'Authorization' => "Bearer {$issued['plain_token']}",
+        'Accept' => 'application/json, text/event-stream',
+    ])->postJson(route('mcp.trypost'), [
+        'jsonrpc' => '2.0',
+        'id' => 1,
+        'method' => 'tools/call',
+        'params' => [
+            'name' => 'get-workspace-tool',
+            'arguments' => (object) [],
+        ],
+    ])
+        ->assertStatus(Response::HTTP_PAYMENT_REQUIRED)
+        ->assertJson(['message' => 'Active subscription required.']);
+});
+
+test('rejects mcp batch requests without a subscription', function () {
+    $issued = mcpBearerToken($this->user, $this->workspace);
+
+    $this->withHeaders([
+        'Authorization' => "Bearer {$issued['plain_token']}",
+        'Accept' => 'application/json, text/event-stream',
+    ])->postJson(route('mcp.trypost'), [
+        [
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'initialize',
+            'params' => [
+                'protocolVersion' => '2025-03-26',
+                'capabilities' => (object) [],
+                'clientInfo' => ['name' => 'Pest', 'version' => '1.0'],
+            ],
+        ],
+        [
+            'jsonrpc' => '2.0',
+            'id' => 2,
+            'method' => 'tools/call',
+            'params' => [
+                'name' => 'get-workspace-tool',
+                'arguments' => (object) [],
+            ],
+        ],
+    ])
+        ->assertStatus(Response::HTTP_PAYMENT_REQUIRED)
+        ->assertJson(['message' => 'Active subscription required.']);
+});
+
 test('allows api requests for subscribed accounts', function () {
     subscribeAccount($this->user->account);
 

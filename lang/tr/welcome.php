@@ -25,7 +25,7 @@ return [
         'other' => 'Diğer',
     ],
     'goals_title' => 'Hedefiniz nedir?',
-    'goals_description' => 'Size uyan her şeyi seçin, biz de TryPost\'u sizin için ayarlayalım.',
+    'goals_description' => 'En uygun olanı seçin, TryPost\'u sizin için ayarlayalım.',
     'goals' => [
         'save_time' => 'Her yere aynı anda paylaşarak zaman kazanmak',
         'ai_content' => 'TryPost AI ile gönderi oluşturmak',
@@ -72,11 +72,13 @@ return [
         'required' => 'Devam etmek için en az bir sosyal hesap bağla.',
     ],
     'publish_method' => [
-            'title' => 'Will you schedule your posts manually or with AI?',
-            'description' => 'Manually, you write and schedule in TryPost. With AI, Claude, ChatGPT, or Cursor publish for you.',
-            'manual' => 'Manually',
-            'ai' => 'With AI',
-            'mcp' => 'Connect Claude, ChatGPT, or Cursor to publish from there.',
-            'required' => 'Choose whether you\'ll schedule manually or with AI.',
+        'title' => 'Will you schedule your posts manually or with AI?',
+        'description' => 'Manually, you write and schedule in TryPost. With AI, Claude, ChatGPT, or Cursor publish for you.',
+        'manual' => 'Manually',
+        'ai' => 'With AI',
+        'mcp' => 'Connect Claude, ChatGPT, or Cursor to publish from there.',
+        'connected' => 'You\'re connected.',
+        'connected_description' => ':name is connected to TryPost.',
+        'required' => 'Choose whether you\'ll schedule manually or with AI.',
     ],
 ];

@@ -1,8 +1,14 @@
 <script setup lang="ts">
-import { Head, useForm } from '@inertiajs/vue3';
-import { IconArrowUp } from '@tabler/icons-vue';
-import { trans, transChoice } from 'laravel-vue-i18n';
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { Head, useForm, useHttp, usePoll } from '@inertiajs/vue3';
+import { IconArrowUp, IconCheck } from '@tabler/icons-vue';
+import {
+    getActiveLanguage,
+    isLoaded,
+    loadLanguageAsync,
+    trans,
+    transChoice,
+} from 'laravel-vue-i18n';
+import { computed, nextTick, onMounted, ref, watch } from 'vue';
 
 import NetworkConnectGrid, {
     type AvailablePlatform,
@@ -17,9 +23,11 @@ import PersonaChips from '@/components/welcome/PersonaChips.vue';
 import PlatformChips from '@/components/welcome/PlatformChips.vue';
 import PublishMethodChips from '@/components/welcome/PublishMethodChips.vue';
 import ReferralChips from '@/components/welcome/ReferralChips.vue';
+import WelcomeChatThread from '@/components/welcome/WelcomeChatThread.vue';
 import WelcomeQuestion from '@/components/welcome/WelcomeQuestion.vue';
 import { welcomePlatformLabel } from '@/components/welcome/welcomePlatformLabel';
 import { getPlatformLogo } from '@/composables/usePlatformLogo';
+import { useTypedText } from '@/composables/useTypedText';
 import date from '@/date';
 import WelcomeLayout from '@/layouts/WelcomeLayout.vue';
 import { store as storeConnect } from '@/routes/app/welcome/connect';
@@ -40,6 +48,13 @@ type ReachNetwork = {
     value: string;
     label: string;
     views: number;
+};
+
+type ConnectedMcpClient = {
+    client_id: string;
+    name: string;
+    can_disconnect: boolean;
+    last_used_at: string | null;
 };
 
 type LatestPost = {
@@ -75,6 +90,7 @@ const props = withDefaults(
         latestPostNetwork?: string | null;
         latestPost?: LatestPost | null;
         mcpUrl?: string;
+        connectedClients?: ConnectedMcpClient[];
     }>(),
     {
         personas: () => [],
@@ -89,6 +105,7 @@ const props = withDefaults(
         accounts: () => [],
         latestPostNetwork: null,
         mcpUrl: '',
+        connectedClients: () => [],
     },
 );
 
@@ -98,12 +115,6 @@ const stepNumber: Record<WelcomeStep, number> = {
     referral: 3,
     connect: 4,
 };
-
-const visibleHistory = computed((): HistoryItem[] =>
-    props.history.filter(
-        (item) => stepNumber[item.step] < stepNumber[props.step],
-    ),
-);
 
 const questionKey: Record<WelcomeStep, string> = {
     persona: 'welcome.title',
@@ -119,32 +130,151 @@ const descriptionKey: Record<WelcomeStep, string> = {
     connect: 'welcome.connect.description',
 };
 
-const personaForm = useForm({ persona: props.selectedPersona ?? '' });
-const goalsForm = useForm<{ goals: string[] }>({
+type WelcomeState = {
+    step: WelcomeStep;
+    history: HistoryItem[];
+    selectedPersona?: string | null;
+    selectedGoals?: string[] | null;
+    selectedReferral?: string | null;
+    selectedPublishMethod?: string | null;
+    platforms?: AvailablePlatform[];
+    accounts?: ConnectedAccount[];
+    latestPostNetwork?: string | null;
+    latestPost?: LatestPost | null;
+    mcpUrl?: string;
+    connectedClients?: ConnectedMcpClient[];
+};
+
+const step = ref<WelcomeStep>(props.step);
+const history = ref<HistoryItem[]>([...props.history]);
+const platforms = ref<AvailablePlatform[]>([...props.platforms]);
+const accounts = ref<ConnectedAccount[]>([...props.accounts]);
+const latestPostNetwork = ref<string | null>(props.latestPostNetwork);
+const latestPost = ref<LatestPost | null | undefined>(props.latestPost);
+const mcpUrl = ref(props.mcpUrl);
+const connectedClients = ref<ConnectedMcpClient[]>([
+    ...props.connectedClients,
+]);
+
+const personaForm = useHttp<{ persona: string }, WelcomeState>({
+    persona: props.selectedPersona ?? '',
+});
+const goalsForm = useHttp<{ goals: string[] }, WelcomeState>({
     goals: (props.selectedGoals ?? []).filter((goal) =>
         props.goals.includes(goal),
     ),
 });
-const referralForm = useForm({
+const referralForm = useHttp<{ referral_source: string }, WelcomeState>({
     referral_source: props.selectedReferral ?? '',
 });
-const publishMethodForm = useForm({
+const publishMethodForm = useHttp<{ publish_method: string }, WelcomeState>({
     publish_method: props.selectedPublishMethod ?? '',
 });
 const connectForm = useForm({});
+const question = useTypedText();
+
+const questionCopy = (
+    welcomeStep: WelcomeStep,
+): { title: string; description: string } => ({
+    title: trans(questionKey[welcomeStep]),
+    description: trans(descriptionKey[welcomeStep]),
+});
+
+const ensureLanguage = async (): Promise<void> => {
+    if (isLoaded()) {
+        return;
+    }
+
+    await loadLanguageAsync(getActiveLanguage());
+};
+
+const visibleHistory = computed((): HistoryItem[] =>
+    history.value.filter(
+        (item) => stepNumber[item.step] < stepNumber[step.value],
+    ),
+);
+
+type TranscriptQuestion = {
+    kind: 'question';
+    id: string;
+    step: WelcomeStep;
+    live: boolean;
+};
+
+type TranscriptAnswer = {
+    kind: 'answer';
+    id: string;
+    item: HistoryItem;
+};
+
+const transcript = computed(
+    (): Array<TranscriptQuestion | TranscriptAnswer> => {
+        const rows: Array<TranscriptQuestion | TranscriptAnswer> = [];
+
+        for (const item of visibleHistory.value) {
+            rows.push({
+                kind: 'question',
+                id: `${item.step}-q`,
+                step: item.step,
+                live: false,
+            });
+            rows.push({
+                kind: 'answer',
+                id: `${item.step}-a`,
+                item,
+            });
+        }
+
+        rows.push({
+            kind: 'question',
+            id: `${step.value}-q`,
+            step: step.value,
+            live: true,
+        });
+
+        return rows;
+    },
+);
+
+const isQuestionStreaming = computed(
+    (): boolean => question.streaming.value,
+);
+
+const liveTitle = computed((): string => question.title.value);
+
+const liveDescription = computed((): string => question.description.value);
+
+type WelcomeSnapshot = {
+    step: WelcomeStep;
+    history: HistoryItem[];
+};
+
+let snapshot: WelcomeSnapshot | null = null;
+
+const rollbackOptimistic = (): void => {
+    if (snapshot === null) {
+        return;
+    }
+
+    step.value = snapshot.step;
+    history.value = snapshot.history;
+    const copy = questionCopy(snapshot.step);
+    question.snap(copy.title, copy.description);
+    snapshot = null;
+};
 
 const hasConnectedAccount = computed((): boolean =>
-    props.accounts.some(
+    accounts.value.some(
         (account) => account.status === SocialAccountStatus.Connected,
     ),
 );
 
 const firstConnectedNetwork = computed((): string | null => {
-    if (props.latestPostNetwork) {
-        return props.latestPostNetwork;
+    if (latestPostNetwork.value) {
+        return latestPostNetwork.value;
     }
 
-    const account = props.accounts.find(
+    const account = accounts.value.find(
         (item) => item.status === SocialAccountStatus.Connected,
     );
 
@@ -153,31 +283,40 @@ const firstConnectedNetwork = computed((): string | null => {
 
 const selectedNetwork = ref<string>(firstConnectedNetwork.value ?? '');
 
+const connectGrid = ref<{
+    startConnect: (platformValue: string) => void;
+} | null>(null);
+
+const onNetworkSelected = (value: string): void => {
+    selectedNetwork.value = value;
+    connectGrid.value?.startConnect(value);
+};
+
 const clearSelectedNetwork = (): void => {
     selectedNetwork.value = '';
 };
 
 const isLatestPostLoading = computed(
     (): boolean =>
-        props.step === 'connect' &&
+        step.value === 'connect' &&
         hasConnectedAccount.value &&
         selectedNetwork.value !== '' &&
-        props.latestPost === undefined,
+        latestPost.value === undefined,
 );
 
 const showLatestPost = computed(
     (): boolean =>
-        props.step === 'connect' &&
+        step.value === 'connect' &&
         selectedNetwork.value !== '' &&
-        props.latestPost != null,
+        latestPost.value != null,
 );
 
 const selectedPlatform = computed(
     (): AvailablePlatform | null =>
-        props.platforms.find(
+        platforms.value.find(
             (platform) => platform.value === selectedNetwork.value,
         ) ??
-        props.platforms.find(
+        platforms.value.find(
             (platform) => platform.network === selectedNetwork.value,
         ) ??
         null,
@@ -188,7 +327,7 @@ const selectedPlatforms = computed((): AvailablePlatform[] => {
         return [];
     }
 
-    return props.platforms.filter(
+    return platforms.value.filter(
         (platform) => platform.network === selectedPlatform.value?.network,
     );
 });
@@ -198,7 +337,7 @@ const selectedNetworkNeedsAction = computed((): boolean => {
         return false;
     }
 
-    const account = props.accounts.find(
+    const account = accounts.value.find(
         (item) => item.network === selectedPlatform.value?.network,
     );
 
@@ -212,46 +351,153 @@ const selectedNetworkNeedsAction = computed((): boolean => {
     );
 });
 
-const submitPersona = (): void => {
+const advanceOptimistically = (
+    item: HistoryItem,
+    next: WelcomeStep,
+): void => {
+    snapshot = {
+        step: step.value,
+        history: [...history.value],
+    };
+    history.value = [
+        ...history.value.filter((row) => row.step !== item.step),
+        item,
+    ];
+    step.value = next;
+    question.snap('', '');
+    void nextTick(() => {
+        const copy = questionCopy(next);
+        void question.play(copy.title, copy.description);
+    });
+};
+
+const applyWelcomeState = (state: WelcomeState, stream = true): void => {
+    snapshot = null;
+    step.value = state.step;
+    history.value = state.history;
+    personaForm.persona = state.selectedPersona ?? personaForm.persona;
+    goalsForm.goals = state.selectedGoals ?? goalsForm.goals;
+    referralForm.referral_source =
+        state.selectedReferral ?? referralForm.referral_source;
+    publishMethodForm.publish_method =
+        state.selectedPublishMethod ?? publishMethodForm.publish_method;
+
+    if (state.platforms) {
+        platforms.value = state.platforms;
+    }
+
+    if (state.accounts) {
+        accounts.value = state.accounts;
+    }
+
+    if (state.latestPostNetwork !== undefined) {
+        latestPostNetwork.value = state.latestPostNetwork;
+    }
+
+    if (state.latestPost !== undefined) {
+        latestPost.value = state.latestPost;
+    }
+
+    if (state.mcpUrl) {
+        mcpUrl.value = state.mcpUrl;
+    }
+
+    if (state.connectedClients) {
+        connectedClients.value = state.connectedClients;
+    }
+
+    if (!stream) {
+        return;
+    }
+
+    void nextTick(() => {
+        const copy = questionCopy(state.step);
+        void question.play(copy.title, copy.description);
+    });
+};
+
+const submitPersona = async (): Promise<void> => {
     if (!personaForm.persona || personaForm.processing) {
         return;
     }
 
-    personaForm.submit(storePersona());
+    try {
+        const state = await personaForm.post(storePersona.url());
+
+        if (personaForm.hasErrors || !state) {
+            rollbackOptimistic();
+
+            return;
+        }
+
+        applyWelcomeState(state, false);
+    } catch {
+        rollbackOptimistic();
+    }
 };
 
 const onPersonaSelected = (value: string): void => {
     personaForm.persona = value;
-    submitPersona();
+    advanceOptimistically({ step: 'persona', values: [value] }, 'goals');
+    void submitPersona();
 };
 
-const submitGoals = (): void => {
+const submitGoals = async (): Promise<void> => {
     if (goalsForm.goals.length === 0 || goalsForm.processing) {
         return;
     }
 
-    goalsForm.submit(storeGoals());
+    try {
+        const state = await goalsForm.post(storeGoals.url());
+
+        if (goalsForm.hasErrors || !state) {
+            rollbackOptimistic();
+
+            return;
+        }
+
+        applyWelcomeState(state, false);
+    } catch {
+        rollbackOptimistic();
+    }
 };
 
 const onGoalsSelected = (value: string[]): void => {
     goalsForm.goals = value;
-    submitGoals();
+    advanceOptimistically({ step: 'goals', values: value }, 'referral');
+    void submitGoals();
 };
 
-const submitReferral = (): void => {
+const submitReferral = async (): Promise<void> => {
     if (referralForm.referral_source === '' || referralForm.processing) {
         return;
     }
 
-    referralForm.submit(storeReferral());
+    try {
+        const state = await referralForm.post(storeReferral.url());
+
+        if (referralForm.hasErrors || !state) {
+            rollbackOptimistic();
+
+            return;
+        }
+
+        applyWelcomeState(state, false);
+    } catch {
+        rollbackOptimistic();
+    }
 };
 
 const onReferralSelected = (value: string): void => {
     referralForm.referral_source = value;
-    submitReferral();
+    advanceOptimistically(
+        { step: 'referral', values: [value] },
+        'connect',
+    );
+    void submitReferral();
 };
 
-const submitPublishMethod = (): void => {
+const submitPublishMethod = async (): Promise<void> => {
     if (
         publishMethodForm.publish_method === '' ||
         publishMethodForm.processing
@@ -259,12 +505,22 @@ const submitPublishMethod = (): void => {
         return;
     }
 
-    publishMethodForm.submit(storePublishMethod());
+    try {
+        const state = await publishMethodForm.post(storePublishMethod.url());
+
+        if (publishMethodForm.hasErrors || !state) {
+            return;
+        }
+
+        applyWelcomeState(state, false);
+    } catch {
+        return;
+    }
 };
 
 const onPublishMethodSelected = (value: string): void => {
     publishMethodForm.publish_method = value;
-    submitPublishMethod();
+    void submitPublishMethod();
 };
 
 const submitConnect = (): void => {
@@ -276,7 +532,7 @@ const submitConnect = (): void => {
 };
 
 const composerDraft = computed((): string => {
-    if (props.step === 'connect' && hasConnectedAccount.value) {
+    if (step.value === 'connect' && hasConnectedAccount.value) {
         return trans('welcome.continue');
     }
 
@@ -289,21 +545,21 @@ const canSubmit = computed(
 
 const showPlatformPicker = computed(
     (): boolean =>
-        props.step === 'connect' &&
+        step.value === 'connect' &&
         selectedNetwork.value === '' &&
-        props.platforms.length > 0,
+        platforms.value.length > 0,
 );
 
 const showConnectAction = computed(
     (): boolean =>
-        props.step === 'connect' &&
+        step.value === 'connect' &&
         selectedNetworkNeedsAction.value &&
         selectedPlatforms.value.length > 0,
 );
 
 const showPublishMethod = computed(
     (): boolean =>
-        props.step === 'connect' &&
+        step.value === 'connect' &&
         hasConnectedAccount.value &&
         selectedNetwork.value !== '' &&
         !selectedNetworkNeedsAction.value &&
@@ -316,24 +572,53 @@ const showMcpSetup = computed(
         publishMethodForm.publish_method === 'ai',
 );
 
+const mcpConnected = computed(
+    (): boolean => connectedClients.value.length > 0,
+);
+
+const connectedClientNames = computed((): string =>
+    connectedClients.value.map((client) => client.name).join(', '),
+);
+
+const { start: startMcpPoll, stop: stopMcpPoll } = usePoll(
+    1000,
+    { only: ['connectedClients'] },
+    { autoStart: false },
+);
+
+watch(
+    showMcpSetup,
+    (enabled) => {
+        if (enabled) {
+            startMcpPoll();
+
+            return;
+        }
+
+        stopMcpPoll();
+    },
+    { immediate: true },
+);
+
 const showComposer = computed(
     (): boolean =>
         showPublishMethod.value && publishMethodForm.publish_method !== '',
 );
 
-const showStickyPicker = computed(
+const showInlinePicker = computed(
     (): boolean =>
-        props.step === 'persona' ||
-        props.step === 'goals' ||
-        props.step === 'referral' ||
-        showPlatformPicker.value,
+        liveTitle.value !== '' &&
+        !isQuestionStreaming.value &&
+        (step.value === 'persona' ||
+            step.value === 'goals' ||
+            step.value === 'referral' ||
+            showPlatformPicker.value),
 );
 
 const showStickyFooter = computed(
     (): boolean =>
-        showStickyPicker.value ||
         showComposer.value ||
-                Boolean(
+        Boolean(
             personaForm.errors.persona ||
                 goalsForm.errors.goals ||
                 referralForm.errors.referral_source ||
@@ -351,18 +636,18 @@ const formatCount = (value: number): string =>
     );
 
 const reachRows = computed((): Array<ReachNetwork & { current?: boolean }> => {
-    if (props.latestPost == null) {
+    if (latestPost.value == null) {
         return [];
     }
 
     return [
         {
-            value: props.latestPost.reach.network_value,
-            label: props.latestPost.reach.network,
-            views: props.latestPost.impressions ?? 0,
+            value: latestPost.value.reach.network_value,
+            label: latestPost.value.reach.network,
+            views: latestPost.value.impressions ?? 0,
             current: true,
         },
-        ...props.latestPost.reach.others,
+        ...latestPost.value.reach.others,
     ];
 });
 
@@ -374,89 +659,81 @@ const reachBarWidth = (views: number): string =>
     `${Math.max(6, (views / reachMaxViews.value) * 100)}%`;
 
 const pitchViewsCopy = computed((): string => {
-    if (props.latestPost == null) {
+    if (latestPost.value == null) {
         return '';
     }
 
-    if (props.latestPost.impressions === null) {
+    if (latestPost.value.impressions === null) {
         return trans('welcome.connect.pitch_no_views', {
-            network: props.latestPost.reach.network,
+            network: latestPost.value.reach.network,
         });
     }
 
     return transChoice(
         'welcome.connect.pitch_views',
-        props.latestPost.impressions,
+        latestPost.value.impressions,
         {
-            views: formatCount(props.latestPost.impressions),
-            network: props.latestPost.reach.network,
+            views: formatCount(latestPost.value.impressions),
+            network: latestPost.value.reach.network,
         },
     );
 });
 
-const transcriptContent = ref<HTMLElement | null>(null);
-let transcriptObserver: ResizeObserver | null = null;
-
-const scrollToBottom = (): void => {
-    const top = Math.max(
-        document.documentElement.scrollHeight,
-        document.body.scrollHeight,
-    );
-
-    window.scrollTo({ top, left: 0, behavior: 'auto' });
-};
-
-const scheduleScrollToBottom = (): void => {
-    void nextTick(() => {
-        scrollToBottom();
-        requestAnimationFrame(scrollToBottom);
-    });
-};
-
 onMounted(() => {
-    scheduleScrollToBottom();
+    void (async () => {
+        await ensureLanguage();
 
-    if (
-        transcriptContent.value === null ||
-        typeof ResizeObserver === 'undefined'
-    ) {
-        return;
-    }
+        const copy = questionCopy(step.value);
 
-    transcriptObserver = new ResizeObserver(() => {
-        scrollToBottom();
-    });
-    transcriptObserver.observe(transcriptContent.value);
-});
-
-onBeforeUnmount(() => {
-    transcriptObserver?.disconnect();
+        if (props.history.length === 0) {
+            void question.play(copy.title, copy.description);
+        } else {
+            question.snap(copy.title, copy.description);
+        }
+    })();
 });
 
 watch(
-    () => [
-        props.step,
-        visibleHistory.value.length,
-        selectedNetwork.value,
-        isLatestPostLoading.value,
-        showLatestPost.value,
-        showConnectAction.value,
-        showComposer.value,
-        showPublishMethod.value,
-        showMcpSetup.value,
-        props.latestPost === undefined ? 'loading' : (props.latestPost?.id ?? 'none'),
-    ],
-    () => {
-        scheduleScrollToBottom();
+    () => props.connectedClients,
+    (value) => {
+        connectedClients.value = [...value];
+    },
+);
+
+watch(
+    () => props.accounts,
+    (value) => {
+        accounts.value = [...value];
+    },
+);
+
+watch(
+    () => props.latestPost,
+    (value) => {
+        latestPost.value = value;
+    },
+);
+
+watch(
+    () => props.latestPostNetwork,
+    (value) => {
+        latestPostNetwork.value = value;
+    },
+);
+
+watch(
+    () => props.platforms,
+    (value) => {
+        platforms.value = [...value];
     },
 );
 
 const pitchMissedCopy = computed((): string => {
-    if (props.latestPost == null) {
+    if (latestPost.value == null) {
         return '';
     }
 
-    const others = props.latestPost.reach.others;
+    const others = latestPost.value.reach.others;
 
     if (others.length === 0) {
         return '';
@@ -467,8 +744,8 @@ const pitchMissedCopy = computed((): string => {
     return transChoice('welcome.connect.pitch_missed', others.length, {
         first: first?.label ?? '',
         second: second?.label ?? '',
-        each: formatCount(props.latestPost.reach.each_views),
-        extra: formatCount(props.latestPost.reach.extra_views),
+        each: formatCount(latestPost.value.reach.each_views),
+        extra: formatCount(latestPost.value.reach.extra_views),
     });
 });
 
@@ -487,49 +764,99 @@ const pitchMissedCopy = computed((): string => {
             dusk="welcome-chat"
         >
             <div
-                class="flex-1 px-2 py-6"
+                class="flex-1 px-2 pt-[22vh]"
+                :class="showComposer ? 'pb-36' : 'pb-28'"
                 data-testid="welcome-chat-transcript"
                 dusk="welcome-chat-transcript"
             >
-                <div
-                    ref="transcriptContent"
-                    class="flex min-h-full flex-col justify-end gap-5"
+                <WelcomeChatThread>
+                <template
+                    v-for="row in transcript"
+                    :key="row.id"
                 >
-                <div
-                    v-for="item in visibleHistory"
-                    :key="item.step"
-                    class="flex flex-col gap-3"
-                >
-                    <WelcomeQuestion :title="$t(questionKey[item.step])" />
-                    <div class="flex justify-end">
+                    <div
+                        v-if="row.kind === 'question'"
+                        class="scroll-mt-24 sm:scroll-mt-32"
+                        :data-welcome-turn="row.live ? 'current' : 'past'"
+                    >
+                        <WelcomeQuestion
+                            v-if="
+                                !row.live ||
+                                liveTitle !== '' ||
+                                isQuestionStreaming
+                            "
+                            :title="
+                                row.live
+                                    ? liveTitle
+                                    : $t(questionKey[row.step])
+                            "
+                            :description="
+                                row.live
+                                    ? liveDescription
+                                    : $t(descriptionKey[row.step])
+                            "
+                            :streaming="row.live && isQuestionStreaming"
+                        />
+                        <div
+                            v-if="row.live && showInlinePicker"
+                            class="mt-4 animate-in fade-in slide-in-from-bottom-2 duration-300 motion-reduce:animate-none"
+                        >
+                            <PersonaChips
+                                v-if="step === 'persona'"
+                                :model-value="personaForm.persona"
+                                :personas="personas"
+                                :disabled="personaForm.processing"
+                                @update:model-value="onPersonaSelected"
+                            />
+                            <GoalChips
+                                v-else-if="step === 'goals'"
+                                :model-value="goalsForm.goals"
+                                :goals="goals"
+                                :disabled="goalsForm.processing"
+                                @update:model-value="onGoalsSelected"
+                            />
+                            <ReferralChips
+                                v-else-if="step === 'referral'"
+                                :model-value="referralForm.referral_source"
+                                :sources="sources"
+                                :disabled="referralForm.processing"
+                                @update:model-value="onReferralSelected"
+                            />
+                            <PlatformChips
+                                v-else-if="showPlatformPicker"
+                                :model-value="selectedNetwork"
+                                :platforms="platforms"
+                                @update:model-value="onNetworkSelected"
+                            />
+                        </div>
+                    </div>
+                    <div
+                        v-else
+                        class="flex justify-end animate-in fade-in slide-in-from-right-4 duration-300 motion-reduce:animate-none"
+                    >
                         <PersonaChips
-                            v-if="item.step === 'persona'"
-                            :personas="item.values"
-                            :model-value="item.values[0] ?? ''"
+                            v-if="row.item.step === 'persona'"
+                            :personas="row.item.values"
+                            :model-value="row.item.values[0] ?? ''"
                             readonly
                         />
                         <GoalChips
-                            v-else-if="item.step === 'goals'"
-                            :goals="item.values"
-                            :model-value="item.values"
+                            v-else-if="row.item.step === 'goals'"
+                            :goals="row.item.values"
+                            :model-value="row.item.values"
                             readonly
                         />
                         <ReferralChips
                             v-else
-                            :sources="item.values"
-                            :model-value="item.values[0] ?? ''"
+                            :sources="row.item.values"
+                            :model-value="row.item.values[0] ?? ''"
                             readonly
                         />
                     </div>
-                </div>
-
-                <WelcomeQuestion
-                    :title="$t(questionKey[step])"
-                    :description="$t(descriptionKey[step])"
-                />
+                </template>
 
                 <template v-if="step === 'connect' && selectedPlatform">
-                    <div class="flex flex-col items-end gap-1">
+                    <div class="flex flex-col items-end gap-1 animate-in fade-in slide-in-from-right-4 duration-300 motion-reduce:animate-none">
                         <PlatformChips
                             :platforms="[selectedPlatform]"
                             :model-value="selectedNetwork"
@@ -554,20 +881,29 @@ const pitchMissedCopy = computed((): string => {
                             })
                         "
                     />
-                    <div
-                        v-if="showConnectAction"
-                        class="flex items-start gap-2.5"
-                    >
-                        <span class="size-7 shrink-0" aria-hidden="true" />
-                        <NetworkConnectGrid
-                            variant="list"
-                            :platforms="selectedPlatforms"
-                            :connected-accounts="accounts"
-                            data-testid="welcome-connect-grid"
-                            dusk="welcome-connect-grid"
-                        />
-                    </div>
                 </template>
+                <div
+                    v-if="step === 'connect'"
+                    :class="
+                        showConnectAction
+                            ? 'flex items-start gap-2.5'
+                            : 'hidden'
+                    "
+                    :data-testid="
+                        showConnectAction ? 'welcome-connect-grid' : undefined
+                    "
+                    :dusk="
+                        showConnectAction ? 'welcome-connect-grid' : undefined
+                    "
+                >
+                    <span class="size-7 shrink-0" aria-hidden="true" />
+                    <NetworkConnectGrid
+                        ref="connectGrid"
+                        variant="list"
+                        :platforms="selectedPlatforms"
+                        :connected-accounts="accounts"
+                    />
+                </div>
 
                 <template v-if="isLatestPostLoading">
                     <WelcomeQuestion
@@ -655,11 +991,15 @@ const pitchMissedCopy = computed((): string => {
                                     :key="row.value"
                                     class="flex items-center gap-3"
                                 >
-                                    <img
-                                        :src="getPlatformLogo(row.value)"
-                                        alt=""
-                                        class="size-5 shrink-0"
-                                    />
+                                    <span
+                                        class="inline-flex size-6 shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-foreground bg-card shadow-2xs"
+                                    >
+                                        <img
+                                            :src="getPlatformLogo(row.value)"
+                                            alt=""
+                                            class="size-full object-cover"
+                                        />
+                                    </span>
                                     <div class="min-w-0 flex-1">
                                         <div
                                             class="flex items-baseline justify-between gap-2"
@@ -711,10 +1051,12 @@ const pitchMissedCopy = computed((): string => {
 
                 <template v-if="showPublishMethod">
                     <WelcomeQuestion
+                        class="animate-in fade-in slide-in-from-bottom-2 duration-300 motion-reduce:animate-none"
                         :title="$t('welcome.publish_method.title')"
                         :description="$t('welcome.publish_method.description')"
                     />
                     <PublishMethodChips
+                        class="animate-in fade-in slide-in-from-bottom-2 duration-300 motion-reduce:animate-none"
                         :methods="publishMethods"
                         :model-value="publishMethodForm.publish_method"
                         :disabled="publishMethodForm.processing"
@@ -722,52 +1064,63 @@ const pitchMissedCopy = computed((): string => {
                     />
                     <WelcomeQuestion
                         v-if="showMcpSetup"
-                        :title="$t('welcome.publish_method.mcp')"
+                        :title="
+                            mcpConnected
+                                ? $t('welcome.publish_method.connected')
+                                : $t('welcome.publish_method.mcp')
+                        "
+                        :description="
+                            mcpConnected
+                                ? $t(
+                                      'welcome.publish_method.connected_description',
+                                      { name: connectedClientNames },
+                                  )
+                                : undefined
+                        "
                         data-testid="welcome-mcp-setup"
                         dusk="welcome-mcp-setup"
                     >
+                        <div
+                            v-if="mcpConnected"
+                            class="space-y-2"
+                            data-testid="welcome-mcp-connected"
+                            dusk="welcome-mcp-connected"
+                        >
+                            <div
+                                v-for="client in connectedClients"
+                                :key="client.client_id"
+                                class="flex items-center gap-3 rounded-xl border-2 border-foreground bg-emerald-100 p-3 shadow-2xs"
+                                :data-testid="`welcome-mcp-connected-${client.client_id}`"
+                            >
+                                <span
+                                    class="inline-flex size-8 shrink-0 items-center justify-center rounded-full border-2 border-foreground bg-emerald-300 shadow-2xs"
+                                >
+                                    <IconCheck
+                                        class="size-4"
+                                        stroke-width="3"
+                                    />
+                                </span>
+                                <p
+                                    class="truncate text-sm font-bold text-foreground"
+                                >
+                                    {{ client.name }}
+                                </p>
+                            </div>
+                        </div>
                         <McpPrimarySetup
+                            v-if="!mcpConnected"
                             :mcp-url="mcpUrl"
                             :copied-message="$t('mcp.copied')"
                         />
                     </WelcomeQuestion>
                 </template>
-                </div>
+                </WelcomeChatThread>
             </div>
 
             <div
                 v-if="showStickyFooter"
                 class="sticky bottom-0 bg-background pt-2 pb-5"
             >
-                <div v-if="showStickyPicker" class="mb-3">
-                    <PersonaChips
-                        v-if="step === 'persona'"
-                        :model-value="personaForm.persona"
-                        :personas="personas"
-                        :disabled="personaForm.processing"
-                        @update:model-value="onPersonaSelected"
-                    />
-                    <GoalChips
-                        v-else-if="step === 'goals'"
-                        :model-value="goalsForm.goals"
-                        :goals="goals"
-                        :disabled="goalsForm.processing"
-                        @update:model-value="onGoalsSelected"
-                    />
-                    <ReferralChips
-                        v-else-if="step === 'referral'"
-                        :model-value="referralForm.referral_source"
-                        :sources="sources"
-                        :disabled="referralForm.processing"
-                        @update:model-value="onReferralSelected"
-                    />
-                    <PlatformChips
-                        v-else-if="showPlatformPicker"
-                        v-model="selectedNetwork"
-                        :platforms="platforms"
-                    />
-                </div>
-
                 <InputError
                     v-if="step === 'persona'"
                     :message="personaForm.errors.persona"

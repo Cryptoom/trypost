@@ -37,7 +37,11 @@ const showsFacebook = () => props.methods.includes(Platform.InstagramFacebook);
 
 <template>
     <Dialog v-model:open="open">
-        <DialogContent class="sm:max-w-md" dusk="instagram-connect-dialog">
+        <DialogContent
+            class="sm:max-w-md"
+            data-testid="instagram-connect-dialog"
+            dusk="instagram-connect-dialog"
+        >
             <DialogHeader>
                 <div class="flex items-start gap-3">
                     <img

@@ -13,6 +13,23 @@ use Symfony\Component\HttpFoundation\Response;
 
 class LoadWorkspaceFromToken
 {
+    /**
+     * MCP methods that only complete the client handshake. They must work
+     * during Welcome (no subscription yet) so Claude / ChatGPT / Cursor can
+     * connect. Any other method — especially tools/call — stays gated.
+     *
+     * @var list<string>
+     */
+    private const MCP_HANDSHAKE_METHODS = [
+        'initialize',
+        'notifications/initialized',
+        'tools/list',
+        'resources/list',
+        'resources/templates/list',
+        'prompts/list',
+        'ping',
+    ];
+
     public function handle(Request $request, Closure $next, ?string $context = null): Response
     {
         $user = $request->user();
@@ -63,8 +80,13 @@ class LoadWorkspaceFromToken
         }
 
         // Match web access (EnsureAccountReady): Stripe subscription OR generic
-        // no-card trial when REQUIRE_CARD_FOR_TRIAL is disabled.
-        if (! config('trypost.self_hosted') && ! $workspace->account?->hasAppAccess()) {
+        // no-card trial when REQUIRE_CARD_FOR_TRIAL is disabled. MCP handshake
+        // is the Welcome exception — connect the client, but do no work.
+        if (
+            ! config('trypost.self_hosted')
+            && ! $workspace->account?->hasAppAccess()
+            && ! $this->isMcpHandshake($context, $request)
+        ) {
             return response()->json(['message' => 'Active subscription required.'], Response::HTTP_PAYMENT_REQUIRED);
         }
 
@@ -74,5 +96,26 @@ class LoadWorkspaceFromToken
         $token->forceFill(['last_used_at' => now()])->saveQuietly();
 
         return $next($request);
+    }
+
+    /**
+     * Fail closed: batch JSON-RPC, missing method, or anything other than a
+     * known handshake method still requires a subscription.
+     */
+    private function isMcpHandshake(?string $context, Request $request): bool
+    {
+        if ($context !== 'mcp') {
+            return false;
+        }
+
+        $payload = $request->json()->all();
+
+        if ($payload === [] || array_is_list($payload)) {
+            return false;
+        }
+
+        $method = data_get($payload, 'method');
+
+        return is_string($method) && in_array($method, self::MCP_HANDSHAKE_METHODS, true);
     }
 }

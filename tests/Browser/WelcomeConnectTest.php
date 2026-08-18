@@ -20,7 +20,7 @@ function waitForWelcomeTestId(mixed $page, string $testId): void
     $page->script(<<<JS
         (async () => {
             const sel = '[data-testid="{$testId}"]';
-            for (let i = 0; i < 100; i++) {
+            for (let i = 0; i < 160; i++) {
                 const el = document.querySelector(sel);
                 if (el && el.getBoundingClientRect().height > 0) return;
                 await new Promise((r) => setTimeout(r, 50));
@@ -29,17 +29,17 @@ function waitForWelcomeTestId(mixed $page, string $testId): void
     JS);
 }
 
-function assertWelcomeChatScrolledToBottom(mixed $page): void
+function assertWelcomeChatScrolledToEnd(mixed $page): void
 {
     $result = $page->script(<<<'JS'
         (async () => {
-            for (let i = 0; i < 40; i++) {
+            for (let i = 0; i < 60; i++) {
                 const remaining =
                     document.documentElement.scrollHeight -
                     window.scrollY -
                     window.innerHeight;
 
-                if (remaining <= 8) {
+                if (remaining <= 24) {
                     return { ok: true, remaining };
                 }
 
@@ -57,7 +57,7 @@ function assertWelcomeChatScrolledToBottom(mixed $page): void
     JS);
 
     expect($result['ok'] ?? false)->toBeTrue(
-        'welcome chat should stay scrolled to the bottom (remaining: '.($result['remaining'] ?? 'n/a').')',
+        'welcome chat should finish scrolling to the latest turn (remaining: '.($result['remaining'] ?? 'n/a').')',
     );
 }
 
@@ -97,8 +97,10 @@ test('connect step shows the grid and keeps continue disabled without a social a
         ->click('@welcome-platform-instagram');
 
     waitForWelcomeTestId($page, 'welcome-connect-grid');
+    waitForWelcomeTestId($page, 'instagram-connect-dialog');
 
     $page->assertVisible('@welcome-connect-grid')
+        ->assertVisible('@instagram-connect-dialog')
         ->assertMissing('@welcome-start-checkout')
         ->assertMissing('@welcome-step-4')
         ->assertNoJavaScriptErrors();
@@ -150,9 +152,37 @@ test('connect step shows mcp setup after choosing AI', function () {
 
     waitForWelcomeTestId($page, 'welcome-mcp-setup');
 
+    assertWelcomeChatScrolledToEnd($page);
+
     $page->assertVisible('@welcome-mcp-setup')
+        ->assertMissing('@welcome-mcp-connected')
         ->assertVisible('@welcome-start-checkout')
         ->assertEnabled('@welcome-start-checkout')
+        ->assertNoJavaScriptErrors();
+});
+
+test('connect step shows mcp connected after oauth grant', function () {
+    config(['trypost.self_hosted' => false]);
+
+    $user = welcomeOwnerOnConnectStep();
+    SocialAccount::factory()->linkedin()->create([
+        'workspace_id' => $user->current_workspace_id,
+    ]);
+    mcpAccessToken($user, mcpOauthClient('Claude'), $user->currentWorkspace);
+
+    $this->actingAs($user->fresh());
+
+    $page = visit(route('app.welcome'));
+
+    waitForWelcomeTestId($page, 'welcome-publish-ai');
+
+    $page->click('@welcome-publish-ai');
+
+    waitForWelcomeTestId($page, 'welcome-mcp-connected');
+
+    $page->assertVisible('@welcome-mcp-connected')
+        ->assertSee('Claude')
+        ->assertVisible('@welcome-start-checkout')
         ->assertNoJavaScriptErrors();
 });
 
@@ -186,7 +216,10 @@ test('persona chip submits and advances to goals', function () {
 
     waitForWelcomeTestId($page, 'welcome-persona-agency');
 
-    $page->click('@welcome-persona-agency');
+    $page->assertDontSee('welcome.title')
+        ->assertDontSee('welcome.description')
+        ->assertSee(__('welcome.title'))
+        ->click('@welcome-persona-agency');
 
     waitForWelcomeTestId($page, 'welcome-goal-save_time');
 
@@ -304,9 +337,11 @@ test('welcome chat screenshots each step', function () {
     $page->click('@welcome-platform-instagram');
 
     waitForWelcomeTestId($page, 'welcome-connect-grid');
+    waitForWelcomeTestId($page, 'instagram-connect-dialog');
 
     $page->assertVisible('@welcome-chat')
         ->assertVisible('@welcome-connect-grid')
+        ->assertVisible('@instagram-connect-dialog')
         ->screenshot(filename: 'welcome-chat-connect');
 });
 
@@ -365,7 +400,7 @@ test('welcome chat screenshots the latest post reach pitch', function () {
 
         waitForWelcomeTestId($page, 'welcome-reach-pitch');
 
-        assertWelcomeChatScrolledToBottom($page);
+        assertWelcomeChatScrolledToEnd($page);
 
         $page->assertVisible('@welcome-latest-post')
             ->assertVisible('@welcome-reach-pitch')

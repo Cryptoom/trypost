@@ -25,7 +25,7 @@ return [
         'other' => 'その他',
     ],
     'goals_title' => '目標は何ですか？',
-    'goals_description' => '当てはまるものをすべて選んでください。TryPost をあなた向けに設定します。',
+    'goals_description' => 'いちばん近いものを選んでください。TryPost をあなた向けに設定します。',
     'goals' => [
         'save_time' => 'すべての場所へ一度に投稿して時間を節約する',
         'ai_content' => 'TryPost AI で投稿を生成する',
@@ -72,11 +72,13 @@ return [
         'required' => '続けるには、少なくとも1つのSNSアカウントを接続してください。',
     ],
     'publish_method' => [
-            'title' => 'Will you schedule your posts manually or with AI?',
-            'description' => 'Manually, you write and schedule in TryPost. With AI, Claude, ChatGPT, or Cursor publish for you.',
-            'manual' => 'Manually',
-            'ai' => 'With AI',
-            'mcp' => 'Connect Claude, ChatGPT, or Cursor to publish from there.',
-            'required' => 'Choose whether you\'ll schedule manually or with AI.',
+        'title' => 'Will you schedule your posts manually or with AI?',
+        'description' => 'Manually, you write and schedule in TryPost. With AI, Claude, ChatGPT, or Cursor publish for you.',
+        'manual' => 'Manually',
+        'ai' => 'With AI',
+        'mcp' => 'Connect Claude, ChatGPT, or Cursor to publish from there.',
+        'connected' => 'You\'re connected.',
+        'connected_description' => ':name is connected to TryPost.',
+        'required' => 'Choose whether you\'ll schedule manually or with AI.',
     ],
 ];

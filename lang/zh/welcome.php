@@ -25,7 +25,7 @@ return [
         'other' => '其他',
     ],
     'goals_title' => '你的目标是什么？',
-    'goals_description' => '选择所有符合的选项，我们会为你配置好 TryPost。',
+    'goals_description' => '选最符合的一项，我们会为你配置好 TryPost。',
     'goals' => [
         'save_time' => '一次发布到所有平台，节省时间',
         'ai_content' => '用 TryPost AI 生成帖子',
@@ -77,6 +77,8 @@ return [
         'manual' => 'Manually',
         'ai' => 'With AI',
         'mcp' => 'Connect Claude, ChatGPT, or Cursor to publish from there.',
+        'connected' => 'You\'re connected.',
+        'connected_description' => ':name is connected to TryPost.',
         'required' => 'Choose whether you\'ll schedule manually or with AI.',
     ],
 ];

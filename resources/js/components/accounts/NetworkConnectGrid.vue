@@ -259,6 +259,28 @@ const cardState = computed((): Record<string, CardStateValue> => {
 
     return map;
 });
+
+const startConnect = (platformValue: string): void => {
+    const state = cardState.value[platformValue];
+
+    if (state === CardState.Connected) {
+        return;
+    }
+
+    if (state === CardState.Reconnect) {
+        const account = cardConnection.value[platformValue];
+
+        if (account !== undefined) {
+            reconnectAccount(account);
+        }
+
+        return;
+    }
+
+    openConnect(platformValue);
+};
+
+defineExpose({ startConnect });
 </script>
 
 <template>
