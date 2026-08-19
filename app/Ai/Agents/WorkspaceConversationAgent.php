@@ -11,6 +11,7 @@ use App\Ai\Tools\Post\GetPostTool;
 use App\Ai\Tools\Post\ListPostsTool;
 use App\Ai\Tools\Post\PublishPostTool;
 use App\Ai\Tools\Post\SchedulePostTool;
+use App\Ai\Tools\Post\StartPostGenerationTool;
 use App\Ai\Tools\Post\UpdatePostTool;
 use App\Models\User;
 use App\Models\Workspace;
@@ -24,7 +25,7 @@ use Laravel\Ai\Contracts\Tool;
 use Laravel\Ai\Promptable;
 
 /**
- * The workspace chat agent: carries the system prompt, exposes the eight
+ * The workspace chat agent: carries the system prompt, exposes the nine
  * post tools scoped to the workspace, and remembers conversation history
  * via the SDK's conversation store.
  *
@@ -67,6 +68,7 @@ class WorkspaceConversationAgent implements Agent, Conversational, HasTools
             new ListPostsTool($this->workspace, $this->user),
             new GetPostTool($this->workspace, $this->user),
             new GetPostMetricsTool($this->workspace, $this->user),
+            new StartPostGenerationTool($this->workspace, $this->user),
             new CreatePostTool($this->workspace, $this->user),
             new UpdatePostTool($this->workspace, $this->user),
             new SchedulePostTool($this->workspace, $this->user),

@@ -9,10 +9,10 @@ use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
 
-test('the agent exposes the eight post tools', function () {
+test('the agent exposes the nine post tools', function () {
     $agent = new WorkspaceConversationAgent(Workspace::factory()->create(), User::factory()->create());
 
-    expect(collect($agent->tools())->count())->toBe(8)
+    expect(collect($agent->tools())->count())->toBe(9)
         ->and(collect($agent->tools())->first())->toBeInstanceOf(ListPostsTool::class);
 });
 

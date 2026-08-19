@@ -10,6 +10,7 @@ use App\Ai\Tools\Post\GetPostTool;
 use App\Ai\Tools\Post\ListPostsTool;
 use App\Ai\Tools\Post\PublishPostTool;
 use App\Ai\Tools\Post\SchedulePostTool;
+use App\Ai\Tools\Post\StartPostGenerationTool;
 use App\Ai\Tools\Post\UpdatePostTool;
 use App\Ai\Tools\WorkspaceWriteTool;
 use App\Enums\Post\Status;
@@ -135,6 +136,7 @@ test('every mutating tool the agent exposes extends WorkspaceWriteTool', functio
         ListPostsTool::class,
         GetPostTool::class,
         GetPostMetricsTool::class,
+        StartPostGenerationTool::class,
     ];
 
     [$user, $workspace] = workspaceUserWithRole(Role::Member);
@@ -145,5 +147,5 @@ test('every mutating tool the agent exposes extends WorkspaceWriteTool', functio
         ->every(fn (Tool $tool): bool => $tool instanceof WorkspaceWriteTool);
 
     expect($gated)->toBeTrue()
-        ->and(collect($agent->tools())->count())->toBe(8);
+        ->and(collect($agent->tools())->count())->toBe(9);
 });
