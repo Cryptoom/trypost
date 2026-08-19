@@ -10,6 +10,19 @@ import { subscribePrivateChannel } from '@/composables/echo/subscribePrivateChan
  */
 export const POST_CREATION_TIMEOUT_MS = 960_000;
 
+/**
+ * Why a wait was abandoned without an answer.
+ *
+ * `unsubscribed` is the socket's fault and arrives within seconds of mounting:
+ * the channel refused the subscription, while the generation itself is still
+ * genuinely running on the queue.
+ *
+ * `timeout` is the end of the whole generation window. Nothing is in flight
+ * any more as far as this client is concerned, so a caller must stop
+ * presenting the wait as ongoing.
+ */
+export type PostCreationDetachReason = 'unsubscribed' | 'timeout';
+
 /** The payload `App\Events\Ai\PostCreationReady::broadcastWith()` sends. */
 export interface PostCreationCompleted {
     creation_id?: string;
@@ -27,7 +40,9 @@ export interface UsePostCreationOptions {
     onFailed: (message: string | null) => void;
     /**
      * Called once when the wait was abandoned without ever hearing back: the
-     * channel refused the subscription, or the timeout ran out.
+     * channel refused the subscription, or the timeout ran out. The reason
+     * says which, because the two are minutes apart and a caller showing
+     * elapsed time needs to know whether anything is still being waited on.
      *
      * Deliberately separate from `onFailed`. Losing the socket says nothing
      * about the generation, which keeps running on the queue and still writes
@@ -35,7 +50,7 @@ export interface UsePostCreationOptions {
      * post is recoverable by reopening, where the server resolves it from
      * `creation_id` instead of listening for a broadcast that already fired.
      */
-    onDetached: () => void;
+    onDetached: (reason: PostCreationDetachReason) => void;
     timeoutMs?: number;
 }
 
@@ -132,12 +147,15 @@ export const usePostCreation = (options: UsePostCreationOptions): UsePostCreatio
         }
 
         if (! confirmed) {
-            settle(options.onDetached);
+            settle(() => options.onDetached('unsubscribed'));
 
             return;
         }
 
-        timeout = setTimeout(() => settle(options.onDetached), options.timeoutMs ?? POST_CREATION_TIMEOUT_MS);
+        timeout = setTimeout(
+            () => settle(() => options.onDetached('timeout')),
+            options.timeoutMs ?? POST_CREATION_TIMEOUT_MS,
+        );
     };
 
     onBeforeUnmount(() => {

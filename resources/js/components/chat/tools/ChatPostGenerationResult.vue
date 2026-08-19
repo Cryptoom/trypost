@@ -4,7 +4,7 @@ import { IconAlertTriangle, IconExternalLink, IconLoader2, IconSparkles } from '
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 
 import ChatPostCard from '@/components/chat/tools/ChatPostCard.vue';
-import { usePostCreation } from '@/composables/echo/usePostCreation';
+import { usePostCreation, type PostCreationDetachReason } from '@/composables/echo/usePostCreation';
 import date from '@/date';
 import { edit as editPost } from '@/routes/app/posts';
 import type { ChatPost, ChatPostGeneration } from '@/types/chat';
@@ -74,8 +74,20 @@ const { watchCreation } = usePostCreation({
         stopElapsed();
     },
     onFailed: fail,
-    onDetached: (): void => {
+    /**
+     * The clock stops only when the whole generation window ran out: by then
+     * nothing is being waited on, and a counter still climbing under "this
+     * keeps running in the background" reads as a wait the card is still
+     * timing. A refused subscription is the opposite case — it lands seconds
+     * after mounting, with the generation genuinely in flight, and the clock
+     * is then the card's only sign that it is alive rather than frozen.
+     */
+    onDetached: (reason: PostCreationDetachReason): void => {
         detached.value = true;
+
+        if (reason === 'timeout') {
+            stopElapsed();
+        }
     },
 });
 
