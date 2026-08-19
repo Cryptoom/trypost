@@ -251,3 +251,41 @@ test('a card the conversation already acted on reopens settled', function () {
 
     expect($disabled)->toBeTrue();
 });
+
+test('a workspace with one connected network opens straight on the styles', function () {
+    [$user, $workspace] = actingAsWorkspaceUser();
+
+    SocialAccount::factory()->for($workspace)->create([
+        'platform' => Platform::Threads,
+        'display_name' => 'Acme Threads',
+        'username' => 'acmethreads',
+    ]);
+
+    $conversation = WorkspaceConversation::factory()->for($workspace)->for($user)->create();
+
+    WorkspaceConversationMessage::factory()->for($conversation, 'conversation')->create([
+        'role' => Role::Assistant,
+        'content' => 'Pick how you want it generated.',
+        'tool_calls' => [['id' => 'call_start', 'name' => 'start_post_generation', 'arguments' => []]],
+        'tool_results' => [['id' => 'call_start', 'result' => '{"data":{"formats":[],"styles":[],"applies_brand_visuals_default":true}}']],
+    ]);
+
+    $page = visit(route('app.chat.show', $conversation));
+
+    waitForChatTestId($page, 'chat-post-generation-card');
+
+    // One connected network is not a choice, so the card must not charge a
+    // click for it — the style step is reachable without touching the format.
+    waitForChatTestId($page, 'chat-post-generation-style-step');
+
+    $page->assertVisible('@chat-post-generation-style-image_card')
+        ->assertVisible('@chat-post-generation-style-step');
+
+    $selected = $page->script(<<<'JS'
+        (async () => document
+            .querySelector('[data-testid="chat-post-generation-format-threads_post"]')
+            .className.includes('border-foreground'))()
+    JS);
+
+    expect($selected)->toBeTrue();
+});

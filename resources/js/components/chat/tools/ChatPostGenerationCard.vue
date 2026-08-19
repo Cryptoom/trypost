@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { IconCheck, IconSparkles } from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
-import { computed, ref, useId } from 'vue';
+import { computed, ref, useId, watch } from 'vue';
 
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -305,6 +305,25 @@ const selectFormat = (option: FormatOption): void => {
     selectedAccountId.value = option.accounts.length === 1 ? option.accounts[0].id : null;
 };
 
+/**
+ * A workspace connected to one network has no format to choose between, so the
+ * card picks it rather than charging the user a click that decides nothing and
+ * hides every later step behind it. The step still renders, pre-selected: the
+ * format determines everything below it, and a card opening straight onto
+ * styles would never say where the post is going.
+ */
+watch(
+    formatOptions,
+    (options): void => {
+        if (settled.value || selectedFormat.value !== null || options.length !== 1) {
+            return;
+        }
+
+        selectFormat(options[0]);
+    },
+    { immediate: true },
+);
+
 const selectStyle = (key: string): void => {
     if (settled.value) {
         return;
@@ -486,14 +505,14 @@ const submit = (): void => {
                         v-for="style in freeStyles"
                         :key="style.key"
                         type="button"
-                        class="flex cursor-pointer items-center gap-2 overflow-hidden rounded-lg border border-foreground/15 bg-card p-1.5 text-left transition-colors hover:bg-foreground/5 disabled:cursor-default disabled:opacity-60 disabled:hover:bg-card"
+                        class="relative flex cursor-pointer flex-col overflow-hidden rounded-lg border border-foreground/15 bg-card text-left transition-colors hover:bg-foreground/5 disabled:cursor-default disabled:opacity-60 disabled:hover:bg-card"
                         :class="{ 'border-foreground bg-accent hover:bg-accent': selectedStyleKey === style.key }"
                         :disabled="settled"
                         :data-testid="`chat-post-generation-style-${style.key}`"
                         :dusk="`chat-post-generation-style-${style.key}`"
                         @click="selectStyle(style.key)"
                     >
-                        <span class="aspect-video w-16 shrink-0 overflow-hidden rounded bg-muted">
+                        <span class="aspect-video w-full overflow-hidden bg-muted">
                             <img
                                 :src="style.preview"
                                 :alt="style.name"
@@ -501,14 +520,14 @@ const submit = (): void => {
                             />
                         </span>
 
-                        <span class="min-w-0 flex-1">
+                        <span class="min-w-0 flex-1 p-2">
                             <span class="block truncate text-sm font-semibold text-foreground">{{ style.name }}</span>
-                            <span class="block truncate text-xs text-muted-foreground">{{ style.description }}</span>
+                            <span class="block text-xs text-muted-foreground">{{ style.description }}</span>
                         </span>
 
                         <IconCheck
                             v-if="selectedStyleKey === style.key"
-                            class="mr-1 size-4 shrink-0 text-foreground"
+                            class="absolute right-2 top-2 size-5 rounded-full bg-card p-0.5 text-foreground"
                             stroke-width="3"
                         />
                     </button>
