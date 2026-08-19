@@ -75,6 +75,7 @@ return [
     ],
     'post_generation' => [
         'unavailable' => 'Dieser Workspace hat noch kein verbundenes Konto, deshalb gibt es kein Format, für das ein Beitrag generiert werden könnte. Verbinde zuerst ein Konto.',
+        'styles_unavailable' => 'Zurzeit ist kein Beitragsstil verfügbar, deshalb gibt es nichts, womit dieses Format generiert werden könnte.',
         'format_label' => 'Format',
         'style_label' => 'Stil',
         'images_label' => 'Bilder',

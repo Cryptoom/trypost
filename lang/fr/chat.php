@@ -75,6 +75,7 @@ return [
     ],
     'post_generation' => [
         'unavailable' => "Cet espace de travail n'a encore aucun compte connecté, il n'y a donc aucun format pour générer une publication. Connectez d'abord un compte.",
+        'styles_unavailable' => "Aucun style de publication n'est disponible pour le moment, il n'y a donc rien pour générer ce format.",
         'format_label' => 'Format',
         'style_label' => 'Style',
         'images_label' => 'Images',

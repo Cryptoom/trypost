@@ -150,3 +150,64 @@ test('a format connected on two platforms is offered once with both accounts', f
         'brand' => __('chat.post_generation.sentence_brand_on'),
     ]));
 });
+
+test('the card refuses to submit while a turn is still streaming', function () {
+    [$conversation] = chatWithPostGenerationCard();
+
+    $page = visit(route('app.chat.show', $conversation));
+
+    waitForChatTestId($page, 'chat-post-generation-card');
+
+    $page->click('@chat-post-generation-format-x_post');
+    waitForChatTestId($page, 'chat-post-generation-style-image_card');
+
+    $page->click('@chat-post-generation-style-image_card');
+    waitForChatTestId($page, 'chat-post-generation-submit');
+
+    $page->script(<<<'JS'
+        (async () => {
+            window.fetch = () => new Promise(() => {});
+
+            return true;
+        })()
+    JS);
+
+    $page->fill('@chat-composer-input', 'hold on');
+    $page->click('@chat-send');
+
+    $busy = $page->script(<<<'JS'
+        (async () => {
+            for (let i = 0; i < 160; i++) {
+                const el = document.querySelector('[data-testid="chat-post-generation-submit"]');
+
+                if (el && el.disabled) {
+                    return true;
+                }
+
+                await new Promise((r) => setTimeout(r, 50));
+            }
+
+            return false;
+        })()
+    JS);
+
+    expect($busy)->toBeTrue('the card should disable its submit button while a turn is in flight');
+
+    $page->script(<<<'JS'
+        (async () => {
+            document.querySelector('[data-testid="chat-post-generation-submit"]').click();
+
+            return true;
+        })()
+    JS);
+
+    // Neither latched into its sent state nor sent as a message.
+    $page->assertMissing('@chat-post-generation-sent')
+        ->assertDontSee(__('chat.post_generation.sentence_with_brand', [
+            'format' => __('posts.create.steps.format.x_post'),
+            'style' => __('posts.ai.templates.image_card.name'),
+            'images' => __('chat.post_generation.sentence_images_other', ['count' => 2]),
+            'account' => 'Acme X',
+            'brand' => __('chat.post_generation.sentence_brand_on'),
+        ]));
+});

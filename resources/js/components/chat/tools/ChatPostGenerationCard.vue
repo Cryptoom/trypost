@@ -12,9 +12,19 @@ import type {
     ChatPostGenerationStyle,
 } from '@/types/chat';
 
-const props = defineProps<{
-    data: ChatPostGenerationCatalog | null;
-}>();
+const props = withDefaults(
+    defineProps<{
+        data: ChatPostGenerationCatalog | null;
+        /**
+         * True while a turn is in flight. `pages/chat/Index.vue` drops a
+         * message sent mid-turn, so submitting then would latch the card into
+         * its sent state for a message that never left — the same reason
+         * `ChatComposer` refuses to emit while disabled.
+         */
+        disabled?: boolean;
+    }>(),
+    { disabled: false },
+);
 
 const emit = defineEmits<{
     submit: [string];
@@ -74,8 +84,22 @@ const selectedFormat = ref<string | null>(null);
 const selectedStyleKey = ref<string | null>(null);
 const imageCount = ref(DEFAULT_IMAGE_COUNT);
 const selectedAccountId = ref<string | null>(null);
-const useBrandColors = ref(props.data?.applies_brand_visuals_default ?? true);
 const submitted = ref(false);
+
+/**
+ * Null until the user touches the switch, so the catalog's own default stays
+ * live: `data` is re-parsed on every parent render and replaced outright when
+ * `ToolReplayer` re-runs the tool on reopen, and a value snapshotted at setup
+ * would silently outlive the payload it came from.
+ */
+const brandColorsOverride = ref<boolean | null>(null);
+
+const useBrandColors = computed<boolean>({
+    get: () => brandColorsOverride.value ?? props.data?.applies_brand_visuals_default ?? true,
+    set: (value: boolean) => {
+        brandColorsOverride.value = value;
+    },
+});
 
 const styles = computed<ChatPostGenerationStyle[]>(() => props.data?.styles ?? []);
 
@@ -106,10 +130,24 @@ const formatOptions = computed<FormatOption[]>(() => {
 });
 
 /**
- * `instagram` and `instagram-facebook` share one logo, so the same file would
- * otherwise be stacked twice on a single format.
+ * One entry per distinct logo, each keeping the platform it came from so it
+ * can carry its own alt text: `instagram` and `instagram-facebook` share a
+ * logo file, and the same image stacked twice reads as a rendering glitch.
  */
-const formatLogos = (option: FormatOption): string[] => [...new Set(option.platforms.map(getPlatformLogo))];
+const formatLogos = (option: FormatOption): Array<{ platform: string; logo: string }> => {
+    const seen = new Set<string>();
+
+    return option.platforms.reduce<Array<{ platform: string; logo: string }>>((logos, platform) => {
+        const logo = getPlatformLogo(platform);
+
+        if (! seen.has(logo)) {
+            seen.add(logo);
+            logos.push({ platform, logo });
+        }
+
+        return logos;
+    }, []);
+};
 
 /**
  * Format names are already translated for the wizard this card replaces. A
@@ -224,6 +262,16 @@ const brandStepVisible = computed(
 
 const isEmptyCatalog = computed(() => formatOptions.value.length === 0);
 
+/**
+ * A format was chosen but the catalog offers nothing to render it with, so
+ * every later step stays hidden. Unreachable while the registry ships free
+ * styles, but a card that answers a click with nothing at all is the worst
+ * way to fail.
+ */
+const hasNoUsableStyle = computed(
+    () => selectedFormat.value !== null && ! styleAnswered.value && ! styleStepVisible.value,
+);
+
 const defaultImageCountFor = (format: string): number => {
     const carouselMax = CAROUSEL_MAX_IMAGES[format];
 
@@ -312,8 +360,10 @@ const sentence = computed<string>(() => {
     return trans('chat.post_generation.sentence_with_brand', { ...replacements, brand: brandPhrase.value });
 });
 
+const canSubmit = computed(() => choicesComplete.value && ! submitted.value && ! props.disabled);
+
 const submit = (): void => {
-    if (! choicesComplete.value || submitted.value) {
+    if (! canSubmit.value) {
         return;
     }
 
@@ -350,7 +400,7 @@ const submit = (): void => {
                         :key="option.value"
                         type="button"
                         class="flex cursor-pointer items-center gap-2 rounded-lg border border-foreground/15 bg-card p-2 text-left text-sm transition-colors hover:bg-foreground/5 disabled:cursor-default disabled:opacity-60 disabled:hover:bg-card"
-                        :class="{ 'border-foreground bg-violet-100 hover:bg-violet-100': selectedFormat === option.value }"
+                        :class="{ 'border-foreground bg-accent hover:bg-accent': selectedFormat === option.value }"
                         :disabled="submitted"
                         :data-testid="`chat-post-generation-format-${option.value}`"
                         :dusk="`chat-post-generation-format-${option.value}`"
@@ -358,13 +408,13 @@ const submit = (): void => {
                     >
                         <span class="flex -space-x-1.5">
                             <span
-                                v-for="logo in formatLogos(option)"
-                                :key="logo"
+                                v-for="entry in formatLogos(option)"
+                                :key="entry.platform"
                                 class="inline-flex size-6 items-center justify-center overflow-hidden rounded-full border border-foreground/20 bg-card"
                             >
                                 <img
-                                    :src="logo"
-                                    :alt="getPlatformLabel(option.platforms[0])"
+                                    :src="entry.logo"
+                                    :alt="getPlatformLabel(entry.platform)"
                                     class="size-full object-cover"
                                 />
                             </span>
@@ -383,6 +433,14 @@ const submit = (): void => {
                 </div>
             </div>
 
+            <p
+                v-if="hasNoUsableStyle"
+                class="text-sm text-muted-foreground"
+                data-testid="chat-post-generation-styles-unavailable"
+            >
+                {{ $t('chat.post_generation.styles_unavailable') }}
+            </p>
+
             <div
                 v-if="styleStepVisible"
                 class="space-y-2"
@@ -398,7 +456,7 @@ const submit = (): void => {
                         :key="style.key"
                         type="button"
                         class="flex cursor-pointer items-center gap-2 overflow-hidden rounded-lg border border-foreground/15 bg-card p-1.5 text-left transition-colors hover:bg-foreground/5 disabled:cursor-default disabled:opacity-60 disabled:hover:bg-card"
-                        :class="{ 'border-foreground bg-violet-100 hover:bg-violet-100': selectedStyleKey === style.key }"
+                        :class="{ 'border-foreground bg-accent hover:bg-accent': selectedStyleKey === style.key }"
                         :disabled="submitted"
                         :data-testid="`chat-post-generation-style-${style.key}`"
                         :dusk="`chat-post-generation-style-${style.key}`"
@@ -467,7 +525,7 @@ const submit = (): void => {
                         :key="account.id"
                         type="button"
                         class="flex cursor-pointer items-center gap-2 rounded-lg border border-foreground/15 bg-card p-2 text-left text-sm transition-colors hover:bg-foreground/5 disabled:cursor-default disabled:opacity-60 disabled:hover:bg-card"
-                        :class="{ 'border-foreground bg-violet-100 hover:bg-violet-100': selectedAccountId === account.id }"
+                        :class="{ 'border-foreground bg-accent hover:bg-accent': selectedAccountId === account.id }"
                         :disabled="submitted"
                         :data-testid="`chat-post-generation-account-${account.id}`"
                         :dusk="`chat-post-generation-account-${account.id}`"
@@ -528,6 +586,7 @@ const submit = (): void => {
                     v-else
                     type="button"
                     size="sm"
+                    :disabled="! canSubmit"
                     data-testid="chat-post-generation-submit"
                     dusk="chat-post-generation-submit"
                     @click="submit"

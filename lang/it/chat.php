@@ -75,6 +75,7 @@ return [
     ],
     'post_generation' => [
         'unavailable' => "Questo workspace non ha ancora nessun account collegato, quindi non c'è alcun formato per cui generare un post. Collega prima un account.",
+        'styles_unavailable' => "Al momento non è disponibile nessuno stile di post, quindi non c'è nulla con cui generare questo formato.",
         'format_label' => 'Formato',
         'style_label' => 'Stile',
         'images_label' => 'Immagini',

@@ -75,6 +75,7 @@ return [
     ],
     'post_generation' => [
         'unavailable' => '这个工作区还没有已连接的账号，因此没有可生成帖子的格式。请先连接一个账号。',
+        'styles_unavailable' => '目前没有可用的帖子风格，因此无法生成这个格式。',
         'format_label' => '格式',
         'style_label' => '风格',
         'images_label' => '图片',

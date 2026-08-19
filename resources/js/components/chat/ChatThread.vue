@@ -11,11 +11,18 @@ withDefaults(
     defineProps<{
         messages: UIMessage[];
         pending?: boolean;
+        /**
+         * True while a turn is in flight. Forwarded to the prompt-kind tool
+         * cards so they refuse to submit into a turn the page would drop —
+         * the same guard `ChatComposer` gets.
+         */
+        disabled?: boolean;
         testId?: string;
         endTestId?: string;
     }>(),
     {
         pending: false,
+        disabled: false,
         testId: 'chat-thread',
         endTestId: 'chat-end',
     },
@@ -61,6 +68,7 @@ const onDecide = (decision: ChatApprovalDecision): void => emit('decide', decisi
                 <ChatToolPart
                     v-else-if="part.type.startsWith('tool-')"
                     :part="{ ...(part as unknown as ChatToolInvocation) }"
+                    :disabled="disabled"
                     @submit="onSubmit"
                     @decide="onDecide"
                 />

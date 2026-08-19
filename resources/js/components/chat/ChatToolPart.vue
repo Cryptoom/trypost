@@ -7,9 +7,18 @@ import ChatApprovalCard from '@/components/chat/ChatApprovalCard.vue';
 import { resolveToolComponent } from '@/lib/chat/toolComponents';
 import type { ChatApprovalDecision, ChatToolInvocation } from '@/types/chat';
 
-const props = defineProps<{
-    part: ChatToolInvocation;
-}>();
+const props = withDefaults(
+    defineProps<{
+        part: ChatToolInvocation;
+        /**
+         * True while a turn is in flight. Only `prompt`-kind cards receive it:
+         * they submit a new user message, and `pages/chat/Index.vue` drops one
+         * sent mid-turn. `display` cards have nothing to disable.
+         */
+        disabled?: boolean;
+    }>(),
+    { disabled: false },
+);
 
 const emit = defineEmits<{
     submit: [string];
@@ -29,7 +38,14 @@ const toolLabel = computed<string>(() => {
     return label === key ? toolName.value : label;
 });
 
-const toolComponent = computed(() => resolveToolComponent(toolName.value)?.component ?? null);
+const toolEntry = computed(() => resolveToolComponent(toolName.value));
+
+const toolComponent = computed(() => toolEntry.value?.component ?? null);
+
+/** Bound only for `prompt` cards, so a `display` card never receives a stray attribute. */
+const promptProps = computed<Record<string, unknown>>(() =>
+    toolEntry.value?.kind === 'prompt' ? { disabled: props.disabled } : {},
+);
 
 type ParsedResult = { kind: 'data'; data: unknown } | { kind: 'error'; message: string } | { kind: 'unreadable' };
 
@@ -140,6 +156,7 @@ const onDecide = (decision: ChatApprovalDecision): void => emit('decide', decisi
                 :is="toolComponent"
                 v-else-if="toolComponent"
                 :data="parsedResult.kind === 'data' ? parsedResult.data : null"
+                v-bind="promptProps"
                 @submit="onSubmit"
             />
 

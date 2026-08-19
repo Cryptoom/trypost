@@ -139,6 +139,7 @@ const onDecide = (decision: ChatApprovalDecision): void => {
                     v-if="messages.length"
                     :messages="renderedMessages"
                     :pending="isWaitingForAssistant"
+                    :disabled="isBusy"
                     @submit="ask"
                     @decide="onDecide"
                 />

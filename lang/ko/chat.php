@@ -75,6 +75,7 @@ return [
     ],
     'post_generation' => [
         'unavailable' => '이 워크스페이스에는 아직 연결된 계정이 없어 게시물을 생성할 형식이 없습니다. 먼저 계정을 연결하세요.',
+        'styles_unavailable' => '지금은 사용할 수 있는 게시물 스타일이 없어 이 형식을 생성할 수단이 없습니다.',
         'format_label' => '형식',
         'style_label' => '스타일',
         'images_label' => '이미지',

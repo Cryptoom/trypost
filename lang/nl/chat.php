@@ -75,6 +75,7 @@ return [
     ],
     'post_generation' => [
         'unavailable' => 'Deze workspace heeft nog geen gekoppeld account, dus er is geen formaat om een post voor te genereren. Koppel eerst een account.',
+        'styles_unavailable' => 'Er is op dit moment geen poststijl beschikbaar, dus er is niets om dit formaat mee te genereren.',
         'format_label' => 'Formaat',
         'style_label' => 'Stijl',
         'images_label' => 'Afbeeldingen',

@@ -75,6 +75,7 @@ return [
     ],
     'post_generation' => [
         'unavailable' => 'Bu çalışma alanında henüz bağlı bir hesap yok, bu yüzden gönderi üretilecek bir format da yok. Önce bir hesap bağla.',
+        'styles_unavailable' => 'Şu anda kullanılabilir bir gönderi stili yok, bu yüzden bu formatı oluşturacak bir şey de yok.',
         'format_label' => 'Format',
         'style_label' => 'Stil',
         'images_label' => 'Görseller',

@@ -75,6 +75,7 @@ return [
     ],
     'post_generation' => [
         'unavailable' => 'このワークスペースにはまだ接続済みのアカウントがないため、投稿を生成できるフォーマットがありません。まずアカウントを接続してください。',
+        'styles_unavailable' => '現在利用できる投稿スタイルがないため、このフォーマットを生成する手段がありません。',
         'format_label' => 'フォーマット',
         'style_label' => 'スタイル',
         'images_label' => '画像',
