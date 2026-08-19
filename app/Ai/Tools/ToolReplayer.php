@@ -9,6 +9,7 @@ use App\Ai\Tools\Post\ListPostsTool;
 use App\Ai\Tools\Post\StartPostGenerationTool;
 use App\Http\Resources\Chat\ChatPostResource;
 use App\Models\WorkspaceConversation;
+use App\Models\WorkspaceConversationMessage;
 use Laravel\Ai\Tools\Request;
 use Throwable;
 
@@ -69,6 +70,15 @@ class ToolReplayer
     private const GENERATE_POST = 'generate_post';
 
     /**
+     * Longest a generation is given before it is treated as over. Mirrors the
+     * client's own bound (POST_CREATION_TIMEOUT_MS in
+     * resources/js/composables/echo/usePostCreation.ts, itself carried over
+     * from the loading screen's GENERATION_TIMEOUT_MS), so the two agree on
+     * when a generation stopped being in flight. Keep them in step.
+     */
+    private const GENERATION_WINDOW_MINUTES = 16;
+
+    /**
      * @return array<string, string> tool call id => JSON payload
      */
     public function replay(WorkspaceConversation $conversation): array
@@ -84,7 +94,7 @@ class ToolReplayer
                 $name = data_get($call, 'name');
 
                 if ($name === self::GENERATE_POST) {
-                    $payloads[$id] = $this->withGeneratedPost($conversation, $stored);
+                    $payloads[$id] = $this->withGeneratedPost($conversation, $message, $stored);
 
                     continue;
                 }
@@ -128,11 +138,19 @@ class ToolReplayer
      *
      * Scoped to the conversation's own workspace, so a creation id that
      * somehow named another workspace's post resolves to nothing rather than
-     * leaking it. A generation still in flight — or one that failed and never
-     * produced a post — resolves to nothing too, and the payload passes
-     * through untouched so the card subscribes and waits.
+     * leaking it.
+     *
+     * Resolving nothing means one of two different things, and the payload
+     * says which. A generation started minutes ago may still be running, so
+     * that payload passes through untouched and the card subscribes and waits.
+     * A generation whose turn happened longer ago than the whole generation
+     * window with no post to show for it is over: the broadcast fired and was
+     * missed, or the job failed. Nothing is coming, and the card would
+     * otherwise sit spinning for the length of its own timeout implying work
+     * is in progress. That payload is marked `settled` so the card can say so
+     * on first paint.
      */
-    private function withGeneratedPost(WorkspaceConversation $conversation, string $stored): string
+    private function withGeneratedPost(WorkspaceConversation $conversation, WorkspaceConversationMessage $message, string $stored): string
     {
         $payload = json_decode($stored, true);
 
@@ -152,11 +170,37 @@ class ToolReplayer
             ->first();
 
         if ($post === null) {
-            return $stored;
+            if (! $this->hasOutlivedGenerationWindow($message)) {
+                return $stored;
+            }
+
+            data_set($payload, 'data.settled', true);
+
+            return $this->encode($payload);
         }
 
         data_set($payload, 'data.post', (new ChatPostResource($post))->withFullContent()->resolve());
 
+        return $this->encode($payload);
+    }
+
+    /**
+     * Whether the turn that started this generation is older than the window a
+     * generation is given to finish, measured from the message's own
+     * `created_at` rather than from anything the client reports.
+     */
+    private function hasOutlivedGenerationWindow(WorkspaceConversationMessage $message): bool
+    {
+        $createdAt = $message->created_at;
+
+        return $createdAt !== null && $createdAt->lt(now()->subMinutes(self::GENERATION_WINDOW_MINUTES));
+    }
+
+    /**
+     * @param  array<mixed>  $payload
+     */
+    private function encode(array $payload): string
+    {
         return json_encode($payload, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
     }
 

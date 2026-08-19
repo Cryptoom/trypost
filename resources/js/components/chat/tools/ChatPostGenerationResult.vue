@@ -87,7 +87,11 @@ onMounted(() => {
 
     const channel = props.data?.channel;
 
-    if (! channel) {
+    // `settled` means the server already established the generation ended
+    // without a post: the turn predates the whole generation window, so
+    // nothing will ever arrive on the channel. Subscribing would spin for the
+    // length of the timeout implying work is still in progress.
+    if (! channel || props.data?.settled === true) {
         fail(null);
 
         return;

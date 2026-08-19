@@ -165,6 +165,13 @@ export interface ChatPostGeneration {
     creation_id: string;
     channel: string;
     post?: ChatPost | null;
+    /**
+     * Set by `ToolReplayer` when the generation is over and produced no post —
+     * the turn is older than the whole generation window, so the broadcast
+     * either fired and was missed or never came. Distinguishes "nothing is
+     * coming" from "still running", which a bare missing `post` cannot.
+     */
+    settled?: boolean;
 }
 
 /** Mirrors `App\Services\Ai\PostGenerationCatalog::forWorkspace()`. */

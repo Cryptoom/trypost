@@ -335,3 +335,78 @@ test('a generate_post call that errored keeps its error payload', function () {
 
     expect($payloads['call_error'])->toBe($stored);
 });
+
+test('a generation whose turn outlived the generation window serializes as settled', function () {
+    $workspace = Workspace::factory()->create();
+    $user = User::factory()->create();
+    $conversation = WorkspaceConversation::factory()->for($workspace)->for($user)->create();
+
+    $stored = json_encode(['data' => ['creation_id' => 'call_stale', 'channel' => "user.{$user->id}.ai-creation.call_stale"]]);
+
+    $message = WorkspaceConversationMessage::factory()->for($conversation, 'conversation')->create([
+        'role' => Role::Assistant,
+        'content' => 'Generating it now.',
+        'tool_calls' => [['id' => 'call_stale', 'name' => 'generate_post', 'arguments' => ['prompt' => 'hello']]],
+        'tool_results' => [['id' => 'call_stale', 'result' => $stored]],
+    ]);
+
+    $message->forceFill(['created_at' => now()->subMinutes(17)])->saveQuietly();
+
+    $payloads = app(ToolReplayer::class)->replay($conversation->fresh(['messages']));
+
+    $data = data_get(json_decode($payloads['call_stale'], true), 'data');
+
+    expect(data_get($data, 'settled'))->toBeTrue()
+        ->and(data_get($data, 'post'))->toBeNull()
+        ->and(data_get($data, 'creation_id'))->toBe('call_stale');
+});
+
+test('a generation still inside the generation window is left in flight', function () {
+    $workspace = Workspace::factory()->create();
+    $user = User::factory()->create();
+    $conversation = WorkspaceConversation::factory()->for($workspace)->for($user)->create();
+
+    $stored = json_encode(['data' => ['creation_id' => 'call_recent', 'channel' => "user.{$user->id}.ai-creation.call_recent"]]);
+
+    $message = WorkspaceConversationMessage::factory()->for($conversation, 'conversation')->create([
+        'role' => Role::Assistant,
+        'content' => 'Generating it now.',
+        'tool_calls' => [['id' => 'call_recent', 'name' => 'generate_post', 'arguments' => ['prompt' => 'hello']]],
+        'tool_results' => [['id' => 'call_recent', 'result' => $stored]],
+    ]);
+
+    $message->forceFill(['created_at' => now()->subMinutes(15)])->saveQuietly();
+
+    $payloads = app(ToolReplayer::class)->replay($conversation->fresh(['messages']));
+
+    expect($payloads['call_recent'])->toBe($stored);
+});
+
+test('an outlived generation that did produce a post resolves it rather than settling', function () {
+    $workspace = Workspace::factory()->create();
+    $user = User::factory()->create();
+    $conversation = WorkspaceConversation::factory()->for($workspace)->for($user)->create();
+
+    $post = Post::factory()->for($workspace)->create([
+        'content' => 'Generated days ago',
+        'creation_id' => 'call_old_success',
+    ]);
+
+    $stored = json_encode(['data' => ['creation_id' => 'call_old_success', 'channel' => "user.{$user->id}.ai-creation.call_old_success"]]);
+
+    $message = WorkspaceConversationMessage::factory()->for($conversation, 'conversation')->create([
+        'role' => Role::Assistant,
+        'content' => 'Generating it now.',
+        'tool_calls' => [['id' => 'call_old_success', 'name' => 'generate_post', 'arguments' => ['prompt' => 'hello']]],
+        'tool_results' => [['id' => 'call_old_success', 'result' => $stored]],
+    ]);
+
+    $message->forceFill(['created_at' => now()->subDays(3)])->saveQuietly();
+
+    $payloads = app(ToolReplayer::class)->replay($conversation->fresh(['messages']));
+
+    $data = data_get(json_decode($payloads['call_old_success'], true), 'data');
+
+    expect(data_get($data, 'post.id'))->toBe($post->id)
+        ->and(data_get($data, 'settled'))->toBeNull();
+});

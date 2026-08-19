@@ -35,7 +35,7 @@ function waitForGenerationTestId(mixed $page, string $testId): void
  * result is exactly what the tool returns — a creation id and a channel, never
  * the post, because generation runs in the background.
  */
-function chatWithGeneratedPost(string $creationId, Workspace $workspace, User $user): WorkspaceConversation
+function chatWithGeneratedPost(string $creationId, Workspace $workspace, User $user, ?int $minutesAgo = null): WorkspaceConversation
 {
     $conversation = WorkspaceConversation::factory()->for($workspace)->for($user)->create();
 
@@ -44,12 +44,16 @@ function chatWithGeneratedPost(string $creationId, Workspace $workspace, User $u
         'channel' => "user.{$user->id}.ai-creation.{$creationId}",
     ]]);
 
-    WorkspaceConversationMessage::factory()->for($conversation, 'conversation')->create([
+    $message = WorkspaceConversationMessage::factory()->for($conversation, 'conversation')->create([
         'role' => Role::Assistant,
         'content' => 'Generating it now.',
         'tool_calls' => [['id' => $creationId, 'name' => 'generate_post', 'arguments' => ['prompt' => 'Our new pricing']]],
         'tool_results' => [['id' => $creationId, 'result' => $stored]],
     ]);
+
+    if ($minutesAgo !== null) {
+        $message->forceFill(['created_at' => now()->subMinutes($minutesAgo)])->saveQuietly();
+    }
 
     return $conversation;
 }
@@ -171,4 +175,21 @@ test('a generation whose payload carries no channel shows the failure instead of
 
     $page->assertSee(__('chat.post_generation.result_failed'))
         ->assertMissing('@chat-post-generation-waiting');
+});
+
+test('a generation that ended long ago without a post never enters the waiting state', function () {
+    [$user, $workspace] = actingAsWorkspaceUser();
+
+    $conversation = chatWithGeneratedPost('call_stale', $workspace, $user, minutesAgo: 60);
+
+    $page = visit(route('app.chat.show', $conversation));
+
+    // The server marked the payload settled, so the card decides at mount:
+    // no subscription, no spinner, and no sixteen-minute wait for its own
+    // timeout to reach the same conclusion.
+    waitForGenerationTestId($page, 'chat-post-generation-failed');
+
+    $page->assertSee(__('chat.post_generation.result_failed'))
+        ->assertMissing('@chat-post-generation-waiting')
+        ->assertMissing('@chat-post-card');
 });
