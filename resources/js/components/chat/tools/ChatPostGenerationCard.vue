@@ -3,6 +3,8 @@ import { IconCheck, IconSparkles } from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
 import { computed, ref, useId, watch } from 'vue';
 
+import ChatAssistantMessage from '@/components/chat/ChatAssistantMessage.vue';
+import ChatPostGenerationChoice from '@/components/chat/tools/ChatPostGenerationChoice.vue';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
@@ -77,6 +79,9 @@ const DEFAULT_IMAGE_COUNT = 2;
 const CAROUSEL_DEFAULT_IMAGE_COUNT = 5;
 const SINGLE_IMAGE_FORMAT_COUNT = 1;
 
+/** The steps that read back as the user's own message once answered. */
+type RecordedStep = 'format' | 'style' | 'account';
+
 const brandColorsId = useId();
 
 const selectedFormat = ref<string | null>(null);
@@ -84,6 +89,13 @@ const selectedStyleKey = ref<string | null>(null);
 const imageCount = ref(DEFAULT_IMAGE_COUNT);
 const selectedAccountId = ref<string | null>(null);
 const submitted = ref(false);
+
+/**
+ * The one answered step the user reopened to change. An answered step reads
+ * back as their own message instead of staying a live form, so this is the
+ * only way back into it — without it, a mis-clicked format would be final.
+ */
+const editingStep = ref<RecordedStep | null>(null);
 
 /**
  * The choices were already sent — either in this session, or in an earlier one
@@ -280,6 +292,86 @@ const hasNoUsableStyle = computed(
     () => selectedFormat.value !== null && ! styleAnswered.value && ! styleStepVisible.value,
 );
 
+/**
+ * Each step is one block in the thread, in the order it was asked: an open
+ * question while it waits for an answer, and the answer itself — as the user's
+ * own message — once it has one. The next question is appended below that
+ * record rather than sprouting inside the same box, so the card reads top to
+ * bottom like the rest of the conversation.
+ *
+ * The image count and the brand toggle never become records: both enter their
+ * step already answered by the wizard's own default, so collapsing them would
+ * hide options the user never got to see.
+ */
+const formatQuestionVisible = computed(
+    () => selectedFormat.value === null || editingStep.value === 'format',
+);
+
+const formatChoiceVisible = computed(
+    () => ! formatQuestionVisible.value && selectedFormatOption.value !== null,
+);
+
+/**
+ * A step being changed is the last block in the thread: everything the old
+ * answer had revealed is dropped until it is answered again, so the user never
+ * edits a format while the steps that depend on it still stand below.
+ */
+const notEditing = computed(() => editingStep.value === null);
+
+const styleBlockVisible = computed(() => styleStepVisible.value && editingStep.value !== 'format');
+
+const styleQuestionVisible = computed(
+    () => styleBlockVisible.value && (selectedStyleKey.value === null || editingStep.value === 'style'),
+);
+
+/**
+ * Only a style the user actually picked reads back as their message — a style
+ * bound to the format (the carousel's own) was never a choice, and the card
+ * has never shown one.
+ */
+const styleChoiceVisible = computed(
+    () => styleBlockVisible.value && ! styleQuestionVisible.value && resolvedStyle.value !== null,
+);
+
+const imagesBlockVisible = computed(() => imageStepVisible.value && notEditing.value);
+
+const accountQuestionVisible = computed(
+    () =>
+        accountStepVisible.value &&
+        (notEditing.value || editingStep.value === 'account') &&
+        (selectedAccountId.value === null || editingStep.value === 'account'),
+);
+
+const accountChoiceVisible = computed(
+    () => accountStepVisible.value && notEditing.value && selectedAccount.value !== null,
+);
+
+const brandBlockVisible = computed(() => brandStepVisible.value && notEditing.value);
+
+const submitVisible = computed(() => choicesComplete.value && notEditing.value);
+
+const formatChoiceLogos = computed(() =>
+    selectedFormatOption.value === null ? [] : formatLogos(selectedFormatOption.value),
+);
+
+const accountChoiceLogos = computed(() => {
+    const account = selectedAccount.value;
+
+    if (account === null) {
+        return [];
+    }
+
+    return [{ platform: account.platform, logo: getPlatformLogo(account.platform) }];
+});
+
+const reopen = (step: RecordedStep): void => {
+    if (settled.value) {
+        return;
+    }
+
+    editingStep.value = step;
+};
+
 const defaultImageCountFor = (format: string): number => {
     const carouselMax = CAROUSEL_MAX_IMAGES[format];
 
@@ -299,6 +391,7 @@ const selectFormat = (option: FormatOption): void => {
         return;
     }
 
+    editingStep.value = null;
     selectedFormat.value = option.value;
     selectedStyleKey.value = null;
     imageCount.value = defaultImageCountFor(option.value);
@@ -329,6 +422,7 @@ const selectStyle = (key: string): void => {
         return;
     }
 
+    editingStep.value = null;
     selectedStyleKey.value = key;
 };
 
@@ -345,6 +439,7 @@ const selectAccount = (id: string): void => {
         return;
     }
 
+    editingStep.value = null;
     selectedAccountId.value = id;
 };
 
@@ -410,6 +505,38 @@ const sentence = computed<string>(() => {
     return trans('chat.post_generation.sentence_with_brand', { ...replacements, brand: brandPhrase.value });
 });
 
+/**
+ * What a settled card shows instead of its steps. The choices only exist in
+ * this component, so a conversation reopened after the fact (`data.spent`)
+ * has none to list — it says the choices were sent and leaves the detail to
+ * the user message that carries the sentence, right below.
+ */
+const summaryParts = computed<string[]>(() => {
+    if (selectedFormat.value === null) {
+        return [];
+    }
+
+    const parts = [formatLabel(selectedFormat.value)];
+
+    if (resolvedStyle.value !== null) {
+        parts.push(resolvedStyle.value.name);
+    }
+
+    if (imageChoices.value.length > 0 || isSingleImageFormat.value) {
+        parts.push(imagesPhrase.value);
+    }
+
+    if (selectedAccount.value !== null) {
+        parts.push(accountPhrase.value);
+    }
+
+    if (brandStepVisible.value) {
+        parts.push(brandPhrase.value);
+    }
+
+    return parts;
+});
+
 const canSubmit = computed(() => choicesComplete.value && ! settled.value && ! props.disabled);
 
 const submit = (): void => {
@@ -426,32 +553,50 @@ const submit = (): void => {
 
 <template>
     <div
-        class="space-y-4 rounded-xl border border-foreground/15 bg-background p-3"
+        class="space-y-3"
         data-testid="chat-post-generation-card"
         dusk="chat-post-generation-card"
     >
-        <p
+        <ChatAssistantMessage
             v-if="isEmptyCatalog"
-            class="text-sm text-muted-foreground"
+            :title="$t('chat.post_generation.unavailable')"
             data-testid="chat-post-generation-empty"
+            dusk="chat-post-generation-empty"
+        />
+
+        <div
+            v-else-if="settled"
+            class="flex flex-wrap items-center gap-x-2 gap-y-1 rounded-xl border border-foreground/15 bg-background px-3 py-2 text-xs text-muted-foreground"
+            data-testid="chat-post-generation-sent"
+            dusk="chat-post-generation-sent"
         >
-            {{ $t('chat.post_generation.unavailable') }}
-        </p>
+            <IconCheck class="size-4 shrink-0" stroke-width="3" />
+
+            <span class="font-semibold">{{ $t('chat.post_generation.sent') }}</span>
+
+            <span
+                v-for="(part, index) in summaryParts"
+                :key="index"
+                class="rounded-md bg-accent px-1.5 py-0.5 text-accent-foreground"
+            >
+                {{ part }}
+            </span>
+        </div>
 
         <template v-else>
-            <div class="space-y-2">
-                <p class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    {{ $t('chat.post_generation.format_label') }}
-                </p>
-
+            <ChatAssistantMessage
+                v-if="formatQuestionVisible"
+                :title="$t('chat.post_generation.format_question')"
+                data-testid="chat-post-generation-format-step"
+                dusk="chat-post-generation-format-step"
+            >
                 <div class="grid gap-2 sm:grid-cols-2">
                     <button
                         v-for="option in formatOptions"
                         :key="option.value"
                         type="button"
-                        class="flex cursor-pointer items-center gap-2 rounded-lg border border-foreground/15 bg-card p-2 text-left text-sm transition-colors hover:bg-foreground/5 disabled:cursor-default disabled:opacity-60 disabled:hover:bg-card"
+                        class="flex cursor-pointer items-center gap-2 rounded-lg border border-foreground/15 bg-background p-2 text-left text-sm transition-colors hover:bg-foreground/5"
                         :class="{ 'border-foreground bg-accent hover:bg-accent': selectedFormat === option.value }"
-                        :disabled="settled"
                         :data-testid="`chat-post-generation-format-${option.value}`"
                         :dusk="`chat-post-generation-format-${option.value}`"
                         @click="selectFormat(option)"
@@ -481,33 +626,37 @@ const submit = (): void => {
                         />
                     </button>
                 </div>
-            </div>
+            </ChatAssistantMessage>
 
-            <p
+            <ChatPostGenerationChoice
+                v-else-if="formatChoiceVisible && selectedFormatOption"
+                :text="formatLabel(selectedFormatOption.value)"
+                :logos="formatChoiceLogos"
+                :changeable="formatOptions.length > 1"
+                test-id="chat-post-generation-format-choice"
+                @change="reopen('format')"
+            />
+
+            <ChatAssistantMessage
                 v-if="hasNoUsableStyle"
-                class="text-sm text-muted-foreground"
+                :title="$t('chat.post_generation.styles_unavailable')"
                 data-testid="chat-post-generation-styles-unavailable"
-            >
-                {{ $t('chat.post_generation.styles_unavailable') }}
-            </p>
+                dusk="chat-post-generation-styles-unavailable"
+            />
 
-            <div
-                v-if="styleStepVisible"
-                class="space-y-2"
+            <ChatAssistantMessage
+                v-if="styleQuestionVisible"
+                :title="$t('chat.post_generation.style_question')"
                 data-testid="chat-post-generation-style-step"
+                dusk="chat-post-generation-style-step"
             >
-                <p class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    {{ $t('chat.post_generation.style_label') }}
-                </p>
-
                 <div class="grid gap-2 sm:grid-cols-2">
                     <button
                         v-for="style in freeStyles"
                         :key="style.key"
                         type="button"
-                        class="relative flex cursor-pointer flex-col overflow-hidden rounded-lg border border-foreground/15 bg-card text-left transition-colors hover:bg-foreground/5 disabled:cursor-default disabled:opacity-60 disabled:hover:bg-card"
+                        class="relative flex cursor-pointer flex-col overflow-hidden rounded-lg border border-foreground/15 bg-background text-left transition-colors hover:bg-foreground/5"
                         :class="{ 'border-foreground bg-accent hover:bg-accent': selectedStyleKey === style.key }"
-                        :disabled="settled"
                         :data-testid="`chat-post-generation-style-${style.key}`"
                         :dusk="`chat-post-generation-style-${style.key}`"
                         @click="selectStyle(style.key)"
@@ -532,17 +681,22 @@ const submit = (): void => {
                         />
                     </button>
                 </div>
-            </div>
+            </ChatAssistantMessage>
 
-            <div
-                v-if="imageStepVisible"
-                class="space-y-2"
+            <ChatPostGenerationChoice
+                v-else-if="styleChoiceVisible && resolvedStyle"
+                :text="resolvedStyle.name"
+                changeable
+                test-id="chat-post-generation-style-choice"
+                @change="reopen('style')"
+            />
+
+            <ChatAssistantMessage
+                v-if="imagesBlockVisible"
+                :title="$t('chat.post_generation.images_question')"
                 data-testid="chat-post-generation-images-step"
+                dusk="chat-post-generation-images-step"
             >
-                <p class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    {{ $t('chat.post_generation.images_label') }}
-                </p>
-
                 <div class="flex flex-wrap gap-1.5">
                     <Button
                         v-for="count in imageChoices"
@@ -550,7 +704,6 @@ const submit = (): void => {
                         type="button"
                         size="sm"
                         :variant="imageCount === count ? 'default' : 'outline'"
-                        :disabled="settled"
                         :data-testid="`chat-post-generation-images-${count}`"
                         :dusk="`chat-post-generation-images-${count}`"
                         @click="selectImageCount(count)"
@@ -558,25 +711,21 @@ const submit = (): void => {
                         {{ count === 0 ? $t('chat.post_generation.images_none') : count }}
                     </Button>
                 </div>
-            </div>
+            </ChatAssistantMessage>
 
-            <div
-                v-if="accountStepVisible"
-                class="space-y-2"
+            <ChatAssistantMessage
+                v-if="accountQuestionVisible"
+                :title="$t('chat.post_generation.account_question')"
                 data-testid="chat-post-generation-account-step"
+                dusk="chat-post-generation-account-step"
             >
-                <p class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    {{ $t('chat.post_generation.account_label') }}
-                </p>
-
                 <div class="grid gap-2 sm:grid-cols-2">
                     <button
                         v-for="account in accountsForFormat"
                         :key="account.id"
                         type="button"
-                        class="flex cursor-pointer items-center gap-2 rounded-lg border border-foreground/15 bg-card p-2 text-left text-sm transition-colors hover:bg-foreground/5 disabled:cursor-default disabled:opacity-60 disabled:hover:bg-card"
+                        class="flex cursor-pointer items-center gap-2 rounded-lg border border-foreground/15 bg-background p-2 text-left text-sm transition-colors hover:bg-foreground/5"
                         :class="{ 'border-foreground bg-accent hover:bg-accent': selectedAccountId === account.id }"
-                        :disabled="settled"
                         :data-testid="`chat-post-generation-account-${account.id}`"
                         :dusk="`chat-post-generation-account-${account.id}`"
                         @click="selectAccount(account.id)"
@@ -601,42 +750,46 @@ const submit = (): void => {
                         />
                     </button>
                 </div>
-            </div>
+            </ChatAssistantMessage>
+
+            <ChatPostGenerationChoice
+                v-else-if="accountChoiceVisible"
+                :text="accountPhrase"
+                :logos="accountChoiceLogos"
+                changeable
+                test-id="chat-post-generation-account-choice"
+                @change="reopen('account')"
+            />
+
+            <ChatAssistantMessage
+                v-if="brandBlockVisible"
+                data-testid="chat-post-generation-brand-step"
+                dusk="chat-post-generation-brand-step"
+            >
+                <div class="flex items-center justify-between gap-3">
+                    <div class="min-w-0 space-y-0.5">
+                        <Label :for="brandColorsId" class="text-sm font-semibold">
+                            {{ $t('chat.post_generation.brand_colors_label') }}
+                        </Label>
+                        <p class="text-xs text-muted-foreground">
+                            {{ $t('chat.post_generation.brand_colors_description') }}
+                        </p>
+                    </div>
+
+                    <Switch
+                        :id="brandColorsId"
+                        v-model="useBrandColors"
+                        data-testid="chat-post-generation-brand-toggle"
+                        dusk="chat-post-generation-brand-toggle"
+                    />
+                </div>
+            </ChatAssistantMessage>
 
             <div
-                v-if="brandStepVisible"
-                class="flex items-center justify-between gap-3 rounded-lg border border-foreground/15 bg-card p-2.5"
-                data-testid="chat-post-generation-brand-step"
+                v-if="submitVisible"
+                class="flex animate-in fade-in slide-in-from-bottom-2 justify-end duration-300 motion-reduce:animate-none"
             >
-                <div class="min-w-0 space-y-0.5">
-                    <Label :for="brandColorsId" class="text-sm font-semibold">
-                        {{ $t('chat.post_generation.brand_colors_label') }}
-                    </Label>
-                    <p class="text-xs text-muted-foreground">
-                        {{ $t('chat.post_generation.brand_colors_description') }}
-                    </p>
-                </div>
-
-                <Switch
-                    :id="brandColorsId"
-                    v-model="useBrandColors"
-                    :disabled="settled"
-                    data-testid="chat-post-generation-brand-toggle"
-                    dusk="chat-post-generation-brand-toggle"
-                />
-            </div>
-
-            <div v-if="settled || choicesComplete" class="flex items-center justify-end gap-2">
-                <p
-                    v-if="settled"
-                    class="text-xs text-muted-foreground"
-                    data-testid="chat-post-generation-sent"
-                >
-                    {{ $t('chat.post_generation.sent') }}
-                </p>
-
                 <Button
-                    v-else
                     type="button"
                     size="sm"
                     :disabled="! canSubmit"

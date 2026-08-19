@@ -106,18 +106,25 @@ test('the card reveals its choices and submits them as one sentence', function (
     waitForChatTestId($page, 'chat-post-generation-card');
     stubChatTurn($page);
 
-    // Nothing past the format list is offered yet.
-    $page->assertDontSee(__('chat.post_generation.style_label'))
-        ->assertDontSee(__('chat.post_generation.images_label'));
+    // Nothing past the format question is offered yet.
+    $page->assertMissing('@chat-post-generation-style-step')
+        ->assertMissing('@chat-post-generation-images-step');
 
     $page->click('@chat-post-generation-format-x_post');
     waitForChatTestId($page, 'chat-post-generation-style-image_card');
+
+    // The answered step reads back as the user's own message, and the question
+    // that replaced it is gone.
+    $page->assertVisible('@chat-post-generation-format-choice')
+        ->assertMissing('@chat-post-generation-format-step')
+        ->assertSee(__('posts.create.steps.format.x_post'));
 
     // A single-account format never asks which account to post as.
     $page->click('@chat-post-generation-style-image_card');
     waitForChatTestId($page, 'chat-post-generation-images-step');
 
-    $page->assertDontSee(__('chat.post_generation.account_label'))
+    $page->assertMissing('@chat-post-generation-account-step')
+        ->assertMissing('@chat-post-generation-account-choice')
         ->assertSee(__('chat.post_generation.brand_colors_label'));
 
     $page->click('@chat-post-generation-submit');
@@ -151,6 +158,12 @@ test('a format connected on two platforms is offered once with both accounts', f
         ->assertSee('@acme');
 
     $page->click("@chat-post-generation-account-{$instagramBusiness->id}");
+    waitForChatTestId($page, 'chat-post-generation-account-choice');
+
+    // The chosen account replaces its question with the user's own message.
+    $page->assertMissing('@chat-post-generation-account-step')
+        ->assertSee('Acme (@acme.business)');
+
     waitForChatTestId($page, 'chat-post-generation-submit');
 
     $page->click('@chat-post-generation-submit');
@@ -241,15 +254,21 @@ test('a card the conversation already acted on reopens settled', function () {
     waitForChatTestId($page, 'chat-post-generation-card');
 
     // The choices were already sent, so the card must not offer to send them
-    // again — a second submit would bill another generation.
+    // again — a second submit would bill another generation. It collapses to
+    // one compact record instead of leaving five dead blocks in the thread.
     $page->assertSee(__('chat.post_generation.sent'))
-        ->assertMissing('@chat-post-generation-submit');
+        ->assertMissing('@chat-post-generation-submit')
+        ->assertMissing('@chat-post-generation-format-step')
+        ->assertMissing('@chat-post-generation-format-x_post')
+        ->assertMissing('@chat-post-generation-style-step');
 
-    $disabled = $page->script(<<<'JS'
-        (async () => document.querySelector('[data-testid="chat-post-generation-format-x_post"]').disabled)()
+    $interactive = $page->script(<<<'JS'
+        (async () => document
+            .querySelector('[data-testid="chat-post-generation-card"]')
+            .querySelectorAll('button, input, [role="switch"]').length)()
     JS);
 
-    expect($disabled)->toBeTrue();
+    expect($interactive)->toBe(0);
 });
 
 test('a workspace with one connected network opens straight on the styles', function () {
@@ -281,13 +300,76 @@ test('a workspace with one connected network opens straight on the styles', func
     $page->assertVisible('@chat-post-generation-style-image_card')
         ->assertVisible('@chat-post-generation-style-step');
 
-    $selected = $page->script(<<<'JS'
-        (async () => document
-            .querySelector('[data-testid="chat-post-generation-format-threads_post"]')
-            .className.includes('border-foreground'))()
+    // The format still opens the thread, as the choice the card made on the
+    // user's behalf — and with nothing to switch to, it offers no way back.
+    $page->assertVisible('@chat-post-generation-format-choice')
+        ->assertSee(__('posts.create.steps.format.threads_post'))
+        ->assertMissing('@chat-post-generation-format-step')
+        ->assertMissing('@chat-post-generation-format-choice-change');
+});
+
+test('an answered step is recorded above the question it reveals', function () {
+    [$conversation] = chatWithPostGenerationCard();
+
+    $page = visit(route('app.chat.show', $conversation));
+
+    waitForChatTestId($page, 'chat-post-generation-card');
+
+    $page->click('@chat-post-generation-format-x_post');
+    waitForChatTestId($page, 'chat-post-generation-style-image_card');
+
+    $page->click('@chat-post-generation-style-image_card');
+    waitForChatTestId($page, 'chat-post-generation-images-step');
+
+    // The thread has to read in the order it happened: the record of a choice
+    // sits above the step that choice revealed, not inside the same box.
+    // DOCUMENT_POSITION_FOLLOWING is 4.
+    $order = $page->script(<<<'JS'
+        (async () => {
+            const at = (testId) => document.querySelector(`[data-testid="${testId}"]`);
+
+            const format = at('chat-post-generation-format-choice');
+            const style = at('chat-post-generation-style-choice');
+            const images = at('chat-post-generation-images-step');
+            const submit = at('chat-post-generation-submit');
+
+            if (!format || !style || !images || !submit) return 'missing';
+
+            const follows = (a, b) => Boolean(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
+
+            return [
+                follows(format, style) ? 'style-after-format' : 'style-not-after-format',
+                follows(style, images) ? 'images-after-style' : 'images-not-after-style',
+                follows(images, submit) ? 'submit-after-images' : 'submit-not-after-images',
+            ].join('|');
+        })()
     JS);
 
-    expect($selected)->toBeTrue();
+    expect($order)->toBe('style-after-format|images-after-style|submit-after-images');
+});
+
+test('a recorded choice can be reopened and changed', function () {
+    [$conversation] = chatWithPostGenerationCard();
+
+    $page = visit(route('app.chat.show', $conversation));
+
+    waitForChatTestId($page, 'chat-post-generation-card');
+
+    $page->click('@chat-post-generation-format-x_post');
+    waitForChatTestId($page, 'chat-post-generation-style-image_card');
+
+    // A recorded choice is not a dead end: reopening it brings its question
+    // back and drops what the old answer had already revealed.
+    $page->click('@chat-post-generation-format-choice-change');
+    waitForChatTestId($page, 'chat-post-generation-format-step');
+
+    $page->assertMissing('@chat-post-generation-format-choice');
+
+    $page->click('@chat-post-generation-format-instagram_feed');
+    waitForChatTestId($page, 'chat-post-generation-style-image_card');
+
+    $page->assertSee(__('posts.create.steps.format.instagram_feed'))
+        ->assertDontSee(__('posts.create.steps.format.x_post'));
 });
 
 test('revealing a step scrolls the thread to keep it in view', function () {
