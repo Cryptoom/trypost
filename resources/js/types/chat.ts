@@ -206,6 +206,14 @@ export interface ChatPostGenerationCatalog {
     styles: ChatPostGenerationStyle[];
     applies_brand_visuals_default: boolean;
     /**
+     * What the model understood the post should be about, echoed back from
+     * `start_post_generation`'s own `topic` argument. Empty when the user
+     * never said — the card then asks with a blank field rather than a
+     * subject nobody chose. The card always asks either way: the user has to
+     * see the topic before it is generated from.
+     */
+    topic?: string | null;
+    /**
      * Set by `App\Ai\Tools\ToolReplayer` when the conversation went on to
      * call `generate_post`: the choices this card collects were already sent,
      * so it renders settled. Without it a reopened conversation would re-arm a

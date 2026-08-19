@@ -43,6 +43,21 @@ function stubChatTurn(mixed $page): void
 }
 
 /**
+ * Answer the topic step. It is the one question the card cannot ask with
+ * buttons — the post has to be about something — so every path to the submit
+ * button now goes through it.
+ */
+function answerChatTopic(mixed $page, string $topic): void
+{
+    waitForChatTestId($page, 'chat-post-generation-topic-step');
+
+    $page->fill('@chat-post-generation-topic-input', $topic);
+    $page->click('@chat-post-generation-topic-confirm');
+
+    waitForChatTestId($page, 'chat-post-generation-topic-choice');
+}
+
+/**
  * A conversation whose assistant turn called `start_post_generation`, with
  * three active accounts behind it — one X account, and one account on each
  * Instagram platform so a single format arrives listed twice. Both Instagram
@@ -56,7 +71,7 @@ function stubChatTurn(mixed $page): void
  *
  * @return array{0: WorkspaceConversation, 1: SocialAccount}
  */
-function chatWithPostGenerationCard(int $priorMessages = 0): array
+function chatWithPostGenerationCard(int $priorMessages = 0, string $topic = ''): array
 {
     [$user, $workspace] = actingAsWorkspaceUser();
 
@@ -80,7 +95,7 @@ function chatWithPostGenerationCard(int $priorMessages = 0): array
     WorkspaceConversationMessage::factory()->for($conversation, 'conversation')->create([
         'role' => Role::Assistant,
         'content' => 'Pick how you want it generated.',
-        'tool_calls' => [['id' => 'call_start', 'name' => 'start_post_generation', 'arguments' => []]],
+        'tool_calls' => [['id' => 'call_start', 'name' => 'start_post_generation', 'arguments' => $topic === '' ? [] : ['topic' => $topic]]],
         'tool_results' => [['id' => 'call_start', 'result' => '{"data":{"formats":[],"styles":[],"applies_brand_visuals_default":true}}']],
     ]);
 
@@ -127,8 +142,11 @@ test('the card reveals its choices and submits them as one sentence', function (
         ->assertMissing('@chat-post-generation-format-step')
         ->assertSee(__('posts.create.steps.format.x_post'));
 
-    // A single-account format never asks which account to post as.
     $page->click('@chat-post-generation-style-image_card');
+
+    answerChatTopic($page, 'the pricing launch');
+
+    // A single-account format never asks which account to post as.
     waitForChatTestId($page, 'chat-post-generation-images-step');
 
     $page->assertMissing('@chat-post-generation-account-step')
@@ -137,8 +155,11 @@ test('the card reveals its choices and submits them as one sentence', function (
 
     $page->click('@chat-post-generation-submit');
 
+    // The sentence carries the topic: it is what the model reads before it
+    // calls generate_post with its `prompt` argument.
     $page->assertSee(__('chat.post_generation.sentence_with_brand', [
         'format' => __('posts.create.steps.format.x_post'),
+        'topic' => 'the pricing launch',
         'style' => __('posts.ai.templates.image_card.name'),
         'images' => __('chat.post_generation.sentence_images_other', ['count' => 2]),
         'account' => 'Acme X (@acmex)',
@@ -158,6 +179,9 @@ test('a format connected on two platforms is offered once with both accounts', f
     waitForChatTestId($page, 'chat-post-generation-style-image_card');
 
     $page->click('@chat-post-generation-style-image_card');
+
+    answerChatTopic($page, 'the pricing launch');
+
     waitForChatTestId($page, 'chat-post-generation-account-step');
 
     // Same display name on both connections: the handle is what distinguishes
@@ -179,6 +203,7 @@ test('a format connected on two platforms is offered once with both accounts', f
     // Instagram feed defaults to a single image, unlike every other format.
     $page->assertSee(__('chat.post_generation.sentence_with_brand', [
         'format' => __('posts.create.steps.format.instagram_feed'),
+        'topic' => 'the pricing launch',
         'style' => __('posts.ai.templates.image_card.name'),
         'images' => __('chat.post_generation.sentence_images_one'),
         'account' => 'Acme (@acme.business)',
@@ -197,6 +222,9 @@ test('the card refuses to submit while a turn is still streaming', function () {
     waitForChatTestId($page, 'chat-post-generation-style-image_card');
 
     $page->click('@chat-post-generation-style-image_card');
+
+    answerChatTopic($page, 'the pricing launch');
+
     waitForChatTestId($page, 'chat-post-generation-submit');
 
     $page->script(<<<'JS'
@@ -240,6 +268,7 @@ test('the card refuses to submit while a turn is still streaming', function () {
     $page->assertMissing('@chat-post-generation-sent')
         ->assertDontSee(__('chat.post_generation.sentence_with_brand', [
             'format' => __('posts.create.steps.format.x_post'),
+            'topic' => 'the pricing launch',
             'style' => __('posts.ai.templates.image_card.name'),
             'images' => __('chat.post_generation.sentence_images_other', ['count' => 2]),
             'account' => 'Acme X (@acmex)',
@@ -359,11 +388,17 @@ test('the card never leaves an open question above an answered step', function (
     waitForChatTestId($page, 'chat-post-generation-style-image_card');
 
     $page->click('@chat-post-generation-style-image_card');
-    waitForChatTestId($page, 'chat-post-generation-account-step');
+    waitForChatTestId($page, 'chat-post-generation-topic-step');
 
     // Mid-flow: the two answered steps read back as the user's own messages,
     // and the only open question is the last block in the thread.
     expect(chatCardBlocks($page))->toBe('record,record,question|ordered');
+
+    answerChatTopic($page, 'the pricing launch');
+
+    waitForChatTestId($page, 'chat-post-generation-account-step');
+
+    expect(chatCardBlocks($page))->toBe('record,record,record,question|ordered');
 
     $page->click("@chat-post-generation-account-{$instagramBusiness->id}");
     waitForChatTestId($page, 'chat-post-generation-final');
@@ -371,7 +406,7 @@ test('the card never leaves an open question above an answered step', function (
     // Answered: nothing is left open above the final block, which is where the
     // image count and the brand toggle live — next to the button that acts on
     // them, rather than as a question the conversation walked past.
-    expect(chatCardBlocks($page))->toBe('record,record,record,final|ordered');
+    expect(chatCardBlocks($page))->toBe('record,record,record,record,final|ordered');
 
     $page->assertVisible('@chat-post-generation-images-step')
         ->assertVisible('@chat-post-generation-brand-step')
@@ -407,6 +442,9 @@ test('an account the card picked itself is never recorded as the user\'s choice'
     // tweet_card has needs_account, which is what used to force an account
     // block for a question the card never asked.
     $page->click('@chat-post-generation-style-tweet_card');
+
+    answerChatTopic($page, 'the pricing launch');
+
     waitForChatTestId($page, 'chat-post-generation-final');
 
     $page->assertMissing('@chat-post-generation-account-step')
@@ -415,7 +453,7 @@ test('an account the card picked itself is never recorded as the user\'s choice'
         ->assertMissing('@chat-post-generation-brand-step')
         ->assertSee(__('chat.post_generation.posting_to', ['account' => 'Acme Threads (@acmethreads)']));
 
-    expect(chatCardBlocks($page))->toBe('record,record,final|ordered');
+    expect(chatCardBlocks($page))->toBe('record,record,record,final|ordered');
 
     // The account the card picked still reaches the sentence.
     $page->click('@chat-post-generation-submit');
@@ -424,10 +462,110 @@ test('an account the card picked itself is never recorded as the user\'s choice'
     // brand visuals, so the sentence carries no brand clause.
     $page->assertSee(__('chat.post_generation.sentence', [
         'format' => __('posts.create.steps.format.threads_post'),
+        'topic' => 'the pricing launch',
         'style' => __('posts.ai.templates.tweet_card.name'),
         'images' => __('chat.post_generation.sentence_images_other', ['count' => 2]),
         'account' => 'Acme Threads (@acmethreads)',
     ]));
+});
+
+/** The current value of the topic field, which `fill` and `v-model` both drive. */
+function chatTopicFieldValue(mixed $page): string
+{
+    return (string) $page->script(<<<'JS'
+        (async () => document.querySelector('[data-testid="chat-post-generation-topic-input"]')?.value ?? 'missing')()
+    JS);
+}
+
+test('the topic question opens pre-filled with what the model extracted', function () {
+    // start_post_generation is replayed with its stored arguments, so the
+    // topic the model passed comes back with the catalog.
+    [$conversation] = chatWithPostGenerationCard(0, 'o lançamento do X');
+
+    $page = visit(route('app.chat.show', $conversation));
+
+    waitForChatTestId($page, 'chat-post-generation-card');
+    stubChatTurn($page);
+
+    $page->click('@chat-post-generation-format-x_post');
+    waitForChatTestId($page, 'chat-post-generation-style-image_card');
+
+    $page->click('@chat-post-generation-style-image_card');
+    waitForChatTestId($page, 'chat-post-generation-topic-step');
+
+    expect(chatTopicFieldValue($page))->toBe('o lançamento do X');
+
+    // Confirmed as-is, it reads back as the user's own message and reaches the
+    // sentence — the user saw the topic before anything was generated from it.
+    $page->click('@chat-post-generation-topic-confirm');
+    waitForChatTestId($page, 'chat-post-generation-topic-choice');
+
+    $page->assertSee('o lançamento do X')
+        ->assertMissing('@chat-post-generation-topic-step');
+
+    waitForChatTestId($page, 'chat-post-generation-submit');
+
+    $page->click('@chat-post-generation-submit');
+
+    $page->assertSee(__('chat.post_generation.sentence_with_brand', [
+        'format' => __('posts.create.steps.format.x_post'),
+        'topic' => 'o lançamento do X',
+        'style' => __('posts.ai.templates.image_card.name'),
+        'images' => __('chat.post_generation.sentence_images_other', ['count' => 2]),
+        'account' => 'Acme X (@acmex)',
+        'brand' => __('chat.post_generation.sentence_brand_on'),
+    ]));
+});
+
+test('the topic question opens blank when the model passed no topic', function () {
+    [$conversation] = chatWithPostGenerationCard();
+
+    $page = visit(route('app.chat.show', $conversation));
+
+    waitForChatTestId($page, 'chat-post-generation-card');
+
+    $page->click('@chat-post-generation-format-x_post');
+    waitForChatTestId($page, 'chat-post-generation-style-image_card');
+
+    $page->click('@chat-post-generation-style-image_card');
+    waitForChatTestId($page, 'chat-post-generation-topic-step');
+
+    // A blank field asks; an invented topic gets confirmed by someone skimming.
+    expect(chatTopicFieldValue($page))->toBe('');
+});
+
+test('the card will not confirm a topic the server would reject', function () {
+    [$conversation] = chatWithPostGenerationCard();
+
+    $page = visit(route('app.chat.show', $conversation));
+
+    waitForChatTestId($page, 'chat-post-generation-card');
+
+    $page->click('@chat-post-generation-format-x_post');
+    waitForChatTestId($page, 'chat-post-generation-style-image_card');
+
+    $page->click('@chat-post-generation-style-image_card');
+    waitForChatTestId($page, 'chat-post-generation-topic-step');
+
+    // AiPromptRules::PROMPT_MIN_LENGTH is 3, and generate_post refuses less —
+    // so the card refuses first, and there is no submit button to reach until
+    // the topic is answered.
+    $confirmDisabled = fn (): bool => (bool) $page->script(<<<'JS'
+        (async () => document.querySelector('[data-testid="chat-post-generation-topic-confirm"]').disabled)()
+    JS);
+
+    expect($confirmDisabled())->toBeTrue();
+
+    $page->fill('@chat-post-generation-topic-input', 'ab');
+
+    expect($confirmDisabled())->toBeTrue();
+
+    $page->assertMissing('@chat-post-generation-submit')
+        ->assertMissing('@chat-post-generation-final');
+
+    $page->fill('@chat-post-generation-topic-input', 'abc');
+
+    expect($confirmDisabled())->toBeFalse();
 });
 
 test('changing one step after reopening another keeps the reopened question open', function () {
@@ -441,6 +579,9 @@ test('changing one step after reopening another keeps the reopened question open
     waitForChatTestId($page, 'chat-post-generation-style-image_card');
 
     $page->click('@chat-post-generation-style-image_card');
+
+    answerChatTopic($page, 'the pricing launch');
+
     waitForChatTestId($page, 'chat-post-generation-account-step');
 
     $page->click("@chat-post-generation-account-{$instagramBusiness->id}");
@@ -465,7 +606,7 @@ test('changing one step after reopening another keeps the reopened question open
         ->assertMissing('@chat-post-generation-account-choice')
         ->assertMissing('@chat-post-generation-final');
 
-    expect(chatCardBlocks($page))->toBe('record,record,question|ordered');
+    expect(chatCardBlocks($page))->toBe('record,record,record,question|ordered');
 });
 
 test('a recorded choice can be reopened and changed', function () {

@@ -80,7 +80,15 @@ const CAROUSEL_DEFAULT_IMAGE_COUNT = 5;
 const SINGLE_IMAGE_FORMAT_COUNT = 1;
 
 /** The steps that read back as the user's own message once answered. */
-type RecordedStep = 'format' | 'style' | 'account';
+type RecordedStep = 'format' | 'style' | 'topic' | 'account';
+
+/**
+ * The topic becomes `generate_post`'s `prompt`, so the card refuses to submit
+ * what the server would reject. Mirrors `App\Support\AiPromptRules`
+ * (PROMPT_MIN_LENGTH / PROMPT_MAX_LENGTH) — keep the two in step.
+ */
+const TOPIC_MIN_LENGTH = 3;
+const TOPIC_MAX_LENGTH = 2000;
 
 const brandColorsId = useId();
 
@@ -99,6 +107,17 @@ const submitted = ref(false);
  * own message, so this is what separates an answer from an assumption.
  */
 const accountAnswered = ref(false);
+
+/**
+ * Null until the user edits the field, so the model's own extraction stays
+ * live: `data` is re-parsed on every parent render and replaced outright when
+ * `ToolReplayer` re-runs the tool on reopen, and a value snapshotted at setup
+ * would silently outlive the payload it came from — same reason
+ * `brandColorsOverride` is null-until-touched.
+ */
+const topicDraft = ref<string | null>(null);
+
+const topicAnswered = ref(false);
 
 /**
  * The choices were already sent — either in this session, or in an earlier one
@@ -123,6 +142,27 @@ const useBrandColors = computed<boolean>({
         brandColorsOverride.value = value;
     },
 });
+
+/**
+ * What the post should be about. The card always asks, pre-filled with
+ * whatever the model extracted from the conversation: "post about the X
+ * launch" carries a topic and "make me a post" does not, and only the user can
+ * tell the difference between a topic they meant and one that was inferred.
+ */
+const topic = computed<string>({
+    get: () => topicDraft.value ?? props.data?.topic ?? '',
+    set: (value: string) => {
+        topicDraft.value = value;
+    },
+});
+
+const topicValue = computed<string>(() => topic.value.trim());
+
+const topicTooLong = computed(() => topicValue.value.length > TOPIC_MAX_LENGTH);
+
+const topicUsable = computed(
+    () => topicValue.value.length >= TOPIC_MIN_LENGTH && ! topicTooLong.value,
+);
 
 const styles = computed<ChatPostGenerationStyle[]>(() => props.data?.styles ?? []);
 
@@ -263,8 +303,10 @@ const imageStepVisible = computed(() => styleAnswered.value && imageChoices.valu
  */
 const styleNeedsAccount = computed(() => resolvedStyle.value?.needs_account ?? false);
 
+const topicStepVisible = computed(() => styleAnswered.value);
+
 const accountStepVisible = computed(
-    () => styleAnswered.value && (accountsForFormat.value.length > 1 || styleNeedsAccount.value),
+    () => topicAnswered.value && (accountsForFormat.value.length > 1 || styleNeedsAccount.value),
 );
 
 const selectedAccount = computed(
@@ -272,7 +314,12 @@ const selectedAccount = computed(
 );
 
 const choicesComplete = computed(
-    () => selectedFormat.value !== null && styleAnswered.value && selectedAccount.value !== null,
+    () =>
+        selectedFormat.value !== null &&
+        styleAnswered.value &&
+        topicAnswered.value &&
+        topicUsable.value &&
+        selectedAccount.value !== null,
 );
 
 const brandStepVisible = computed(
@@ -326,6 +373,12 @@ const styleChoiceVisible = computed(
     () => styleStepVisible.value && selectedStyleKey.value !== null && resolvedStyle.value !== null,
 );
 
+const topicQuestionVisible = computed(() => topicStepVisible.value && ! topicAnswered.value);
+
+const topicChoiceVisible = computed(
+    () => topicStepVisible.value && topicAnswered.value && topicUsable.value,
+);
+
 const accountQuestionVisible = computed(
     () => accountStepVisible.value && selectedAccountId.value === null,
 );
@@ -373,6 +426,12 @@ const accountChoiceLogos = computed(() => {
  */
 const reopen = (step: RecordedStep): void => {
     if (settled.value) {
+        return;
+    }
+
+    if (step === 'topic') {
+        topicAnswered.value = false;
+
         return;
     }
 
@@ -444,6 +503,28 @@ const selectStyle = (key: string): void => {
     selectedStyleKey.value = key;
 };
 
+const canConfirmTopic = computed(() => topicUsable.value && ! settled.value);
+
+const confirmTopic = (): void => {
+    if (! canConfirmTopic.value) {
+        return;
+    }
+
+    topicAnswered.value = true;
+};
+
+/**
+ * Enter confirms, Shift+Enter breaks the line — the same bargain
+ * `ChatComposer` strikes, so the field behaves like every other place the user
+ * types into this thread.
+ */
+const onTopicKeydown = (event: KeyboardEvent): void => {
+    if (event.key === 'Enter' && ! event.shiftKey) {
+        event.preventDefault();
+        confirmTopic();
+    }
+};
+
 const selectImageCount = (count: number): void => {
     if (settled.value) {
         return;
@@ -511,6 +592,7 @@ const brandPhrase = computed<string>(() =>
 const sentence = computed<string>(() => {
     const replacements: Record<string, string> = {
         format: formatLabel(selectedFormat.value ?? ''),
+        topic: topicValue.value,
         style: resolvedStyle.value?.name ?? '',
         images: imagesPhrase.value,
         account: accountPhrase.value,
@@ -538,6 +620,10 @@ const summaryParts = computed<string[]>(() => {
 
     if (resolvedStyle.value !== null) {
         parts.push(resolvedStyle.value.name);
+    }
+
+    if (topicAnswered.value && topicValue.value !== '') {
+        parts.push(topicValue.value);
     }
 
     if (imageChoices.value.length > 0 || isSingleImageFormat.value) {
@@ -707,6 +793,54 @@ const submit = (): void => {
                 changeable
                 test-id="chat-post-generation-style-choice"
                 @change="reopen('style')"
+            />
+
+            <ChatAssistantMessage
+                v-if="topicQuestionVisible"
+                :title="$t('chat.post_generation.topic_question')"
+                data-testid="chat-post-generation-topic-step"
+                dusk="chat-post-generation-topic-step"
+            >
+                <div class="space-y-2">
+                    <textarea
+                        v-model="topic"
+                        rows="3"
+                        :placeholder="$t('chat.post_generation.topic_placeholder')"
+                        class="w-full resize-none rounded-lg border border-foreground/15 bg-background px-3 py-2 text-sm leading-relaxed text-foreground outline-none placeholder:text-muted-foreground focus:border-foreground"
+                        data-testid="chat-post-generation-topic-input"
+                        dusk="chat-post-generation-topic-input"
+                        @keydown="onTopicKeydown"
+                    />
+
+                    <p
+                        v-if="topicTooLong"
+                        class="text-xs text-destructive"
+                        data-testid="chat-post-generation-topic-too-long"
+                    >
+                        {{ $t('chat.post_generation.topic_too_long', { max: String(TOPIC_MAX_LENGTH) }) }}
+                    </p>
+
+                    <div class="flex justify-end">
+                        <Button
+                            type="button"
+                            size="sm"
+                            :disabled="! canConfirmTopic"
+                            data-testid="chat-post-generation-topic-confirm"
+                            dusk="chat-post-generation-topic-confirm"
+                            @click="confirmTopic"
+                        >
+                            {{ $t('chat.post_generation.topic_confirm') }}
+                        </Button>
+                    </div>
+                </div>
+            </ChatAssistantMessage>
+
+            <ChatPostGenerationChoice
+                v-else-if="topicChoiceVisible"
+                :text="topicValue"
+                changeable
+                test-id="chat-post-generation-topic-choice"
+                @change="reopen('topic')"
             />
 
             <ChatAssistantMessage
