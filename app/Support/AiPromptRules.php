@@ -28,7 +28,7 @@ class AiPromptRules
      *
      * @return array<int, string>
      */
-    public static function wizardPromptRule(): array
+    public static function generationPromptRule(): array
     {
         return ['required', 'string', 'min:'.self::PROMPT_MIN_LENGTH, 'max:'.self::PROMPT_MAX_LENGTH];
     }

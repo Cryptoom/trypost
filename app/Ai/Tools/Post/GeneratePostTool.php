@@ -136,7 +136,7 @@ class GeneratePostTool extends WorkspaceWriteTool
     private function argumentError(Request $request): ?string
     {
         $validator = Validator::make($request->toArray(), [
-            'prompt' => AiPromptRules::wizardPromptRule(),
+            'prompt' => AiPromptRules::generationPromptRule(),
             'social_account_id' => ['nullable', 'uuid'],
             'image_count' => ['nullable', 'integer', 'min:0', 'max:'.self::MAX_IMAGE_COUNT],
             'date' => ['nullable', 'date_format:Y-m-d'],
