@@ -2,6 +2,7 @@ import type { Component } from 'vue';
 
 import ChatPostCard from '@/components/chat/tools/ChatPostCard.vue';
 import ChatPostGenerationCard from '@/components/chat/tools/ChatPostGenerationCard.vue';
+import ChatPostGenerationResult from '@/components/chat/tools/ChatPostGenerationResult.vue';
 import ChatPostList from '@/components/chat/tools/ChatPostList.vue';
 import ChatPostMetrics from '@/components/chat/tools/ChatPostMetrics.vue';
 
@@ -19,6 +20,11 @@ export type ToolComponentEntry = {
  * `prompt` entry: its card collects the generation's choices client-side and
  * submits them as one readable sentence, so filling in a deterministic form
  * costs a single model turn instead of one per choice.
+ *
+ * `generate_post` is a plain `display` entry even though its card is the only
+ * one that keeps working after it renders: the generation runs in the
+ * background, so the card waits on a broadcast rather than asking the user
+ * for anything.
  */
 export const toolComponents: Record<string, ToolComponentEntry> = {
     list_posts: { component: ChatPostList, kind: 'display' },
@@ -30,6 +36,7 @@ export const toolComponents: Record<string, ToolComponentEntry> = {
     publish_post: { component: ChatPostCard, kind: 'display' },
     delete_post: { component: ChatPostCard, kind: 'display' },
     start_post_generation: { component: ChatPostGenerationCard, kind: 'prompt' },
+    generate_post: { component: ChatPostGenerationResult, kind: 'display' },
 };
 
 export const resolveToolComponent = (toolName: string): ToolComponentEntry | null =>

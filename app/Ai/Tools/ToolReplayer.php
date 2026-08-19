@@ -7,6 +7,7 @@ namespace App\Ai\Tools;
 use App\Ai\Tools\Post\GetPostTool;
 use App\Ai\Tools\Post\ListPostsTool;
 use App\Ai\Tools\Post\StartPostGenerationTool;
+use App\Http\Resources\Chat\ChatPostResource;
 use App\Models\WorkspaceConversation;
 use Laravel\Ai\Tools\Request;
 use Throwable;
@@ -43,6 +44,13 @@ use Throwable;
  * try/catch — an error payload is swapped back for the original stored
  * result, because the assistant's message above the card described real
  * data at the time, and an error card under it reads broken.
+ *
+ * generate_post is the one tool that is neither replayed nor left entirely
+ * alone: it is a WRITE tool, so replaying it would dispatch a second
+ * generation — spending the account's AI credits and creating a duplicate
+ * post — every single time the conversation is opened. It must never enter
+ * REPLAYABLE. Its stored payload is AUGMENTED instead, see
+ * {@see withGeneratedPost()}.
  */
 class ToolReplayer
 {
@@ -54,6 +62,11 @@ class ToolReplayer
         'get_post' => GetPostTool::class,
         'start_post_generation' => StartPostGenerationTool::class,
     ];
+
+    /**
+     * Never add this to REPLAYABLE — see the class docblock.
+     */
+    private const GENERATE_POST = 'generate_post';
 
     /**
      * @return array<string, string> tool call id => JSON payload
@@ -68,7 +81,15 @@ class ToolReplayer
             foreach ($message->tool_calls ?? [] as $call) {
                 $id = data_get($call, 'id');
                 $stored = (string) data_get($storedResults->get($id), 'result', '');
-                $class = self::REPLAYABLE[data_get($call, 'name')] ?? null;
+                $name = data_get($call, 'name');
+
+                if ($name === self::GENERATE_POST) {
+                    $payloads[$id] = $this->withGeneratedPost($conversation, $stored);
+
+                    continue;
+                }
+
+                $class = self::REPLAYABLE[$name] ?? null;
 
                 if ($class === null) {
                     $payloads[$id] = $stored;
@@ -91,6 +112,52 @@ class ToolReplayer
         }
 
         return $payloads;
+    }
+
+    /**
+     * Resolve a finished generation back into its post.
+     *
+     * generate_post dispatches StreamPostCreation and answers immediately with
+     * a creation id and the private channel PostCreationReady will announce
+     * the post on, so the stored result never contains the post itself. The
+     * card can subscribe to that channel while the conversation is open, but a
+     * conversation reopened later missed the broadcast for good — and it will
+     * never fire again. That is what `posts.creation_id` exists for: the post
+     * is found by lookup instead, and the card renders it straight away
+     * without subscribing to anything.
+     *
+     * Scoped to the conversation's own workspace, so a creation id that
+     * somehow named another workspace's post resolves to nothing rather than
+     * leaking it. A generation still in flight — or one that failed and never
+     * produced a post — resolves to nothing too, and the payload passes
+     * through untouched so the card subscribes and waits.
+     */
+    private function withGeneratedPost(WorkspaceConversation $conversation, string $stored): string
+    {
+        $payload = json_decode($stored, true);
+
+        if (! is_array($payload)) {
+            return $stored;
+        }
+
+        $creationId = data_get($payload, 'data.creation_id');
+
+        if (! is_string($creationId) || $creationId === '') {
+            return $stored;
+        }
+
+        $post = $conversation->workspace->posts()
+            ->with(['postPlatforms.socialAccount'])
+            ->where('creation_id', $creationId)
+            ->first();
+
+        if ($post === null) {
+            return $stored;
+        }
+
+        data_set($payload, 'data.post', (new ChatPostResource($post))->withFullContent()->resolve());
+
+        return json_encode($payload, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
     }
 
     private function isErrorPayload(string $payload): bool

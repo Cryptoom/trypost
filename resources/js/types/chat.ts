@@ -152,6 +152,21 @@ export interface ChatPostGenerationStyle {
     applies_brand_visuals: boolean;
 }
 
+/**
+ * Mirrors `App\Ai\Tools\Post\GeneratePostTool`'s payload. The tool returns as
+ * soon as the generation is queued, so it names the private channel the
+ * finished post is announced on rather than carrying the post.
+ *
+ * `post` is not part of that payload: `App\Ai\Tools\ToolReplayer` merges it in
+ * when a reopened conversation's `creation_id` still resolves to a post, which
+ * is the only way a card that missed the broadcast can ever show one.
+ */
+export interface ChatPostGeneration {
+    creation_id: string;
+    channel: string;
+    post?: ChatPost | null;
+}
+
 /** Mirrors `App\Services\Ai\PostGenerationCatalog::forWorkspace()`. */
 export interface ChatPostGenerationCatalog {
     formats: ChatPostGenerationFormat[];

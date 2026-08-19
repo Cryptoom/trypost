@@ -92,5 +92,10 @@ return [
         'sentence_images_other' => ':count imágenes',
         'sentence_brand_on' => 'con los colores de marca',
         'sentence_brand_off' => 'sin los colores de marca',
+        'result_waiting' => 'Generando tu publicación…',
+        'result_waiting_hint' => 'Esto sigue en marcha aunque salgas. La publicación aparecerá aquí en cuanto esté lista.',
+        'result_detached_hint' => 'Esto sigue en marcha en segundo plano. Vuelve a abrir esta conversación para ver la publicación.',
+        'result_ready' => 'Tu publicación está lista.',
+        'result_failed' => 'No se pudo generar la publicación. Pídela de nuevo para reintentarlo.',
     ],
 ];

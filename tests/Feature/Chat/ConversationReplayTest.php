@@ -6,13 +6,16 @@ use App\Ai\Tools\ToolReplayer;
 use App\Enums\Post\Status;
 use App\Enums\SocialAccount\Platform;
 use App\Enums\WorkspaceConversation\Message\Role;
+use App\Jobs\Ai\StreamPostCreation;
 use App\Models\Post;
+use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Models\WorkspaceConversation;
 use App\Models\WorkspaceConversationMessage;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Queue;
 
 test('reopening re-executes a read tool with fresh data', function () {
     $workspace = Workspace::factory()->create();
@@ -207,4 +210,128 @@ test('start_post_generation replays a newly connected account into an old conver
 
     expect(array_column($formats, 'value'))->toContain('x_post')
         ->and(data_get($formats, '0.accounts.0.id'))->toBe($account->id);
+});
+
+test('a finished generation resolves its post into the generate_post payload', function () {
+    $workspace = Workspace::factory()->create();
+    $user = User::factory()->create();
+    $conversation = WorkspaceConversation::factory()->for($workspace)->for($user)->create();
+
+    $account = SocialAccount::factory()->for($workspace)->x()->create(['username' => 'acme']);
+
+    $post = Post::factory()->for($workspace)->create([
+        'content' => 'The generated post',
+        'creation_id' => 'call_generate',
+    ]);
+
+    PostPlatform::factory()->for($post)->for($account)->create();
+
+    $stored = json_encode(['data' => ['creation_id' => 'call_generate', 'channel' => "user.{$user->id}.ai-creation.call_generate"]]);
+
+    WorkspaceConversationMessage::factory()->for($conversation, 'conversation')->create([
+        'role' => Role::Assistant,
+        'content' => 'Generating it now.',
+        'tool_calls' => [['id' => 'call_generate', 'name' => 'generate_post', 'arguments' => ['prompt' => 'hello']]],
+        'tool_results' => [['id' => 'call_generate', 'result' => $stored]],
+    ]);
+
+    $payloads = app(ToolReplayer::class)->replay($conversation);
+
+    $data = data_get(json_decode($payloads['call_generate'], true), 'data');
+
+    expect(data_get($data, 'post.id'))->toBe($post->id)
+        ->and(data_get($data, 'post.content'))->toBe('The generated post')
+        ->and(data_get($data, 'post.platforms.0.platform'))->toBe(Platform::X->value)
+        ->and(data_get($data, 'creation_id'))->toBe('call_generate')
+        ->and(data_get($data, 'channel'))->toBe("user.{$user->id}.ai-creation.call_generate");
+});
+
+test('a generation still in flight passes its payload through unchanged so the card keeps waiting', function () {
+    $workspace = Workspace::factory()->create();
+    $user = User::factory()->create();
+    $conversation = WorkspaceConversation::factory()->for($workspace)->for($user)->create();
+
+    $stored = json_encode(['data' => ['creation_id' => 'call_pending', 'channel' => "user.{$user->id}.ai-creation.call_pending"]]);
+
+    WorkspaceConversationMessage::factory()->for($conversation, 'conversation')->create([
+        'role' => Role::Assistant,
+        'content' => 'Generating it now.',
+        'tool_calls' => [['id' => 'call_pending', 'name' => 'generate_post', 'arguments' => ['prompt' => 'hello']]],
+        'tool_results' => [['id' => 'call_pending', 'result' => $stored]],
+    ]);
+
+    $payloads = app(ToolReplayer::class)->replay($conversation);
+
+    expect($payloads['call_pending'])->toBe($stored);
+});
+
+test('generate_post is never re-run, so reopening neither dispatches a generation nor creates a post', function () {
+    Queue::fake();
+
+    $workspace = Workspace::factory()->create();
+    $user = User::factory()->create();
+    $conversation = WorkspaceConversation::factory()->for($workspace)->for($user)->create();
+
+    SocialAccount::factory()->for($workspace)->x()->create();
+
+    $stored = json_encode(['data' => ['creation_id' => 'call_once', 'channel' => "user.{$user->id}.ai-creation.call_once"]]);
+
+    WorkspaceConversationMessage::factory()->for($conversation, 'conversation')->create([
+        'role' => Role::Assistant,
+        'content' => 'Generating it now.',
+        'tool_calls' => [['id' => 'call_once', 'name' => 'generate_post', 'arguments' => [
+            'prompt' => 'A post about our new pricing page and what changed',
+            'format' => 'x_post',
+            'style' => 'image_card',
+        ]]],
+        'tool_results' => [['id' => 'call_once', 'result' => $stored]],
+    ]);
+
+    app(ToolReplayer::class)->replay($conversation);
+
+    Queue::assertNotPushed(StreamPostCreation::class);
+    expect(Post::count())->toBe(0);
+});
+
+test('a post from another workspace is never resolved into the payload', function () {
+    $workspace = Workspace::factory()->create();
+    $user = User::factory()->create();
+    $conversation = WorkspaceConversation::factory()->for($workspace)->for($user)->create();
+
+    Post::factory()->for(Workspace::factory()->create())->create([
+        'content' => 'Another workspace post',
+        'creation_id' => 'call_foreign',
+    ]);
+
+    $stored = json_encode(['data' => ['creation_id' => 'call_foreign', 'channel' => "user.{$user->id}.ai-creation.call_foreign"]]);
+
+    WorkspaceConversationMessage::factory()->for($conversation, 'conversation')->create([
+        'role' => Role::Assistant,
+        'content' => 'Generating it now.',
+        'tool_calls' => [['id' => 'call_foreign', 'name' => 'generate_post', 'arguments' => ['prompt' => 'hello']]],
+        'tool_results' => [['id' => 'call_foreign', 'result' => $stored]],
+    ]);
+
+    $payloads = app(ToolReplayer::class)->replay($conversation);
+
+    expect($payloads['call_foreign'])->toBe($stored);
+});
+
+test('a generate_post call that errored keeps its error payload', function () {
+    $workspace = Workspace::factory()->create();
+    $user = User::factory()->create();
+    $conversation = WorkspaceConversation::factory()->for($workspace)->for($user)->create();
+
+    $stored = json_encode(['error' => 'No connected accounts.']);
+
+    WorkspaceConversationMessage::factory()->for($conversation, 'conversation')->create([
+        'role' => Role::Assistant,
+        'content' => 'That did not work.',
+        'tool_calls' => [['id' => 'call_error', 'name' => 'generate_post', 'arguments' => []]],
+        'tool_results' => [['id' => 'call_error', 'result' => $stored]],
+    ]);
+
+    $payloads = app(ToolReplayer::class)->replay($conversation);
+
+    expect($payloads['call_error'])->toBe($stored);
 });

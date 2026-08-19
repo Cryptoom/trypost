@@ -92,5 +92,10 @@ return [
         'sentence_images_other' => ':count images',
         'sentence_brand_on' => 'avec les couleurs de marque',
         'sentence_brand_off' => 'sans les couleurs de marque',
+        'result_waiting' => 'Génération de votre publication…',
+        'result_waiting_hint' => "Le traitement continue même si vous quittez la page. La publication apparaîtra ici dès qu'elle sera prête.",
+        'result_detached_hint' => 'Le traitement continue en arrière-plan. Rouvrez cette conversation pour voir la publication.',
+        'result_ready' => 'Votre publication est prête.',
+        'result_failed' => "La publication n'a pas pu être générée. Redemandez-la pour réessayer.",
     ],
 ];

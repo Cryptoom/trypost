@@ -92,5 +92,10 @@ return [
         'sentence_images_other' => '画像:count枚',
         'sentence_brand_on' => 'ブランドカラーあり',
         'sentence_brand_off' => 'ブランドカラーなし',
+        'result_waiting' => '投稿を生成しています…',
+        'result_waiting_hint' => 'ページを離れても処理は続きます。準備ができると、ここに投稿が表示されます。',
+        'result_detached_hint' => 'バックグラウンドで処理が続いています。この会話を開き直すと投稿を確認できます。',
+        'result_ready' => '投稿の準備ができました。',
+        'result_failed' => '投稿を生成できませんでした。もう一度依頼して再試行してください。',
     ],
 ];

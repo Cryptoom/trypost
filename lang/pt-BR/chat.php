@@ -92,5 +92,10 @@ return [
         'sentence_images_other' => ':count imagens',
         'sentence_brand_on' => 'com as cores da marca',
         'sentence_brand_off' => 'sem as cores da marca',
+        'result_waiting' => 'Gerando seu post…',
+        'result_waiting_hint' => 'Isso continua rodando mesmo se você sair. O post aparece aqui assim que estiver pronto.',
+        'result_detached_hint' => 'Isso continua rodando em segundo plano. Reabra esta conversa para ver o post.',
+        'result_ready' => 'Seu post está pronto.',
+        'result_failed' => 'Não foi possível gerar o post. Peça de novo para tentar outra vez.',
     ],
 ];

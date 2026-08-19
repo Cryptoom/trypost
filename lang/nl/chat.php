@@ -92,5 +92,10 @@ return [
         'sentence_images_other' => ':count afbeeldingen',
         'sentence_brand_on' => 'met merkkleuren',
         'sentence_brand_off' => 'zonder merkkleuren',
+        'result_waiting' => 'Je post wordt gegenereerd…',
+        'result_waiting_hint' => 'Dit loopt door als je de pagina verlaat. De post verschijnt hier zodra hij klaar is.',
+        'result_detached_hint' => 'Dit loopt door op de achtergrond. Open dit gesprek opnieuw om de post te zien.',
+        'result_ready' => 'Je post is klaar.',
+        'result_failed' => 'De post kon niet worden gegenereerd. Vraag het opnieuw om het nog eens te proberen.',
     ],
 ];
