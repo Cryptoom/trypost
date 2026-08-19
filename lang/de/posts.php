@@ -608,7 +608,6 @@ return [
                 'discord_message' => 'Discord-Nachricht',
                 'facebook_post' => 'Facebook-Beitrag',
                 'pinterest_pin' => 'Pinterest-Pin',
-                'pinterest_carousel' => 'Pinterest-Karussell',
                 'instagram_story' => 'Instagram-Story',
                 'facebook_story' => 'Facebook-Story',
             ],

@@ -73,3 +73,14 @@ it('offers Instagram formats to a workspace connected only through Instagram Bus
         ->and($format['platform'])->toBe('instagram-facebook')
         ->and(collect($format['accounts'])->pluck('id')->all())->toBe([$account->id]);
 });
+
+it('never offers a carousel the generation pipeline cannot produce', function (): void {
+    $workspace = Workspace::factory()->create();
+    SocialAccount::factory()->for($workspace)->create(['platform' => 'pinterest']);
+
+    $catalog = PostGenerationCatalog::forWorkspace($workspace);
+    $values = collect($catalog['formats'])->pluck('value')->all();
+
+    expect($values)->toContain('pinterest_pin')
+        ->and($values)->not->toContain('pinterest_carousel');
+});

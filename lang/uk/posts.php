@@ -606,7 +606,6 @@ return [
                 'discord_message' => 'Повідомлення Discord',
                 'facebook_post' => 'Пост Facebook',
                 'pinterest_pin' => 'Pin Pinterest',
-                'pinterest_carousel' => 'Карусель Pinterest',
                 'instagram_story' => 'Stories Instagram',
                 'facebook_story' => 'Stories Facebook',
             ],

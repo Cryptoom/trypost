@@ -606,7 +606,6 @@ return [
                 'discord_message' => 'Discord 메시지',
                 'facebook_post' => 'Facebook 게시물',
                 'pinterest_pin' => 'Pinterest 핀',
-                'pinterest_carousel' => 'Pinterest 캐러셀',
                 'instagram_story' => 'Instagram 스토리',
                 'facebook_story' => 'Facebook 스토리',
             ],

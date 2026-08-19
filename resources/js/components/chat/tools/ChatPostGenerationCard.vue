@@ -50,7 +50,6 @@ interface FormatOption {
  */
 const CAROUSEL_MAX_IMAGES: Record<string, number> = {
     instagram_carousel: 10,
-    pinterest_carousel: 5,
 };
 
 /**
