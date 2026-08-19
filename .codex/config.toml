@@ -1,7 +1,21 @@
 [mcp_servers.laravel-boost]
 command = "php"
-args = ["artisan", "boost:mcp"]
+args = [
+    "artisan",
+    "boost:mcp",
+]
 
 [mcp_servers.nightwatch]
 command = "npx"
-args = ["-y", "mcp-remote", "https://nightwatch.laravel.com/mcp"]
+args = [
+    "-y",
+    "mcp-remote",
+    "https://nightwatch.laravel.com/mcp",
+]
+
+[mcp_servers.herd]
+command = "php"
+args = ["/Applications/Herd.app/Contents/Resources/herd-mcp.phar"]
+
+[mcp_servers.herd.env]
+SITE_PATH = "/Users/paulocastellano/Code/trypost"

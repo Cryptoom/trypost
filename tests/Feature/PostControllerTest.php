@@ -148,6 +148,15 @@ test('posts index redirects to create workspace if no workspace', function () {
     $response->assertRedirect(route('app.workspaces.create'));
 });
 
+test('storing a post redirects to create workspace if no workspace', function () {
+    $this->user->update(['current_workspace_id' => null]);
+
+    $response = $this->actingAs($this->user)->post(route('app.posts.store'));
+
+    $response->assertRedirect(route('app.workspaces.create'));
+    expect(Post::count())->toBe(0);
+});
+
 // Calendar tests
 test('calendar requires authentication', function () {
     $response = $this->get(route('app.calendar'));

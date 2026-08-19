@@ -261,7 +261,7 @@ Standing constraints:
 
 - This project uses Laravel Wayfinder for type-safe frontend routing.
 - ALWAYS use Wayfinder-generated route helpers in Vue pages (e.g. `register()`, `login()`, `dashboard()`). NEVER hardcode URL strings like `href="/register"`.
-- After creating or modifying PHP routes/controllers, run `php artisan wayfinder:generate` to regenerate the TypeScript route helpers.
+- After creating or modifying PHP routes/controllers, run `php artisan wayfinder:generate --with-form` to regenerate the TypeScript route helpers. The `--with-form` flag is required: `vite.config.ts` sets `formVariants: true`, and regenerating without it drops the form variants and breaks `vue-tsc` across every file that imports one.
 - Import routes from `@/routes/...` (e.g. `import { store } from '@/routes/login'`).
 
 ## Pagination
