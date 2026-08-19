@@ -28,4 +28,36 @@ return [
         'turn_in_progress' => '该对话仍在回复中。请等待回复完成后再发送新消息。',
         'request_failed' => '发送消息时出了点问题，请重试。',
     ],
+    'tool_names' => [
+        'list_posts' => '列出帖子',
+        'get_post' => '帖子详情',
+        'get_post_metrics' => '帖子数据',
+        'create_post' => '创建帖子',
+        'update_post' => '更新帖子',
+        'schedule_post' => '安排帖子',
+        'publish_post' => '发布帖子',
+        'delete_post' => '删除帖子',
+    ],
+    'tool_card' => [
+        'running' => '执行中…',
+        'denied' => '你已拒绝此操作。',
+        'unknown_tool' => '助手使用了一个此界面尚无对应卡片的工具。',
+        'unreadable_result' => '无法读取此结果。',
+        'empty_list' => '未找到帖子。',
+        'open_in_editor' => '在编辑器中打开',
+        'untitled' => '暂无内容。',
+        'post_deleted' => '该帖子已被删除。',
+    ],
+    'metrics' => [
+        'unsupported' => [
+            'not_published' => '尚未发布',
+            'platform_not_supported' => '该平台暂不支持数据',
+        ],
+        'empty' => '暂无可显示的数据。',
+    ],
+    'approval' => [
+        'approve' => '批准',
+        'reject' => '拒绝',
+        'generic_reason' => '此操作需要你批准后才能执行。',
+    ],
 ];

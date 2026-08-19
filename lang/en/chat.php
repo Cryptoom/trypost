@@ -28,4 +28,36 @@ return [
         'turn_in_progress' => 'This conversation is still replying. Wait for it to finish before sending another message.',
         'request_failed' => 'Something went wrong sending your message. Please try again.',
     ],
+    'tool_names' => [
+        'list_posts' => 'List posts',
+        'get_post' => 'Post details',
+        'get_post_metrics' => 'Post metrics',
+        'create_post' => 'Create post',
+        'update_post' => 'Update post',
+        'schedule_post' => 'Schedule post',
+        'publish_post' => 'Publish post',
+        'delete_post' => 'Delete post',
+    ],
+    'tool_card' => [
+        'running' => 'Running…',
+        'denied' => 'You declined this action.',
+        'unknown_tool' => "This assistant used a tool this interface doesn't have a card for yet.",
+        'unreadable_result' => "This result couldn't be read.",
+        'empty_list' => 'No posts found.',
+        'open_in_editor' => 'Open in editor',
+        'untitled' => 'No content yet.',
+        'post_deleted' => 'This post was deleted.',
+    ],
+    'metrics' => [
+        'unsupported' => [
+            'not_published' => 'Not published yet',
+            'platform_not_supported' => "Metrics aren't available for this platform",
+        ],
+        'empty' => 'No metrics to show yet.',
+    ],
+    'approval' => [
+        'approve' => 'Approve',
+        'reject' => 'Reject',
+        'generic_reason' => 'This action needs your approval before it happens.',
+    ],
 ];

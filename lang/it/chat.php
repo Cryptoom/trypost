@@ -28,4 +28,36 @@ return [
         'turn_in_progress' => 'Questa conversazione sta ancora rispondendo. Attendi che finisca prima di inviare un altro messaggio.',
         'request_failed' => 'Si è verificato un errore nell’invio del messaggio. Riprova.',
     ],
+    'tool_names' => [
+        'list_posts' => 'Elenca post',
+        'get_post' => 'Dettagli del post',
+        'get_post_metrics' => 'Metriche del post',
+        'create_post' => 'Crea post',
+        'update_post' => 'Aggiorna post',
+        'schedule_post' => 'Pianifica post',
+        'publish_post' => 'Pubblica post',
+        'delete_post' => 'Elimina post',
+    ],
+    'tool_card' => [
+        'running' => 'In corso…',
+        'denied' => 'Hai rifiutato questa azione.',
+        'unknown_tool' => 'L’assistente ha usato uno strumento per cui questa interfaccia non ha ancora una scheda.',
+        'unreadable_result' => 'Impossibile leggere questo risultato.',
+        'empty_list' => 'Nessun post trovato.',
+        'open_in_editor' => 'Apri nell’editor',
+        'untitled' => 'Nessun contenuto ancora.',
+        'post_deleted' => 'Questo post è stato eliminato.',
+    ],
+    'metrics' => [
+        'unsupported' => [
+            'not_published' => 'Non ancora pubblicato',
+            'platform_not_supported' => 'Le metriche non sono disponibili per questa piattaforma',
+        ],
+        'empty' => 'Nessuna metrica da mostrare ancora.',
+    ],
+    'approval' => [
+        'approve' => 'Approva',
+        'reject' => 'Rifiuta',
+        'generic_reason' => 'Questa azione richiede la tua approvazione prima di essere eseguita.',
+    ],
 ];

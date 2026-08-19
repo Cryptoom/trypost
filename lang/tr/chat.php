@@ -28,4 +28,36 @@ return [
         'turn_in_progress' => 'Bu sohbet hâlâ yanıt veriyor. Yeni bir mesaj göndermeden önce bitmesini bekleyin.',
         'request_failed' => 'Mesajınız gönderilirken bir şeyler ters gitti. Lütfen tekrar deneyin.',
     ],
+    'tool_names' => [
+        'list_posts' => 'Gönderileri listele',
+        'get_post' => 'Gönderi ayrıntıları',
+        'get_post_metrics' => 'Gönderi metrikleri',
+        'create_post' => 'Gönderi oluştur',
+        'update_post' => 'Gönderiyi güncelle',
+        'schedule_post' => 'Gönderiyi zamanla',
+        'publish_post' => 'Gönderiyi yayınla',
+        'delete_post' => 'Gönderiyi sil',
+    ],
+    'tool_card' => [
+        'running' => 'Çalışıyor…',
+        'denied' => 'Bu işlemi reddettiniz.',
+        'unknown_tool' => 'Asistan, bu arayüzde henüz kartı olmayan bir araç kullandı.',
+        'unreadable_result' => 'Bu sonuç okunamadı.',
+        'empty_list' => 'Gönderi bulunamadı.',
+        'open_in_editor' => 'Düzenleyicide aç',
+        'untitled' => 'Henüz içerik yok.',
+        'post_deleted' => 'Bu gönderi silindi.',
+    ],
+    'metrics' => [
+        'unsupported' => [
+            'not_published' => 'Henüz yayınlanmadı',
+            'platform_not_supported' => 'Bu platform için metrikler kullanılamıyor',
+        ],
+        'empty' => 'Henüz gösterilecek metrik yok.',
+    ],
+    'approval' => [
+        'approve' => 'Onayla',
+        'reject' => 'Reddet',
+        'generic_reason' => 'Bu işlem gerçekleşmeden önce onayınız gerekiyor.',
+    ],
 ];

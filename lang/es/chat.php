@@ -28,4 +28,36 @@ return [
         'turn_in_progress' => 'Esta conversación todavía está respondiendo. Espera a que termine antes de enviar otro mensaje.',
         'request_failed' => 'Algo salió mal al enviar tu mensaje. Inténtalo de nuevo.',
     ],
+    'tool_names' => [
+        'list_posts' => 'Listar posts',
+        'get_post' => 'Detalles del post',
+        'get_post_metrics' => 'Métricas del post',
+        'create_post' => 'Crear post',
+        'update_post' => 'Actualizar post',
+        'schedule_post' => 'Programar post',
+        'publish_post' => 'Publicar post',
+        'delete_post' => 'Eliminar post',
+    ],
+    'tool_card' => [
+        'running' => 'Ejecutando…',
+        'denied' => 'Rechazaste esta acción.',
+        'unknown_tool' => 'El asistente usó una herramienta para la que esta interfaz aún no tiene una tarjeta.',
+        'unreadable_result' => 'Este resultado no se pudo leer.',
+        'empty_list' => 'No se encontraron posts.',
+        'open_in_editor' => 'Abrir en el editor',
+        'untitled' => 'Sin contenido todavía.',
+        'post_deleted' => 'Este post se eliminó.',
+    ],
+    'metrics' => [
+        'unsupported' => [
+            'not_published' => 'Aún no publicado',
+            'platform_not_supported' => 'Las métricas no están disponibles para esta plataforma',
+        ],
+        'empty' => 'Todavía no hay métricas que mostrar.',
+    ],
+    'approval' => [
+        'approve' => 'Aprobar',
+        'reject' => 'Rechazar',
+        'generic_reason' => 'Esta acción necesita tu aprobación antes de ejecutarse.',
+    ],
 ];

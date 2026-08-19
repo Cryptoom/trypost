@@ -28,4 +28,36 @@ return [
         'turn_in_progress' => 'Cette conversation est encore en train de répondre. Attendez la fin avant d\'envoyer un autre message.',
         'request_failed' => 'Une erreur s’est produite lors de l’envoi de votre message. Réessayez.',
     ],
+    'tool_names' => [
+        'list_posts' => 'Lister les posts',
+        'get_post' => 'Détails du post',
+        'get_post_metrics' => 'Métriques du post',
+        'create_post' => 'Créer un post',
+        'update_post' => 'Mettre à jour le post',
+        'schedule_post' => 'Planifier le post',
+        'publish_post' => 'Publier le post',
+        'delete_post' => 'Supprimer le post',
+    ],
+    'tool_card' => [
+        'running' => 'En cours…',
+        'denied' => 'Vous avez refusé cette action.',
+        'unknown_tool' => 'L’assistant a utilisé un outil pour lequel cette interface n’a pas encore de carte.',
+        'unreadable_result' => 'Ce résultat n’a pas pu être lu.',
+        'empty_list' => 'Aucun post trouvé.',
+        'open_in_editor' => 'Ouvrir dans l’éditeur',
+        'untitled' => 'Pas encore de contenu.',
+        'post_deleted' => 'Ce post a été supprimé.',
+    ],
+    'metrics' => [
+        'unsupported' => [
+            'not_published' => 'Pas encore publié',
+            'platform_not_supported' => 'Les métriques ne sont pas disponibles pour cette plateforme',
+        ],
+        'empty' => 'Aucune métrique à afficher pour l’instant.',
+    ],
+    'approval' => [
+        'approve' => 'Approuver',
+        'reject' => 'Refuser',
+        'generic_reason' => 'Cette action nécessite votre approbation avant de s’exécuter.',
+    ],
 ];

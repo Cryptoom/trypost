@@ -28,4 +28,36 @@ return [
         'turn_in_progress' => 'この会話はまだ応答中です。完了してから次のメッセージを送信してください。',
         'request_failed' => 'メッセージの送信中に問題が発生しました。もう一度お試しください。',
     ],
+    'tool_names' => [
+        'list_posts' => '投稿一覧を表示',
+        'get_post' => '投稿の詳細',
+        'get_post_metrics' => '投稿の指標',
+        'create_post' => '投稿を作成',
+        'update_post' => '投稿を更新',
+        'schedule_post' => '投稿を予約',
+        'publish_post' => '投稿を公開',
+        'delete_post' => '投稿を削除',
+    ],
+    'tool_card' => [
+        'running' => '実行中…',
+        'denied' => 'この操作を拒否しました。',
+        'unknown_tool' => 'アシスタントはこの画面にまだカードが用意されていないツールを使用しました。',
+        'unreadable_result' => 'この結果は読み取れませんでした。',
+        'empty_list' => '投稿が見つかりません。',
+        'open_in_editor' => 'エディタで開く',
+        'untitled' => 'まだ内容がありません。',
+        'post_deleted' => 'この投稿は削除されました。',
+    ],
+    'metrics' => [
+        'unsupported' => [
+            'not_published' => 'まだ公開されていません',
+            'platform_not_supported' => 'このプラットフォームでは指標を利用できません',
+        ],
+        'empty' => 'まだ表示できる指標がありません。',
+    ],
+    'approval' => [
+        'approve' => '承認',
+        'reject' => '拒否',
+        'generic_reason' => 'この操作の実行には承認が必要です。',
+    ],
 ];

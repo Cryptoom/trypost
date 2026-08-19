@@ -28,4 +28,36 @@ return [
         'turn_in_progress' => 'Diese Unterhaltung antwortet noch. Warte, bis sie fertig ist, bevor du eine weitere Nachricht sendest.',
         'request_failed' => 'Beim Senden deiner Nachricht ist etwas schiefgelaufen. Bitte versuche es erneut.',
     ],
+    'tool_names' => [
+        'list_posts' => 'Posts auflisten',
+        'get_post' => 'Post-Details',
+        'get_post_metrics' => 'Post-Kennzahlen',
+        'create_post' => 'Post erstellen',
+        'update_post' => 'Post aktualisieren',
+        'schedule_post' => 'Post planen',
+        'publish_post' => 'Post veröffentlichen',
+        'delete_post' => 'Post löschen',
+    ],
+    'tool_card' => [
+        'running' => 'Wird ausgeführt …',
+        'denied' => 'Du hast diese Aktion abgelehnt.',
+        'unknown_tool' => 'Der Assistent hat ein Tool verwendet, für das diese Oberfläche noch keine Karte hat.',
+        'unreadable_result' => 'Dieses Ergebnis konnte nicht gelesen werden.',
+        'empty_list' => 'Keine Posts gefunden.',
+        'open_in_editor' => 'Im Editor öffnen',
+        'untitled' => 'Noch kein Inhalt.',
+        'post_deleted' => 'Dieser Beitrag wurde gelöscht.',
+    ],
+    'metrics' => [
+        'unsupported' => [
+            'not_published' => 'Noch nicht veröffentlicht',
+            'platform_not_supported' => 'Für diese Plattform sind keine Kennzahlen verfügbar',
+        ],
+        'empty' => 'Noch keine Kennzahlen vorhanden.',
+    ],
+    'approval' => [
+        'approve' => 'Genehmigen',
+        'reject' => 'Ablehnen',
+        'generic_reason' => 'Diese Aktion braucht deine Zustimmung, bevor sie ausgeführt wird.',
+    ],
 ];

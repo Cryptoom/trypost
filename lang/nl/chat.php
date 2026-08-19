@@ -28,4 +28,36 @@ return [
         'turn_in_progress' => 'Dit gesprek is nog aan het antwoorden. Wacht tot het klaar is voordat je een nieuw bericht stuurt.',
         'request_failed' => 'Er is iets misgegaan bij het versturen van je bericht. Probeer het opnieuw.',
     ],
+    'tool_names' => [
+        'list_posts' => 'Posts weergeven',
+        'get_post' => 'Postdetails',
+        'get_post_metrics' => 'Poststatistieken',
+        'create_post' => 'Post aanmaken',
+        'update_post' => 'Post bijwerken',
+        'schedule_post' => 'Post plannen',
+        'publish_post' => 'Post publiceren',
+        'delete_post' => 'Post verwijderen',
+    ],
+    'tool_card' => [
+        'running' => 'Bezig…',
+        'denied' => 'Je hebt deze actie geweigerd.',
+        'unknown_tool' => 'De assistent gebruikte een tool waar deze interface nog geen kaart voor heeft.',
+        'unreadable_result' => 'Dit resultaat kon niet worden gelezen.',
+        'empty_list' => 'Geen posts gevonden.',
+        'open_in_editor' => 'Openen in editor',
+        'untitled' => 'Nog geen inhoud.',
+        'post_deleted' => 'Deze post is verwijderd.',
+    ],
+    'metrics' => [
+        'unsupported' => [
+            'not_published' => 'Nog niet gepubliceerd',
+            'platform_not_supported' => 'Statistieken zijn niet beschikbaar voor dit platform',
+        ],
+        'empty' => 'Nog geen statistieken om te tonen.',
+    ],
+    'approval' => [
+        'approve' => 'Goedkeuren',
+        'reject' => 'Weigeren',
+        'generic_reason' => 'Deze actie heeft jouw goedkeuring nodig voordat hij wordt uitgevoerd.',
+    ],
 ];

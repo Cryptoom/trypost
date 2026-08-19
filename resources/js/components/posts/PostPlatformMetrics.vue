@@ -21,14 +21,16 @@ interface Metric {
 type MetricsResponse = Metric[] | { unsupported: true; reason: string };
 
 interface Props {
-    postId: string;
-    postPlatformId: string;
+    postId?: string;
+    postPlatformId?: string;
+    /** Pre-fetched metrics — skips this component's own HTTP round trip when given. */
+    metrics?: Metric[];
 }
 
 const props = defineProps<Props>();
 
-const loading = ref(true);
-const metrics = ref<Metric[]>([]);
+const loading = ref(props.metrics === undefined);
+const metrics = ref<Metric[]>(props.metrics ?? []);
 
 const stats = computed(() => metrics.value.filter((m) => !m.kind));
 const subscribers = computed(() =>
@@ -46,6 +48,16 @@ const hasMetrics = computed(() => metrics.value.length > 0);
 const http = useHttp<Record<string, never>, MetricsResponse>({});
 
 onMounted(async () => {
+    if (props.metrics !== undefined) {
+        return;
+    }
+
+    if (!props.postId || !props.postPlatformId) {
+        loading.value = false;
+
+        return;
+    }
+
     try {
         const response = await http.get(
             metricsRoute.url({

@@ -28,4 +28,36 @@ return [
         'turn_in_progress' => '이 대화는 아직 응답 중입니다. 완료된 뒤에 다음 메시지를 보내세요.',
         'request_failed' => '메시지를 보내는 중 문제가 발생했습니다. 다시 시도해 주세요.',
     ],
+    'tool_names' => [
+        'list_posts' => '게시물 목록',
+        'get_post' => '게시물 상세정보',
+        'get_post_metrics' => '게시물 지표',
+        'create_post' => '게시물 만들기',
+        'update_post' => '게시물 업데이트',
+        'schedule_post' => '게시물 예약',
+        'publish_post' => '게시물 게시',
+        'delete_post' => '게시물 삭제',
+    ],
+    'tool_card' => [
+        'running' => '실행 중…',
+        'denied' => '이 작업을 거부했습니다.',
+        'unknown_tool' => '어시스턴트가 이 화면에 아직 카드가 없는 도구를 사용했습니다.',
+        'unreadable_result' => '이 결과를 읽을 수 없습니다.',
+        'empty_list' => '게시물을 찾을 수 없습니다.',
+        'open_in_editor' => '편집기에서 열기',
+        'untitled' => '아직 내용이 없습니다.',
+        'post_deleted' => '이 게시물은 삭제되었습니다.',
+    ],
+    'metrics' => [
+        'unsupported' => [
+            'not_published' => '아직 게시되지 않음',
+            'platform_not_supported' => '이 플랫폼에서는 지표를 사용할 수 없습니다',
+        ],
+        'empty' => '아직 표시할 지표가 없습니다.',
+    ],
+    'approval' => [
+        'approve' => '승인',
+        'reject' => '거부',
+        'generic_reason' => '이 작업을 실행하려면 승인이 필요합니다.',
+    ],
 ];
