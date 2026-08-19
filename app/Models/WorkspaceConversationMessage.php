@@ -21,6 +21,7 @@ class WorkspaceConversationMessage extends Model
         'workspace_conversation_id',
         'role',
         'content',
+        'parts',
         'tool_calls',
         'tool_results',
         'usage',
@@ -35,6 +36,7 @@ class WorkspaceConversationMessage extends Model
     {
         return [
             'role' => Role::class,
+            'parts' => 'array',
             'tool_calls' => 'array',
             'tool_results' => 'array',
             'usage' => 'array',

@@ -112,14 +112,26 @@ export interface ChatServerToolCall {
 }
 
 /**
+ * One entry of a stored turn's `parts` — the message's text and tool cards in
+ * the order the model produced them. A tool part carries only the call it
+ * points at; its arguments live on the matching `tool_calls` entry and its
+ * payload in `payloads`, both keyed by the same `id`.
+ */
+export type ChatServerMessagePart = { type: 'text'; text: string } | { type: 'tool'; id: string; name: string };
+
+/**
  * Mirrors `App\Http\Resources\Chat\ConversationMessageResource`. `payloads`
  * is keyed by tool call id, scoped to this message's own `tool_calls` (see
  * the resource's docblock) — never the whole conversation's payload map.
+ *
+ * `parts` is null on every row stored before the column existed, which is
+ * why `buildInitialMessages` keeps a fallback.
  */
 export interface ChatServerMessage {
     id: string;
     role: 'user' | 'assistant';
     content: string | null;
+    parts: ChatServerMessagePart[] | null;
     tool_calls: ChatServerToolCall[] | null;
     payloads: Record<string, string>;
 }

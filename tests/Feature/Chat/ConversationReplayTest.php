@@ -624,3 +624,53 @@ test('a refusal after a real generation does not un-settle the card', function (
 
     expect(data_get(json_decode($payloads['call_start'], true), 'data.spent'))->toBeTrue();
 });
+
+test('the resource exposes a stored turn parts in order with its tool payloads resolved', function () {
+    [$user, $workspace] = actingAsWorkspaceUser();
+
+    $conversation = WorkspaceConversation::factory()->for($workspace)->for($user)->create();
+
+    WorkspaceConversationMessage::factory()->for($conversation, 'conversation')->create([
+        'role' => Role::Assistant,
+        'content' => "Let me look.\n\nHere they are.",
+        'parts' => [
+            ['type' => 'text', 'text' => 'Let me look.'],
+            ['type' => 'tool', 'id' => 'call_parts', 'name' => 'list_posts'],
+            ['type' => 'text', 'text' => 'Here they are.'],
+        ],
+        'tool_calls' => [['id' => 'call_parts', 'name' => 'list_posts', 'arguments' => []]],
+        'tool_results' => [['id' => 'call_parts', 'result' => '{"data":[]}']],
+    ]);
+
+    $response = $this->get(route('app.chat.show', $conversation));
+
+    $message = data_get($response->viewData('page'), 'props.messages.0');
+
+    expect(data_get($message, 'parts'))->toBe([
+        ['type' => 'text', 'text' => 'Let me look.'],
+        ['type' => 'tool', 'id' => 'call_parts', 'name' => 'list_posts'],
+        ['type' => 'text', 'text' => 'Here they are.'],
+    ])
+        ->and(json_decode(data_get($message, 'payloads.call_parts'), true))->toHaveKey('data');
+});
+
+test('a turn stored before the parts column still exposes null parts', function () {
+    [$user, $workspace] = actingAsWorkspaceUser();
+
+    $conversation = WorkspaceConversation::factory()->for($workspace)->for($user)->create();
+
+    WorkspaceConversationMessage::factory()->for($conversation, 'conversation')->create([
+        'role' => Role::Assistant,
+        'content' => 'Here they are.',
+        'tool_calls' => [['id' => 'call_legacy', 'name' => 'list_posts', 'arguments' => []]],
+        'tool_results' => [['id' => 'call_legacy', 'result' => '{"data":[]}']],
+    ]);
+
+    $response = $this->get(route('app.chat.show', $conversation));
+
+    $message = data_get($response->viewData('page'), 'props.messages.0');
+
+    expect($message)->toHaveKey('parts')
+        ->and(data_get($message, 'parts'))->toBeNull()
+        ->and(data_get($message, 'tool_calls.0.id'))->toBe('call_legacy');
+});

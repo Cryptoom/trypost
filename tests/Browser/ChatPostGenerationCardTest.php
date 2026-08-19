@@ -329,3 +329,71 @@ test('revealing a step scrolls the thread to keep it in view', function () {
 
     expect($scrolledToBottom)->toBeTrue();
 });
+
+test('a stored turn renders its pre-tool text above the card and its answer below', function () {
+    [$user, $workspace] = actingAsWorkspaceUser();
+
+    seedGenerationAccounts($workspace);
+
+    $conversation = WorkspaceConversation::factory()->for($workspace)->for($user)->create();
+
+    WorkspaceConversationMessage::factory()->for($conversation, 'conversation')->create([
+        'role' => Role::Assistant,
+        'content' => "Let me show you the formats.\n\nAll set, pick one above.",
+        'parts' => [
+            ['type' => 'text', 'text' => 'Let me show you the formats.'],
+            ['type' => 'tool', 'id' => 'call_start', 'name' => 'start_post_generation'],
+            ['type' => 'text', 'text' => 'All set, pick one above.'],
+        ],
+        'tool_calls' => [['id' => 'call_start', 'name' => 'start_post_generation', 'arguments' => []]],
+        'tool_results' => [['id' => 'call_start', 'result' => '{"data":{"formats":[],"styles":[],"applies_brand_visuals_default":true}}']],
+    ]);
+
+    $page = visit(route('app.chat.show', $conversation));
+
+    waitForChatTestId($page, 'chat-post-generation-card');
+
+    // DOCUMENT_POSITION_PRECEDING is 2, DOCUMENT_POSITION_FOLLOWING is 4: the
+    // announcement must come before the card it introduces, and the answer after.
+    $order = $page->script(<<<'JS'
+        (async () => {
+            const card = document.querySelector('[data-testid="chat-post-generation-card"]');
+            const find = (needle) => Array.from(document.querySelectorAll('.prose-chat'))
+                .find((el) => el.textContent.includes(needle));
+
+            const before = find('Let me show you the formats.');
+            const after = find('All set, pick one above.');
+
+            if (!card || !before || !after) return 'missing';
+
+            return [
+                card.compareDocumentPosition(before) & Node.DOCUMENT_POSITION_PRECEDING ? 'before' : 'not-before',
+                card.compareDocumentPosition(after) & Node.DOCUMENT_POSITION_FOLLOWING ? 'after' : 'not-after',
+            ].join('|');
+        })()
+    JS);
+
+    expect($order)->toBe('before|after');
+});
+
+test('a turn stored without parts still renders its card and its text', function () {
+    [$conversation] = chatWithPostGenerationCard();
+
+    $page = visit(route('app.chat.show', $conversation));
+
+    waitForChatTestId($page, 'chat-post-generation-card');
+
+    $page->assertSee('Pick how you want it generated.');
+
+    $rendered = $page->script(<<<'JS'
+        (async () => {
+            const card = document.querySelector('[data-testid="chat-post-generation-card"]');
+            const text = Array.from(document.querySelectorAll('.prose-chat'))
+                .find((el) => el.textContent.includes('Pick how you want it generated.'));
+
+            return Boolean(card && text);
+        })()
+    JS);
+
+    expect($rendered)->toBeTrue();
+});

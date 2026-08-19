@@ -14,6 +14,12 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * `payloads` maps each of this message's tool call ids to the JSON payload
  * the frontend component registry renders — replayed fresh for read tools,
  * or the original stored result for write tools. See ToolReplayer.
+ *
+ * `parts` is the turn's text and tool cards in the order the model produced
+ * them, so a sentence said before a tool call renders above the card it
+ * introduces. A tool part names its call id only; its payload is read from
+ * `payloads` under that id. Null on every row stored before the column
+ * existed, which the frontend falls back to `tool_calls` + `content` for.
  */
 class ConversationMessageResource extends JsonResource
 {
@@ -34,6 +40,7 @@ class ConversationMessageResource extends JsonResource
             'id' => $this->id,
             'role' => $this->role?->value,
             'content' => $this->content,
+            'parts' => $this->parts,
             'tool_calls' => $this->tool_calls,
             'payloads' => collect($this->tool_calls ?? [])
                 ->mapWithKeys(function (array $call): array {

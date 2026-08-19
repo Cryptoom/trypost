@@ -19,8 +19,13 @@ use Laravel\Ai\Messages\ToolResultMessage;
 use Laravel\Ai\Messages\UserMessage;
 use Laravel\Ai\Prompts\AgentPrompt;
 use Laravel\Ai\Responses\AgentResponse;
+use Laravel\Ai\Responses\Data\Step;
 use Laravel\Ai\Responses\Data\ToolCall;
 use Laravel\Ai\Responses\Data\ToolResult;
+use Laravel\Ai\Responses\StreamedAgentResponse;
+use Laravel\Ai\Streaming\Events\StreamEvent;
+use Laravel\Ai\Streaming\Events\TextDelta;
+use Laravel\Ai\Streaming\Events\ToolCall as ToolCallEvent;
 use RuntimeException;
 
 /**
@@ -33,6 +38,13 @@ use RuntimeException;
  */
 class WorkspaceConversationStore implements ConversationStore
 {
+    /**
+     * The synthetic tool a provider is asked to call when a response must come
+     * back as structured data. It is never a real step of the conversation, and
+     * the SDK already keeps it out of `$response->toolCalls`.
+     */
+    private const STRUCTURED_OUTPUT_TOOL = 'output_structured_data';
+
     public function latestConversationId(string $participantType, string|int $participantId): ?string
     {
         throw new RuntimeException(
@@ -94,12 +106,114 @@ class WorkspaceConversationStore implements ConversationStore
         }
 
         return $this->write($conversationId, Role::Assistant, $response->text, [
+            'parts' => $this->orderedParts($response) ?: null,
             'tool_calls' => $response->toolCalls->values()->toArray(),
             'tool_results' => $toolResults->toArray(),
             'usage' => $response->usage->toArray(),
             'meta' => $this->messageMeta($response),
             'approval_state' => $this->approvalState($response),
         ])->id;
+    }
+
+    /**
+     * Build the turn's renderable parts in the order the model produced them.
+     *
+     * `content` flattens a whole turn into one string and `tool_calls` is a
+     * flat list beside it, so a sentence the model said *before* calling a
+     * tool cannot be told apart from one it said after. Both a streamed
+     * turn's events and a generated turn's steps still carry that order, so
+     * it is captured here rather than discarded.
+     *
+     * @return array<int, array{type: string, text?: string, id?: string, name?: string}>
+     */
+    private function orderedParts(AgentResponse $response): array
+    {
+        return $response instanceof StreamedAgentResponse
+            ? $this->partsFromEvents($response->events)
+            : $this->partsFromSteps($response->steps);
+    }
+
+    /**
+     * Walk a streamed turn's events, which arrive in the order the provider emitted them.
+     *
+     * @param  Collection<int, StreamEvent>  $events
+     * @return array<int, array{type: string, text?: string, id?: string, name?: string}>
+     */
+    private function partsFromEvents(Collection $events): array
+    {
+        $parts = [];
+        $text = '';
+
+        foreach ($events as $event) {
+            if ($event instanceof TextDelta) {
+                $text .= $event->delta;
+
+                continue;
+            }
+
+            if (! $event instanceof ToolCallEvent || $event->toolCall->name === self::STRUCTURED_OUTPUT_TOOL) {
+                continue;
+            }
+
+            $parts = $this->appendTextPart($parts, $text);
+            $text = '';
+
+            $parts[] = $this->toolPart($event->toolCall);
+        }
+
+        return $this->appendTextPart($parts, $text);
+    }
+
+    /**
+     * Walk a generated turn's steps; one step is one model generation, so its
+     * text always precedes the calls that same generation asked for.
+     *
+     * @param  Collection<int, Step>  $steps
+     * @return array<int, array{type: string, text?: string, id?: string, name?: string}>
+     */
+    private function partsFromSteps(Collection $steps): array
+    {
+        $parts = [];
+
+        foreach ($steps as $step) {
+            $parts = $this->appendTextPart($parts, $step->text);
+
+            foreach ($step->toolCalls as $toolCall) {
+                if ($toolCall->name === self::STRUCTURED_OUTPUT_TOOL) {
+                    continue;
+                }
+
+                $parts[] = $this->toolPart($toolCall);
+            }
+        }
+
+        return $parts;
+    }
+
+    /**
+     * @param  array<int, array{type: string, text?: string, id?: string, name?: string}>  $parts
+     * @return array<int, array{type: string, text?: string, id?: string, name?: string}>
+     */
+    private function appendTextPart(array $parts, string $text): array
+    {
+        if (trim($text) === '') {
+            return $parts;
+        }
+
+        $parts[] = ['type' => 'text', 'text' => $text];
+
+        return $parts;
+    }
+
+    /**
+     * The payload a tool part renders is fetched by call id through
+     * ToolReplayer, so a part only has to name the call it points at.
+     *
+     * @return array{type: string, id: string, name: string}
+     */
+    private function toolPart(ToolCall $toolCall): array
+    {
+        return ['type' => 'tool', 'id' => $toolCall->id, 'name' => $toolCall->name];
     }
 
     /**
