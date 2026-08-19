@@ -170,7 +170,7 @@ test('start_post_generation replays so a disconnected account is no longer offer
     WorkspaceConversationMessage::factory()->for($conversation, 'conversation')->create([
         'role' => Role::Assistant,
         'content' => 'Pick a format.',
-        'tool_calls' => [['id' => 'call_7', 'name' => 'start_post_generation', 'arguments' => []]],
+        'tool_calls' => [['id' => 'call_7', 'name' => 'start_post_generation', 'arguments' => ['topic' => 'the pricing launch']]],
         'tool_results' => [['id' => 'call_7', 'result' => $stored]],
     ]);
 
@@ -199,7 +199,7 @@ test('start_post_generation replays a newly connected account into an old conver
     WorkspaceConversationMessage::factory()->for($conversation, 'conversation')->create([
         'role' => Role::Assistant,
         'content' => 'Pick a format.',
-        'tool_calls' => [['id' => 'call_8', 'name' => 'start_post_generation', 'arguments' => []]],
+        'tool_calls' => [['id' => 'call_8', 'name' => 'start_post_generation', 'arguments' => ['topic' => 'the pricing launch']]],
         'tool_results' => [['id' => 'call_8', 'result' => $stored]],
     ]);
 
@@ -495,7 +495,7 @@ test('a generation card the conversation already acted on replays as spent', fun
     WorkspaceConversationMessage::factory()->for($conversation, 'conversation')->create([
         'role' => Role::Assistant,
         'content' => 'Pick a format.',
-        'tool_calls' => [['id' => 'call_start', 'name' => 'start_post_generation', 'arguments' => []]],
+        'tool_calls' => [['id' => 'call_start', 'name' => 'start_post_generation', 'arguments' => ['topic' => 'the pricing launch']]],
         'tool_results' => [['id' => 'call_start', 'result' => '{"data":{"formats":[],"styles":[],"applies_brand_visuals_default":true}}']],
     ]);
 
@@ -521,7 +521,7 @@ test('a generation card still awaiting its choices replays interactive', functio
     WorkspaceConversationMessage::factory()->for($conversation, 'conversation')->create([
         'role' => Role::Assistant,
         'content' => 'Pick a format.',
-        'tool_calls' => [['id' => 'call_start', 'name' => 'start_post_generation', 'arguments' => []]],
+        'tool_calls' => [['id' => 'call_start', 'name' => 'start_post_generation', 'arguments' => ['topic' => 'the pricing launch']]],
         'tool_results' => [['id' => 'call_start', 'result' => '{"data":{"formats":[],"styles":[],"applies_brand_visuals_default":true}}']],
     ]);
 
@@ -540,7 +540,7 @@ test('a second generation card offered after the last generation stays interacti
     WorkspaceConversationMessage::factory()->for($conversation, 'conversation')->create([
         'role' => Role::Assistant,
         'content' => 'Pick a format.',
-        'tool_calls' => [['id' => 'call_start_one', 'name' => 'start_post_generation', 'arguments' => []]],
+        'tool_calls' => [['id' => 'call_start_one', 'name' => 'start_post_generation', 'arguments' => ['topic' => 'the pricing launch']]],
         'tool_results' => [['id' => 'call_start_one', 'result' => '{"data":{"formats":[],"styles":[],"applies_brand_visuals_default":true}}']],
     ]);
 
@@ -554,7 +554,7 @@ test('a second generation card offered after the last generation stays interacti
     WorkspaceConversationMessage::factory()->for($conversation, 'conversation')->create([
         'role' => Role::Assistant,
         'content' => 'Want another one?',
-        'tool_calls' => [['id' => 'call_start_two', 'name' => 'start_post_generation', 'arguments' => []]],
+        'tool_calls' => [['id' => 'call_start_two', 'name' => 'start_post_generation', 'arguments' => ['topic' => 'the pricing launch']]],
         'tool_results' => [['id' => 'call_start_two', 'result' => '{"data":{"formats":[],"styles":[],"applies_brand_visuals_default":true}}']],
     ]);
 
@@ -574,7 +574,7 @@ test('a generation the tool refused leaves its card interactive', function () {
     WorkspaceConversationMessage::factory()->for($conversation, 'conversation')->create([
         'role' => Role::Assistant,
         'content' => 'Pick a format.',
-        'tool_calls' => [['id' => 'call_start', 'name' => 'start_post_generation', 'arguments' => []]],
+        'tool_calls' => [['id' => 'call_start', 'name' => 'start_post_generation', 'arguments' => ['topic' => 'the pricing launch']]],
         'tool_results' => [['id' => 'call_start', 'result' => '{"data":{"formats":[],"styles":[],"applies_brand_visuals_default":true}}']],
     ]);
 
@@ -602,7 +602,7 @@ test('a refusal after a real generation does not un-settle the card', function (
     WorkspaceConversationMessage::factory()->for($conversation, 'conversation')->create([
         'role' => Role::Assistant,
         'content' => 'Pick a format.',
-        'tool_calls' => [['id' => 'call_start', 'name' => 'start_post_generation', 'arguments' => []]],
+        'tool_calls' => [['id' => 'call_start', 'name' => 'start_post_generation', 'arguments' => ['topic' => 'the pricing launch']]],
         'tool_results' => [['id' => 'call_start', 'result' => '{"data":{"formats":[],"styles":[],"applies_brand_visuals_default":true}}']],
     ]);
 

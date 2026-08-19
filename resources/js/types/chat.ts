@@ -179,9 +179,7 @@ export interface ChatPostGenerationCopy {
     styles_unavailable: string;
     format_question: string;
     style_question: string;
-    topic_question: string;
-    topic_placeholder: string;
-    topic_too_long: string;
+    topic_line: string;
     images_question: string;
     images_none: string;
     account_question: string;

@@ -16,7 +16,7 @@ it('returns the workspace catalog', function (): void {
     SocialAccount::factory()->for($workspace)->create(['platform' => 'threads']);
 
     $output = json_decode(
-        (new StartPostGenerationTool($workspace, User::factory()->create()))->handle(new Request([])),
+        (new StartPostGenerationTool($workspace, User::factory()->create()))->handle(new Request(['topic' => 'the X launch'])),
         true,
     );
 
@@ -37,17 +37,31 @@ it('returns the topic the model extracted, trimmed', function (): void {
     expect($output['data']['topic'])->toBe('the X launch');
 });
 
-it('returns an empty topic when the model did not pass one', function (): void {
+it('refuses to open a card without a topic, and says to ask for one', function (): void {
     $workspace = Workspace::factory()->create();
     SocialAccount::factory()->for($workspace)->create(['platform' => 'threads']);
 
-    // The card asks with a blank field rather than a made-up subject.
+    // The card no longer has a field to ask with, so the tool sends the model
+    // back to ask in plain text rather than generating about nothing.
     $output = json_decode(
         (new StartPostGenerationTool($workspace, User::factory()->create()))->handle(new Request([])),
         true,
     );
 
-    expect($output['data']['topic'])->toBe('');
+    expect($output)->not->toHaveKey('data')
+        ->and($output['error'])->toContain('Ask the user');
+});
+
+it('refuses a topic that is only whitespace', function (): void {
+    $workspace = Workspace::factory()->create();
+    SocialAccount::factory()->for($workspace)->create(['platform' => 'threads']);
+
+    $output = json_decode(
+        (new StartPostGenerationTool($workspace, User::factory()->create()))->handle(new Request(['topic' => '   '])),
+        true,
+    );
+
+    expect($output)->not->toHaveKey('data');
 });
 
 it('is named start_post_generation', function (): void {
@@ -61,7 +75,7 @@ it('resolves every string it returns in the language the model reported', functi
 
     $output = json_decode(
         (new StartPostGenerationTool($workspace, User::factory()->create()))
-            ->handle(new Request(['language' => 'pt-BR'])),
+            ->handle(new Request(['topic' => 'the X launch', 'language' => 'pt-BR'])),
         true,
     );
 
@@ -85,7 +99,7 @@ it('matches the reported language whatever case the model wrote it in', function
 
     $output = json_decode(
         (new StartPostGenerationTool($workspace, User::factory()->create()))
-            ->handle(new Request(['language' => 'PT-br'])),
+            ->handle(new Request(['topic' => 'the X launch', 'language' => 'PT-br'])),
         true,
     );
 
@@ -97,7 +111,7 @@ it('falls back to the app locale when the model reported no language', function 
     SocialAccount::factory()->for($workspace)->create(['platform' => 'threads']);
 
     $output = json_decode(
-        (new StartPostGenerationTool($workspace, User::factory()->create()))->handle(new Request([])),
+        (new StartPostGenerationTool($workspace, User::factory()->create()))->handle(new Request(['topic' => 'the X launch'])),
         true,
     );
 
@@ -112,7 +126,7 @@ it('falls back to the app locale for a language this app does not ship', functio
 
     $output = json_decode(
         (new StartPostGenerationTool($workspace, User::factory()->create()))
-            ->handle(new Request(['language' => 'sv'])),
+            ->handle(new Request(['topic' => 'the X launch', 'language' => 'sv'])),
         true,
     );
 
@@ -126,7 +140,7 @@ it('returns the format the user named when the workspace can post it', function 
 
     $output = json_decode(
         (new StartPostGenerationTool($workspace, User::factory()->create()))
-            ->handle(new Request(['format' => ' threads_post '])),
+            ->handle(new Request(['topic' => 'the X launch', 'format' => ' threads_post '])),
         true,
     );
 
@@ -141,7 +155,7 @@ it('drops a format the workspace has no connected account for', function (): voi
     // user named no format at all.
     $output = json_decode(
         (new StartPostGenerationTool($workspace, User::factory()->create()))
-            ->handle(new Request(['format' => 'linkedin_post'])),
+            ->handle(new Request(['topic' => 'the X launch', 'format' => 'linkedin_post'])),
         true,
     );
 
@@ -155,7 +169,7 @@ it('drops a format that is not a format at all', function (): void {
 
     $output = json_decode(
         (new StartPostGenerationTool($workspace, User::factory()->create()))
-            ->handle(new Request(['format' => 'carrier_pigeon'])),
+            ->handle(new Request(['topic' => 'the X launch', 'format' => 'carrier_pigeon'])),
         true,
     );
 
@@ -167,7 +181,7 @@ it('returns no format when the model named none', function (): void {
     SocialAccount::factory()->for($workspace)->create(['platform' => 'threads']);
 
     $output = json_decode(
-        (new StartPostGenerationTool($workspace, User::factory()->create()))->handle(new Request([])),
+        (new StartPostGenerationTool($workspace, User::factory()->create()))->handle(new Request(['topic' => 'the X launch'])),
         true,
     );
 

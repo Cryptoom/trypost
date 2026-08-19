@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { IconCheck, IconSparkles } from '@tabler/icons-vue';
+import { IconCheck, IconPencil, IconSparkles } from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
 import { computed, ref, useId, watch } from 'vue';
 
@@ -91,7 +91,6 @@ type RecordedStep = 'format' | 'style' | 'account';
  * (PROMPT_MIN_LENGTH / PROMPT_MAX_LENGTH) — keep the two in step.
  */
 const TOPIC_MIN_LENGTH = 3;
-const TOPIC_MAX_LENGTH = 2000;
 
 const brandColorsId = useId();
 
@@ -139,7 +138,6 @@ const accountAnswered = ref(false);
  * would silently outlive the payload it came from — same reason
  * `brandColorsOverride` is null-until-touched.
  */
-const topicDraft = ref<string | null>(null);
 
 
 /**
@@ -172,20 +170,16 @@ const useBrandColors = computed<boolean>({
  * launch" carries a topic and "make me a post" does not, and only the user can
  * tell the difference between a topic they meant and one that was inferred.
  */
-const topic = computed<string>({
-    get: () => topicDraft.value ?? props.data?.topic ?? '',
-    set: (value: string) => {
-        topicDraft.value = value;
-    },
-});
+const topicValue = computed<string>(() => (props.data?.topic ?? '').trim());
 
-const topicValue = computed<string>(() => topic.value.trim());
 
-const topicTooLong = computed(() => topicValue.value.length > TOPIC_MAX_LENGTH);
 
-const topicUsable = computed(
-    () => topicValue.value.length >= TOPIC_MIN_LENGTH && ! topicTooLong.value,
-);
+/**
+ * The tool refuses to open a card without a topic, so one is always present.
+ * The bound is kept as the card's own guard: a payload that somehow arrives
+ * without one must not reach `generate_post`, which would reject it anyway.
+ */
+const topicUsable = computed(() => topicValue.value.length >= TOPIC_MIN_LENGTH);
 
 const styles = computed<ChatPostGenerationStyle[]>(() => props.data?.styles ?? []);
 
@@ -315,8 +309,6 @@ const imageStepVisible = computed(() => styleAnswered.value && imageChoices.valu
  */
 const styleNeedsAccount = computed(() => resolvedStyle.value?.needs_account ?? false);
 
-const topicStepVisible = computed(() => styleAnswered.value);
-
 const accountStepVisible = computed(
     () => topicUsable.value && (accountsForFormat.value.length > 1 || styleNeedsAccount.value),
 );
@@ -383,8 +375,6 @@ const styleQuestionVisible = computed(
 const styleChoiceVisible = computed(
     () => styleStepVisible.value && selectedStyleKey.value !== null && resolvedStyle.value !== null,
 );
-
-const topicQuestionVisible = computed(() => topicStepVisible.value);
 
 const accountQuestionVisible = computed(
     () => accountStepVisible.value && selectedAccountId.value === null,
@@ -800,32 +790,6 @@ const submit = (): void => {
             />
 
             <ChatAssistantMessage
-                v-if="topicQuestionVisible"
-                :title="line('topic_question')"
-                data-testid="chat-post-generation-topic-step"
-                dusk="chat-post-generation-topic-step"
-            >
-                <div class="space-y-2">
-                    <textarea
-                        v-model="topic"
-                        rows="5"
-                        :placeholder="line('topic_placeholder')"
-                        class="w-full resize-y rounded-lg border border-foreground/15 bg-background px-3 py-2 text-sm leading-relaxed text-foreground outline-none placeholder:text-muted-foreground focus:border-foreground"
-                        data-testid="chat-post-generation-topic-input"
-                        dusk="chat-post-generation-topic-input"
-                    />
-
-                    <p
-                        v-if="topicTooLong"
-                        class="text-xs text-destructive"
-                        data-testid="chat-post-generation-topic-too-long"
-                    >
-                        {{ fill(line('topic_too_long'), { max: String(TOPIC_MAX_LENGTH) }) }}
-                    </p>
-                </div>
-            </ChatAssistantMessage>
-
-            <ChatAssistantMessage
                 v-if="accountQuestionVisible"
                 :title="line('account_question')"
                 data-testid="chat-post-generation-account-step"
@@ -880,6 +844,19 @@ const submit = (): void => {
                 data-testid="chat-post-generation-final"
                 dusk="chat-post-generation-final"
             >
+                <div
+                    v-if="topicUsable"
+                    class="flex items-start gap-2 text-sm text-muted-foreground"
+                    data-testid="chat-post-generation-topic-line"
+                    dusk="chat-post-generation-topic-line"
+                >
+                    <IconPencil class="mt-0.5 size-4 shrink-0" />
+
+                    <span class="min-w-0 flex-1">
+                        {{ fill(line('topic_line'), { topic: topicValue }) }}
+                    </span>
+                </div>
+
                 <div
                     v-if="autoAccountVisible"
                     class="flex items-center gap-2 text-sm text-muted-foreground"

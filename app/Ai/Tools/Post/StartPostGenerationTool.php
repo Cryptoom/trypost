@@ -47,7 +47,7 @@ class StartPostGenerationTool extends WorkspaceTool
 
     public function description(): Stringable|string
     {
-        return 'Call this when the user asks to create or generate a post, before generating anything. Returns the formats (platforms and connected accounts) and styles this workspace can generate a post in, plus the topic, format and language you pass back. This tool generates nothing and changes nothing; use generate_post once the user has picked. The interface renders the result as an interactive card the user clicks through, so after calling this, do NOT list the formats or styles, describe them, or ask which one the user wants — the card already asks, and repeating it in text gives the user two conflicting prompts. Say at most one short sentence and stop. The user answers by clicking, which arrives as their next message naming the choices they made.';
+        return 'Call this when the user asks to create or generate a post, before generating anything — but only once you know what the post should be about. If they have not said, ask them in plain text first and call this with their answer. Returns the formats (platforms and connected accounts) and styles this workspace can generate a post in, plus the topic, format and language you pass back. This tool generates nothing and changes nothing; use generate_post once the user has picked. The interface renders the result as an interactive card the user clicks through, so after calling this, do NOT list the formats or styles, describe them, or ask which one the user wants — the card already asks, and repeating it in text gives the user two conflicting prompts. Say at most one short sentence and stop. The user answers by clicking, which arrives as their next message naming the choices they made.';
     }
 
     /**
@@ -56,7 +56,7 @@ class StartPostGenerationTool extends WorkspaceTool
     public function schema(JsonSchema $schema): array
     {
         return [
-            'topic' => $schema->string()->description('What the user said the post should be about, in their own words, taken from the conversation — e.g. "the X launch". The card shows it in a field the user confirms or edits before anything is generated, so it is a starting point, not a decision. Leave this out when the user has not said what the post is about: an empty field asks them, an invented topic gets confirmed by someone skimming.'),
+            'topic' => $schema->string()->description('What the user said the post should be about, in their own words, taken from the conversation — e.g. "the X launch". Required. When the user has not said what the post is about, do NOT call this tool and do NOT invent a topic: ask them in plain text what the post should be about, and call this once they answer. A post generated about a topic nobody chose wastes the generation and the user\'s credits.'),
             'format' => $schema->string()->enum(PostGenerationCatalog::formatValues())->description('The format the user named, when they named one — "an Instagram carousel" is instagram_carousel, "a tweet" is x_post. The card records it as their choice, with a link to change it, so it never asks again for something they already said. Leave this out when the user did not name a format, or named something outside this list: the card then asks, which is the right outcome. A format this workspace has no connected account for is ignored the same way.'),
             'language' => $schema->string()->enum(ContentLanguage::class)->description('The language the user is writing in, as the code from this list — "quero gerar um carrossel" is pt-BR, "generate a post" is en. Every word of the card is rendered in it, so the card speaks the same language you do. Leave this out when the conversation gives you nothing to go on; the interface language is then used.'),
         ];
@@ -65,11 +65,16 @@ class StartPostGenerationTool extends WorkspaceTool
     protected function run(Request $request): string
     {
         $locale = $this->resolveLocale($request);
+        $topic = $request->filled('topic') ? $request->string('topic')->trim()->value() : '';
+
+        if ($topic === '') {
+            return $this->error('No topic was given. Ask the user in plain text what the post should be about, then call start_post_generation again with their answer as the topic. Do not invent one.');
+        }
 
         $catalog = PostGenerationCatalog::forWorkspace($this->workspace, $locale);
         $catalog['locale'] = $locale;
         $catalog['copy'] = PostGenerationCardCopy::forLocale($locale);
-        $catalog['topic'] = $request->filled('topic') ? $request->string('topic')->trim()->value() : '';
+        $catalog['topic'] = $topic;
         $catalog['format'] = $this->resolveFormat($request, $catalog);
 
         return $this->json(['data' => $catalog]);

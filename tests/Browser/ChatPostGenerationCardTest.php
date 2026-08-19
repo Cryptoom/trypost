@@ -43,22 +43,6 @@ function stubChatTurn(mixed $page): void
 }
 
 /**
- * Answer the topic step. It is the one question the card cannot ask with
- * buttons — the post has to be about something — so every path to the submit
- * button now goes through it.
- */
-function answerChatTopic(mixed $page, string $topic): void
-{
-    waitForChatTestId($page, 'chat-post-generation-topic-step');
-
-    $page->fill('@chat-post-generation-topic-input', $topic);
-
-    // Typing is the answer — there is no confirm step, so the final panel
-    // appearing is what says the topic was accepted.
-    waitForChatTestId($page, 'chat-post-generation-final');
-}
-
-/**
  * A conversation whose assistant turn called `start_post_generation`, with
  * three active accounts behind it — one X account, and one account on each
  * Instagram platform so a single format arrives listed twice. Both Instagram
@@ -77,7 +61,7 @@ function answerChatTopic(mixed $page, string $topic): void
  * @param  array<string, string>  $arguments
  * @return array{0: WorkspaceConversation, 1: SocialAccount}
  */
-function chatWithPostGenerationCard(int $priorMessages = 0, string $topic = '', array $arguments = []): array
+function chatWithPostGenerationCard(int $priorMessages = 0, string $topic = 'the pricing launch', array $arguments = []): array
 {
     [$user, $workspace] = actingAsWorkspaceUser();
 
@@ -150,8 +134,6 @@ test('the card reveals its choices and submits them as one sentence', function (
 
     $page->click('@chat-post-generation-style-image_card');
 
-    answerChatTopic($page, 'the pricing launch');
-
     // A single-account format never asks which account to post as.
     waitForChatTestId($page, 'chat-post-generation-images-step');
 
@@ -185,8 +167,6 @@ test('a format connected on two platforms is offered once with both accounts', f
     waitForChatTestId($page, 'chat-post-generation-style-image_card');
 
     $page->click('@chat-post-generation-style-image_card');
-
-    answerChatTopic($page, 'the pricing launch');
 
     waitForChatTestId($page, 'chat-post-generation-account-step');
 
@@ -228,8 +208,6 @@ test('the card refuses to submit while a turn is still streaming', function () {
     waitForChatTestId($page, 'chat-post-generation-style-image_card');
 
     $page->click('@chat-post-generation-style-image_card');
-
-    answerChatTopic($page, 'the pricing launch');
 
     waitForChatTestId($page, 'chat-post-generation-submit');
 
@@ -328,7 +306,7 @@ test('a workspace with one connected network opens straight on the styles', func
     WorkspaceConversationMessage::factory()->for($conversation, 'conversation')->create([
         'role' => Role::Assistant,
         'content' => 'Pick how you want it generated.',
-        'tool_calls' => [['id' => 'call_start', 'name' => 'start_post_generation', 'arguments' => []]],
+        'tool_calls' => [['id' => 'call_start', 'name' => 'start_post_generation', 'arguments' => ['topic' => 'the pricing launch']]],
         'tool_results' => [['id' => 'call_start', 'result' => '{"data":{"formats":[],"styles":[],"applies_brand_visuals_default":true}}']],
     ]);
 
@@ -369,16 +347,11 @@ function chatCardBlocks(mixed $page): string
             const kinds = Array.from(root.children).map((el) => {
                 if (el.matches('[data-testid="chat-post-generation-final"]')) return 'final';
                 if (el.querySelector('[data-testid$="-choice"]')) return 'record';
-                // The topic is the one step with no confirm: its field carries
-                // the answer and stays editable, so once it holds a usable
-                // topic it is answered content, not an open question.
-                const topicInput = el.querySelector('[data-testid="chat-post-generation-topic-input"]');
-                if (topicInput) return topicInput.value.trim().length >= 3 ? 'field' : 'question';
                 if (el.querySelector('img[src="/images/trypost/icon.png"]')) return 'question';
                 return 'other';
             });
 
-            const answered = ['record', 'final', 'field'];
+            const answered = ['record', 'final'];
 
             const answeredAfterQuestion = kinds.some(
                 (kind, index) => kind === 'question'
@@ -401,17 +374,14 @@ test('the card never leaves an open question above an answered step', function (
     waitForChatTestId($page, 'chat-post-generation-style-image_card');
 
     $page->click('@chat-post-generation-style-image_card');
-    waitForChatTestId($page, 'chat-post-generation-topic-step');
 
     // Mid-flow: the two answered steps read back as the user's own messages,
     // and the only open question is the last block in the thread.
     expect(chatCardBlocks($page))->toBe('record,record,question|ordered');
 
-    answerChatTopic($page, 'the pricing launch');
-
     waitForChatTestId($page, 'chat-post-generation-account-step');
 
-    expect(chatCardBlocks($page))->toBe('record,record,field,question|ordered');
+    expect(chatCardBlocks($page))->toBe('record,record,question|ordered');
 
     $page->click("@chat-post-generation-account-{$instagramBusiness->id}");
     waitForChatTestId($page, 'chat-post-generation-final');
@@ -419,7 +389,7 @@ test('the card never leaves an open question above an answered step', function (
     // Answered: nothing is left open above the final block, which is where the
     // image count and the brand toggle live — next to the button that acts on
     // them, rather than as a question the conversation walked past.
-    expect(chatCardBlocks($page))->toBe('record,record,field,record,final|ordered');
+    expect(chatCardBlocks($page))->toBe('record,record,record,final|ordered');
 
     $page->assertVisible('@chat-post-generation-images-step')
         ->assertVisible('@chat-post-generation-brand-step')
@@ -443,7 +413,7 @@ test('an account the card picked itself is never recorded as the user\'s choice'
     WorkspaceConversationMessage::factory()->for($conversation, 'conversation')->create([
         'role' => Role::Assistant,
         'content' => 'Pick how you want it generated.',
-        'tool_calls' => [['id' => 'call_start', 'name' => 'start_post_generation', 'arguments' => []]],
+        'tool_calls' => [['id' => 'call_start', 'name' => 'start_post_generation', 'arguments' => ['topic' => 'the pricing launch']]],
         'tool_results' => [['id' => 'call_start', 'result' => '{"data":{"formats":[],"styles":[],"applies_brand_visuals_default":true}}']],
     ]);
 
@@ -456,8 +426,6 @@ test('an account the card picked itself is never recorded as the user\'s choice'
     // block for a question the card never asked.
     $page->click('@chat-post-generation-style-tweet_card');
 
-    answerChatTopic($page, 'the pricing launch');
-
     waitForChatTestId($page, 'chat-post-generation-final');
 
     $page->assertMissing('@chat-post-generation-account-step')
@@ -466,7 +434,7 @@ test('an account the card picked itself is never recorded as the user\'s choice'
         ->assertMissing('@chat-post-generation-brand-step')
         ->assertSee(__('chat.post_generation.posting_to', ['account' => 'Acme Threads (@acmethreads)']));
 
-    expect(chatCardBlocks($page))->toBe('record,record,field,final|ordered');
+    expect(chatCardBlocks($page))->toBe('record,record,final|ordered');
 
     // The account the card picked still reaches the sentence.
     $page->click('@chat-post-generation-submit');
@@ -482,14 +450,6 @@ test('an account the card picked itself is never recorded as the user\'s choice'
     ]));
 });
 
-/** The current value of the topic field, which `fill` and `v-model` both drive. */
-function chatTopicFieldValue(mixed $page): string
-{
-    return (string) $page->script(<<<'JS'
-        (async () => document.querySelector('[data-testid="chat-post-generation-topic-input"]')?.value ?? 'missing')()
-    JS);
-}
-
 test('the topic question opens pre-filled with what the model extracted', function () {
     // start_post_generation is replayed with its stored arguments, so the
     // topic the model passed comes back with the catalog.
@@ -504,15 +464,14 @@ test('the topic question opens pre-filled with what the model extracted', functi
     waitForChatTestId($page, 'chat-post-generation-style-image_card');
 
     $page->click('@chat-post-generation-style-image_card');
-    waitForChatTestId($page, 'chat-post-generation-topic-step');
+    waitForChatTestId($page, 'chat-post-generation-final');
 
-    expect(chatTopicFieldValue($page))->toBe('o lançamento do X');
+    // The topic is shown, not asked: the model already had it, so the card
+    // states what it will write about instead of making the user retype it.
+    $page->assertSee(__('chat.post_generation.topic_line', ['topic' => 'o lançamento do X']))
+        ->assertMissing('@chat-post-generation-topic-input');
 
-    // Left as it arrived, it reaches the sentence — the user saw the topic in
-    // an editable field before anything was generated from it.
     waitForChatTestId($page, 'chat-post-generation-submit');
-
-    $page->assertVisible('@chat-post-generation-topic-step');
 
     $page->click('@chat-post-generation-submit');
 
@@ -526,54 +485,6 @@ test('the topic question opens pre-filled with what the model extracted', functi
     ]));
 });
 
-test('the topic question opens blank when the model passed no topic', function () {
-    [$conversation] = chatWithPostGenerationCard();
-
-    $page = visit(route('app.chat.show', $conversation));
-
-    waitForChatTestId($page, 'chat-post-generation-card');
-
-    $page->click('@chat-post-generation-format-x_post');
-    waitForChatTestId($page, 'chat-post-generation-style-image_card');
-
-    $page->click('@chat-post-generation-style-image_card');
-    waitForChatTestId($page, 'chat-post-generation-topic-step');
-
-    // A blank field asks; an invented topic gets confirmed by someone skimming.
-    expect(chatTopicFieldValue($page))->toBe('');
-});
-
-test('the card will not confirm a topic the server would reject', function () {
-    [$conversation] = chatWithPostGenerationCard();
-
-    $page = visit(route('app.chat.show', $conversation));
-
-    waitForChatTestId($page, 'chat-post-generation-card');
-
-    $page->click('@chat-post-generation-format-x_post');
-    waitForChatTestId($page, 'chat-post-generation-style-image_card');
-
-    $page->click('@chat-post-generation-style-image_card');
-    waitForChatTestId($page, 'chat-post-generation-topic-step');
-
-    // AiPromptRules::PROMPT_MIN_LENGTH is 3, and generate_post refuses less —
-    // so the card refuses first: with no confirm button, the final panel is
-    // the gate, and it does not exist until the topic is long enough.
-    $page->assertMissing('@chat-post-generation-submit')
-        ->assertMissing('@chat-post-generation-final');
-
-    $page->fill('@chat-post-generation-topic-input', 'ab');
-
-    $page->assertMissing('@chat-post-generation-submit')
-        ->assertMissing('@chat-post-generation-final');
-
-    $page->fill('@chat-post-generation-topic-input', 'abc');
-
-    waitForChatTestId($page, 'chat-post-generation-final');
-
-    $page->assertVisible('@chat-post-generation-submit');
-});
-
 test('changing one step after reopening another keeps the reopened question open', function () {
     [$conversation, $instagramBusiness] = chatWithPostGenerationCard();
 
@@ -585,8 +496,6 @@ test('changing one step after reopening another keeps the reopened question open
     waitForChatTestId($page, 'chat-post-generation-style-image_card');
 
     $page->click('@chat-post-generation-style-image_card');
-
-    answerChatTopic($page, 'the pricing launch');
 
     waitForChatTestId($page, 'chat-post-generation-account-step');
 
@@ -612,7 +521,7 @@ test('changing one step after reopening another keeps the reopened question open
         ->assertMissing('@chat-post-generation-account-choice')
         ->assertMissing('@chat-post-generation-final');
 
-    expect(chatCardBlocks($page))->toBe('record,record,field,question|ordered');
+    expect(chatCardBlocks($page))->toBe('record,record,question|ordered');
 });
 
 test('a recorded choice can be reopened and changed', function () {
@@ -707,7 +616,7 @@ test('a stored turn renders its pre-tool text above the card and its answer belo
             ['type' => 'tool', 'id' => 'call_start', 'name' => 'start_post_generation'],
             ['type' => 'text', 'text' => 'All set, pick one above.'],
         ],
-        'tool_calls' => [['id' => 'call_start', 'name' => 'start_post_generation', 'arguments' => []]],
+        'tool_calls' => [['id' => 'call_start', 'name' => 'start_post_generation', 'arguments' => ['topic' => 'the pricing launch']]],
         'tool_results' => [['id' => 'call_start', 'result' => '{"data":{"formats":[],"styles":[],"applies_brand_visuals_default":true}}']],
     ]);
 
@@ -788,12 +697,10 @@ test('the card is rendered in the language of the conversation, not the interfac
         ->assertSee(__('posts.ai.templates.image_card.name', [], 'pt-BR'));
 
     $page->click('@chat-post-generation-style-image_card');
-    waitForChatTestId($page, 'chat-post-generation-topic-step');
 
-    $page->assertSee(__('chat.post_generation.topic_question', [], 'pt-BR'))
-        ->assertDontSee(__('chat.post_generation.topic_question', [], 'en'));
+    $page->assertSee(__('chat.post_generation.topic_line', ['topic' => 'o lançamento do X'], 'pt-BR'))
+        ->assertDontSee(__('chat.post_generation.images_question', [], 'en'));
 
-    $page->fill('@chat-post-generation-topic-input', 'o lançamento do X');
     waitForChatTestId($page, 'chat-post-generation-submit');
 
     $page->assertSee(__('chat.post_generation.images_question', [], 'pt-BR'))
@@ -817,7 +724,7 @@ test('the card is rendered in the language of the conversation, not the interfac
 test('a format the user already named is recorded rather than asked again', function () {
     // "quero gerar um carrousel de instagram" — the model read it, so the card
     // must not offer the same four Instagram formats back.
-    [$conversation] = chatWithPostGenerationCard(0, '', ['format' => 'instagram_carousel']);
+    [$conversation] = chatWithPostGenerationCard(0, 'the pricing launch', ['format' => 'instagram_carousel']);
 
     $page = visit(route('app.chat.show', $conversation));
 
@@ -848,7 +755,7 @@ test('a format the user already named is recorded rather than asked again', func
 test('a format the workspace cannot post is ignored and the card asks', function () {
     // No LinkedIn account is connected, so the model's format names nothing
     // this workspace can generate. Ignored, never an error.
-    [$conversation] = chatWithPostGenerationCard(0, '', ['format' => 'linkedin_post']);
+    [$conversation] = chatWithPostGenerationCard(0, 'the pricing launch', ['format' => 'linkedin_post']);
 
     $page = visit(route('app.chat.show', $conversation));
 
