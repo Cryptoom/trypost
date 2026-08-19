@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { getPlatformLabel, getPlatformLogo } from '@/composables/usePlatformLogo';
 import type {
+    ChatPostGenerationAccount,
     ChatPostGenerationCatalog,
     ChatPostGenerationStyle,
 } from '@/types/chat';
@@ -40,7 +41,7 @@ const emit = defineEmits<{
 interface FormatOption {
     value: string;
     platforms: string[];
-    accounts: Array<{ id: string; label: string; platform: string }>;
+    accounts: ChatPostGenerationAccount[];
 }
 
 /**
@@ -117,7 +118,7 @@ const formatOptions = computed<FormatOption[]>(() => {
 
         for (const account of entry.accounts ?? []) {
             if (! option.accounts.some((existing) => existing.id === account.id)) {
-                option.accounts.push({ ...account, platform: entry.platform });
+                option.accounts.push(account);
             }
         }
 
@@ -319,6 +320,29 @@ const selectAccount = (id: string): void => {
     selectedAccountId.value = id;
 };
 
+/**
+ * The line under an account's name in the account step. Two connections for
+ * the same brand share a display name AND a logo (Instagram direct vs. through
+ * a Facebook Page), so the handle is the only thing that tells them apart;
+ * an account without one falls back to naming its platform.
+ */
+const accountHandle = (account: ChatPostGenerationAccount): string =>
+    account.username ? `@${account.username}` : getPlatformLabel(account.platform);
+
+/**
+ * The chosen account, named so the sentence identifies exactly one connection
+ * rather than merely a brand.
+ */
+const accountPhrase = computed<string>(() => {
+    const account = selectedAccount.value;
+
+    if (account === null) {
+        return '';
+    }
+
+    return `${account.label} (${accountHandle(account)})`;
+});
+
 const imagesPhrase = computed<string>(() => {
     const count = submittedImageCount.value;
 
@@ -348,7 +372,7 @@ const sentence = computed<string>(() => {
         format: formatLabel(selectedFormat.value ?? ''),
         style: resolvedStyle.value?.name ?? '',
         images: imagesPhrase.value,
-        account: selectedAccount.value?.label ?? '',
+        account: accountPhrase.value,
     };
 
     if (! brandStepVisible.value) {
@@ -537,7 +561,10 @@ const submit = (): void => {
                             />
                         </span>
 
-                        <span class="min-w-0 flex-1 truncate font-semibold text-foreground">{{ account.label }}</span>
+                        <span class="min-w-0 flex-1">
+                            <span class="block truncate font-semibold text-foreground">{{ account.label }}</span>
+                            <span class="block truncate text-xs text-muted-foreground">{{ accountHandle(account) }}</span>
+                        </span>
 
                         <IconCheck
                             v-if="selectedAccountId === account.id"

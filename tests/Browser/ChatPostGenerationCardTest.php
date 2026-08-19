@@ -45,7 +45,10 @@ function stubChatTurn(mixed $page): void
 /**
  * A conversation whose assistant turn called `start_post_generation`, with
  * three active accounts behind it — one X account, and one account on each
- * Instagram platform so a single format arrives listed twice.
+ * Instagram platform so a single format arrives listed twice. Both Instagram
+ * accounts deliberately carry the SAME display name, which is what a brand
+ * connected directly and through its Facebook Page actually looks like: only
+ * the handle tells them apart.
  *
  * `start_post_generation` is replayable, so opening the page re-runs it and
  * the card renders the workspace's CURRENT catalog; the stored result below
@@ -78,11 +81,20 @@ function chatWithPostGenerationCard(): array
 
 function seedGenerationAccounts(Workspace $workspace): void
 {
-    SocialAccount::factory()->for($workspace)->x()->create(['display_name' => 'Acme X']);
-    SocialAccount::factory()->for($workspace)->instagram()->create(['display_name' => 'Acme IG']);
+    SocialAccount::factory()->for($workspace)->x()->create([
+        'display_name' => 'Acme X',
+        'username' => 'acmex',
+    ]);
+
+    SocialAccount::factory()->for($workspace)->instagram()->create([
+        'display_name' => 'Acme',
+        'username' => 'acme',
+    ]);
+
     SocialAccount::factory()->for($workspace)->create([
         'platform' => Platform::InstagramFacebook,
-        'display_name' => 'Acme Business',
+        'display_name' => 'Acme',
+        'username' => 'acme.business',
     ]);
 }
 
@@ -114,7 +126,7 @@ test('the card reveals its choices and submits them as one sentence', function (
         'format' => __('posts.create.steps.format.x_post'),
         'style' => __('posts.ai.templates.image_card.name'),
         'images' => __('chat.post_generation.sentence_images_other', ['count' => 2]),
-        'account' => 'Acme X',
+        'account' => 'Acme X (@acmex)',
         'brand' => __('chat.post_generation.sentence_brand_on'),
     ]));
 });
@@ -133,8 +145,10 @@ test('a format connected on two platforms is offered once with both accounts', f
     $page->click('@chat-post-generation-style-image_card');
     waitForChatTestId($page, 'chat-post-generation-account-step');
 
-    $page->assertSee('Acme IG')
-        ->assertSee('Acme Business');
+    // Same display name on both connections: the handle is what distinguishes
+    // them, and without it the two buttons would be indistinguishable.
+    $page->assertSee('@acme.business')
+        ->assertSee('@acme');
 
     $page->click("@chat-post-generation-account-{$instagramBusiness->id}");
     waitForChatTestId($page, 'chat-post-generation-submit');
@@ -146,7 +160,7 @@ test('a format connected on two platforms is offered once with both accounts', f
         'format' => __('posts.create.steps.format.instagram_feed'),
         'style' => __('posts.ai.templates.image_card.name'),
         'images' => __('chat.post_generation.sentence_images_one'),
-        'account' => 'Acme Business',
+        'account' => 'Acme (@acme.business)',
         'brand' => __('chat.post_generation.sentence_brand_on'),
     ]));
 });
@@ -207,7 +221,7 @@ test('the card refuses to submit while a turn is still streaming', function () {
             'format' => __('posts.create.steps.format.x_post'),
             'style' => __('posts.ai.templates.image_card.name'),
             'images' => __('chat.post_generation.sentence_images_other', ['count' => 2]),
-            'account' => 'Acme X',
+            'account' => 'Acme X (@acmex)',
             'brand' => __('chat.post_generation.sentence_brand_on'),
         ]));
 });

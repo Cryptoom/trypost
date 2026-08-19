@@ -25,7 +25,7 @@ final class PostGenerationCatalog
 {
     /**
      * @return array{
-     *     formats: list<array{value: string, platform: string, accounts: list<array{id: string, label: string}>}>,
+     *     formats: list<array{value: string, platform: string, accounts: list<array{id: string, label: string, username: ?string, platform: string}>}>,
      *     styles: list<array{key: string, name: string, description: string, preview: string, needs_account: bool, supported_formats: list<string>, applies_brand_visuals: bool}>,
      *     applies_brand_visuals_default: bool,
      * }
@@ -55,8 +55,14 @@ final class PostGenerationCatalog
     }
 
     /**
+     * Each account carries its `username` and `platform` alongside the display
+     * label because the label alone cannot identify it: a workspace connected
+     * to Instagram both directly and through a Facebook Page has two accounts
+     * that share a display name AND a logo. The handle is what tells them
+     * apart in the card and in the sentence the card submits.
+     *
      * @param  Collection<string, Collection<int, SocialAccount>>  $accountsByPlatform
-     * @return list<array{value: string, platform: string, accounts: list<array{id: string, label: string}>}>
+     * @return list<array{value: string, platform: string, accounts: list<array{id: string, label: string, username: ?string, platform: string}>}>
      */
     private static function buildFormats(Collection $accountsByPlatform): array
     {
@@ -78,6 +84,8 @@ final class PostGenerationCatalog
                     'accounts' => $accounts->map(fn (SocialAccount $account): array => [
                         'id' => $account->id,
                         'label' => $account->display_label,
+                        'username' => $account->username,
+                        'platform' => $platform->value,
                     ])->all(),
                 ];
             }

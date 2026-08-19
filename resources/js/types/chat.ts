@@ -128,6 +128,14 @@ export interface ChatServerMessage {
 export interface ChatPostGenerationAccount {
     id: string;
     label: string;
+    /**
+     * The handle, without its "@". Present alongside `label` because the label
+     * alone cannot identify an account: a workspace connected to Instagram
+     * both directly and through a Facebook Page has two accounts that share a
+     * display name and a logo, and only the handle tells them apart.
+     */
+    username: string | null;
+    platform: string;
 }
 
 /**

@@ -154,7 +154,7 @@ class GeneratePostTool extends WorkspaceWriteTool
      * account cannot produce a publishable post.
      *
      * @param  array{
-     *     formats: list<array{value: string, platform: string, accounts: list<array{id: string, label: string}>}>,
+     *     formats: list<array{value: string, platform: string, accounts: list<array{id: string, label: string, username: ?string, platform: string}>}>,
      *     styles: list<array{key: string, name: string, description: string, preview: string, needs_account: bool, supported_formats: list<string>, applies_brand_visuals: bool}>,
      *     applies_brand_visuals_default: bool,
      * }  $catalog
@@ -217,7 +217,7 @@ class GeneratePostTool extends WorkspaceWriteTool
      * rather than producing a post bound to the wrong account.
      *
      * @param  array{
-     *     formats: list<array{value: string, platform: string, accounts: list<array{id: string, label: string}>}>,
+     *     formats: list<array{value: string, platform: string, accounts: list<array{id: string, label: string, username: ?string, platform: string}>}>,
      *     styles: list<array{key: string, name: string, description: string, preview: string, needs_account: bool, supported_formats: list<string>, applies_brand_visuals: bool}>,
      *     applies_brand_visuals_default: bool,
      * }  $catalog
@@ -235,7 +235,7 @@ class GeneratePostTool extends WorkspaceWriteTool
         }
 
         $options = implode(', ', array_map(
-            fn (array $account): string => data_get($account, 'id').' ('.data_get($account, 'label').')',
+            fn (array $account): string => data_get($account, 'id').' ('.self::describeAccount($account).')',
             $accounts,
         ));
 
@@ -249,11 +249,11 @@ class GeneratePostTool extends WorkspaceWriteTool
      * active account can post it.
      *
      * @param  array{
-     *     formats: list<array{value: string, platform: string, accounts: list<array{id: string, label: string}>}>,
+     *     formats: list<array{value: string, platform: string, accounts: list<array{id: string, label: string, username: ?string, platform: string}>}>,
      *     styles: list<array{key: string, name: string, description: string, preview: string, needs_account: bool, supported_formats: list<string>, applies_brand_visuals: bool}>,
      *     applies_brand_visuals_default: bool,
      * }  $catalog
-     * @return list<array{id: string, label: string}>
+     * @return list<array{id: string, label: string, username: ?string, platform: string}>
      */
     private function accountsForFormat(array $catalog, string $format): array
     {
@@ -270,6 +270,25 @@ class GeneratePostTool extends WorkspaceWriteTool
         }
 
         return array_values($accounts);
+    }
+
+    /**
+     * A human-readable name for one catalog account. The display label alone
+     * is not enough: two Instagram connections for the same brand share it, so
+     * the handle is appended whenever the account has one.
+     *
+     * @param  array{id: string, label: string, username: ?string, platform: string}  $account
+     */
+    private static function describeAccount(array $account): string
+    {
+        $label = (string) data_get($account, 'label');
+        $username = data_get($account, 'username');
+
+        if (! is_string($username) || $username === '') {
+            return $label;
+        }
+
+        return "{$label} @{$username}";
     }
 
     /**

@@ -84,3 +84,31 @@ it('never offers a carousel the generation pipeline cannot produce', function ()
     expect($values)->toContain('pinterest_pin')
         ->and($values)->not->toContain('pinterest_carousel');
 });
+
+it('tells two Instagram connections apart when they share a display name', function (): void {
+    $workspace = Workspace::factory()->create();
+
+    $direct = SocialAccount::factory()->for($workspace)->create([
+        'platform' => 'instagram',
+        'display_name' => 'Acme',
+        'username' => 'acme',
+    ]);
+
+    $business = SocialAccount::factory()->for($workspace)->create([
+        'platform' => 'instagram-facebook',
+        'display_name' => 'Acme',
+        'username' => 'acme.business',
+    ]);
+
+    $accounts = collect(PostGenerationCatalog::forWorkspace($workspace)['formats'])
+        ->where('value', 'instagram_feed')
+        ->flatMap(fn (array $format): array => $format['accounts'])
+        ->keyBy('id');
+
+    expect($accounts)->toHaveCount(2)
+        ->and($accounts[$direct->id]['label'])->toBe($accounts[$business->id]['label'])
+        ->and($accounts[$direct->id]['username'])->toBe('acme')
+        ->and($accounts[$business->id]['username'])->toBe('acme.business')
+        ->and($accounts[$direct->id]['platform'])->toBe('instagram')
+        ->and($accounts[$business->id]['platform'])->toBe('instagram-facebook');
+});
