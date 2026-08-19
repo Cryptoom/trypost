@@ -245,10 +245,9 @@ const styleStepVisible = computed(
 const styleAnswered = computed(() => resolvedStyle.value !== null);
 
 /**
- * The image count is never blank — every format enters the step with the
- * wizard's own default already picked — so it reveals the account step
- * straight away instead of waiting for a click that would only re-confirm a
- * value the user can already see.
+ * The image count is never blank — every format enters with the wizard's own
+ * default already picked — so it is not a question the thread has to ask. It
+ * rides along in the final block instead, next to the button that acts on it.
  */
 const imageStepVisible = computed(() => styleAnswered.value && imageChoices.value.length > 0);
 
@@ -299,9 +298,13 @@ const hasNoUsableStyle = computed(
  * record rather than sprouting inside the same box, so the card reads top to
  * bottom like the rest of the conversation.
  *
- * The image count and the brand toggle never become records: both enter their
- * step already answered by the wizard's own default, so collapsing them would
- * hide options the user never got to see.
+ * That makes the sequence a strict alternation: nothing above an open question
+ * is unanswered, and nothing below one is already answered. The image count
+ * and the brand toggle are neither — both enter already answered by the
+ * wizard's own default, so collapsing them into records would hide controls
+ * the user never got to see, while leaving them open would strand a question
+ * above choices that were already made. They live in the final block instead,
+ * visible and adjustable next to the button that acts on them.
  */
 const formatQuestionVisible = computed(
     () => selectedFormat.value === null || editingStep.value === 'format',
@@ -692,28 +695,6 @@ const submit = (): void => {
             />
 
             <ChatAssistantMessage
-                v-if="imagesBlockVisible"
-                :title="$t('chat.post_generation.images_question')"
-                data-testid="chat-post-generation-images-step"
-                dusk="chat-post-generation-images-step"
-            >
-                <div class="flex flex-wrap gap-1.5">
-                    <Button
-                        v-for="count in imageChoices"
-                        :key="count"
-                        type="button"
-                        size="sm"
-                        :variant="imageCount === count ? 'default' : 'outline'"
-                        :data-testid="`chat-post-generation-images-${count}`"
-                        :dusk="`chat-post-generation-images-${count}`"
-                        @click="selectImageCount(count)"
-                    >
-                        {{ count === 0 ? $t('chat.post_generation.images_none') : count }}
-                    </Button>
-                </div>
-            </ChatAssistantMessage>
-
-            <ChatAssistantMessage
                 v-if="accountQuestionVisible"
                 :title="$t('chat.post_generation.account_question')"
                 data-testid="chat-post-generation-account-step"
@@ -761,12 +742,44 @@ const submit = (): void => {
                 @change="reopen('account')"
             />
 
-            <ChatAssistantMessage
-                v-if="brandBlockVisible"
-                data-testid="chat-post-generation-brand-step"
-                dusk="chat-post-generation-brand-step"
+            <div
+                v-if="submitVisible"
+                class="flex animate-in flex-col gap-3 rounded-xl border-2 border-foreground bg-card p-3 shadow-2xs fade-in slide-in-from-bottom-2 duration-300 motion-reduce:animate-none"
+                data-testid="chat-post-generation-final"
+                dusk="chat-post-generation-final"
             >
-                <div class="flex items-center justify-between gap-3">
+                <div
+                    v-if="imagesBlockVisible"
+                    class="space-y-2"
+                    data-testid="chat-post-generation-images-step"
+                    dusk="chat-post-generation-images-step"
+                >
+                    <p class="text-sm font-bold tracking-tight text-foreground">
+                        {{ $t('chat.post_generation.images_question') }}
+                    </p>
+
+                    <div class="flex flex-wrap gap-1.5">
+                        <Button
+                            v-for="count in imageChoices"
+                            :key="count"
+                            type="button"
+                            size="sm"
+                            :variant="imageCount === count ? 'default' : 'outline'"
+                            :data-testid="`chat-post-generation-images-${count}`"
+                            :dusk="`chat-post-generation-images-${count}`"
+                            @click="selectImageCount(count)"
+                        >
+                            {{ count === 0 ? $t('chat.post_generation.images_none') : count }}
+                        </Button>
+                    </div>
+                </div>
+
+                <div
+                    v-if="brandBlockVisible"
+                    class="flex items-center justify-between gap-3 border-t border-foreground/15 pt-3"
+                    data-testid="chat-post-generation-brand-step"
+                    dusk="chat-post-generation-brand-step"
+                >
                     <div class="min-w-0 space-y-0.5">
                         <Label :for="brandColorsId" class="text-sm font-semibold">
                             {{ $t('chat.post_generation.brand_colors_label') }}
@@ -783,24 +796,22 @@ const submit = (): void => {
                         dusk="chat-post-generation-brand-toggle"
                     />
                 </div>
-            </ChatAssistantMessage>
 
-            <div
-                v-if="submitVisible"
-                class="flex animate-in fade-in slide-in-from-bottom-2 justify-end duration-300 motion-reduce:animate-none"
-            >
-                <Button
-                    type="button"
-                    size="sm"
-                    :disabled="! canSubmit"
-                    data-testid="chat-post-generation-submit"
-                    dusk="chat-post-generation-submit"
-                    @click="submit"
-                >
-                    <IconSparkles class="size-4" />
-                    {{ $t('chat.post_generation.submit') }}
-                </Button>
+                <div class="flex justify-end">
+                    <Button
+                        type="button"
+                        size="sm"
+                        :disabled="! canSubmit"
+                        data-testid="chat-post-generation-submit"
+                        dusk="chat-post-generation-submit"
+                        @click="submit"
+                    >
+                        <IconSparkles class="size-4" />
+                        {{ $t('chat.post_generation.submit') }}
+                    </Button>
+                </div>
             </div>
+
         </template>
     </div>
 </template>

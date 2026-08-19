@@ -308,44 +308,66 @@ test('a workspace with one connected network opens straight on the styles', func
         ->assertMissing('@chat-post-generation-format-choice-change');
 });
 
-test('an answered step is recorded above the question it reveals', function () {
-    [$conversation] = chatWithPostGenerationCard();
+/**
+ * The kind of every block the card currently has, in DOM order, plus whether
+ * any open question sits above an answered step. A question block is an
+ * assistant bubble (it carries the assistant avatar), a record is the user's
+ * own message for an answered step, and the final block is the panel that
+ * carries the defaults and the submit button.
+ */
+function chatCardBlocks(mixed $page): string
+{
+    return (string) $page->script(<<<'JS'
+        (async () => {
+            const root = document.querySelector('[data-testid="chat-post-generation-card"]');
+
+            if (!root) return 'missing';
+
+            const kinds = Array.from(root.children).map((el) => {
+                if (el.matches('[data-testid="chat-post-generation-final"]')) return 'final';
+                if (el.querySelector('[data-testid$="-choice"]')) return 'record';
+                if (el.querySelector('img[src="/images/trypost/icon.png"]')) return 'question';
+                return 'other';
+            });
+
+            const answeredAfterQuestion = kinds.some(
+                (kind, index) => kind === 'question'
+                    && kinds.slice(index + 1).some((later) => later === 'record' || later === 'final'),
+            );
+
+            return `${kinds.join(',')}|${answeredAfterQuestion ? 'question-above-answered' : 'ordered'}`;
+        })()
+    JS);
+}
+
+test('the card never leaves an open question above an answered step', function () {
+    [$conversation, $instagramBusiness] = chatWithPostGenerationCard();
 
     $page = visit(route('app.chat.show', $conversation));
 
     waitForChatTestId($page, 'chat-post-generation-card');
 
-    $page->click('@chat-post-generation-format-x_post');
+    $page->click('@chat-post-generation-format-instagram_feed');
     waitForChatTestId($page, 'chat-post-generation-style-image_card');
 
     $page->click('@chat-post-generation-style-image_card');
-    waitForChatTestId($page, 'chat-post-generation-images-step');
+    waitForChatTestId($page, 'chat-post-generation-account-step');
 
-    // The thread has to read in the order it happened: the record of a choice
-    // sits above the step that choice revealed, not inside the same box.
-    // DOCUMENT_POSITION_FOLLOWING is 4.
-    $order = $page->script(<<<'JS'
-        (async () => {
-            const at = (testId) => document.querySelector(`[data-testid="${testId}"]`);
+    // Mid-flow: the two answered steps read back as the user's own messages,
+    // and the only open question is the last block in the thread.
+    expect(chatCardBlocks($page))->toBe('record,record,question|ordered');
 
-            const format = at('chat-post-generation-format-choice');
-            const style = at('chat-post-generation-style-choice');
-            const images = at('chat-post-generation-images-step');
-            const submit = at('chat-post-generation-submit');
+    $page->click("@chat-post-generation-account-{$instagramBusiness->id}");
+    waitForChatTestId($page, 'chat-post-generation-final');
 
-            if (!format || !style || !images || !submit) return 'missing';
+    // Answered: nothing is left open above the final block, which is where the
+    // image count and the brand toggle live — next to the button that acts on
+    // them, rather than as a question the conversation walked past.
+    expect(chatCardBlocks($page))->toBe('record,record,record,final|ordered');
 
-            const follows = (a, b) => Boolean(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
-
-            return [
-                follows(format, style) ? 'style-after-format' : 'style-not-after-format',
-                follows(style, images) ? 'images-after-style' : 'images-not-after-style',
-                follows(images, submit) ? 'submit-after-images' : 'submit-not-after-images',
-            ].join('|');
-        })()
-    JS);
-
-    expect($order)->toBe('style-after-format|images-after-style|submit-after-images');
+    $page->assertVisible('@chat-post-generation-images-step')
+        ->assertVisible('@chat-post-generation-brand-step')
+        ->assertVisible('@chat-post-generation-submit');
 });
 
 test('a recorded choice can be reopened and changed', function () {
