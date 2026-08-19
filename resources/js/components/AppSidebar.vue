@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Link, usePage } from '@inertiajs/vue3';
+import { router, usePage } from '@inertiajs/vue3';
 import {
     IconAffiliate,
     IconAlertTriangle,
@@ -24,8 +24,8 @@ import { trans } from 'laravel-vue-i18n';
 import { computed } from 'vue';
 
 import {
-    create as createPost,
     index as postsIndex,
+    store as storePost,
 } from '@/actions/App/Http/Controllers/App/PostController';
 import NavMain from '@/components/NavMain.vue';
 import NavSupport from '@/components/NavSupport.vue';
@@ -97,6 +97,8 @@ const { isMobile } = useSidebar();
 const { urlIsActive } = useActiveUrl();
 const isChatMode = computed(() => urlIsActive(chat.url(), { prefix: true }));
 const sidebarMode = computed(() => (isChatMode.value ? 'chat' : 'browse'));
+
+const createPost = () => router.post(storePost.url());
 
 const mainNavItems = computed<NavItem[]>(() => [
     {
@@ -283,11 +285,9 @@ const bottomNavItems = computed(() => [
                     ]"
                 >
                     <div v-if="canCreatePost" class="px-2 py-2">
-                        <Link :href="createPost.url()" class="block">
-                            <Button class="w-full">
-                                {{ $t('sidebar.create_post') }}
-                            </Button>
-                        </Link>
+                        <Button class="w-full" data-testid="sidebar-create-post" @click="createPost">
+                            {{ $t('sidebar.create_post') }}
+                        </Button>
                     </div>
 
                     <NavMain :items="mainNavItems" />

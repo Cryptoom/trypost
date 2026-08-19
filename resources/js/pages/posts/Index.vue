@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { Head, InfiniteScroll, Link, router } from '@inertiajs/vue3';
+import { Head, InfiniteScroll, router } from '@inertiajs/vue3';
 import { IconCopy, IconCopyPlus, IconDots, IconFileText, IconSearch, IconTrash } from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
 import { computed, ref, watch } from 'vue';
 
-import { create as createPost, destroy as destroyPost, duplicate as duplicatePost, edit as editPost, index as postsIndex, show as showPost } from '@/actions/App/Http/Controllers/App/PostController';
+import { destroy as destroyPost, duplicate as duplicatePost, edit as editPost, index as postsIndex, show as showPost, store as storePost } from '@/actions/App/Http/Controllers/App/PostController';
 import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.vue';
 import EmptyState from '@/components/EmptyState.vue';
 import LabelBadge from '@/components/labels/LabelBadge.vue';
@@ -162,6 +162,8 @@ const handleDuplicate = (post: Post) => {
     router.post(duplicatePost.url(post.id));
 };
 
+const createPost = () => router.post(storePost.url());
+
 const handleCopyId = (post: Post) => copyToClipboard(post.id, trans('posts.actions.copied'));
 
 const hasActiveSearch = computed(() => Boolean(searchQuery.value?.trim()));
@@ -198,9 +200,14 @@ useWorkspaceEcho(
                     <LabelFilter v-if="labels.length" v-model="selectedLabelIds" :labels="labels" />
                 </div>
 
-                <Link v-if="canCreatePost" :href="createPost.url()" class="w-full sm:w-auto">
-                    <Button class="w-full sm:w-auto">{{ $t('posts.new_post') }}</Button>
-                </Link>
+                <Button
+                    v-if="canCreatePost"
+                    class="w-full sm:w-auto"
+                    data-testid="posts-create-post"
+                    @click="createPost"
+                >
+                    {{ $t('posts.new_post') }}
+                </Button>
             </div>
 
             <EmptyState
