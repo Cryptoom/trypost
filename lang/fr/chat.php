@@ -26,6 +26,7 @@ return [
         'error' => 'Une erreur s’est produite. Réessayez.',
         'publish_no_enabled_platforms' => 'Ce post n’a aucune plateforme activée. Activez-en au moins une avant de publier.',
         'delete_blocked' => 'Ce post a déjà été publié et ne peut pas être supprimé de TryPost. S’il est en ligne sur une plateforme qui ne prend pas en charge la suppression automatique, comme TikTok, vous devrez le supprimer vous-même là-bas.',
+        'forbidden' => 'Vous n’avez pas l’autorisation de créer ou de modifier des posts dans cet espace de travail. Demandez-la à un administrateur de l’espace de travail si vous en avez besoin.',
     ],
     'approvals' => [
         'publish' => 'Publier ce post maintenant ? Il sera immédiatement en ligne sur chaque plateforme activée, et certaines — comme TikTok — n’offrent aucun moyen de le dépublier ensuite.',

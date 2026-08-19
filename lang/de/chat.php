@@ -26,6 +26,7 @@ return [
         'error' => 'Etwas ist schiefgelaufen. Bitte versuche es erneut.',
         'publish_no_enabled_platforms' => 'Dieser Beitrag hat keine aktivierten Plattformen. Aktiviere mindestens eine, bevor du veröffentlichst.',
         'delete_blocked' => 'Dieser Beitrag wurde bereits veröffentlicht und kann nicht aus TryPost gelöscht werden. Ist er auf einer Plattform live, die keine automatische Entfernung unterstützt, etwa TikTok, musst du ihn dort manuell löschen.',
+        'forbidden' => 'Du hast keine Berechtigung, in diesem Workspace Beiträge zu erstellen oder zu ändern. Frag bei Bedarf eine Workspace-Administratorin oder einen Workspace-Administrator.',
     ],
     'approvals' => [
         'publish' => 'Diesen Beitrag jetzt veröffentlichen? Er geht sofort auf allen aktivierten Plattformen live, und manche — wie TikTok — bieten danach keine Möglichkeit, ihn wieder zu entfernen.',

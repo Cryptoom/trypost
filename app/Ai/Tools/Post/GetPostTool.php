@@ -41,6 +41,6 @@ class GetPostTool extends WorkspaceTool
             return $this->error(__('chat.tools.post_not_found'));
         }
 
-        return $this->json(['data' => (new ChatPostResource($post))->resolve()]);
+        return $this->json(['data' => (new ChatPostResource($post))->withFullContent()->resolve()]);
     }
 }

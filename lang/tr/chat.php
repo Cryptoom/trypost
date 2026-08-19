@@ -26,6 +26,7 @@ return [
         'error' => 'Bir şeyler ters gitti. Lütfen tekrar deneyin.',
         'publish_no_enabled_platforms' => 'Bu gönderide etkin platform yok. Yayınlamadan önce en az birini etkinleştirin.',
         'delete_blocked' => 'Bu gönderi zaten yayınlandı ve TryPost’tan silinemez. Otomatik kaldırmayı desteklemeyen bir platformda yayındaysa, örneğin TikTok, orada elle silmeniz gerekir.',
+        'forbidden' => 'Bu çalışma alanında gönderi oluşturma veya değiştirme izniniz yok. İhtiyacınız varsa bir çalışma alanı yöneticisinden isteyin.',
     ],
     'approvals' => [
         'publish' => 'Bu gönderi şimdi yayınlansın mı? Etkin olan her platformda hemen yayına girer ve TikTok gibi bazı platformlarda daha sonra yayından kaldırmanın bir yolu yoktur.',

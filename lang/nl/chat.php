@@ -26,6 +26,7 @@ return [
         'error' => 'Er is iets misgegaan. Probeer het opnieuw.',
         'publish_no_enabled_platforms' => 'Deze post heeft geen geactiveerde platforms. Activeer er minstens één voordat je publiceert.',
         'delete_blocked' => 'Deze post is al gepubliceerd en kan niet uit TryPost worden verwijderd. Staat hij live op een platform dat geen automatische verwijdering ondersteunt, zoals TikTok, dan moet je hem daar handmatig verwijderen.',
+        'forbidden' => 'Je hebt geen rechten om posts in deze workspace te maken of te wijzigen. Vraag er een workspace-beheerder om als je ze nodig hebt.',
     ],
     'approvals' => [
         'publish' => 'Deze post nu publiceren? Hij komt meteen live op elk geactiveerd platform, en sommige platforms — zoals TikTok — bieden achteraf geen manier om hem weer offline te halen.',

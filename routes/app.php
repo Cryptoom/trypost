@@ -193,6 +193,7 @@ Route::middleware(['auth', EnsureAccountReady::class, EnsureHasWorkspace::class]
     Route::get('chat', [ChatController::class, 'index'])->name('app.chat');
     Route::post('chat/{conversation}', [ChatMessageController::class, 'store'])
         ->whereUuid('conversation')
+        ->middleware('throttle:20,1')
         ->name('app.chat.messages.store');
     Route::get('chat/{conversation}', [ChatController::class, 'show'])
         ->whereUuid('conversation')

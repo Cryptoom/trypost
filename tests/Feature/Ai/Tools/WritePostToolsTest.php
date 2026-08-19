@@ -7,16 +7,15 @@ use App\Ai\Tools\Post\SchedulePostTool;
 use App\Ai\Tools\Post\UpdatePostTool;
 use App\Enums\Post\CreatedVia;
 use App\Enums\Post\Status;
+use App\Enums\UserWorkspace\Role;
 use App\Models\Post;
-use App\Models\User;
 use App\Models\Workspace;
 use App\Support\PostStatusRules;
 use Illuminate\Support\Facades\Validator;
 use Laravel\Ai\Tools\Request;
 
 test('create_post creates a draft in the tool workspace', function () {
-    $workspace = Workspace::factory()->create();
-    $user = User::factory()->create();
+    [$user, $workspace] = workspaceUserWithRole(Role::Member);
 
     $output = json_decode((new CreatePostTool($workspace, $user))->handle(
         new Request(['content' => 'A new draft'])
@@ -32,8 +31,7 @@ test('create_post creates a draft in the tool workspace', function () {
 });
 
 test('update_post updates content on a post in the tool workspace', function () {
-    $workspace = Workspace::factory()->create();
-    $user = User::factory()->create();
+    [$user, $workspace] = workspaceUserWithRole(Role::Member);
     $post = Post::factory()->for($workspace)->create(['content' => 'Before']);
 
     $output = json_decode((new UpdatePostTool($workspace, $user))->handle(
@@ -45,8 +43,7 @@ test('update_post updates content on a post in the tool workspace', function () 
 });
 
 test('update_post leaves content untouched when no content argument is given', function () {
-    $workspace = Workspace::factory()->create();
-    $user = User::factory()->create();
+    [$user, $workspace] = workspaceUserWithRole(Role::Member);
     $post = Post::factory()->for($workspace)->create(['content' => 'Unchanged']);
 
     (new UpdatePostTool($workspace, $user))->handle(
@@ -57,8 +54,7 @@ test('update_post leaves content untouched when no content argument is given', f
 });
 
 test('update_post refuses a post from another workspace', function () {
-    $workspace = Workspace::factory()->create();
-    $user = User::factory()->create();
+    [$user, $workspace] = workspaceUserWithRole(Role::Member);
     $foreign = Post::factory()->for(Workspace::factory())->create(['content' => 'Untouched']);
 
     $output = (new UpdatePostTool($workspace, $user))->handle(
@@ -70,8 +66,7 @@ test('update_post refuses a post from another workspace', function () {
 });
 
 test('update_post refuses to edit an already published post', function () {
-    $workspace = Workspace::factory()->create();
-    $user = User::factory()->create();
+    [$user, $workspace] = workspaceUserWithRole(Role::Member);
     $post = Post::factory()->for($workspace)->create([
         'status' => Status::Published,
         'content' => 'Already live',
@@ -86,8 +81,7 @@ test('update_post refuses to edit an already published post', function () {
 });
 
 test('schedule_post sets the scheduled date and status', function () {
-    $workspace = Workspace::factory()->create();
-    $user = User::factory()->create();
+    [$user, $workspace] = workspaceUserWithRole(Role::Member);
     $post = Post::factory()->for($workspace)->create(['status' => Status::Draft]);
 
     (new SchedulePostTool($workspace, $user))->handle(
@@ -99,8 +93,7 @@ test('schedule_post sets the scheduled date and status', function () {
 });
 
 test('schedule_post rejects a missing scheduled_at with an actionable, non-generic message', function () {
-    $workspace = Workspace::factory()->create();
-    $user = User::factory()->create();
+    [$user, $workspace] = workspaceUserWithRole(Role::Member);
     $post = Post::factory()->for($workspace)->create(['status' => Status::Draft]);
 
     $output = json_decode((new SchedulePostTool($workspace, $user))->handle(
@@ -118,8 +111,7 @@ test('schedule_post rejects a missing scheduled_at with an actionable, non-gener
 });
 
 test('schedule_post rejects a past scheduled_at with an actionable, non-generic message', function () {
-    $workspace = Workspace::factory()->create();
-    $user = User::factory()->create();
+    [$user, $workspace] = workspaceUserWithRole(Role::Member);
     $post = Post::factory()->for($workspace)->create(['status' => Status::Draft]);
 
     $pastDate = now()->subDay()->toIso8601String();
@@ -139,8 +131,7 @@ test('schedule_post rejects a past scheduled_at with an actionable, non-generic 
 });
 
 test('schedule_post refuses to schedule an already published post', function () {
-    $workspace = Workspace::factory()->create();
-    $user = User::factory()->create();
+    [$user, $workspace] = workspaceUserWithRole(Role::Member);
     $post = Post::factory()->for($workspace)->create([
         'status' => Status::Published,
         'scheduled_at' => null,
@@ -155,8 +146,7 @@ test('schedule_post refuses to schedule an already published post', function () 
 });
 
 test('schedule_post refuses a post from another workspace', function () {
-    $workspace = Workspace::factory()->create();
-    $user = User::factory()->create();
+    [$user, $workspace] = workspaceUserWithRole(Role::Member);
     $foreign = Post::factory()->for(Workspace::factory())->create(['status' => Status::Draft]);
 
     $output = (new SchedulePostTool($workspace, $user))->handle(
@@ -165,4 +155,18 @@ test('schedule_post refuses a post from another workspace', function () {
 
     expect($output)->toContain('error')
         ->and($foreign->fresh()->status)->toBe(Status::Draft);
+});
+
+test('update_post echoes the full content back rather than a preview the model could rewrite from', function () {
+    [$user, $workspace] = workspaceUserWithRole(Role::Member);
+    $post = Post::factory()->for($workspace)->create(['content' => 'Before']);
+    $content = str_repeat('b', 900);
+
+    $output = json_decode((new UpdatePostTool($workspace, $user))->handle(
+        new Request(['post_id' => $post->id, 'content' => $content])
+    ), true);
+
+    expect($output['data']['content'])->toBe($content)
+        ->and($output['data']['content_truncated'])->toBeFalse()
+        ->and($post->fresh()->content)->toBe($content);
 });

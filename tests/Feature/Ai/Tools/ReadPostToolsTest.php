@@ -66,3 +66,33 @@ test('get_post with an absent post_id returns post_not_found, not the generic er
 
     expect($output['error'])->toBe(__('chat.tools.post_not_found'));
 });
+
+test('get_post carries the full content while list_posts carries a flagged preview', function () {
+    $workspace = Workspace::factory()->create();
+    $user = User::factory()->create();
+    $content = str_repeat('a', 900);
+    $post = Post::factory()->for($workspace)->create(['content' => $content]);
+
+    $single = json_decode((new GetPostTool($workspace, $user))->handle(
+        new Request(['post_id' => $post->id])
+    ), true);
+
+    $list = json_decode((new ListPostsTool($workspace, $user))->handle(new Request([])), true);
+
+    expect($single['data']['content'])->toBe($content)
+        ->and($single['data']['content_truncated'])->toBeFalse()
+        ->and($list['data'][0]['content'])->not->toBe($content)
+        ->and(mb_strlen($list['data'][0]['content']))->toBeLessThan(mb_strlen($content))
+        ->and($list['data'][0]['content_truncated'])->toBeTrue();
+});
+
+test('a short post is never flagged as truncated in a list', function () {
+    $workspace = Workspace::factory()->create();
+    $user = User::factory()->create();
+    Post::factory()->for($workspace)->create(['content' => 'Short enough']);
+
+    $list = json_decode((new ListPostsTool($workspace, $user))->handle(new Request([])), true);
+
+    expect($list['data'][0]['content'])->toBe('Short enough')
+        ->and($list['data'][0]['content_truncated'])->toBeFalse();
+});

@@ -15,6 +15,8 @@ export interface ChatPostPlatform {
 export interface ChatPost {
     id: string;
     content?: string | null;
+    /** True when `content` is a shortened preview — `list_posts` entries only. */
+    content_truncated?: boolean;
     status?: PostStatusValue | string | null;
     scheduled_at?: string | null;
     published_at?: string | null;

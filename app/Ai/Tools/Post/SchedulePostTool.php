@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Ai\Tools\Post;
 
 use App\Actions\Post\UpdatePost;
-use App\Ai\Tools\WorkspaceTool;
+use App\Ai\Tools\WorkspaceWriteTool;
 use App\Enums\Post\Action as PostAction;
 use App\Enums\Post\Status;
 use App\Http\Resources\Chat\ChatPostResource;
@@ -16,7 +16,7 @@ use Illuminate\Support\Facades\Validator;
 use Laravel\Ai\Tools\Request;
 use Stringable;
 
-class SchedulePostTool extends WorkspaceTool
+class SchedulePostTool extends WorkspaceWriteTool
 {
     public function name(): string
     {
@@ -68,7 +68,7 @@ class SchedulePostTool extends WorkspaceTool
         }
 
         return $this->json([
-            'data' => (new ChatPostResource($post->fresh()->load('postPlatforms.socialAccount')))->resolve(),
+            'data' => (new ChatPostResource($post->fresh()->load('postPlatforms.socialAccount')))->withFullContent()->resolve(),
         ]);
     }
 }

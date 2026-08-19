@@ -26,6 +26,7 @@ return [
         'error' => 'Something went wrong. Please try again.',
         'publish_no_enabled_platforms' => 'This post has no enabled platforms. Enable at least one before publishing.',
         'delete_blocked' => "This post has already been published and can't be deleted from TryPost. If it's live on a platform that doesn't support automatic removal, like TikTok, remove it there manually.",
+        'forbidden' => "You don't have permission to create or change posts in this workspace. Ask a workspace admin if you need it.",
     ],
     'approvals' => [
         'publish' => 'Publish this post now? It will go live immediately on every enabled platform, and some platforms — like TikTok — offer no way to unpublish afterward.',

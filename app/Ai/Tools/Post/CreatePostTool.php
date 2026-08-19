@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Ai\Tools\Post;
 
 use App\Actions\Post\CreatePost;
-use App\Ai\Tools\WorkspaceTool;
+use App\Ai\Tools\WorkspaceWriteTool;
 use App\Enums\Post\CreatedVia;
 use App\Http\Resources\Chat\ChatPostResource;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
@@ -13,7 +13,7 @@ use Illuminate\JsonSchema\Types\Type;
 use Laravel\Ai\Tools\Request;
 use Stringable;
 
-class CreatePostTool extends WorkspaceTool
+class CreatePostTool extends WorkspaceWriteTool
 {
     public function name(): string
     {
@@ -43,7 +43,7 @@ class CreatePostTool extends WorkspaceTool
         ]);
 
         return $this->json([
-            'data' => (new ChatPostResource($post->load('postPlatforms.socialAccount')))->resolve(),
+            'data' => (new ChatPostResource($post->load('postPlatforms.socialAccount')))->withFullContent()->resolve(),
         ]);
     }
 }

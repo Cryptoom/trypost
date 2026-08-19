@@ -13,12 +13,16 @@ use Laravel\Ai\Tools\Request;
 use Throwable;
 
 /**
- * Base for every chat tool. Two guarantees:
+ * Base for every chat tool. Three guarantees:
  *
  * 1. Scope. A tool never accepts a workspace id as an argument; every query
  *    starts from $this->workspace, so a prompt injection has nowhere to write
  *    one.
- * 2. Containment. A thrown exception becomes an error string the model can
+ * 2. Role. A tool that mutates workspace data extends
+ *    {@see WorkspaceWriteTool} and is refused for a member the workspace
+ *    policy would refuse anywhere else. Reads stay open to every member,
+ *    Viewers included.
+ * 3. Containment. A thrown exception becomes an error string the model can
  *    recover from, rather than a 500 that kills the stream. The real
  *    exception message is only ever logged — a caught Throwable can carry
  *    database internals (table/column names, host, the substituted SQL, in
@@ -42,6 +46,10 @@ abstract class WorkspaceTool implements Tool
 
     public function handle(Request $request): string
     {
+        if ($this->writeDenied()) {
+            return $this->error(__('chat.tools.forbidden'));
+        }
+
         try {
             return $this->run($request);
         } catch (Throwable $e) {
@@ -56,6 +64,36 @@ abstract class WorkspaceTool implements Tool
     }
 
     abstract protected function run(Request $request): string;
+
+    /**
+     * Whether this tool mutates workspace data. Only {@see WorkspaceWriteTool}
+     * answers true, so the role gate is declared once by inheritance instead
+     * of being re-implemented — and forgotten — per tool.
+     */
+    protected function authorizesWrites(): bool
+    {
+        return false;
+    }
+
+    /**
+     * The single authorization predicate for every write tool.
+     *
+     * `createPost` is the same workspace ability the web controller
+     * (App\Http\Controllers\App\PostController) and the MCP post tools
+     * enforce: owner, Admin and Member may write, Viewer may not. The chat
+     * path itself only checks `view` on the workspace and `useAi` on the
+     * account, neither of which is role-aware, so without this a Viewer
+     * could create, edit, schedule, publish and delete posts by asking.
+     *
+     * A denial must never throw: an AuthorizationException escaping a tool
+     * would kill the HTTP stream mid-turn. It resolves to an ordinary
+     * {@see error()} string so the model can tell the user it lacks
+     * permission.
+     */
+    protected function writeDenied(): bool
+    {
+        return $this->authorizesWrites() && $this->user->cannot('createPost', $this->workspace);
+    }
 
     protected function json(mixed $data): string
     {

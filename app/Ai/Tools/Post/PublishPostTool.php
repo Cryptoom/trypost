@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Ai\Tools\Post;
 
 use App\Actions\Post\UpdatePost;
-use App\Ai\Tools\WorkspaceTool;
+use App\Ai\Tools\WorkspaceWriteTool;
 use App\Enums\Post\Action as PostAction;
 use App\Enums\Post\Status;
 use App\Http\Resources\Chat\ChatPostResource;
@@ -35,9 +35,11 @@ use Stringable;
  * the specific reason instead of asking the user to confirm something
  * that's going to fail regardless. The actual publish path mirrors the MCP
  * publish tool (see App\Mcp\Tools\Post\PublishPostTool) exactly: the same
- * readiness checks, the same App\Actions\Post\UpdatePost call.
+ * readiness checks, the same App\Actions\Post\UpdatePost call. A member the
+ * workspace policy refuses is likewise never asked to confirm a publish
+ * {@see WorkspaceTool::writeDenied()} will refuse anyway.
  */
-class PublishPostTool extends WorkspaceTool implements Approvable
+class PublishPostTool extends WorkspaceWriteTool implements Approvable
 {
     use InteractsWithApprovals;
 
@@ -63,6 +65,10 @@ class PublishPostTool extends WorkspaceTool implements Approvable
 
     protected function needsApproval(Request $request): Approval|bool
     {
+        if ($this->writeDenied()) {
+            return false;
+        }
+
         $post = $this->resolvePost($request->string('post_id')->value());
 
         if ($post === null || $this->publishBlockedReason($post) !== null) {
@@ -93,7 +99,7 @@ class PublishPostTool extends WorkspaceTool implements Approvable
         }
 
         return $this->json([
-            'data' => (new ChatPostResource($post->fresh()->load('postPlatforms.socialAccount')))->resolve(),
+            'data' => (new ChatPostResource($post->fresh()->load('postPlatforms.socialAccount')))->withFullContent()->resolve(),
         ]);
     }
 

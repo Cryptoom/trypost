@@ -26,6 +26,7 @@ return [
         'error' => 'Algo salió mal. Inténtalo de nuevo.',
         'publish_no_enabled_platforms' => 'Este post no tiene plataformas activadas. Activa al menos una antes de publicar.',
         'delete_blocked' => 'Este post ya se publicó y no se puede eliminar de TryPost. Si está activo en una plataforma que no admite la eliminación automática, como TikTok, tendrás que eliminarlo allí manualmente.',
+        'forbidden' => 'No tienes permiso para crear ni modificar posts en este espacio de trabajo. Pídeselo a un administrador del espacio de trabajo si lo necesitas.',
     ],
     'approvals' => [
         'publish' => '¿Publicar este post ahora? Se publicará de inmediato en todas las plataformas activadas, y algunas — como TikTok — no ofrecen forma de despublicarlo después.',

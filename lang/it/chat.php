@@ -26,6 +26,7 @@ return [
         'error' => 'Qualcosa è andato storto. Riprova.',
         'publish_no_enabled_platforms' => 'Questo post non ha piattaforme abilitate. Abilitane almeno una prima di pubblicare.',
         'delete_blocked' => 'Questo post è già stato pubblicato e non può essere eliminato da TryPost. Se è attivo su una piattaforma che non supporta la rimozione automatica, come TikTok, dovrai eliminarlo lì manualmente.',
+        'forbidden' => 'Non hai il permesso di creare o modificare post in questo spazio di lavoro. Chiedilo a un amministratore dello spazio di lavoro se ti serve.',
     ],
     'approvals' => [
         'publish' => 'Pubblicare subito questo post? Sarà immediatamente attivo su ogni piattaforma abilitata, e alcune — come TikTok — non offrono modo di rimuoverlo in seguito.',

@@ -3,12 +3,14 @@
 declare(strict_types=1);
 
 use App\Ai\Tools\ToolReplayer;
+use App\Enums\Post\Status;
 use App\Enums\WorkspaceConversation\Message\Role;
 use App\Models\Post;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Models\WorkspaceConversation;
 use App\Models\WorkspaceConversationMessage;
+use Illuminate\Support\Facades\Http;
 
 test('reopening re-executes a read tool with fresh data', function () {
     $workspace = Workspace::factory()->create();
@@ -118,4 +120,26 @@ test('an unknown tool name falls back to the stored result without being invoked
     $payloads = app(ToolReplayer::class)->replay($conversation);
 
     expect($payloads['call_5'])->toBe('{"data":"whatever"}');
+});
+
+test('get_post_metrics is not replayed and keeps its stored result without calling any platform', function () {
+    Http::preventStrayRequests();
+
+    $workspace = Workspace::factory()->create();
+    $user = User::factory()->create();
+    $conversation = WorkspaceConversation::factory()->for($workspace)->for($user)->create();
+    $post = Post::factory()->for($workspace)->create(['status' => Status::Published]);
+
+    $stored = json_encode(['data' => ['id' => $post->id, 'platforms' => []]]);
+
+    WorkspaceConversationMessage::factory()->for($conversation, 'conversation')->create([
+        'role' => Role::Assistant,
+        'content' => 'Here are the numbers.',
+        'tool_calls' => [['id' => 'call_6', 'name' => 'get_post_metrics', 'arguments' => ['post_id' => $post->id]]],
+        'tool_results' => [['id' => 'call_6', 'result' => $stored]],
+    ]);
+
+    $payloads = app(ToolReplayer::class)->replay($conversation);
+
+    expect($payloads['call_6'])->toBe($stored);
 });

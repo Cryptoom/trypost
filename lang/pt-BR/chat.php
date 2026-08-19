@@ -26,6 +26,7 @@ return [
         'error' => 'Algo deu errado. Tente novamente.',
         'publish_no_enabled_platforms' => 'Este post não tem nenhuma plataforma habilitada. Habilite pelo menos uma antes de publicar.',
         'delete_blocked' => 'Este post já foi publicado e não pode ser excluído do TryPost. Se ele estiver no ar em uma plataforma que não oferece remoção automática, como o TikTok, você precisará excluí-lo por lá manualmente.',
+        'forbidden' => 'Você não tem permissão para criar ou alterar posts neste workspace. Peça acesso a um administrador do workspace se precisar.',
     ],
     'approvals' => [
         'publish' => 'Publicar este post agora? Ele ficará no ar imediatamente em todas as plataformas habilitadas, e algumas — como o TikTok — não oferecem forma de despublicar depois.',

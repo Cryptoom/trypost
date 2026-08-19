@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Ai\Tools;
 
-use App\Ai\Tools\Post\GetPostMetricsTool;
 use App\Ai\Tools\Post\GetPostTool;
 use App\Ai\Tools\Post\ListPostsTool;
 use App\Models\WorkspaceConversation;
@@ -16,6 +15,18 @@ use Throwable;
  *
  * Read tools re-run so a reopened conversation shows current data; write
  * tools cannot be replayed and keep whatever they returned at the time.
+ *
+ * get_post_metrics is deliberately NOT replayable even though it is a read.
+ * The others cost one database query each, which is the budget the design
+ * accepted; get_post_metrics costs one outbound HTTP call to a third-party
+ * social platform per enabled published platform (App\Services\Post\
+ * PostMetricsFetcher::forPlatform()), behind only a five-minute cache. A
+ * metrics-heavy conversation would therefore fire dozens of synchronous
+ * third-party requests, serially, during an Inertia page render on a cold
+ * cache — and any of them can rate-limit or hang. Stored results are the
+ * right trade: metrics on a reopened conversation are a historical record,
+ * and the user can ask again for fresh ones. Do not "fix" this by adding it
+ * back to the map.
  *
  * A read tool that no longer finds its record (e.g. the post was deleted
  * since the conversation happened) does not throw: WorkspaceTool::handle()
@@ -34,7 +45,6 @@ class ToolReplayer
     private const REPLAYABLE = [
         'list_posts' => ListPostsTool::class,
         'get_post' => GetPostTool::class,
-        'get_post_metrics' => GetPostMetricsTool::class,
     ];
 
     /**

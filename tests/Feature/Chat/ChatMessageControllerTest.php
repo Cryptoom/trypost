@@ -338,3 +338,17 @@ test('the claim takes the row lock and writes the status before its transaction 
         ->and($insert)->toBeLessThan($status)
         ->and($status)->toBeLessThan($commit);
 });
+
+test('it throttles the streaming route so one account cannot hold a worker per conversation', function () {
+    WorkspaceConversationAgent::fake(['All done.']);
+
+    actingAsWorkspaceUser();
+
+    foreach (range(1, 20) as $ignored) {
+        $this->post(route('app.chat.messages.store', (string) Str::uuid()), ['message' => 'Hi'])
+            ->assertOk();
+    }
+
+    $this->post(route('app.chat.messages.store', (string) Str::uuid()), ['message' => 'One too many'])
+        ->assertStatus(Response::HTTP_TOO_MANY_REQUESTS);
+});

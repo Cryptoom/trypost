@@ -26,6 +26,7 @@ return [
         'error' => 'Coś poszło nie tak. Spróbuj ponownie.',
         'publish_no_enabled_platforms' => 'Ten post nie ma żadnej włączonej platformy. Włącz co najmniej jedną przed publikacją.',
         'delete_blocked' => 'Ten post został już opublikowany i nie można go usunąć z TryPost. Jeśli jest widoczny na platformie, która nie obsługuje automatycznego usuwania, np. TikTok, trzeba go usunąć tam ręcznie.',
+        'forbidden' => 'Nie masz uprawnień do tworzenia ani zmieniania postów w tej przestrzeni roboczej. Poproś o nie administratora przestrzeni roboczej, jeśli ich potrzebujesz.',
     ],
     'approvals' => [
         'publish' => 'Opublikować ten post teraz? Pojawi się natychmiast na każdej włączonej platformie, a niektóre platformy — jak TikTok — nie dają możliwości cofnięcia publikacji.',

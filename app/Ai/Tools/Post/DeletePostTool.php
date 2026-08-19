@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Ai\Tools\Post;
 
 use App\Actions\Post\DeletePost;
-use App\Ai\Tools\WorkspaceTool;
+use App\Ai\Tools\WorkspaceWriteTool;
 use App\Enums\Post\Status;
 use App\Support\PostStatusRules;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
@@ -25,9 +25,11 @@ use Stringable;
  * the user to confirm an action that's going to fail regardless of their
  * answer. Approval is reserved for the one case it's meaningful — a
  * scheduled or failed post, where confirming genuinely cancels something
- * that would otherwise still happen.
+ * that would otherwise still happen. The same reasoning covers the role
+ * gate: a member the workspace policy refuses is never asked to confirm a
+ * deletion {@see WorkspaceTool::writeDenied()} will refuse anyway.
  */
-class DeletePostTool extends WorkspaceTool implements Approvable
+class DeletePostTool extends WorkspaceWriteTool implements Approvable
 {
     use InteractsWithApprovals;
 
@@ -53,6 +55,10 @@ class DeletePostTool extends WorkspaceTool implements Approvable
 
     protected function needsApproval(Request $request): Approval|bool
     {
+        if ($this->writeDenied()) {
+            return false;
+        }
+
         $post = $this->resolvePost($request->string('post_id')->value());
 
         if ($post === null || $post->status === Status::Draft || PostStatusRules::blocksDeletion($post)) {
