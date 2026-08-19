@@ -81,6 +81,7 @@ return [
         'images_question' => 'Сколько изображений нужно?',
         'images_none' => 'Без изображений',
         'account_question' => 'Для какого аккаунта это?',
+        'posting_to' => 'Публикация в :account',
         'brand_colors_label' => 'Цвета бренда',
         'brand_colors_description' => 'Применить палитру бренда рабочего пространства к сгенерированным изображениям.',
         'change' => 'Изменить',

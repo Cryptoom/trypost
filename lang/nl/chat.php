@@ -81,6 +81,7 @@ return [
         'images_question' => 'Hoeveel afbeeldingen wil je?',
         'images_none' => 'Geen',
         'account_question' => 'Voor welk account is dit?',
+        'posting_to' => 'Plaatsen op :account',
         'brand_colors_label' => 'Merkkleuren',
         'brand_colors_description' => 'Pas het merkpalet van je workspace toe op de gegenereerde afbeeldingen.',
         'change' => 'Wijzigen',

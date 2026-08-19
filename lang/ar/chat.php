@@ -81,6 +81,7 @@ return [
         'images_question' => 'كم عدد الصور التي تريدها؟',
         'images_none' => 'بدون',
         'account_question' => 'لأي حساب هذا؟',
+        'posting_to' => 'النشر على :account',
         'brand_colors_label' => 'ألوان العلامة التجارية',
         'brand_colors_description' => 'طبّق لوحة ألوان علامتك التجارية على الصور المُنشأة.',
         'change' => 'تغيير',

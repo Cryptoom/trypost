@@ -81,6 +81,7 @@ return [
         'images_question' => 'Πόσες εικόνες θέλεις;',
         'images_none' => 'Καμία',
         'account_question' => 'Για ποιον λογαριασμό είναι;',
+        'posting_to' => 'Δημοσίευση στο :account',
         'brand_colors_label' => 'Χρώματα μάρκας',
         'brand_colors_description' => 'Εφάρμοσε την παλέτα της μάρκας σου στις εικόνες που δημιουργούνται.',
         'change' => 'Αλλαγή',

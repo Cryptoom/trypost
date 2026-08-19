@@ -81,6 +81,7 @@ return [
         'images_question' => 'Скільки зображень потрібно?',
         'images_none' => 'Без зображень',
         'account_question' => 'Для якого облікового запису це?',
+        'posting_to' => 'Публікація в :account',
         'brand_colors_label' => 'Кольори бренду',
         'brand_colors_description' => 'Застосувати палітру бренду робочого простору до згенерованих зображень.',
         'change' => 'Змінити',

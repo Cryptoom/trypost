@@ -81,6 +81,7 @@ return [
         'images_question' => 'Quantas imagens você quer?',
         'images_none' => 'Nenhuma',
         'account_question' => 'Para qual conta é?',
+        'posting_to' => 'Publicando em :account',
         'brand_colors_label' => 'Cores da marca',
         'brand_colors_description' => 'Aplica a paleta da sua marca nas imagens geradas.',
         'change' => 'Alterar',

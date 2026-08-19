@@ -81,6 +81,7 @@ return [
         'images_question' => '画像は何枚にしますか？',
         'images_none' => 'なし',
         'account_question' => 'どのアカウント向けですか？',
+        'posting_to' => ':account に投稿します',
         'brand_colors_label' => 'ブランドカラー',
         'brand_colors_description' => '生成される画像にワークスペースのブランドカラーを適用します。',
         'change' => '変更',

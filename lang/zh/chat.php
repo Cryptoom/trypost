@@ -81,6 +81,7 @@ return [
         'images_question' => '需要几张图片？',
         'images_none' => '无',
         'account_question' => '这是给哪个账号的？',
+        'posting_to' => '将发布到 :account',
         'brand_colors_label' => '品牌配色',
         'brand_colors_description' => '为生成的图片套用工作区的品牌配色。',
         'change' => '更改',

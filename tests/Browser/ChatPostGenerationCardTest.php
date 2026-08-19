@@ -56,7 +56,7 @@ function stubChatTurn(mixed $page): void
  *
  * @return array{0: WorkspaceConversation, 1: SocialAccount}
  */
-function chatWithPostGenerationCard(): array
+function chatWithPostGenerationCard(int $priorMessages = 0): array
 {
     [$user, $workspace] = actingAsWorkspaceUser();
 
@@ -68,6 +68,14 @@ function chatWithPostGenerationCard(): array
         ->firstOrFail();
 
     $conversation = WorkspaceConversation::factory()->for($workspace)->for($user)->create();
+
+    for ($index = 0; $index < $priorMessages; $index++) {
+        WorkspaceConversationMessage::factory()->for($conversation, 'conversation')->create([
+            'role' => $index % 2 === 0 ? Role::User : Role::Assistant,
+            'content' => "Earlier turn {$index}. ".str_repeat('This conversation already ran for a while. ', 6),
+            'created_at' => now()->subMinutes($priorMessages - $index + 1),
+        ]);
+    }
 
     WorkspaceConversationMessage::factory()->for($conversation, 'conversation')->create([
         'role' => Role::Assistant,
@@ -370,6 +378,96 @@ test('the card never leaves an open question above an answered step', function (
         ->assertVisible('@chat-post-generation-submit');
 });
 
+test('an account the card picked itself is never recorded as the user\'s choice', function () {
+    [$user, $workspace] = actingAsWorkspaceUser();
+
+    // One network, one account — the cloud default, since
+    // App\Observers\SocialAccountObserver::creating allows a single account
+    // per network per workspace outside self-hosted.
+    SocialAccount::factory()->for($workspace)->create([
+        'platform' => Platform::Threads,
+        'display_name' => 'Acme Threads',
+        'username' => 'acmethreads',
+    ]);
+
+    $conversation = WorkspaceConversation::factory()->for($workspace)->for($user)->create();
+
+    WorkspaceConversationMessage::factory()->for($conversation, 'conversation')->create([
+        'role' => Role::Assistant,
+        'content' => 'Pick how you want it generated.',
+        'tool_calls' => [['id' => 'call_start', 'name' => 'start_post_generation', 'arguments' => []]],
+        'tool_results' => [['id' => 'call_start', 'result' => '{"data":{"formats":[],"styles":[],"applies_brand_visuals_default":true}}']],
+    ]);
+
+    $page = visit(route('app.chat.show', $conversation));
+
+    waitForChatTestId($page, 'chat-post-generation-card');
+    stubChatTurn($page);
+
+    // tweet_card has needs_account, which is what used to force an account
+    // block for a question the card never asked.
+    $page->click('@chat-post-generation-style-tweet_card');
+    waitForChatTestId($page, 'chat-post-generation-final');
+
+    $page->assertMissing('@chat-post-generation-account-step')
+        ->assertMissing('@chat-post-generation-account-choice')
+        ->assertVisible('@chat-post-generation-account-auto')
+        ->assertMissing('@chat-post-generation-brand-step')
+        ->assertSee(__('chat.post_generation.posting_to', ['account' => 'Acme Threads (@acmethreads)']));
+
+    expect(chatCardBlocks($page))->toBe('record,record,final|ordered');
+
+    // The account the card picked still reaches the sentence.
+    $page->click('@chat-post-generation-submit');
+
+    // tweet_card renders the post as that account's own card and applies no
+    // brand visuals, so the sentence carries no brand clause.
+    $page->assertSee(__('chat.post_generation.sentence', [
+        'format' => __('posts.create.steps.format.threads_post'),
+        'style' => __('posts.ai.templates.tweet_card.name'),
+        'images' => __('chat.post_generation.sentence_images_other', ['count' => 2]),
+        'account' => 'Acme Threads (@acmethreads)',
+    ]));
+});
+
+test('changing one step after reopening another keeps the reopened question open', function () {
+    [$conversation, $instagramBusiness] = chatWithPostGenerationCard();
+
+    $page = visit(route('app.chat.show', $conversation));
+
+    waitForChatTestId($page, 'chat-post-generation-card');
+
+    $page->click('@chat-post-generation-format-instagram_feed');
+    waitForChatTestId($page, 'chat-post-generation-style-image_card');
+
+    $page->click('@chat-post-generation-style-image_card');
+    waitForChatTestId($page, 'chat-post-generation-account-step');
+
+    $page->click("@chat-post-generation-account-{$instagramBusiness->id}");
+    waitForChatTestId($page, 'chat-post-generation-account-choice');
+
+    // Reopen the account, then change the style instead of answering it.
+    $page->click('@chat-post-generation-account-choice-change');
+    waitForChatTestId($page, 'chat-post-generation-account-step');
+
+    $page->assertVisible('@chat-post-generation-account-step')
+        ->assertMissing('@chat-post-generation-account-choice');
+
+    $page->click('@chat-post-generation-style-choice-change');
+    waitForChatTestId($page, 'chat-post-generation-style-step');
+
+    $page->click('@chat-post-generation-style-image_card');
+    waitForChatTestId($page, 'chat-post-generation-account-step');
+
+    // The account the user had just reopened must not come back answered
+    // behind their back.
+    $page->assertVisible('@chat-post-generation-account-step')
+        ->assertMissing('@chat-post-generation-account-choice')
+        ->assertMissing('@chat-post-generation-final');
+
+    expect(chatCardBlocks($page))->toBe('record,record,question|ordered');
+});
+
 test('a recorded choice can be reopened and changed', function () {
     [$conversation] = chatWithPostGenerationCard();
 
@@ -395,7 +493,10 @@ test('a recorded choice can be reopened and changed', function () {
 });
 
 test('revealing a step scrolls the thread to keep it in view', function () {
-    [$conversation] = chatWithPostGenerationCard();
+    // Enough history that the thread genuinely overflows: with a short one the
+    // scroller can sit at scrollHeight === clientHeight, where "scrolled to the
+    // bottom" is true without anything having scrolled at all.
+    [$conversation] = chatWithPostGenerationCard(14);
 
     $page = visit(route('app.chat.show', $conversation));
 
@@ -418,16 +519,26 @@ test('revealing a step scrolls the thread to keep it in view', function () {
 
             if (!scroller) return 'no-scroller';
 
+            const overflow = scroller.scrollHeight - scroller.clientHeight;
+
+            if (overflow < 400) return `not-overflowing: ${Math.round(overflow)}px`;
+
+            scroller.scrollTo({ top: 0, behavior: 'auto' });
+            await new Promise((r) => setTimeout(r, 100));
+
             document.querySelector('[data-testid="chat-post-generation-format-x_post"]').click();
             await new Promise((r) => setTimeout(r, 400));
             document.querySelector('[data-testid="chat-post-generation-style-image_card"]').click();
 
             for (let i = 0; i < 60; i++) {
                 await new Promise((r) => setTimeout(r, 50));
+
+                if (scroller.scrollTop < 1) continue;
+
                 if (scroller.scrollHeight - scroller.clientHeight - scroller.scrollTop <= 4) return true;
             }
 
-            return `stuck: ${Math.round(scroller.scrollHeight - scroller.clientHeight - scroller.scrollTop)}px from bottom`;
+            return `stuck: ${Math.round(scroller.scrollHeight - scroller.clientHeight - scroller.scrollTop)}px from bottom, scrollTop ${Math.round(scroller.scrollTop)}`;
         })()
     JS);
 

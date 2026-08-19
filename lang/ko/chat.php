@@ -81,6 +81,7 @@ return [
         'images_question' => '이미지는 몇 장으로 할까요?',
         'images_none' => '없음',
         'account_question' => '어떤 계정용인가요?',
+        'posting_to' => ':account 계정에 게시합니다',
         'brand_colors_label' => '브랜드 컬러',
         'brand_colors_description' => '생성되는 이미지에 워크스페이스의 브랜드 팔레트를 적용합니다.',
         'change' => '변경',

@@ -81,6 +81,7 @@ return [
         'images_question' => 'How many images should it have?',
         'images_none' => 'None',
         'account_question' => 'Which account is this for?',
+        'posting_to' => 'Posting to :account',
         'brand_colors_label' => 'Brand colors',
         'brand_colors_description' => 'Apply your workspace brand palette to the generated images.',
         'change' => 'Change',

@@ -91,11 +91,14 @@ const selectedAccountId = ref<string | null>(null);
 const submitted = ref(false);
 
 /**
- * The one answered step the user reopened to change. An answered step reads
- * back as their own message instead of staying a live form, so this is the
- * only way back into it — without it, a mis-clicked format would be final.
+ * Whether the account came from the user or from the card. `selectFormat`
+ * picks a format's only account silently, and outside self-hosted that is
+ * every format there is (`App\Observers\SocialAccountObserver::creating`
+ * allows one account per network per workspace, and no content type spans two
+ * networks). A step nobody was asked about must not read back as the user's
+ * own message, so this is what separates an answer from an assumption.
  */
-const editingStep = ref<RecordedStep | null>(null);
+const accountAnswered = ref(false);
 
 /**
  * The choices were already sent — either in this session, or in an earlier one
@@ -306,25 +309,12 @@ const hasNoUsableStyle = computed(
  * above choices that were already made. They live in the final block instead,
  * visible and adjustable next to the button that acts on them.
  */
-const formatQuestionVisible = computed(
-    () => selectedFormat.value === null || editingStep.value === 'format',
-);
+const formatQuestionVisible = computed(() => selectedFormat.value === null);
 
-const formatChoiceVisible = computed(
-    () => ! formatQuestionVisible.value && selectedFormatOption.value !== null,
-);
-
-/**
- * A step being changed is the last block in the thread: everything the old
- * answer had revealed is dropped until it is answered again, so the user never
- * edits a format while the steps that depend on it still stand below.
- */
-const notEditing = computed(() => editingStep.value === null);
-
-const styleBlockVisible = computed(() => styleStepVisible.value && editingStep.value !== 'format');
+const formatChoiceVisible = computed(() => selectedFormatOption.value !== null);
 
 const styleQuestionVisible = computed(
-    () => styleBlockVisible.value && (selectedStyleKey.value === null || editingStep.value === 'style'),
+    () => styleStepVisible.value && selectedStyleKey.value === null,
 );
 
 /**
@@ -333,25 +323,28 @@ const styleQuestionVisible = computed(
  * has never shown one.
  */
 const styleChoiceVisible = computed(
-    () => styleBlockVisible.value && ! styleQuestionVisible.value && resolvedStyle.value !== null,
+    () => styleStepVisible.value && selectedStyleKey.value !== null && resolvedStyle.value !== null,
 );
 
-const imagesBlockVisible = computed(() => imageStepVisible.value && notEditing.value);
-
 const accountQuestionVisible = computed(
-    () =>
-        accountStepVisible.value &&
-        (notEditing.value || editingStep.value === 'account') &&
-        (selectedAccountId.value === null || editingStep.value === 'account'),
+    () => accountStepVisible.value && selectedAccountId.value === null,
 );
 
 const accountChoiceVisible = computed(
-    () => accountStepVisible.value && notEditing.value && selectedAccount.value !== null,
+    () => accountStepVisible.value && accountAnswered.value && selectedAccount.value !== null,
 );
 
-const brandBlockVisible = computed(() => brandStepVisible.value && notEditing.value);
+/**
+ * The account the card picked on the user's behalf. It still has to be said —
+ * a `needs_account` style renders the post AS that account's card — but it
+ * belongs with the other decisions the user never made, in the final block,
+ * not as a record of something they said.
+ */
+const autoAccountVisible = computed(
+    () => selectedAccount.value !== null && ! accountAnswered.value,
+);
 
-const submitVisible = computed(() => choicesComplete.value && notEditing.value);
+const submitVisible = computed(() => choicesComplete.value);
 
 const formatChoiceLogos = computed(() =>
     selectedFormatOption.value === null ? [] : formatLogos(selectedFormatOption.value),
@@ -367,12 +360,35 @@ const accountChoiceLogos = computed(() => {
     return [{ platform: account.platform, logo: getPlatformLogo(account.platform) }];
 });
 
+/**
+ * Reopening a step un-answers it, rather than flagging it as "being edited".
+ * The question is then live again purely because it has no answer, and every
+ * step below it disappears on its own, because they all read from the answers
+ * above them. An editing flag lets a second edit strand the first: reopening
+ * the account and then changing the style used to bring the old account back
+ * as an answered record and silently drop the question the user had opened.
+ *
+ * Only the reopened step is cleared. The format is the exception — the style
+ * and the account list both come from it, so they cannot outlive it.
+ */
 const reopen = (step: RecordedStep): void => {
     if (settled.value) {
         return;
     }
 
-    editingStep.value = step;
+    if (step === 'style') {
+        selectedStyleKey.value = null;
+
+        return;
+    }
+
+    if (step === 'format') {
+        selectedFormat.value = null;
+        selectedStyleKey.value = null;
+    }
+
+    selectedAccountId.value = null;
+    accountAnswered.value = false;
 };
 
 const defaultImageCountFor = (format: string): number => {
@@ -394,17 +410,17 @@ const selectFormat = (option: FormatOption): void => {
         return;
     }
 
-    editingStep.value = null;
     selectedFormat.value = option.value;
     selectedStyleKey.value = null;
     imageCount.value = defaultImageCountFor(option.value);
     selectedAccountId.value = option.accounts.length === 1 ? option.accounts[0].id : null;
+    accountAnswered.value = false;
 };
 
 /**
  * A workspace connected to one network has no format to choose between, so the
  * card picks it rather than charging the user a click that decides nothing and
- * hides every later step behind it. The step still renders, pre-selected: the
+ * hides every later step behind it. It still opens the thread, as a record: the
  * format determines everything below it, and a card opening straight onto
  * styles would never say where the post is going.
  */
@@ -425,7 +441,6 @@ const selectStyle = (key: string): void => {
         return;
     }
 
-    editingStep.value = null;
     selectedStyleKey.value = key;
 };
 
@@ -442,8 +457,8 @@ const selectAccount = (id: string): void => {
         return;
     }
 
-    editingStep.value = null;
     selectedAccountId.value = id;
+    accountAnswered.value = true;
 };
 
 /**
@@ -737,7 +752,7 @@ const submit = (): void => {
                 v-else-if="accountChoiceVisible"
                 :text="accountPhrase"
                 :logos="accountChoiceLogos"
-                changeable
+                :changeable="accountsForFormat.length > 1"
                 test-id="chat-post-generation-account-choice"
                 @change="reopen('account')"
             />
@@ -749,7 +764,30 @@ const submit = (): void => {
                 dusk="chat-post-generation-final"
             >
                 <div
-                    v-if="imagesBlockVisible"
+                    v-if="autoAccountVisible"
+                    class="flex items-center gap-2 text-sm text-muted-foreground"
+                    data-testid="chat-post-generation-account-auto"
+                    dusk="chat-post-generation-account-auto"
+                >
+                    <span
+                        v-for="entry in accountChoiceLogos"
+                        :key="entry.platform"
+                        class="inline-flex size-5 shrink-0 items-center justify-center overflow-hidden rounded-full border border-foreground/20 bg-card"
+                    >
+                        <img
+                            :src="entry.logo"
+                            :alt="getPlatformLabel(entry.platform)"
+                            class="size-full object-cover"
+                        />
+                    </span>
+
+                    <span class="min-w-0 flex-1 truncate">
+                        {{ $t('chat.post_generation.posting_to', { account: accountPhrase }) }}
+                    </span>
+                </div>
+
+                <div
+                    v-if="imageStepVisible"
                     class="space-y-2"
                     data-testid="chat-post-generation-images-step"
                     dusk="chat-post-generation-images-step"
@@ -775,7 +813,7 @@ const submit = (): void => {
                 </div>
 
                 <div
-                    v-if="brandBlockVisible"
+                    v-if="brandStepVisible"
                     class="flex items-center justify-between gap-3 border-t border-foreground/15 pt-3"
                     data-testid="chat-post-generation-brand-step"
                     dusk="chat-post-generation-brand-step"

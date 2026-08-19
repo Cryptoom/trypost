@@ -81,6 +81,7 @@ return [
         'images_question' => 'Ile obrazów ma mieć?',
         'images_none' => 'Brak',
         'account_question' => 'Dla którego konta to jest?',
+        'posting_to' => 'Publikacja na :account',
         'brand_colors_label' => 'Kolory marki',
         'brand_colors_description' => 'Zastosuj paletę marki swojego workspace do generowanych obrazów.',
         'change' => 'Zmień',

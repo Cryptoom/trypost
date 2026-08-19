@@ -81,6 +81,7 @@ return [
         'images_question' => 'Kaç görsel olsun?',
         'images_none' => 'Yok',
         'account_question' => 'Bu hangi hesap için?',
+        'posting_to' => ':account hesabında yayımlanacak',
         'brand_colors_label' => 'Marka renkleri',
         'brand_colors_description' => 'Çalışma alanının marka paletini üretilen görsellere uygula.',
         'change' => 'Değiştir',
