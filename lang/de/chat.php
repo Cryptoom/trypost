@@ -26,5 +26,6 @@ return [
     ],
     'errors' => [
         'turn_in_progress' => 'Diese Unterhaltung antwortet noch. Warte, bis sie fertig ist, bevor du eine weitere Nachricht sendest.',
+        'request_failed' => 'Beim Senden deiner Nachricht ist etwas schiefgelaufen. Bitte versuche es erneut.',
     ],
 ];

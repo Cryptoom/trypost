@@ -26,5 +26,6 @@ return [
     ],
     'errors' => [
         'turn_in_progress' => 'Questa conversazione sta ancora rispondendo. Attendi che finisca prima di inviare un altro messaggio.',
+        'request_failed' => 'Si è verificato un errore nell’invio del messaggio. Riprova.',
     ],
 ];

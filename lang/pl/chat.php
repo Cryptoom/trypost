@@ -26,5 +26,6 @@ return [
     ],
     'errors' => [
         'turn_in_progress' => 'Ta rozmowa wciąż generuje odpowiedź. Poczekaj, aż się zakończy, zanim wyślesz kolejną wiadomość.',
+        'request_failed' => 'Coś poszło nie tak podczas wysyłania wiadomości. Spróbuj ponownie.',
     ],
 ];

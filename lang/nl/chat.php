@@ -26,5 +26,6 @@ return [
     ],
     'errors' => [
         'turn_in_progress' => 'Dit gesprek is nog aan het antwoorden. Wacht tot het klaar is voordat je een nieuw bericht stuurt.',
+        'request_failed' => 'Er is iets misgegaan bij het versturen van je bericht. Probeer het opnieuw.',
     ],
 ];

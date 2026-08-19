@@ -39,6 +39,7 @@
         "vue-tsc": "^2.2.4"
     },
     "dependencies": {
+        "@ai-sdk/vue": "^4.0.68",
         "@codemirror/commands": "^6.10.3",
         "@codemirror/lang-json": "^6.0.2",
         "@codemirror/state": "^6.5.4",

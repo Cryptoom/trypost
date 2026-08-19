@@ -26,5 +26,6 @@ return [
     ],
     'errors' => [
         'turn_in_progress' => '该对话仍在回复中。请等待回复完成后再发送新消息。',
+        'request_failed' => '发送消息时出了点问题，请重试。',
     ],
 ];

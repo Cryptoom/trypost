@@ -26,5 +26,6 @@ return [
     ],
     'errors' => [
         'turn_in_progress' => 'Bu sohbet hâlâ yanıt veriyor. Yeni bir mesaj göndermeden önce bitmesini bekleyin.',
+        'request_failed' => 'Mesajınız gönderilirken bir şeyler ters gitti. Lütfen tekrar deneyin.',
     ],
 ];
