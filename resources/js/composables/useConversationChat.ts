@@ -89,6 +89,23 @@ const pendingDecisions = (messages: UIMessage[]): Record<string, ChatDecision> |
 };
 
 /**
+ * A failed chat request, carrying the HTTP status alongside the localized
+ * message so a consuming component can branch on which failure this is
+ * (402 out of AI credits — show a billing CTA; 409 a turn is already
+ * streaming — recoverable by waiting; 403/404 someone else's or a deleted
+ * conversation) without parsing the message text, which is locale-dependent.
+ */
+export class ChatRequestError extends Error {
+    constructor(
+        message: string,
+        public readonly status: number,
+    ) {
+        super(message);
+        this.name = 'ChatRequestError';
+    }
+}
+
+/**
  * Read a translated `message` out of a non-2xx JSON error body — the shape
  * every abort()/gate response on this route uses (402 out of AI credits, 403
  * someone else's conversation, 404 deleted, 409 turn already in progress) —
@@ -112,7 +129,7 @@ const fetchWithReadableErrors: typeof fetch = async (input, init) => {
     const response = await fetch(input, init);
 
     if (!response.ok) {
-        throw new Error(await parseErrorMessage(response));
+        throw new ChatRequestError(await parseErrorMessage(response), response.status);
     }
 
     return response;
@@ -128,7 +145,8 @@ const fetchWithReadableErrors: typeof fetch = async (input, init) => {
  * resumes a run paused on a `tool-approval-request` part through
  * `submitDecisions`, which drives the SDK's own `addToolApprovalResponse` so
  * the resend replays through the same stream-processing pipeline as a normal
- * turn.
+ * turn. Request failures surface as `ChatRequestError` on `error`, carrying
+ * the HTTP status for callers that need to branch on it.
  */
 export const useConversationChat = (conversationId: string, initialMessages: UIMessage[] = []) => {
     const transport = new DefaultChatTransport<UIMessage>({
