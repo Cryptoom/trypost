@@ -2,7 +2,10 @@
 
 declare(strict_types=1);
 
+use App\Enums\SocialAccount\Platform;
 use App\Enums\WorkspaceConversation\Message\Role;
+use App\Models\SocialAccount;
+use App\Models\Workspace;
 use App\Models\WorkspaceConversation;
 use App\Models\WorkspaceConversationMessage;
 
@@ -40,62 +43,26 @@ function stubChatTurn(mixed $page): void
 }
 
 /**
- * The catalog `start_post_generation` returns, stored as the call's result:
- * the tool is not in `ToolReplayer::REPLAYABLE`, so a reopened conversation
- * renders exactly this payload.
+ * A conversation whose assistant turn called `start_post_generation`, with
+ * three active accounts behind it — one X account, and one account on each
+ * Instagram platform so a single format arrives listed twice.
  *
- * `instagram_feed` is listed twice — once per Instagram platform — which is
- * what the real catalog does when both are connected.
+ * `start_post_generation` is replayable, so opening the page re-runs it and
+ * the card renders the workspace's CURRENT catalog; the stored result below
+ * is only the fallback for a replay that errors.
+ *
+ * @return array{0: WorkspaceConversation, 1: SocialAccount}
  */
-function postGenerationCatalog(): string
-{
-    return json_encode([
-        'data' => [
-            'formats' => [
-                [
-                    'value' => 'instagram_feed',
-                    'platform' => 'instagram',
-                    'accounts' => [['id' => 'acc-ig', 'label' => 'Acme IG']],
-                ],
-                [
-                    'value' => 'instagram_feed',
-                    'platform' => 'instagram-facebook',
-                    'accounts' => [['id' => 'acc-ig-fb', 'label' => 'Acme Business']],
-                ],
-                [
-                    'value' => 'x_post',
-                    'platform' => 'x',
-                    'accounts' => [['id' => 'acc-x', 'label' => 'Acme X']],
-                ],
-            ],
-            'styles' => [
-                [
-                    'key' => 'image_card',
-                    'name' => 'Image card',
-                    'description' => 'A generated illustration.',
-                    'preview' => '/images/trypost/icon.png',
-                    'needs_account' => false,
-                    'supported_formats' => [],
-                    'applies_brand_visuals' => true,
-                ],
-                [
-                    'key' => 'tweet_card',
-                    'name' => 'Tweet card',
-                    'description' => 'The post rendered as your own card.',
-                    'preview' => '/images/trypost/icon.png',
-                    'needs_account' => true,
-                    'supported_formats' => [],
-                    'applies_brand_visuals' => true,
-                ],
-            ],
-            'applies_brand_visuals_default' => true,
-        ],
-    ], JSON_THROW_ON_ERROR);
-}
-
-function chatWithPostGenerationCard(): WorkspaceConversation
+function chatWithPostGenerationCard(): array
 {
     [$user, $workspace] = actingAsWorkspaceUser();
+
+    seedGenerationAccounts($workspace);
+
+    $instagramBusiness = SocialAccount::query()
+        ->where('workspace_id', $workspace->id)
+        ->where('platform', Platform::InstagramFacebook)
+        ->firstOrFail();
 
     $conversation = WorkspaceConversation::factory()->for($workspace)->for($user)->create();
 
@@ -103,14 +70,24 @@ function chatWithPostGenerationCard(): WorkspaceConversation
         'role' => Role::Assistant,
         'content' => 'Pick how you want it generated.',
         'tool_calls' => [['id' => 'call_start', 'name' => 'start_post_generation', 'arguments' => []]],
-        'tool_results' => [['id' => 'call_start', 'result' => postGenerationCatalog()]],
+        'tool_results' => [['id' => 'call_start', 'result' => '{"data":{"formats":[],"styles":[],"applies_brand_visuals_default":true}}']],
     ]);
 
-    return $conversation;
+    return [$conversation, $instagramBusiness];
+}
+
+function seedGenerationAccounts(Workspace $workspace): void
+{
+    SocialAccount::factory()->for($workspace)->x()->create(['display_name' => 'Acme X']);
+    SocialAccount::factory()->for($workspace)->instagram()->create(['display_name' => 'Acme IG']);
+    SocialAccount::factory()->for($workspace)->create([
+        'platform' => Platform::InstagramFacebook,
+        'display_name' => 'Acme Business',
+    ]);
 }
 
 test('the card reveals its choices and submits them as one sentence', function () {
-    $conversation = chatWithPostGenerationCard();
+    [$conversation] = chatWithPostGenerationCard();
 
     $page = visit(route('app.chat.show', $conversation));
 
@@ -135,7 +112,7 @@ test('the card reveals its choices and submits them as one sentence', function (
 
     $page->assertSee(__('chat.post_generation.sentence_with_brand', [
         'format' => __('posts.create.steps.format.x_post'),
-        'style' => 'Image card',
+        'style' => __('posts.ai.templates.image_card.name'),
         'images' => __('chat.post_generation.sentence_images_other', ['count' => 2]),
         'account' => 'Acme X',
         'brand' => __('chat.post_generation.sentence_brand_on'),
@@ -143,7 +120,7 @@ test('the card reveals its choices and submits them as one sentence', function (
 });
 
 test('a format connected on two platforms is offered once with both accounts', function () {
-    $conversation = chatWithPostGenerationCard();
+    [$conversation, $instagramBusiness] = chatWithPostGenerationCard();
 
     $page = visit(route('app.chat.show', $conversation));
 
@@ -159,7 +136,7 @@ test('a format connected on two platforms is offered once with both accounts', f
     $page->assertSee('Acme IG')
         ->assertSee('Acme Business');
 
-    $page->click('@chat-post-generation-account-acc-ig-fb');
+    $page->click("@chat-post-generation-account-{$instagramBusiness->id}");
     waitForChatTestId($page, 'chat-post-generation-submit');
 
     $page->click('@chat-post-generation-submit');
@@ -167,7 +144,7 @@ test('a format connected on two platforms is offered once with both accounts', f
     // Instagram feed defaults to a single image, unlike every other format.
     $page->assertSee(__('chat.post_generation.sentence_with_brand', [
         'format' => __('posts.create.steps.format.instagram_feed'),
-        'style' => 'Image card',
+        'style' => __('posts.ai.templates.image_card.name'),
         'images' => __('chat.post_generation.sentence_images_one'),
         'account' => 'Acme Business',
         'brand' => __('chat.post_generation.sentence_brand_on'),

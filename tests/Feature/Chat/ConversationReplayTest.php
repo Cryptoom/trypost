@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 use App\Ai\Tools\ToolReplayer;
 use App\Enums\Post\Status;
+use App\Enums\SocialAccount\Platform;
 use App\Enums\WorkspaceConversation\Message\Role;
 use App\Models\Post;
+use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Models\WorkspaceConversation;
@@ -142,4 +144,67 @@ test('get_post_metrics is not replayed and keeps its stored result without calli
     $payloads = app(ToolReplayer::class)->replay($conversation);
 
     expect($payloads['call_6'])->toBe($stored);
+});
+
+test('start_post_generation replays so a disconnected account is no longer offered', function () {
+    $workspace = Workspace::factory()->create();
+    $user = User::factory()->create();
+    $conversation = WorkspaceConversation::factory()->for($workspace)->for($user)->create();
+
+    $account = SocialAccount::factory()->for($workspace)->x()->create(['display_name' => 'Acme X']);
+
+    $stored = json_encode(['data' => [
+        'formats' => [[
+            'value' => 'x_post',
+            'platform' => Platform::X->value,
+            'accounts' => [['id' => $account->id, 'label' => 'Acme X']],
+        ]],
+        'styles' => [],
+        'applies_brand_visuals_default' => true,
+    ]]);
+
+    WorkspaceConversationMessage::factory()->for($conversation, 'conversation')->create([
+        'role' => Role::Assistant,
+        'content' => 'Pick a format.',
+        'tool_calls' => [['id' => 'call_7', 'name' => 'start_post_generation', 'arguments' => []]],
+        'tool_results' => [['id' => 'call_7', 'result' => $stored]],
+    ]);
+
+    $account->update(['is_active' => false]);
+
+    $payloads = app(ToolReplayer::class)->replay($conversation);
+
+    $replayed = json_decode($payloads['call_7'], true);
+
+    expect($payloads['call_7'])->not->toBe($stored)
+        ->and(data_get($replayed, 'data.formats'))->toBe([])
+        ->and(data_get($replayed, 'data.styles'))->not->toBeEmpty();
+});
+
+test('start_post_generation replays a newly connected account into an old conversation', function () {
+    $workspace = Workspace::factory()->create();
+    $user = User::factory()->create();
+    $conversation = WorkspaceConversation::factory()->for($workspace)->for($user)->create();
+
+    $stored = json_encode(['data' => [
+        'formats' => [],
+        'styles' => [],
+        'applies_brand_visuals_default' => true,
+    ]]);
+
+    WorkspaceConversationMessage::factory()->for($conversation, 'conversation')->create([
+        'role' => Role::Assistant,
+        'content' => 'Pick a format.',
+        'tool_calls' => [['id' => 'call_8', 'name' => 'start_post_generation', 'arguments' => []]],
+        'tool_results' => [['id' => 'call_8', 'result' => $stored]],
+    ]);
+
+    $account = SocialAccount::factory()->for($workspace)->x()->create(['display_name' => 'Acme X']);
+
+    $payloads = app(ToolReplayer::class)->replay($conversation);
+
+    $formats = data_get(json_decode($payloads['call_8'], true), 'data.formats');
+
+    expect(array_column($formats, 'value'))->toContain('x_post')
+        ->and(data_get($formats, '0.accounts.0.id'))->toBe($account->id);
 });

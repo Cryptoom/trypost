@@ -6,6 +6,7 @@ namespace App\Ai\Tools;
 
 use App\Ai\Tools\Post\GetPostTool;
 use App\Ai\Tools\Post\ListPostsTool;
+use App\Ai\Tools\Post\StartPostGenerationTool;
 use App\Models\WorkspaceConversation;
 use Laravel\Ai\Tools\Request;
 use Throwable;
@@ -28,6 +29,12 @@ use Throwable;
  * and the user can ask again for fresh ones. Do not "fix" this by adding it
  * back to the map.
  *
+ * start_post_generation belongs in the map for the same reason: one query for
+ * the workspace's active accounts plus an in-memory template registry read.
+ * Replaying it also keeps its card honest — a conversation reopened after an
+ * account was disconnected would otherwise offer that account as a choice,
+ * and generate_post would then (correctly, but pointlessly) refuse it.
+ *
  * A read tool that no longer finds its record (e.g. the post was deleted
  * since the conversation happened) does not throw: WorkspaceTool::handle()
  * already catches everything run() can throw, and "not found" is itself a
@@ -45,6 +52,7 @@ class ToolReplayer
     private const REPLAYABLE = [
         'list_posts' => ListPostsTool::class,
         'get_post' => GetPostTool::class,
+        'start_post_generation' => StartPostGenerationTool::class,
     ];
 
     /**
