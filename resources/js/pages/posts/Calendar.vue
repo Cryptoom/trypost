@@ -57,8 +57,16 @@ const props = defineProps<Props>();
 const isMobile = ref(false);
 const { canCreatePost } = useWorkspaceRole();
 
-const createPost = (isoDate: string | null = null) =>
-    router.post(storePost.url(), isoDate ? { date: isoDate } : {});
+const creatingPost = ref(false);
+
+const createPost = (isoDate: string | null = null) => {
+    if (creatingPost.value) return;
+
+    creatingPost.value = true;
+    router.post(storePost.url(), isoDate ? { date: isoDate } : {}, {
+        onFinish: () => { creatingPost.value = false; },
+    });
+};
 const checkMobile = () => {
     isMobile.value = window.innerWidth < 1024;
 };
@@ -280,6 +288,7 @@ const formatTime = (scheduledAt: string): string => {
                     v-if="canCreatePost"
                     class="w-full"
                     data-testid="calendar-create-post-mobile"
+                    :loading="creatingPost"
                     @click="createPost()"
                 >
                     {{ $t('calendar.new_post') }}
@@ -316,6 +325,7 @@ const formatTime = (scheduledAt: string): string => {
                     <Button
                         v-if="canCreatePost"
                         data-testid="calendar-create-post-desktop"
+                        :loading="creatingPost"
                         @click="createPost()"
                     >
                         {{ $t('calendar.new_post') }}
@@ -417,7 +427,8 @@ const formatTime = (scheduledAt: string): string => {
                             v-if="canCreatePost"
                             type="button"
                             :data-testid="`calendar-create-post-day-column-${day.format('YYYY-MM-DD')}`"
-                            class="flex w-full items-center justify-center rounded-md border-2 border-dashed border-foreground/25 p-2 text-foreground/60 transition-colors hover:border-foreground hover:bg-foreground/5 hover:text-foreground"
+                            :disabled="creatingPost"
+                            class="flex w-full items-center justify-center rounded-md border-2 border-dashed border-foreground/25 p-2 text-foreground/60 transition-colors hover:border-foreground hover:bg-foreground/5 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
                             @click="createPost(day.format('YYYY-MM-DD'))"
                         >
                             <IconPlus class="size-4" />
@@ -517,7 +528,8 @@ const formatTime = (scheduledAt: string): string => {
                                     v-if="canCreatePost"
                                     type="button"
                                     :data-testid="`calendar-create-post-month-cell-${day.format('YYYY-MM-DD')}`"
-                                    class="inline-flex size-6 items-center justify-center rounded-full border-2 border-foreground bg-card text-foreground opacity-0 shadow-2xs transition-all hover:rotate-90 hover:bg-violet-100 focus:opacity-100 group-hover:opacity-100"
+                                    :disabled="creatingPost"
+                                    class="inline-flex size-6 items-center justify-center rounded-full border-2 border-foreground bg-card text-foreground opacity-0 shadow-2xs transition-all hover:rotate-90 hover:bg-violet-100 focus:opacity-100 group-hover:opacity-100 disabled:cursor-not-allowed disabled:opacity-50"
                                     @click="createPost(day.format('YYYY-MM-DD'))"
                                 >
                                     <IconPlus class="size-3.5" stroke-width="3" />

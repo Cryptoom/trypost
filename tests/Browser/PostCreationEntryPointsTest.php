@@ -43,6 +43,32 @@ test('the sidebar create post button creates a draft and opens the editor', func
     expect($post->scheduled_at)->toBeNull();
 });
 
+test('the sidebar create post button guards against a double click and creates only one post', function (): void {
+    [$user, $workspace] = actingAsWorkspaceUser();
+    SocialAccount::factory()->for($workspace)->create();
+
+    $page = visit(route('app.posts.index'));
+
+    $page->assertVisible('@sidebar-create-post');
+
+    // Two synchronous DOM clicks in the same script tick, so the second
+    // fires before any network response can return — this is the actual
+    // race a fast real double click produces, not an approximation of it.
+    $page->script(<<<'JS'
+        (() => {
+            const el = document.querySelector('[data-testid="sidebar-create-post"]');
+            el.click();
+            el.click();
+        })();
+    JS);
+
+    waitForPathToMatch($page, '^/posts/[^/]+/edit$');
+
+    $page->wait(0.3);
+
+    expect(Post::where('workspace_id', $workspace->id)->count())->toBe(1);
+});
+
 test('the posts index create post button creates a draft and opens the editor', function (): void {
     [$user, $workspace] = actingAsWorkspaceUser();
     SocialAccount::factory()->for($workspace)->create();

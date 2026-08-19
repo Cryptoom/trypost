@@ -21,7 +21,7 @@ import {
     IconTag,
 } from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 
 import {
     index as postsIndex,
@@ -98,7 +98,16 @@ const { urlIsActive } = useActiveUrl();
 const isChatMode = computed(() => urlIsActive(chat.url(), { prefix: true }));
 const sidebarMode = computed(() => (isChatMode.value ? 'chat' : 'browse'));
 
-const createPost = () => router.post(storePost.url());
+const creatingPost = ref(false);
+
+const createPost = () => {
+    if (creatingPost.value) return;
+
+    creatingPost.value = true;
+    router.post(storePost.url(), {}, {
+        onFinish: () => { creatingPost.value = false; },
+    });
+};
 
 const mainNavItems = computed<NavItem[]>(() => [
     {
@@ -285,7 +294,12 @@ const bottomNavItems = computed(() => [
                     ]"
                 >
                     <div v-if="canCreatePost" class="px-2 py-2">
-                        <Button class="w-full" data-testid="sidebar-create-post" @click="createPost">
+                        <Button
+                            class="w-full"
+                            data-testid="sidebar-create-post"
+                            :loading="creatingPost"
+                            @click="createPost"
+                        >
                             {{ $t('sidebar.create_post') }}
                         </Button>
                     </div>

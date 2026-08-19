@@ -162,7 +162,16 @@ const handleDuplicate = (post: Post) => {
     router.post(duplicatePost.url(post.id));
 };
 
-const createPost = () => router.post(storePost.url());
+const creatingPost = ref(false);
+
+const createPost = () => {
+    if (creatingPost.value) return;
+
+    creatingPost.value = true;
+    router.post(storePost.url(), {}, {
+        onFinish: () => { creatingPost.value = false; },
+    });
+};
 
 const handleCopyId = (post: Post) => copyToClipboard(post.id, trans('posts.actions.copied'));
 
@@ -204,6 +213,7 @@ useWorkspaceEcho(
                     v-if="canCreatePost"
                     class="w-full sm:w-auto"
                     data-testid="posts-create-post"
+                    :loading="creatingPost"
                     @click="createPost"
                 >
                     {{ $t('posts.new_post') }}
