@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Ai\Tools\Post\GeneratePostTool;
+use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
 use App\Enums\UserWorkspace\Role;
 use App\Events\Ai\PostCreationReady;
@@ -295,6 +296,22 @@ it('rejects an image count outside the allowed range', function (mixed $imageCou
     'negative' => [-1],
     'above the maximum' => [11],
 ]);
+
+it('rejects an image count above the cap the format itself allows', function (): void {
+    $x = SocialAccount::factory()->for($this->workspace)->create(['platform' => Platform::X]);
+
+    $output = json_decode($this->tool->handle(new Request(generatePostPayload([
+        'format' => 'x_post',
+        'social_account_id' => $x->id,
+        'image_count' => 8,
+    ]))), true);
+
+    expect($output)->toHaveKey('error')
+        ->and($output['error'])->toContain('The format "x_post" accepts at most 4 images')
+        ->and(ContentType::XPost->maxMediaCount())->toBe(4);
+
+    Bus::assertNotDispatched(StreamPostCreation::class);
+});
 
 it('rejects a date that is not Y-m-d', function (): void {
     $output = json_decode($this->tool->handle(new Request(generatePostPayload([

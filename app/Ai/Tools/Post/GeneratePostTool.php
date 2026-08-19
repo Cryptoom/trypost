@@ -7,7 +7,6 @@ namespace App\Ai\Tools\Post;
 use App\Ai\Templates\AiTemplateRegistry;
 use App\Ai\Templates\Concerns\ResolvesContentType;
 use App\Ai\Tools\WorkspaceWriteTool;
-use App\Enums\Ai\ContentStyle;
 use App\Events\Ai\PostCreationReady;
 use App\Jobs\Ai\StreamPostCreation;
 use App\Services\Ai\PostGenerationCatalog;
@@ -158,7 +157,11 @@ class GeneratePostTool extends WorkspaceWriteTool
      * a format the platform knows: a format whose platform has no connected
      * account cannot produce a publishable post.
      *
-     * @param  array<string, mixed>  $catalog
+     * @param  array{
+     *     formats: list<array{value: string, platform: string, accounts: list<array{id: string, label: string}>}>,
+     *     styles: list<array{key: string, name: string, description: string, preview: string, needs_account: bool, supported_formats: list<string>, applies_brand_visuals: bool}>,
+     *     applies_brand_visuals_default: bool,
+     * }  $catalog
      */
     private function formatError(array $catalog, string $format): ?string
     {
@@ -191,7 +194,8 @@ class GeneratePostTool extends WorkspaceWriteTool
      */
     private function styleError(string $style, ?string $socialAccountId): ?string
     {
-        $keys = app(AiTemplateRegistry::class)->keys();
+        $registry = app(AiTemplateRegistry::class);
+        $keys = $registry->keys();
         $options = implode(', ', $keys);
 
         if ($style === '') {
@@ -202,9 +206,7 @@ class GeneratePostTool extends WorkspaceWriteTool
             return "The style \"{$style}\" doesn't exist. Valid styles are: {$options}.";
         }
 
-        $needsAccount = ContentStyle::tryFrom($style)?->needsAccount() ?? false;
-
-        if ($needsAccount && blank($socialAccountId)) {
+        if ($registry->find($style)->needsAccount() && blank($socialAccountId)) {
             return "The \"{$style}\" style renders the post as the account's own card, so it needs a connected account. Pass social_account_id using one of the account ids start_post_generation returned for this format.";
         }
 
@@ -218,7 +220,11 @@ class GeneratePostTool extends WorkspaceWriteTool
      * an account on a platform the format cannot post to is refused here
      * rather than producing a post bound to the wrong account.
      *
-     * @param  array<string, mixed>  $catalog
+     * @param  array{
+     *     formats: list<array{value: string, platform: string, accounts: list<array{id: string, label: string}>}>,
+     *     styles: list<array{key: string, name: string, description: string, preview: string, needs_account: bool, supported_formats: list<string>, applies_brand_visuals: bool}>,
+     *     applies_brand_visuals_default: bool,
+     * }  $catalog
      */
     private function socialAccountError(array $catalog, string $format, ?string $socialAccountId): ?string
     {
@@ -246,7 +252,11 @@ class GeneratePostTool extends WorkspaceWriteTool
      * passed formatError(): the catalog only lists a format once at least one
      * active account can post it.
      *
-     * @param  array<string, mixed>  $catalog
+     * @param  array{
+     *     formats: list<array{value: string, platform: string, accounts: list<array{id: string, label: string}>}>,
+     *     styles: list<array{key: string, name: string, description: string, preview: string, needs_account: bool, supported_formats: list<string>, applies_brand_visuals: bool}>,
+     *     applies_brand_visuals_default: bool,
+     * }  $catalog
      * @return list<array{id: string, label: string}>
      */
     private function accountsForFormat(array $catalog, string $format): array
@@ -287,12 +297,16 @@ class GeneratePostTool extends WorkspaceWriteTool
      * Beyond the global 0-10 bound, a format never accepts more media than the
      * platform itself does, so a generation that asked for more could never be
      * published.
+     *
+     * Runs only after formatError() has accepted the format, so the format is
+     * always one the catalog offers — every one of which resolves to a
+     * ContentType (the carousel pseudo-format through ResolvesContentType).
      */
     private function imageCountError(string $format, int $imageCount): ?string
     {
-        $max = self::resolveContentType($format)?->maxMediaCount();
+        $max = self::resolveContentType($format)->maxMediaCount();
 
-        if ($max === null || $imageCount <= $max) {
+        if ($imageCount <= $max) {
             return null;
         }
 

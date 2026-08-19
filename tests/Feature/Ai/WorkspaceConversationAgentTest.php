@@ -9,7 +9,7 @@ use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
 
-test('the agent exposes the nine post tools', function () {
+test('the agent exposes the ten post tools', function () {
     $agent = new WorkspaceConversationAgent(Workspace::factory()->create(), User::factory()->create());
 
     expect(collect($agent->tools())->count())->toBe(10)
