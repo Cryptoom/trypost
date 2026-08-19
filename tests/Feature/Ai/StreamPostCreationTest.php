@@ -8,6 +8,7 @@ use App\Enums\Post\CreatedVia;
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\UserWorkspace\Role;
 use App\Jobs\Ai\StreamPostCreation;
+use App\Models\Post;
 use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
@@ -242,4 +243,33 @@ test('the humanizer is given the same platform context as the generator so the r
 
     PostContentGenerator::assertPrompted(fn ($prompt) => $prompt->agent->platformContext === 'instagram_feed');
     PostContentHumanizer::assertPrompted(fn ($prompt) => $prompt->agent->platformContext === 'instagram_feed');
+});
+
+it('stamps the creation id on the post it creates', function (): void {
+    PostContentGenerator::fake([[
+        'content' => 'A single productivity tip',
+        'image_title' => 'Tip',
+        'image_body' => 'Do less',
+        'image_keywords' => [],
+    ]]);
+    PostContentHumanizer::fake([[
+        'content' => 'A single productivity tip',
+        'image_title' => 'Tip',
+        'image_body' => 'Do less',
+    ]]);
+
+    $creationId = (string) Str::uuid();
+
+    (new StreamPostCreation(
+        userId: $this->user->id,
+        creationId: $creationId,
+        workspaceId: $this->workspace->id,
+        format: 'instagram_feed',
+        socialAccountId: $this->account->id,
+        imageCount: 0,
+        prompt: 'A single productivity tip',
+        template: 'image_card',
+    ))->handle();
+
+    expect(Post::where('creation_id', $creationId)->exists())->toBeTrue();
 });

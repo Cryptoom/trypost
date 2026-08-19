@@ -205,6 +205,7 @@ class StreamPostCreation implements ShouldBeUnique, ShouldQueue
             'media' => $generated->media,
             'date' => $this->date,
             'created_via' => CreatedVia::Web,
+            'creation_id' => $this->creationId,
         ]);
 
         if ($generated->contentType && $socialAccount) {
