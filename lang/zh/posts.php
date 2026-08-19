@@ -662,6 +662,7 @@ return [
                 'discord_message' => 'Discord 消息',
                 'facebook_post' => 'Facebook 帖子',
                 'pinterest_pin' => 'Pinterest Pin',
+                'pinterest_carousel' => 'Pinterest 轮播',
                 'instagram_story' => 'Instagram 快拍',
                 'facebook_story' => 'Facebook 快拍',
             ],

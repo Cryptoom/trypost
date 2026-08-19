@@ -662,6 +662,7 @@ return [
                 'discord_message' => 'Messaggio Discord',
                 'facebook_post' => 'Post Facebook',
                 'pinterest_pin' => 'Pin Pinterest',
+                'pinterest_carousel' => 'Carosello Pinterest',
                 'instagram_story' => 'Storia Instagram',
                 'facebook_story' => 'Storia Facebook',
             ],

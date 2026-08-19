@@ -664,6 +664,7 @@ return [
                 'discord_message' => 'Discord Mesajı',
                 'facebook_post' => 'Facebook Gönderisi',
                 'pinterest_pin' => 'Pinterest Pin\'i',
+                'pinterest_carousel' => 'Pinterest Karuseli',
                 'instagram_story' => 'Instagram Hikayesi',
                 'facebook_story' => 'Facebook Hikayesi',
             ],

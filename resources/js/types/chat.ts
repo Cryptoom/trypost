@@ -123,3 +123,38 @@ export interface ChatServerMessage {
     tool_calls: ChatServerToolCall[] | null;
     payloads: Record<string, string>;
 }
+
+/** One connected account `start_post_generation` offers for a format. */
+export interface ChatPostGenerationAccount {
+    id: string;
+    label: string;
+}
+
+/**
+ * One entry of the catalog's `formats` list. The same `value` appears once
+ * per platform that can post it, so an Instagram format is listed twice when
+ * both an `instagram` and an `instagram-facebook` account are connected.
+ */
+export interface ChatPostGenerationFormat {
+    value: string;
+    platform: string;
+    accounts: ChatPostGenerationAccount[];
+}
+
+/** One AI content template. `name` and `description` arrive translated. */
+export interface ChatPostGenerationStyle {
+    key: string;
+    name: string;
+    description: string;
+    preview: string;
+    needs_account: boolean;
+    supported_formats: string[];
+    applies_brand_visuals: boolean;
+}
+
+/** Mirrors `App\Services\Ai\PostGenerationCatalog::forWorkspace()`. */
+export interface ChatPostGenerationCatalog {
+    formats: ChatPostGenerationFormat[];
+    styles: ChatPostGenerationStyle[];
+    applies_brand_visuals_default: boolean;
+}

@@ -662,6 +662,7 @@ return [
                 'discord_message' => 'رسالة Discord',
                 'facebook_post' => 'منشور Facebook',
                 'pinterest_pin' => 'دبوس Pinterest',
+                'pinterest_carousel' => 'عرض Pinterest الدائري',
                 'instagram_story' => 'قصة Instagram',
                 'facebook_story' => 'قصة Facebook',
             ],
