@@ -33,7 +33,7 @@ class ChatController extends Controller
     {
         [$workspace, $user] = $this->resolveWorkspaceAndUser($request);
 
-        $model = $this->findConversation($workspace, $user, $conversation)->load('messages');
+        $model = $this->findConversation($workspace, $user, $conversation)->load(['messages', 'workspace', 'user']);
 
         $payloads = app(ToolReplayer::class)->replay($model);
 

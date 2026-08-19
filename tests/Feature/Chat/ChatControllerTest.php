@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Models\Workspace;
 use App\Models\WorkspaceConversation;
 
 test('the sidebar lists only this users titled conversations, newest first', function () {
@@ -67,4 +68,12 @@ test('another users untitled conversation still cannot be opened', function () {
     $foreign = WorkspaceConversation::factory()->for($workspace)->untitled()->create();
 
     $this->get(route('app.chat.show', $foreign->id))->assertNotFound();
+});
+
+test('this users conversation in a different workspace cannot be opened', function () {
+    [$user, $workspace] = actingAsWorkspaceUser();
+    $otherWorkspace = Workspace::factory()->create();
+    $elsewhere = WorkspaceConversation::factory()->for($otherWorkspace)->for($user)->create(['title' => 'Wrong workspace']);
+
+    $this->get(route('app.chat.show', $elsewhere->id))->assertNotFound();
 });
