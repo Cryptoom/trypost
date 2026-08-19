@@ -38,8 +38,10 @@ use Throwable;
  * and generate_post would then (correctly, but pointlessly) refuse it.
  *
  * Its replayed payload is also stamped `spent` once the conversation went on
- * to call generate_post, so the card renders settled instead of re-arming a
- * single-use form — see {@see markSpent()}.
+ * to start a generation, so the card renders settled instead of re-arming a
+ * single-use form — see {@see markSpent()}. A generate_post that was REFUSED
+ * does not count, because nothing was generated and nothing was billed; see
+ * {@see lastGeneratePostPosition()}.
  *
  * A read tool that no longer finds its record (e.g. the post was deleted
  * since the conversation happened) does not throw: WorkspaceTool::handle()
@@ -149,9 +151,23 @@ class ToolReplayer
     }
 
     /**
-     * Position of the LAST generate_post call in the conversation, counted over
-     * the same flattened call sequence {@see replay()} walks, or -1 when the
-     * conversation has none.
+     * Position of the last generate_post call that actually STARTED a
+     * generation, counted over the same flattened call sequence {@see replay()}
+     * walks, or -1 when the conversation has none.
+     *
+     * A refused call does not count. generate_post answers with an `{"error":
+     * "..."}` payload whenever it declines — no AI access, exhausted credits,
+     * an invalid format or account — and in every one of those cases nothing
+     * was generated and nothing was billed. Treating an attempt as a
+     * generation would settle the card that collected the choices, so a user
+     * who topped up their credits and reopened the conversation would find
+     * their own choices frozen behind a disabled form, with no way forward but
+     * to ask for a fresh card.
+     *
+     * A call with no stored result at all is counted as a generation. That is
+     * the safe direction: the failure mode of over-counting is a card the user
+     * must ask to have re-offered, while under-counting bills them for a
+     * duplicate generation.
      */
     private function lastGeneratePostPosition(WorkspaceConversation $conversation): int
     {
@@ -159,8 +175,12 @@ class ToolReplayer
         $last = -1;
 
         foreach ($conversation->messages as $message) {
+            $storedResults = collect($message->tool_results ?? [])->keyBy('id');
+
             foreach ($message->tool_calls ?? [] as $call) {
-                if (data_get($call, 'name') === self::GENERATE_POST) {
+                $stored = (string) data_get($storedResults->get(data_get($call, 'id')), 'result', '');
+
+                if (data_get($call, 'name') === self::GENERATE_POST && ! $this->isErrorPayload($stored)) {
                     $last = $position;
                 }
 
@@ -185,8 +205,8 @@ class ToolReplayer
      *
      * The conversation itself is the record of what happened, and this class
      * is where the whole history is already in hand: a generation card whose
-     * conversation went on to call generate_post has been spent, and the card
-     * renders settled rather than interactive.
+     * conversation went on to actually START a generation has been spent, and
+     * the card renders settled rather than interactive.
      */
     private function markSpent(string $payload, bool $spent): string
     {

@@ -563,3 +563,64 @@ test('a second generation card offered after the last generation stays interacti
     expect(data_get(json_decode($payloads['call_start_one'], true), 'data.spent'))->toBeTrue()
         ->and(data_get(json_decode($payloads['call_start_two'], true), 'data.spent'))->toBeNull();
 });
+
+test('a generation the tool refused leaves its card interactive', function () {
+    $workspace = Workspace::factory()->create();
+    $user = User::factory()->create();
+    $conversation = WorkspaceConversation::factory()->for($workspace)->for($user)->create();
+
+    SocialAccount::factory()->for($workspace)->x()->create(['display_name' => 'Acme X']);
+
+    WorkspaceConversationMessage::factory()->for($conversation, 'conversation')->create([
+        'role' => Role::Assistant,
+        'content' => 'Pick a format.',
+        'tool_calls' => [['id' => 'call_start', 'name' => 'start_post_generation', 'arguments' => []]],
+        'tool_results' => [['id' => 'call_start', 'result' => '{"data":{"formats":[],"styles":[],"applies_brand_visuals_default":true}}']],
+    ]);
+
+    // Refused for lack of credits: nothing was generated and nothing billed,
+    // so the choices the user already made must stay resubmittable.
+    WorkspaceConversationMessage::factory()->for($conversation, 'conversation')->create([
+        'role' => Role::Assistant,
+        'content' => 'I could not start it.',
+        'tool_calls' => [['id' => 'call_generate', 'name' => 'generate_post', 'arguments' => []]],
+        'tool_results' => [['id' => 'call_generate', 'result' => '{"error":"You have no AI credits left."}']],
+    ]);
+
+    $payloads = app(ToolReplayer::class)->replay($conversation);
+
+    expect(data_get(json_decode($payloads['call_start'], true), 'data.spent'))->toBeNull();
+});
+
+test('a refusal after a real generation does not un-settle the card', function () {
+    $workspace = Workspace::factory()->create();
+    $user = User::factory()->create();
+    $conversation = WorkspaceConversation::factory()->for($workspace)->for($user)->create();
+
+    SocialAccount::factory()->for($workspace)->x()->create(['display_name' => 'Acme X']);
+
+    WorkspaceConversationMessage::factory()->for($conversation, 'conversation')->create([
+        'role' => Role::Assistant,
+        'content' => 'Pick a format.',
+        'tool_calls' => [['id' => 'call_start', 'name' => 'start_post_generation', 'arguments' => []]],
+        'tool_results' => [['id' => 'call_start', 'result' => '{"data":{"formats":[],"styles":[],"applies_brand_visuals_default":true}}']],
+    ]);
+
+    WorkspaceConversationMessage::factory()->for($conversation, 'conversation')->create([
+        'role' => Role::Assistant,
+        'content' => 'Generating it.',
+        'tool_calls' => [['id' => 'call_generate', 'name' => 'generate_post', 'arguments' => []]],
+        'tool_results' => [['id' => 'call_generate', 'result' => '{"data":{"creation_id":"call_generate","channel":"c"}}']],
+    ]);
+
+    WorkspaceConversationMessage::factory()->for($conversation, 'conversation')->create([
+        'role' => Role::Assistant,
+        'content' => 'That second one I could not start.',
+        'tool_calls' => [['id' => 'call_generate_refused', 'name' => 'generate_post', 'arguments' => []]],
+        'tool_results' => [['id' => 'call_generate_refused', 'result' => '{"error":"You have no AI credits left."}']],
+    ]);
+
+    $payloads = app(ToolReplayer::class)->replay($conversation);
+
+    expect(data_get(json_decode($payloads['call_start'], true), 'data.spent'))->toBeTrue();
+});
