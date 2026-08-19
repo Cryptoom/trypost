@@ -15,12 +15,12 @@ use Illuminate\Support\Collection;
  * Builds the AI post-generation catalog (formats, styles, and brand-visuals
  * default) offered to a workspace in chat.
  *
- * The eleven formats mirror what `AiPostWizard.vue` used to hardcode as
- * `AI_FORMATS` — the same subset of `ContentType` (reels, TikTok, and
- * YouTube are excluded because the AI flow only produces text + images) plus
- * the Instagram-carousel pseudo-format. Sourcing the platform mapping from
- * `ContentType::platform()`/`compatiblePlatforms()` instead of duplicating it
- * here means a new platform never has to be added twice.
+ * The format list is `ContentType::aiSupported()` plus the Instagram-carousel
+ * pseudo-format — the backend's own definition of a valid AI generation
+ * format, already enforced by `StartPostCreationRequest::rules()`. Sourcing
+ * it from there instead of hand-listing formats means the catalog can never
+ * drift from what the generation pipeline actually accepts, and a new
+ * platform never has to be added twice.
  */
 final class PostGenerationCatalog
 {
@@ -41,6 +41,20 @@ final class PostGenerationCatalog
             'styles' => self::buildStyles(),
             'applies_brand_visuals_default' => true,
         ];
+    }
+
+    /**
+     * Every format value the catalog can offer, regardless of which
+     * platforms a workspace has connected. This is the single source of
+     * truth for validating a submitted format (`generate_post`, Task 4) once
+     * `StartPostCreationRequest` — the current holder of this same list — is
+     * retired.
+     *
+     * @return list<string>
+     */
+    public static function allowedFormats(): array
+    {
+        return array_column(self::formatCatalog(), 'value');
     }
 
     /**
@@ -76,29 +90,26 @@ final class PostGenerationCatalog
     }
 
     /**
-     * The exact eleven AI-generation formats `AiPostWizard.vue` offered,
+     * `ContentType::aiSupported()` — the same allow-list
+     * `StartPostCreationRequest` validates a submitted format against —
      * paired with the `ContentType` case used to resolve compatible
-     * platforms. `CAROUSEL_FORMAT` is not itself a `ContentType` case — a
-     * carousel post is persisted as `InstagramFeed` — so it resolves
-     * platforms through `InstagramFeed` too.
+     * platforms, plus the Instagram-carousel pseudo-format appended the same
+     * way that request appends it. `CAROUSEL_FORMAT` is not itself a
+     * `ContentType` case — a carousel post is persisted as `InstagramFeed` —
+     * so it resolves platforms through `InstagramFeed` too.
      *
      * @return list<array{value: string, type: ContentType}>
      */
     private static function formatCatalog(): array
     {
-        return [
-            ['value' => ContentType::InstagramFeed->value, 'type' => ContentType::InstagramFeed],
-            ['value' => ContentType::CAROUSEL_FORMAT, 'type' => ContentType::InstagramFeed],
-            ['value' => ContentType::InstagramStory->value, 'type' => ContentType::InstagramStory],
-            ['value' => ContentType::LinkedInPost->value, 'type' => ContentType::LinkedInPost],
-            ['value' => ContentType::LinkedInPagePost->value, 'type' => ContentType::LinkedInPagePost],
-            ['value' => ContentType::XPost->value, 'type' => ContentType::XPost],
-            ['value' => ContentType::BlueskyPost->value, 'type' => ContentType::BlueskyPost],
-            ['value' => ContentType::ThreadsPost->value, 'type' => ContentType::ThreadsPost],
-            ['value' => ContentType::MastodonPost->value, 'type' => ContentType::MastodonPost],
-            ['value' => ContentType::FacebookPost->value, 'type' => ContentType::FacebookPost],
-            ['value' => ContentType::PinterestPin->value, 'type' => ContentType::PinterestPin],
-        ];
+        $entries = array_map(fn (ContentType $type): array => [
+            'value' => $type->value,
+            'type' => $type,
+        ], ContentType::aiSupported());
+
+        $entries[] = ['value' => ContentType::CAROUSEL_FORMAT, 'type' => ContentType::InstagramFeed];
+
+        return $entries;
     }
 
     /**
