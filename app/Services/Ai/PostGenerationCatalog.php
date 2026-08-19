@@ -27,7 +27,7 @@ final class PostGenerationCatalog
     /**
      * @return array{
      *     formats: list<array{value: string, platform: string, accounts: list<array{id: string, label: string}>}>,
-     *     styles: list<array{key: string, name: string, description: string, preview: string, supported_formats: list<string>, applies_brand_visuals: bool}>,
+     *     styles: list<array{key: string, name: string, description: string, preview: string, needs_account: bool, supported_formats: list<string>, applies_brand_visuals: bool}>,
      *     applies_brand_visuals_default: bool,
      * }
      */
@@ -117,7 +117,7 @@ final class PostGenerationCatalog
      * registry, reused here rather than called there — that controller
      * method is being deleted once the chat replaces the dedicated screen.
      *
-     * @return list<array{key: string, name: string, description: string, preview: string, supported_formats: list<string>, applies_brand_visuals: bool}>
+     * @return list<array{key: string, name: string, description: string, preview: string, needs_account: bool, supported_formats: list<string>, applies_brand_visuals: bool}>
      */
     private static function buildStyles(): array
     {
@@ -126,6 +126,7 @@ final class PostGenerationCatalog
             'name' => trans($template->name()),
             'description' => trans($template->description()),
             'preview' => $template->previewAsset(),
+            'needs_account' => $template->needsAccount(),
             'supported_formats' => $template->supportedFormats(),
             'applies_brand_visuals' => $template->appliesBrandVisuals(),
         ], app(AiTemplateRegistry::class)->all());

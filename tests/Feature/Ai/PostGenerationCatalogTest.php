@@ -53,3 +53,23 @@ it('only ever offers formats drawn from its own allow-list', function (): void {
 
     expect(array_diff($values, PostGenerationCatalog::allowedFormats()))->toBe([]);
 });
+
+it('reflects each template\'s needs_account requirement, not a hardcoded value', function (): void {
+    $catalog = PostGenerationCatalog::forWorkspace(Workspace::factory()->create());
+    $styles = collect($catalog['styles'])->keyBy('key');
+
+    expect($styles['image_card']['needs_account'])->toBeFalse()
+        ->and($styles['tweet_card']['needs_account'])->toBeTrue();
+});
+
+it('offers Instagram formats to a workspace connected only through Instagram Business', function (): void {
+    $workspace = Workspace::factory()->create();
+    $account = SocialAccount::factory()->for($workspace)->create(['platform' => 'instagram-facebook']);
+
+    $catalog = PostGenerationCatalog::forWorkspace($workspace);
+    $format = collect($catalog['formats'])->firstWhere('value', 'instagram_feed');
+
+    expect($format)->not->toBeNull()
+        ->and($format['platform'])->toBe('instagram-facebook')
+        ->and(collect($format['accounts'])->pluck('id')->all())->toBe([$account->id]);
+});
