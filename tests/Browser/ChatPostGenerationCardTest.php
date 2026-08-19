@@ -69,9 +69,14 @@ function answerChatTopic(mixed $page, string $topic): void
  * the card renders the workspace's CURRENT catalog; the stored result below
  * is only the fallback for a replay that errors.
  *
+ * `$arguments` are merged into the stored tool call, which `ToolReplayer`
+ * replays the tool with — that is how the model's `language` and `format`
+ * reach the card.
+ *
+ * @param  array<string, string>  $arguments
  * @return array{0: WorkspaceConversation, 1: SocialAccount}
  */
-function chatWithPostGenerationCard(int $priorMessages = 0, string $topic = ''): array
+function chatWithPostGenerationCard(int $priorMessages = 0, string $topic = '', array $arguments = []): array
 {
     [$user, $workspace] = actingAsWorkspaceUser();
 
@@ -95,7 +100,7 @@ function chatWithPostGenerationCard(int $priorMessages = 0, string $topic = ''):
     WorkspaceConversationMessage::factory()->for($conversation, 'conversation')->create([
         'role' => Role::Assistant,
         'content' => 'Pick how you want it generated.',
-        'tool_calls' => [['id' => 'call_start', 'name' => 'start_post_generation', 'arguments' => $topic === '' ? [] : ['topic' => $topic]]],
+        'tool_calls' => [['id' => 'call_start', 'name' => 'start_post_generation', 'arguments' => array_merge($topic === '' ? [] : ['topic' => $topic], $arguments)]],
         'tool_results' => [['id' => 'call_start', 'result' => '{"data":{"formats":[],"styles":[],"applies_brand_visuals_default":true}}']],
     ]);
 
@@ -752,4 +757,104 @@ test('a turn stored without parts still renders its card and its text', function
     JS);
 
     expect($rendered)->toBeTrue();
+});
+
+test('the card is rendered in the language of the conversation, not the interface', function () {
+    // The interface stays English (the app locale in tests); the model
+    // reported that the user is writing in Portuguese. Every word of the card
+    // has to follow the conversation, or the thread holds two languages.
+    [$conversation] = chatWithPostGenerationCard(0, 'o lançamento do X', ['language' => 'pt-BR']);
+
+    expect(app()->getLocale())->toBe('en');
+
+    $page = visit(route('app.chat.show', $conversation));
+
+    waitForChatTestId($page, 'chat-post-generation-card');
+    stubChatTurn($page);
+
+    $page->assertSee(__('chat.post_generation.format_question', [], 'pt-BR'))
+        ->assertDontSee(__('chat.post_generation.format_question', [], 'en'))
+        ->assertSee(__('posts.create.steps.format.x_post', [], 'pt-BR'))
+        ->assertDontSee(__('posts.create.steps.format.x_post', [], 'en'));
+
+    $page->click('@chat-post-generation-format-x_post');
+    waitForChatTestId($page, 'chat-post-generation-style-image_card');
+
+    // The record, the Change link, the style catalog and the next question.
+    $page->assertSee(__('chat.post_generation.change', [], 'pt-BR'))
+        ->assertSee(__('chat.post_generation.style_question', [], 'pt-BR'))
+        ->assertDontSee(__('chat.post_generation.style_question', [], 'en'))
+        ->assertSee(__('posts.ai.templates.image_card.name', [], 'pt-BR'));
+
+    $page->click('@chat-post-generation-style-image_card');
+    waitForChatTestId($page, 'chat-post-generation-topic-step');
+
+    $page->assertSee(__('chat.post_generation.topic_question', [], 'pt-BR'))
+        ->assertDontSee(__('chat.post_generation.topic_question', [], 'en'));
+
+    $page->click('@chat-post-generation-topic-confirm');
+    waitForChatTestId($page, 'chat-post-generation-submit');
+
+    $page->assertSee(__('chat.post_generation.images_question', [], 'pt-BR'))
+        ->assertSee(__('chat.post_generation.brand_colors_label', [], 'pt-BR'))
+        ->assertDontSee(__('chat.post_generation.brand_colors_label', [], 'en'));
+
+    $page->click('@chat-post-generation-submit');
+
+    // The sentence is what the model reads before it calls generate_post, and
+    // it is the user's own message in the thread — so it, too, is Portuguese.
+    $page->assertSee(__('chat.post_generation.sentence_with_brand', [
+        'format' => __('posts.create.steps.format.x_post', [], 'pt-BR'),
+        'topic' => 'o lançamento do X',
+        'style' => __('posts.ai.templates.image_card.name', [], 'pt-BR'),
+        'images' => __('chat.post_generation.sentence_images_other', ['count' => 2], 'pt-BR'),
+        'account' => 'Acme X (@acmex)',
+        'brand' => __('chat.post_generation.sentence_brand_on', [], 'pt-BR'),
+    ], 'pt-BR'))->assertSee(__('chat.post_generation.sent', [], 'pt-BR'));
+});
+
+test('a format the user already named is recorded rather than asked again', function () {
+    // "quero gerar um carrousel de instagram" — the model read it, so the card
+    // must not offer the same four Instagram formats back.
+    [$conversation] = chatWithPostGenerationCard(0, '', ['format' => 'instagram_carousel']);
+
+    $page = visit(route('app.chat.show', $conversation));
+
+    waitForChatTestId($page, 'chat-post-generation-card');
+
+    waitForChatTestId($page, 'chat-post-generation-format-choice');
+
+    $page->assertMissing('@chat-post-generation-format-step')
+        ->assertVisible('@chat-post-generation-format-choice')
+        ->assertSee(__('posts.create.steps.format.instagram_carousel'))
+        ->assertMissing('@chat-post-generation-format-instagram_carousel')
+        ->assertMissing('@chat-post-generation-format-x_post')
+        ->assertDontSee(__('posts.create.steps.format.x_post'));
+
+    // A pick made from a closed list is reversible in one click — which is
+    // what makes recording it, rather than asking, safe.
+    $page->assertVisible('@chat-post-generation-format-choice-change');
+
+    $page->click('@chat-post-generation-format-choice-change');
+    waitForChatTestId($page, 'chat-post-generation-format-step');
+
+    // Reopened, it must stay open: the card applies the model's format once,
+    // not again on every re-render of the payload.
+    $page->assertMissing('@chat-post-generation-format-choice')
+        ->assertVisible('@chat-post-generation-format-instagram_feed');
+});
+
+test('a format the workspace cannot post is ignored and the card asks', function () {
+    // No LinkedIn account is connected, so the model's format names nothing
+    // this workspace can generate. Ignored, never an error.
+    [$conversation] = chatWithPostGenerationCard(0, '', ['format' => 'linkedin_post']);
+
+    $page = visit(route('app.chat.show', $conversation));
+
+    waitForChatTestId($page, 'chat-post-generation-card');
+    waitForChatTestId($page, 'chat-post-generation-format-step');
+
+    $page->assertVisible('@chat-post-generation-format-step')
+        ->assertMissing('@chat-post-generation-format-choice')
+        ->assertDontSee(__('posts.create.steps.format.linkedin_post'));
 });

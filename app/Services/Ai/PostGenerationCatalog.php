@@ -20,26 +20,62 @@ use Illuminate\Support\Collection;
  * format. Sourcing it from there instead of hand-listing formats means the
  * catalog can never drift from what the generation pipeline actually
  * accepts, and a new platform never has to be added twice.
+ *
+ * Every name the card displays — the format labels and the style names and
+ * descriptions — is resolved here, in the locale the caller asks for. The
+ * chat card is rendered in the language of the CONVERSATION rather than the
+ * language of the interface, which is a locale the client cannot resolve on
+ * its own; a null locale keeps the application's own.
  */
 final class PostGenerationCatalog
 {
     /**
+     * @param  string|null  $locale  the locale every displayed name is resolved in, or null for the application's own
      * @return array{
-     *     formats: list<array{value: string, platform: string, accounts: list<array{id: string, label: string, username: ?string, platform: string}>}>,
+     *     formats: list<array{value: string, platform: string, label: string, accounts: list<array{id: string, label: string, username: ?string, platform: string}>}>,
      *     styles: list<array{key: string, name: string, description: string, preview: string, needs_account: bool, supported_formats: list<string>, applies_brand_visuals: bool}>,
      *     applies_brand_visuals_default: bool,
      * }
      */
-    public static function forWorkspace(Workspace $workspace): array
+    public static function forWorkspace(Workspace $workspace, ?string $locale = null): array
     {
         $accountsByPlatform = $workspace->socialAccounts()->active()->get()
             ->groupBy(fn (SocialAccount $account): string => $account->platform->value);
 
         return [
-            'formats' => self::buildFormats($accountsByPlatform),
-            'styles' => self::buildStyles(),
+            'formats' => self::buildFormats($accountsByPlatform, $locale),
+            'styles' => self::buildStyles($locale),
             'applies_brand_visuals_default' => true,
         ];
+    }
+
+    /**
+     * Every format value the catalog can ever offer, regardless of what a
+     * given workspace has connected. The model's `format` argument is
+     * constrained to this list; whether the workspace can actually post it is
+     * a separate question, answered against its own catalog.
+     *
+     * @return list<string>
+     */
+    public static function formatValues(): array
+    {
+        return array_values(array_unique(array_map(
+            fn (array $entry): string => data_get($entry, 'value'),
+            self::formatCatalog(),
+        )));
+    }
+
+    /**
+     * The format's display name, already translated for the wizard this card
+     * replaces. A format the catalog gains before the copy does falls back to
+     * its raw value rather than showing an i18n key.
+     */
+    private static function formatLabel(string $value, ?string $locale): string
+    {
+        $key = "posts.create.steps.format.{$value}";
+        $label = trans($key, [], $locale);
+
+        return $label === $key ? $value : $label;
     }
 
     /**
@@ -50,9 +86,9 @@ final class PostGenerationCatalog
      * apart in the card and in the sentence the card submits.
      *
      * @param  Collection<string, Collection<int, SocialAccount>>  $accountsByPlatform
-     * @return list<array{value: string, platform: string, accounts: list<array{id: string, label: string, username: ?string, platform: string}>}>
+     * @return list<array{value: string, platform: string, label: string, accounts: list<array{id: string, label: string, username: ?string, platform: string}>}>
      */
-    private static function buildFormats(Collection $accountsByPlatform): array
+    private static function buildFormats(Collection $accountsByPlatform, ?string $locale): array
     {
         $formats = [];
 
@@ -69,6 +105,7 @@ final class PostGenerationCatalog
                 $formats[] = [
                     'value' => data_get($entry, 'value'),
                     'platform' => $platform->value,
+                    'label' => self::formatLabel(data_get($entry, 'value'), $locale),
                     'accounts' => $accounts->map(fn (SocialAccount $account): array => [
                         'id' => $account->id,
                         'label' => $account->display_label,
@@ -109,12 +146,12 @@ final class PostGenerationCatalog
      *
      * @return list<array{key: string, name: string, description: string, preview: string, needs_account: bool, supported_formats: list<string>, applies_brand_visuals: bool}>
      */
-    private static function buildStyles(): array
+    private static function buildStyles(?string $locale): array
     {
         return array_map(fn (AiContentTemplate $template): array => [
             'key' => $template->key(),
-            'name' => trans($template->name()),
-            'description' => trans($template->description()),
+            'name' => trans($template->name(), [], $locale),
+            'description' => trans($template->description(), [], $locale),
             'preview' => $template->previewAsset(),
             'needs_account' => $template->needsAccount(),
             'supported_formats' => $template->supportedFormats(),

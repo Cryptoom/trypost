@@ -12,6 +12,7 @@ import { getPlatformLabel, getPlatformLogo } from '@/composables/usePlatformLogo
 import type {
     ChatPostGenerationAccount,
     ChatPostGenerationCatalog,
+    ChatPostGenerationCopy,
     ChatPostGenerationStyle,
 } from '@/types/chat';
 
@@ -42,6 +43,8 @@ const emit = defineEmits<{
  */
 interface FormatOption {
     value: string;
+    /** Already translated by the server, in the conversation's language. */
+    label: string;
     platforms: string[];
     accounts: ChatPostGenerationAccount[];
 }
@@ -91,6 +94,27 @@ const TOPIC_MIN_LENGTH = 3;
 const TOPIC_MAX_LENGTH = 2000;
 
 const brandColorsId = useId();
+
+/**
+ * One line of the card, in the language of the conversation.
+ *
+ * The assistant replies in whatever language the user writes in, while the
+ * interface follows the user's app setting — so every string the card shows
+ * arrives already resolved in `data.copy`, and nothing here goes through the
+ * app's own locale bindings. The `trans()` fallback covers a payload stored
+ * before the card worked this way; it renders in the app locale, which is the
+ * old behaviour rather than a blank card.
+ */
+const line = (key: keyof ChatPostGenerationCopy): string =>
+    props.data?.copy?.[key] ?? trans(`chat.post_generation.${key}`);
+
+/**
+ * Fill a line's `:placeholders` from values only the client has. One pass, so
+ * a replacement whose own text contains a colon-word (a topic like "re: the
+ * launch") is never substituted into a second time.
+ */
+const fill = (template: string, replacements: Record<string, string>): string =>
+    template.replace(/:(\w+)/g, (match, name: string) => replacements[name] ?? match);
 
 const selectedFormat = ref<string | null>(null);
 const selectedStyleKey = ref<string | null>(null);
@@ -172,6 +196,7 @@ const formatOptions = computed<FormatOption[]>(() => {
     for (const entry of props.data?.formats ?? []) {
         const option: FormatOption = options.get(entry.value) ?? {
             value: entry.value,
+            label: entry.label ?? entry.value,
             platforms: [],
             accounts: [],
         };
@@ -210,18 +235,6 @@ const formatLogos = (option: FormatOption): Array<{ platform: string; logo: stri
 
         return logos;
     }, []);
-};
-
-/**
- * Format names are already translated for the wizard this card replaces. A
- * format the catalog gains before the copy does falls back to its raw value
- * rather than printing an i18n key.
- */
-const formatLabel = (value: string): string => {
-    const key = `posts.create.steps.format.${value}`;
-    const label = trans(key);
-
-    return label === key ? value : label;
 };
 
 const selectedFormatOption = computed<FormatOption | null>(
@@ -477,20 +490,43 @@ const selectFormat = (option: FormatOption): void => {
 };
 
 /**
- * A workspace connected to one network has no format to choose between, so the
- * card picks it rather than charging the user a click that decides nothing and
- * hides every later step behind it. It still opens the thread, as a record: the
- * format determines everything below it, and a card opening straight onto
- * styles would never say where the post is going.
+ * Whether the card has already applied a format nobody clicked. Reopening the
+ * format un-selects it, and `formatOptions` is rebuilt whenever the payload is
+ * re-parsed — without this, that rebuild would re-apply the same format and
+ * close the question the user had just opened.
+ */
+const formatApplied = ref(false);
+
+/**
+ * The two formats the user never has to click.
+ *
+ * A format they already named — "quero gerar um carrousel de instagram" —
+ * arrives on the payload, read from the conversation by the model, and asking
+ * again would ignore what they just said. And a workspace connected to one
+ * network has no format to choose between at all.
+ *
+ * Both are recorded rather than pre-selected in the question: the format comes
+ * from a closed list, so a wrong one is legible in the record and undone with
+ * its Change link — which is exactly why the topic, free text that a skimming
+ * user would confirm unread, is still asked instead.
  */
 watch(
     formatOptions,
     (options): void => {
-        if (settled.value || selectedFormat.value !== null || options.length !== 1) {
+        if (settled.value || formatApplied.value || selectedFormat.value !== null) {
             return;
         }
 
-        selectFormat(options[0]);
+        const named = options.find((option) => option.value === props.data?.format);
+        const only = options.length === 1 ? options[0] : undefined;
+        const applied = named ?? only;
+
+        if (applied === undefined) {
+            return;
+        }
+
+        formatApplied.value = true;
+        selectFormat(applied);
     },
     { immediate: true },
 );
@@ -569,18 +605,18 @@ const imagesPhrase = computed<string>(() => {
     const count = submittedImageCount.value;
 
     if (count === 0) {
-        return trans('chat.post_generation.sentence_images_none');
+        return line('sentence_images_none');
     }
 
     if (count === 1) {
-        return trans('chat.post_generation.sentence_images_one');
+        return line('sentence_images_one');
     }
 
-    return trans('chat.post_generation.sentence_images_other', { count: String(count) });
+    return fill(line('sentence_images_other'), { count: String(count) });
 });
 
 const brandPhrase = computed<string>(() =>
-    trans(useBrandColors.value ? 'chat.post_generation.sentence_brand_on' : 'chat.post_generation.sentence_brand_off'),
+    line(useBrandColors.value ? 'sentence_brand_on' : 'sentence_brand_off'),
 );
 
 /**
@@ -591,7 +627,7 @@ const brandPhrase = computed<string>(() =>
  */
 const sentence = computed<string>(() => {
     const replacements: Record<string, string> = {
-        format: formatLabel(selectedFormat.value ?? ''),
+        format: selectedFormatOption.value?.label ?? '',
         topic: topicValue.value,
         style: resolvedStyle.value?.name ?? '',
         images: imagesPhrase.value,
@@ -599,10 +635,10 @@ const sentence = computed<string>(() => {
     };
 
     if (! brandStepVisible.value) {
-        return trans('chat.post_generation.sentence', replacements);
+        return fill(line('sentence'), replacements);
     }
 
-    return trans('chat.post_generation.sentence_with_brand', { ...replacements, brand: brandPhrase.value });
+    return fill(line('sentence_with_brand'), { ...replacements, brand: brandPhrase.value });
 });
 
 /**
@@ -612,11 +648,11 @@ const sentence = computed<string>(() => {
  * the user message that carries the sentence, right below.
  */
 const summaryParts = computed<string[]>(() => {
-    if (selectedFormat.value === null) {
+    if (selectedFormatOption.value === null) {
         return [];
     }
 
-    const parts = [formatLabel(selectedFormat.value)];
+    const parts = [selectedFormatOption.value.label];
 
     if (resolvedStyle.value !== null) {
         parts.push(resolvedStyle.value.name);
@@ -663,7 +699,7 @@ const submit = (): void => {
     >
         <ChatAssistantMessage
             v-if="isEmptyCatalog"
-            :title="$t('chat.post_generation.unavailable')"
+            :title="line('unavailable')"
             data-testid="chat-post-generation-empty"
             dusk="chat-post-generation-empty"
         />
@@ -676,7 +712,7 @@ const submit = (): void => {
         >
             <IconCheck class="size-4 shrink-0" stroke-width="3" />
 
-            <span class="font-semibold">{{ $t('chat.post_generation.sent') }}</span>
+            <span class="font-semibold">{{ line('sent') }}</span>
 
             <span
                 v-for="(part, index) in summaryParts"
@@ -690,7 +726,7 @@ const submit = (): void => {
         <template v-else>
             <ChatAssistantMessage
                 v-if="formatQuestionVisible"
-                :title="$t('chat.post_generation.format_question')"
+                :title="line('format_question')"
                 data-testid="chat-post-generation-format-step"
                 dusk="chat-post-generation-format-step"
             >
@@ -720,7 +756,7 @@ const submit = (): void => {
                         </span>
 
                         <span class="min-w-0 flex-1 truncate font-semibold text-foreground">
-                            {{ formatLabel(option.value) }}
+                            {{ option.label }}
                         </span>
 
                         <IconCheck
@@ -734,23 +770,24 @@ const submit = (): void => {
 
             <ChatPostGenerationChoice
                 v-else-if="formatChoiceVisible && selectedFormatOption"
-                :text="formatLabel(selectedFormatOption.value)"
+                :text="selectedFormatOption.label"
                 :logos="formatChoiceLogos"
                 :changeable="formatOptions.length > 1"
+                :change-label="line('change')"
                 test-id="chat-post-generation-format-choice"
                 @change="reopen('format')"
             />
 
             <ChatAssistantMessage
                 v-if="hasNoUsableStyle"
-                :title="$t('chat.post_generation.styles_unavailable')"
+                :title="line('styles_unavailable')"
                 data-testid="chat-post-generation-styles-unavailable"
                 dusk="chat-post-generation-styles-unavailable"
             />
 
             <ChatAssistantMessage
                 v-if="styleQuestionVisible"
-                :title="$t('chat.post_generation.style_question')"
+                :title="line('style_question')"
                 data-testid="chat-post-generation-style-step"
                 dusk="chat-post-generation-style-step"
             >
@@ -791,13 +828,14 @@ const submit = (): void => {
                 v-else-if="styleChoiceVisible && resolvedStyle"
                 :text="resolvedStyle.name"
                 changeable
+                :change-label="line('change')"
                 test-id="chat-post-generation-style-choice"
                 @change="reopen('style')"
             />
 
             <ChatAssistantMessage
                 v-if="topicQuestionVisible"
-                :title="$t('chat.post_generation.topic_question')"
+                :title="line('topic_question')"
                 data-testid="chat-post-generation-topic-step"
                 dusk="chat-post-generation-topic-step"
             >
@@ -805,7 +843,7 @@ const submit = (): void => {
                     <textarea
                         v-model="topic"
                         rows="3"
-                        :placeholder="$t('chat.post_generation.topic_placeholder')"
+                        :placeholder="line('topic_placeholder')"
                         class="w-full resize-none rounded-lg border border-foreground/15 bg-background px-3 py-2 text-sm leading-relaxed text-foreground outline-none placeholder:text-muted-foreground focus:border-foreground"
                         data-testid="chat-post-generation-topic-input"
                         dusk="chat-post-generation-topic-input"
@@ -817,7 +855,7 @@ const submit = (): void => {
                         class="text-xs text-destructive"
                         data-testid="chat-post-generation-topic-too-long"
                     >
-                        {{ $t('chat.post_generation.topic_too_long', { max: String(TOPIC_MAX_LENGTH) }) }}
+                        {{ fill(line('topic_too_long'), { max: String(TOPIC_MAX_LENGTH) }) }}
                     </p>
 
                     <div class="flex justify-end">
@@ -829,7 +867,7 @@ const submit = (): void => {
                             dusk="chat-post-generation-topic-confirm"
                             @click="confirmTopic"
                         >
-                            {{ $t('chat.post_generation.topic_confirm') }}
+                            {{ line('topic_confirm') }}
                         </Button>
                     </div>
                 </div>
@@ -839,13 +877,14 @@ const submit = (): void => {
                 v-else-if="topicChoiceVisible"
                 :text="topicValue"
                 changeable
+                :change-label="line('change')"
                 test-id="chat-post-generation-topic-choice"
                 @change="reopen('topic')"
             />
 
             <ChatAssistantMessage
                 v-if="accountQuestionVisible"
-                :title="$t('chat.post_generation.account_question')"
+                :title="line('account_question')"
                 data-testid="chat-post-generation-account-step"
                 dusk="chat-post-generation-account-step"
             >
@@ -887,6 +926,7 @@ const submit = (): void => {
                 :text="accountPhrase"
                 :logos="accountChoiceLogos"
                 :changeable="accountsForFormat.length > 1"
+                :change-label="line('change')"
                 test-id="chat-post-generation-account-choice"
                 @change="reopen('account')"
             />
@@ -916,7 +956,7 @@ const submit = (): void => {
                     </span>
 
                     <span class="min-w-0 flex-1 truncate">
-                        {{ $t('chat.post_generation.posting_to', { account: accountPhrase }) }}
+                        {{ fill(line('posting_to'), { account: accountPhrase }) }}
                     </span>
                 </div>
 
@@ -927,7 +967,7 @@ const submit = (): void => {
                     dusk="chat-post-generation-images-step"
                 >
                     <p class="text-sm font-bold tracking-tight text-foreground">
-                        {{ $t('chat.post_generation.images_question') }}
+                        {{ line('images_question') }}
                     </p>
 
                     <div class="flex flex-wrap gap-1.5">
@@ -941,7 +981,7 @@ const submit = (): void => {
                             :dusk="`chat-post-generation-images-${count}`"
                             @click="selectImageCount(count)"
                         >
-                            {{ count === 0 ? $t('chat.post_generation.images_none') : count }}
+                            {{ count === 0 ? line('images_none') : count }}
                         </Button>
                     </div>
                 </div>
@@ -954,10 +994,10 @@ const submit = (): void => {
                 >
                     <div class="min-w-0 space-y-0.5">
                         <Label :for="brandColorsId" class="text-sm font-semibold">
-                            {{ $t('chat.post_generation.brand_colors_label') }}
+                            {{ line('brand_colors_label') }}
                         </Label>
                         <p class="text-xs text-muted-foreground">
-                            {{ $t('chat.post_generation.brand_colors_description') }}
+                            {{ line('brand_colors_description') }}
                         </p>
                     </div>
 
@@ -979,7 +1019,7 @@ const submit = (): void => {
                         @click="submit"
                     >
                         <IconSparkles class="size-4" />
-                        {{ $t('chat.post_generation.submit') }}
+                        {{ line('submit') }}
                     </Button>
                 </div>
             </div>

@@ -14,6 +14,12 @@ withDefaults(
         logos?: Array<{ platform: string; logo: string }>;
         /** False for a step that had no alternative to pick (a lone format). */
         changeable?: boolean;
+        /**
+         * "Change", already translated by the server in the conversation's
+         * language — the thread is held in the language the user writes in,
+         * which the app locale does not know.
+         */
+        changeLabel: string;
         testId: string;
     }>(),
     {
@@ -65,7 +71,7 @@ const onChange = (): void => emit('change');
             :dusk="`${testId}-change`"
             @click="onChange"
         >
-            {{ $t('chat.post_generation.change') }}
+            {{ changeLabel }}
         </button>
     </div>
 </template>

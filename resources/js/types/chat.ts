@@ -158,7 +158,47 @@ export interface ChatPostGenerationAccount {
 export interface ChatPostGenerationFormat {
     value: string;
     platform: string;
+    /**
+     * The format's display name, resolved server-side in the conversation's
+     * language. The card renders it as-is: `posts.create.steps.format.*` is
+     * bound to the app locale on the client, which is not the language the
+     * thread is being held in.
+     */
+    label: string;
     accounts: ChatPostGenerationAccount[];
+}
+
+/**
+ * Every line `ChatPostGenerationCard` renders, resolved server-side in the
+ * conversation's language. Mirrors
+ * `App\Services\Ai\PostGenerationCardCopy::forLocale()`; lines that carry
+ * `:placeholders` arrive as templates the card fills in.
+ */
+export interface ChatPostGenerationCopy {
+    unavailable: string;
+    styles_unavailable: string;
+    format_question: string;
+    style_question: string;
+    topic_question: string;
+    topic_placeholder: string;
+    topic_confirm: string;
+    topic_too_long: string;
+    images_question: string;
+    images_none: string;
+    account_question: string;
+    posting_to: string;
+    brand_colors_label: string;
+    brand_colors_description: string;
+    change: string;
+    submit: string;
+    sent: string;
+    sentence: string;
+    sentence_with_brand: string;
+    sentence_images_none: string;
+    sentence_images_one: string;
+    sentence_images_other: string;
+    sentence_brand_on: string;
+    sentence_brand_off: string;
 }
 
 /** One AI content template. `name` and `description` arrive translated. */
@@ -200,11 +240,34 @@ export interface ChatPostGeneration {
     settled?: boolean;
 }
 
-/** Mirrors `App\Services\Ai\PostGenerationCatalog::forWorkspace()`. */
+/** Mirrors `App\Ai\Tools\Post\StartPostGenerationTool`'s payload. */
 export interface ChatPostGenerationCatalog {
     formats: ChatPostGenerationFormat[];
     styles: ChatPostGenerationStyle[];
     applies_brand_visuals_default: boolean;
+    /**
+     * The locale every string in this payload was resolved in — the language
+     * the user is writing in, which the model reported, or the app locale
+     * when it reported none. Carried for the record; the card reads the
+     * resolved strings, never the code.
+     */
+    locale?: string;
+    /**
+     * Every line the card displays. Optional only so a payload stored before
+     * the card stopped translating client-side still renders: the card then
+     * falls back to the app locale, which is the old behaviour rather than a
+     * blank card.
+     */
+    copy?: ChatPostGenerationCopy;
+    /**
+     * The format the model read from the user's own message, already checked
+     * against this workspace's catalog. Null when the user named none, named
+     * one that does not exist, or named one this workspace cannot post — the
+     * card then asks. Unlike `topic` this is recorded as an answered choice
+     * rather than a pre-filled question: it comes from a closed list, so a
+     * wrong pick is legible in the record and undone with the Change link.
+     */
+    format?: string | null;
     /**
      * What the model understood the post should be about, echoed back from
      * `start_post_generation`'s own `topic` argument. Empty when the user

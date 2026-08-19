@@ -101,3 +101,26 @@ it('tells two Instagram connections apart when they share a display name', funct
         ->and($accounts[$direct->id]['platform'])->toBe('instagram')
         ->and($accounts[$business->id]['platform'])->toBe('instagram-facebook');
 });
+
+it('labels every format and style in the locale it was asked for', function (): void {
+    $workspace = Workspace::factory()->create();
+    SocialAccount::factory()->for($workspace)->create(['platform' => 'threads']);
+
+    $catalog = PostGenerationCatalog::forWorkspace($workspace, 'pt-BR');
+
+    expect($catalog['formats'][0]['label'])->toBe(__('posts.create.steps.format.threads_post', [], 'pt-BR'))
+        ->and($catalog['formats'][0]['label'])->not->toBe(__('posts.create.steps.format.threads_post', [], 'en'))
+        ->and(collect($catalog['styles'])->firstWhere('key', 'tweet_card')['description'])
+        ->toBe(__('posts.ai.templates.tweet_card.description', [], 'pt-BR'));
+});
+
+it('labels every format and style in the app locale when no locale is asked for', function (): void {
+    $workspace = Workspace::factory()->create();
+    SocialAccount::factory()->for($workspace)->create(['platform' => 'threads']);
+
+    $catalog = PostGenerationCatalog::forWorkspace($workspace);
+
+    expect($catalog['formats'][0]['label'])->toBe(__('posts.create.steps.format.threads_post', [], 'en'))
+        ->and(collect($catalog['styles'])->firstWhere('key', 'tweet_card')['name'])
+        ->toBe(__('posts.ai.templates.tweet_card.name', [], 'en'));
+});
