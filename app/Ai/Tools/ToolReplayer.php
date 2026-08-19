@@ -37,6 +37,10 @@ use Throwable;
  * account was disconnected would otherwise offer that account as a choice,
  * and generate_post would then (correctly, but pointlessly) refuse it.
  *
+ * Its replayed payload is also stamped `spent` once the conversation went on
+ * to call generate_post, so the card renders settled instead of re-arming a
+ * single-use form — see {@see markSpent()}.
+ *
  * A read tool that no longer finds its record (e.g. the post was deleted
  * since the conversation happened) does not throw: WorkspaceTool::handle()
  * already catches everything run() can throw, and "not found" is itself a
@@ -80,6 +84,8 @@ class ToolReplayer
      */
     private const GENERATE_POST = 'generate_post';
 
+    private const START_POST_GENERATION = 'start_post_generation';
+
     /**
      * Longest a generation is given before it is treated as over. Mirrors the
      * client's own bound (POST_CREATION_TIMEOUT_MS in
@@ -95,6 +101,8 @@ class ToolReplayer
     public function replay(WorkspaceConversation $conversation): array
     {
         $payloads = [];
+        $position = 0;
+        $lastGeneratePosition = $this->lastGeneratePostPosition($conversation);
 
         foreach ($conversation->messages as $message) {
             $storedResults = collect($message->tool_results ?? [])->keyBy('id');
@@ -103,6 +111,7 @@ class ToolReplayer
                 $id = data_get($call, 'id');
                 $stored = (string) data_get($storedResults->get($id), 'result', '');
                 $name = data_get($call, 'name');
+                $callPosition = $position++;
 
                 if ($name === self::GENERATE_POST) {
                     $payloads[$id] = $this->withGeneratedPost($conversation, $message, $stored);
@@ -121,7 +130,11 @@ class ToolReplayer
                 try {
                     $tool = new $class($conversation->workspace, $conversation->user);
                     $fresh = $tool->handle(new Request((array) data_get($call, 'arguments', [])));
-                    $payloads[$id] = $this->isErrorPayload($fresh) ? $stored : $fresh;
+                    $payload = $this->isErrorPayload($fresh) ? $stored : $fresh;
+
+                    $payloads[$id] = $name === self::START_POST_GENERATION
+                        ? $this->markSpent($payload, $callPosition < $lastGeneratePosition)
+                        : $payload;
                 } catch (Throwable) {
                     // Belt-and-braces, not the primary guard: WorkspaceTool::handle()
                     // never lets run() throw, so this only catches a failure to even
@@ -133,6 +146,63 @@ class ToolReplayer
         }
 
         return $payloads;
+    }
+
+    /**
+     * Position of the LAST generate_post call in the conversation, counted over
+     * the same flattened call sequence {@see replay()} walks, or -1 when the
+     * conversation has none.
+     */
+    private function lastGeneratePostPosition(WorkspaceConversation $conversation): int
+    {
+        $position = 0;
+        $last = -1;
+
+        foreach ($conversation->messages as $message) {
+            foreach ($message->tool_calls ?? [] as $call) {
+                if (data_get($call, 'name') === self::GENERATE_POST) {
+                    $last = $position;
+                }
+
+                $position++;
+            }
+        }
+
+        return $last;
+    }
+
+    /**
+     * Mark a start_post_generation payload as already acted on.
+     *
+     * The card that renders this payload is a form: it collects the user's
+     * choices and submits them as a message, which is what makes the model
+     * call generate_post. That form is single-use, but `submitted` lives in
+     * the component, so a reopened conversation would hand the user a blank,
+     * fully interactive card sitting above the post it already produced — and
+     * a second submit would arrive with a fresh tool call id, so nothing
+     * downstream would deduplicate it and the account would be billed for a
+     * duplicate generation.
+     *
+     * The conversation itself is the record of what happened, and this class
+     * is where the whole history is already in hand: a generation card whose
+     * conversation went on to call generate_post has been spent, and the card
+     * renders settled rather than interactive.
+     */
+    private function markSpent(string $payload, bool $spent): string
+    {
+        if (! $spent) {
+            return $payload;
+        }
+
+        $decoded = json_decode($payload, true);
+
+        if (! is_array($decoded)) {
+            return $payload;
+        }
+
+        data_set($decoded, 'data.spent', true);
+
+        return $this->encode($decoded);
     }
 
     /**

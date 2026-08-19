@@ -484,3 +484,82 @@ test('a generation one second past the window boundary is settled', function () 
 
     expect(data_get(json_decode($payloads['call_past_boundary'], true), 'data.settled'))->toBeTrue();
 });
+
+test('a generation card the conversation already acted on replays as spent', function () {
+    $workspace = Workspace::factory()->create();
+    $user = User::factory()->create();
+    $conversation = WorkspaceConversation::factory()->for($workspace)->for($user)->create();
+
+    SocialAccount::factory()->for($workspace)->x()->create(['display_name' => 'Acme X']);
+
+    WorkspaceConversationMessage::factory()->for($conversation, 'conversation')->create([
+        'role' => Role::Assistant,
+        'content' => 'Pick a format.',
+        'tool_calls' => [['id' => 'call_start', 'name' => 'start_post_generation', 'arguments' => []]],
+        'tool_results' => [['id' => 'call_start', 'result' => '{"data":{"formats":[],"styles":[],"applies_brand_visuals_default":true}}']],
+    ]);
+
+    WorkspaceConversationMessage::factory()->for($conversation, 'conversation')->create([
+        'role' => Role::Assistant,
+        'content' => 'Generating it.',
+        'tool_calls' => [['id' => 'call_generate', 'name' => 'generate_post', 'arguments' => []]],
+        'tool_results' => [['id' => 'call_generate', 'result' => '{"data":{"creation_id":"call_generate","channel":"c"}}']],
+    ]);
+
+    $payloads = app(ToolReplayer::class)->replay($conversation);
+
+    expect(data_get(json_decode($payloads['call_start'], true), 'data.spent'))->toBeTrue();
+});
+
+test('a generation card still awaiting its choices replays interactive', function () {
+    $workspace = Workspace::factory()->create();
+    $user = User::factory()->create();
+    $conversation = WorkspaceConversation::factory()->for($workspace)->for($user)->create();
+
+    SocialAccount::factory()->for($workspace)->x()->create(['display_name' => 'Acme X']);
+
+    WorkspaceConversationMessage::factory()->for($conversation, 'conversation')->create([
+        'role' => Role::Assistant,
+        'content' => 'Pick a format.',
+        'tool_calls' => [['id' => 'call_start', 'name' => 'start_post_generation', 'arguments' => []]],
+        'tool_results' => [['id' => 'call_start', 'result' => '{"data":{"formats":[],"styles":[],"applies_brand_visuals_default":true}}']],
+    ]);
+
+    $payloads = app(ToolReplayer::class)->replay($conversation);
+
+    expect(data_get(json_decode($payloads['call_start'], true), 'data.spent'))->toBeNull();
+});
+
+test('a second generation card offered after the last generation stays interactive', function () {
+    $workspace = Workspace::factory()->create();
+    $user = User::factory()->create();
+    $conversation = WorkspaceConversation::factory()->for($workspace)->for($user)->create();
+
+    SocialAccount::factory()->for($workspace)->x()->create(['display_name' => 'Acme X']);
+
+    WorkspaceConversationMessage::factory()->for($conversation, 'conversation')->create([
+        'role' => Role::Assistant,
+        'content' => 'Pick a format.',
+        'tool_calls' => [['id' => 'call_start_one', 'name' => 'start_post_generation', 'arguments' => []]],
+        'tool_results' => [['id' => 'call_start_one', 'result' => '{"data":{"formats":[],"styles":[],"applies_brand_visuals_default":true}}']],
+    ]);
+
+    WorkspaceConversationMessage::factory()->for($conversation, 'conversation')->create([
+        'role' => Role::Assistant,
+        'content' => 'Generating it.',
+        'tool_calls' => [['id' => 'call_generate', 'name' => 'generate_post', 'arguments' => []]],
+        'tool_results' => [['id' => 'call_generate', 'result' => '{"data":{"creation_id":"call_generate","channel":"c"}}']],
+    ]);
+
+    WorkspaceConversationMessage::factory()->for($conversation, 'conversation')->create([
+        'role' => Role::Assistant,
+        'content' => 'Want another one?',
+        'tool_calls' => [['id' => 'call_start_two', 'name' => 'start_post_generation', 'arguments' => []]],
+        'tool_results' => [['id' => 'call_start_two', 'result' => '{"data":{"formats":[],"styles":[],"applies_brand_visuals_default":true}}']],
+    ]);
+
+    $payloads = app(ToolReplayer::class)->replay($conversation);
+
+    expect(data_get(json_decode($payloads['call_start_one'], true), 'data.spent'))->toBeTrue()
+        ->and(data_get(json_decode($payloads['call_start_two'], true), 'data.spent'))->toBeNull();
+});

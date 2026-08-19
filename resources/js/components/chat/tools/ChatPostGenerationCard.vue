@@ -86,6 +86,15 @@ const selectedAccountId = ref<string | null>(null);
 const submitted = ref(false);
 
 /**
+ * The choices were already sent — either in this session, or in an earlier one
+ * the server marked `spent` because the conversation went on to call
+ * `generate_post`. `submitted` alone is component-local, so a reopened
+ * conversation would offer a blank, fully interactive card above the post it
+ * already produced, and a second submit would bill another generation.
+ */
+const settled = computed(() => submitted.value || props.data?.spent === true);
+
+/**
  * Null until the user touches the switch, so the catalog's own default stays
  * live: `data` is re-parsed on every parent render and replaced outright when
  * `ToolReplayer` re-runs the tool on reopen, and a value snapshotted at setup
@@ -286,7 +295,7 @@ const defaultImageCountFor = (format: string): number => {
 };
 
 const selectFormat = (option: FormatOption): void => {
-    if (submitted.value) {
+    if (settled.value) {
         return;
     }
 
@@ -297,7 +306,7 @@ const selectFormat = (option: FormatOption): void => {
 };
 
 const selectStyle = (key: string): void => {
-    if (submitted.value) {
+    if (settled.value) {
         return;
     }
 
@@ -305,7 +314,7 @@ const selectStyle = (key: string): void => {
 };
 
 const selectImageCount = (count: number): void => {
-    if (submitted.value) {
+    if (settled.value) {
         return;
     }
 
@@ -313,7 +322,7 @@ const selectImageCount = (count: number): void => {
 };
 
 const selectAccount = (id: string): void => {
-    if (submitted.value) {
+    if (settled.value) {
         return;
     }
 
@@ -382,7 +391,7 @@ const sentence = computed<string>(() => {
     return trans('chat.post_generation.sentence_with_brand', { ...replacements, brand: brandPhrase.value });
 });
 
-const canSubmit = computed(() => choicesComplete.value && ! submitted.value && ! props.disabled);
+const canSubmit = computed(() => choicesComplete.value && ! settled.value && ! props.disabled);
 
 const submit = (): void => {
     if (! canSubmit.value) {
@@ -423,7 +432,7 @@ const submit = (): void => {
                         type="button"
                         class="flex cursor-pointer items-center gap-2 rounded-lg border border-foreground/15 bg-card p-2 text-left text-sm transition-colors hover:bg-foreground/5 disabled:cursor-default disabled:opacity-60 disabled:hover:bg-card"
                         :class="{ 'border-foreground bg-accent hover:bg-accent': selectedFormat === option.value }"
-                        :disabled="submitted"
+                        :disabled="settled"
                         :data-testid="`chat-post-generation-format-${option.value}`"
                         :dusk="`chat-post-generation-format-${option.value}`"
                         @click="selectFormat(option)"
@@ -479,7 +488,7 @@ const submit = (): void => {
                         type="button"
                         class="flex cursor-pointer items-center gap-2 overflow-hidden rounded-lg border border-foreground/15 bg-card p-1.5 text-left transition-colors hover:bg-foreground/5 disabled:cursor-default disabled:opacity-60 disabled:hover:bg-card"
                         :class="{ 'border-foreground bg-accent hover:bg-accent': selectedStyleKey === style.key }"
-                        :disabled="submitted"
+                        :disabled="settled"
                         :data-testid="`chat-post-generation-style-${style.key}`"
                         :dusk="`chat-post-generation-style-${style.key}`"
                         @click="selectStyle(style.key)"
@@ -522,7 +531,7 @@ const submit = (): void => {
                         type="button"
                         size="sm"
                         :variant="imageCount === count ? 'default' : 'outline'"
-                        :disabled="submitted"
+                        :disabled="settled"
                         :data-testid="`chat-post-generation-images-${count}`"
                         :dusk="`chat-post-generation-images-${count}`"
                         @click="selectImageCount(count)"
@@ -548,7 +557,7 @@ const submit = (): void => {
                         type="button"
                         class="flex cursor-pointer items-center gap-2 rounded-lg border border-foreground/15 bg-card p-2 text-left text-sm transition-colors hover:bg-foreground/5 disabled:cursor-default disabled:opacity-60 disabled:hover:bg-card"
                         :class="{ 'border-foreground bg-accent hover:bg-accent': selectedAccountId === account.id }"
-                        :disabled="submitted"
+                        :disabled="settled"
                         :data-testid="`chat-post-generation-account-${account.id}`"
                         :dusk="`chat-post-generation-account-${account.id}`"
                         @click="selectAccount(account.id)"
@@ -592,15 +601,15 @@ const submit = (): void => {
                 <Switch
                     :id="brandColorsId"
                     v-model="useBrandColors"
-                    :disabled="submitted"
+                    :disabled="settled"
                     data-testid="chat-post-generation-brand-toggle"
                     dusk="chat-post-generation-brand-toggle"
                 />
             </div>
 
-            <div v-if="choicesComplete" class="flex items-center justify-end gap-2">
+            <div v-if="settled || choicesComplete" class="flex items-center justify-end gap-2">
                 <p
-                    v-if="submitted"
+                    v-if="settled"
                     class="text-xs text-muted-foreground"
                     data-testid="chat-post-generation-sent"
                 >

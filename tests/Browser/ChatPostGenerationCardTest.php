@@ -225,3 +225,29 @@ test('the card refuses to submit while a turn is still streaming', function () {
             'brand' => __('chat.post_generation.sentence_brand_on'),
         ]));
 });
+
+test('a card the conversation already acted on reopens settled', function () {
+    [$conversation] = chatWithPostGenerationCard();
+
+    WorkspaceConversationMessage::factory()->for($conversation, 'conversation')->create([
+        'role' => Role::Assistant,
+        'content' => 'Generating it now.',
+        'tool_calls' => [['id' => 'call_generate', 'name' => 'generate_post', 'arguments' => []]],
+        'tool_results' => [['id' => 'call_generate', 'result' => '{"data":{"creation_id":"call_generate","channel":"c","settled":true}}']],
+    ]);
+
+    $page = visit(route('app.chat.show', $conversation));
+
+    waitForChatTestId($page, 'chat-post-generation-card');
+
+    // The choices were already sent, so the card must not offer to send them
+    // again — a second submit would bill another generation.
+    $page->assertSee(__('chat.post_generation.sent'))
+        ->assertMissing('@chat-post-generation-submit');
+
+    $disabled = $page->script(<<<'JS'
+        (async () => document.querySelector('[data-testid="chat-post-generation-format-x_post"]').disabled)()
+    JS);
+
+    expect($disabled)->toBeTrue();
+});

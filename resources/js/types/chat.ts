@@ -193,4 +193,11 @@ export interface ChatPostGenerationCatalog {
     formats: ChatPostGenerationFormat[];
     styles: ChatPostGenerationStyle[];
     applies_brand_visuals_default: boolean;
+    /**
+     * Set by `App\Ai\Tools\ToolReplayer` when the conversation went on to
+     * call `generate_post`: the choices this card collects were already sent,
+     * so it renders settled. Without it a reopened conversation would re-arm a
+     * single-use form, and a second submit would bill another generation.
+     */
+    spent?: boolean;
 }
