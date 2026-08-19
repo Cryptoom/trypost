@@ -53,12 +53,30 @@ class WorkspaceConversation extends Model
     }
 
     /**
+     * This user's conversations in this workspace, regardless of title.
+     *
+     * The sole ownership predicate: everything that needs to resolve a
+     * specific conversation for its owner (show/update/destroy) uses this,
+     * not scopeListable(), so a best-effort background job (title
+     * generation) can never make a conversation with real messages
+     * permanently unreachable by the person who wrote them.
+     */
+    public function scopeOwnedBy(Builder $query, string $workspaceId, string $userId): Builder
+    {
+        return $query->where('workspace_id', $workspaceId)
+            ->where('user_id', $userId);
+    }
+
+    /**
      * Conversations shown in the sidebar: this user's, in this workspace, titled.
+     *
+     * The title filter is a presentation concern for the sidebar list only —
+     * it must never be reused to resolve a single conversation. See
+     * scopeOwnedBy().
      */
     public function scopeListable(Builder $query, string $workspaceId, string $userId): Builder
     {
-        return $query->where('workspace_id', $workspaceId)
-            ->where('user_id', $userId)
+        return $query->ownedBy($workspaceId, $userId)
             ->whereNotNull('title')
             ->latest('updated_at');
     }

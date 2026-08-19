@@ -87,22 +87,21 @@ class ChatController extends Controller
     }
 
     /**
-     * Resolve a single conversation through the same listable() scope used
-     * for the sidebar, so another user's conversation 404s rather than
-     * 403s — matching how the rest of the app hides records it does not
-     * want to acknowledge.
+     * Resolve a single conversation the user owns, so another user's
+     * conversation 404s rather than 403s — matching how the rest of the
+     * app hides records it does not want to acknowledge.
      *
-     * scopeListable() also filters out untitled conversations. That is
-     * intentional here too: GenerateConversationTitle titles a conversation
-     * in the background after its first turn, and until that happens it
-     * stays out of the sidebar (see that job's docblock) — so it is not
-     * independently reachable via this route either. The composer/stream
-     * view (app.chat + app.chat.messages.store) is the only way to interact
-     * with a conversation before it has a title.
+     * Deliberately scopeOwnedBy(), not scopeListable(): the title filter on
+     * scopeListable() exists only to keep the sidebar tidy, and titling
+     * runs in the background (GenerateConversationTitle) after the
+     * conversation already has messages. Resolving by the same predicate
+     * used for that presentation-only list would let a slow or permanently
+     * failed title job make a conversation the user is actively in — or
+     * already wrote messages to — unreachable, possibly forever.
      */
     private function findConversation(Workspace $workspace, User $user, string $id): WorkspaceConversation
     {
-        return $this->listableQuery($workspace, $user)->findOrFail($id);
+        return WorkspaceConversation::query()->ownedBy($workspace->id, $user->id)->findOrFail($id);
     }
 
     private function listableQuery(Workspace $workspace, User $user): Builder

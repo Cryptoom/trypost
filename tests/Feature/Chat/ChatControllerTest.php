@@ -39,3 +39,32 @@ test('a conversation can be renamed and soft deleted', function () {
     $this->delete(route('app.chat.destroy', $conversation->id));
     expect($conversation->fresh()->trashed())->toBeTrue();
 });
+
+test('an untitled conversation can still be opened by its owner', function () {
+    [$user, $workspace] = actingAsWorkspaceUser();
+    $conversation = WorkspaceConversation::factory()->for($workspace)->for($user)->untitled()->create();
+
+    $this->get(route('app.chat.show', $conversation->id))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('chat/Index')
+            ->where('conversation.id', $conversation->id)
+            ->where('conversation.title', null));
+});
+
+test('an untitled conversation still does not appear in the sidebar list', function () {
+    [$user, $workspace] = actingAsWorkspaceUser();
+    WorkspaceConversation::factory()->for($workspace)->for($user)->untitled()->create();
+
+    $this->get(route('app.chat'))
+        ->assertInertia(fn ($page) => $page
+            ->component('chat/Index')
+            ->has('conversations', 0));
+});
+
+test('another users untitled conversation still cannot be opened', function () {
+    [$user, $workspace] = actingAsWorkspaceUser();
+    $foreign = WorkspaceConversation::factory()->for($workspace)->untitled()->create();
+
+    $this->get(route('app.chat.show', $foreign->id))->assertNotFound();
+});
