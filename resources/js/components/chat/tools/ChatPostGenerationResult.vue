@@ -4,7 +4,11 @@ import { IconAlertTriangle, IconExternalLink, IconLoader2, IconSparkles } from '
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 
 import ChatPostCard from '@/components/chat/tools/ChatPostCard.vue';
-import { usePostCreation, type PostCreationDetachReason } from '@/composables/echo/usePostCreation';
+import {
+    POST_CREATION_TIMEOUT_MS,
+    usePostCreation,
+    type PostCreationDetachReason,
+} from '@/composables/echo/usePostCreation';
 import date from '@/date';
 import { edit as editPost } from '@/routes/app/posts';
 import type { ChatPost, ChatPostGeneration } from '@/types/chat';
@@ -21,6 +25,21 @@ const props = defineProps<{
  */
 const ESTIMATED_SECONDS = 120;
 const MAX_PROGRESS = 0.95;
+
+/**
+ * Ceiling on the elapsed clock — the same horizon the generation itself gets
+ * (`POST_CREATION_TIMEOUT_MS`, mirrored server-side by
+ * `App\Ai\Tools\ToolReplayer::GENERATION_WINDOW_MINUTES`). Past it nothing is
+ * coming, so a counter still climbing beside "this keeps running in the
+ * background" is telling the user something false.
+ *
+ * The clock needs a ceiling of its own because the wait does not always end on
+ * a timer. A refused subscription — broadcasting unavailable, self-hosted
+ * without Reverb, or private-channel auth refused — detaches within seconds
+ * and arms nothing, so without this the clock would count for as long as the
+ * tab stays open.
+ */
+const ELAPSED_CEILING_SECONDS = POST_CREATION_TIMEOUT_MS / 1000;
 
 const broadcastPostId = ref<string | null>(null);
 const failed = ref(false);
@@ -75,12 +94,16 @@ const { watchCreation } = usePostCreation({
     },
     onFailed: fail,
     /**
-     * The clock stops only when the whole generation window ran out: by then
-     * nothing is being waited on, and a counter still climbing under "this
-     * keeps running in the background" reads as a wait the card is still
-     * timing. A refused subscription is the opposite case — it lands seconds
-     * after mounting, with the generation genuinely in flight, and the clock
-     * is then the card's only sign that it is alive rather than frozen.
+     * A timeout stops the clock outright: the window closed, measured against
+     * real time by the composable's own timer. A refused subscription is the
+     * opposite case — it lands seconds after mounting, with the generation
+     * genuinely in flight, so the clock keeps running and stays the card's
+     * only sign that it is alive rather than frozen. It is bounded instead by
+     * ELAPSED_CEILING_SECONDS.
+     *
+     * The two are complements, not duplicates: `setInterval` is throttled in a
+     * backgrounded tab, so `elapsed` can lag real time badly and reach its
+     * ceiling long after the window truly closed. Whichever notices first wins.
      */
     onDetached: (reason: PostCreationDetachReason): void => {
         detached.value = true;
@@ -110,6 +133,10 @@ onMounted(() => {
 
     elapsedTimer = setInterval(() => {
         elapsed.value += 1;
+
+        if (elapsed.value >= ELAPSED_CEILING_SECONDS) {
+            stopElapsed();
+        }
     }, 1000);
 
     watchCreation(channel);
