@@ -62,6 +62,7 @@
         "highlight.js": "^11.11.1",
         "laravel-vite-plugin": "^3.1.0",
         "laravel-vue-i18n": "^2.8.0",
+        "markdown-it": "^15.0.0",
         "maska": "^3.2.0",
         "posthog-js": "^1.364.2",
         "reka-ui": "^2.9.10",
