@@ -93,6 +93,7 @@ return [
         'sentence_brand_on' => 'w kolorach marki',
         'sentence_brand_off' => 'bez kolorów marki',
         'result_waiting' => 'Generuję Twój post…',
+        'result_elapsed_label' => 'Upłynęło: :elapsed',
         'result_waiting_hint' => 'To działa dalej, nawet jeśli opuścisz stronę. Post pojawi się tutaj, gdy będzie gotowy.',
         'result_detached_hint' => 'To działa dalej w tle. Otwórz tę rozmowę ponownie, aby zobaczyć post.',
         'result_ready' => 'Twój post jest gotowy.',

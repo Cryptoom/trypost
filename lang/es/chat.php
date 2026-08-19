@@ -93,6 +93,7 @@ return [
         'sentence_brand_on' => 'con los colores de marca',
         'sentence_brand_off' => 'sin los colores de marca',
         'result_waiting' => 'Generando tu publicación…',
+        'result_elapsed_label' => 'Tiempo transcurrido: :elapsed',
         'result_waiting_hint' => 'Esto sigue en marcha aunque salgas. La publicación aparecerá aquí en cuanto esté lista.',
         'result_detached_hint' => 'Esto sigue en marcha en segundo plano. Vuelve a abrir esta conversación para ver la publicación.',
         'result_ready' => 'Tu publicación está lista.',

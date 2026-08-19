@@ -93,6 +93,7 @@ return [
         'sentence_brand_on' => 'mit Markenfarben',
         'sentence_brand_off' => 'ohne Markenfarben',
         'result_waiting' => 'Dein Beitrag wird generiert…',
+        'result_elapsed_label' => 'Vergangene Zeit: :elapsed',
         'result_waiting_hint' => 'Das läuft weiter, auch wenn du die Seite verlässt. Der Beitrag erscheint hier, sobald er fertig ist.',
         'result_detached_hint' => 'Das läuft im Hintergrund weiter. Öffne diese Unterhaltung erneut, um den Beitrag zu sehen.',
         'result_ready' => 'Dein Beitrag ist fertig.',

@@ -93,6 +93,7 @@ return [
         'sentence_brand_on' => 'ブランドカラーあり',
         'sentence_brand_off' => 'ブランドカラーなし',
         'result_waiting' => '投稿を生成しています…',
+        'result_elapsed_label' => '経過時間: :elapsed',
         'result_waiting_hint' => 'ページを離れても処理は続きます。準備ができると、ここに投稿が表示されます。',
         'result_detached_hint' => 'バックグラウンドで処理が続いています。この会話を開き直すと投稿を確認できます。',
         'result_ready' => '投稿の準備ができました。',

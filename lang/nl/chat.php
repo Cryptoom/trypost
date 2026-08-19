@@ -93,6 +93,7 @@ return [
         'sentence_brand_on' => 'met merkkleuren',
         'sentence_brand_off' => 'zonder merkkleuren',
         'result_waiting' => 'Je post wordt gegenereerd…',
+        'result_elapsed_label' => 'Verstreken tijd: :elapsed',
         'result_waiting_hint' => 'Dit loopt door als je de pagina verlaat. De post verschijnt hier zodra hij klaar is.',
         'result_detached_hint' => 'Dit loopt door op de achtergrond. Open dit gesprek opnieuw om de post te zien.',
         'result_ready' => 'Je post is klaar.',

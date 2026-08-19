@@ -14,6 +14,7 @@ use App\Models\User;
 use App\Models\Workspace;
 use App\Models\WorkspaceConversation;
 use App\Models\WorkspaceConversationMessage;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 
@@ -409,4 +410,77 @@ test('an outlived generation that did produce a post resolves it rather than set
 
     expect(data_get($data, 'post.id'))->toBe($post->id)
         ->and(data_get($data, 'settled'))->toBeNull();
+});
+
+test('a generation whose turn has no timestamp is never declared settled', function () {
+    $workspace = Workspace::factory()->create();
+    $user = User::factory()->create();
+    $conversation = WorkspaceConversation::factory()->for($workspace)->for($user)->create();
+
+    $stored = json_encode(['data' => ['creation_id' => 'call_undated', 'channel' => "user.{$user->id}.ai-creation.call_undated"]]);
+
+    $message = WorkspaceConversationMessage::factory()->for($conversation, 'conversation')->create([
+        'role' => Role::Assistant,
+        'content' => 'Generating it now.',
+        'tool_calls' => [['id' => 'call_undated', 'name' => 'generate_post', 'arguments' => ['prompt' => 'hello']]],
+        'tool_results' => [['id' => 'call_undated', 'result' => $stored]],
+    ]);
+
+    $message->forceFill(['created_at' => null])->saveQuietly();
+
+    $payloads = app(ToolReplayer::class)->replay($conversation->fresh(['messages']));
+
+    expect($payloads['call_undated'])->toBe($stored);
+});
+
+test('a generation exactly at the window boundary is still treated as in flight', function () {
+    // Whole-second instant on purpose. now() carries microseconds but the
+    // stored created_at is truncated to seconds, so at any other instant
+    // "exactly 16 minutes ago" reads back as fractionally MORE than 16 minutes
+    // and the boundary can never be observed. Frozen here so the comparison is
+    // a true equality, which is what pins hasOutlivedGenerationWindow()'s
+    // strict lt(): swap it for lte() and this test fails, which is the point.
+    $this->travelTo(CarbonImmutable::parse('2026-08-19 12:00:00'));
+
+    $workspace = Workspace::factory()->create();
+    $user = User::factory()->create();
+    $conversation = WorkspaceConversation::factory()->for($workspace)->for($user)->create();
+
+    $stored = json_encode(['data' => ['creation_id' => 'call_boundary', 'channel' => "user.{$user->id}.ai-creation.call_boundary"]]);
+
+    $message = WorkspaceConversationMessage::factory()->for($conversation, 'conversation')->create([
+        'role' => Role::Assistant,
+        'content' => 'Generating it now.',
+        'tool_calls' => [['id' => 'call_boundary', 'name' => 'generate_post', 'arguments' => ['prompt' => 'hello']]],
+        'tool_results' => [['id' => 'call_boundary', 'result' => $stored]],
+    ]);
+
+    $message->forceFill(['created_at' => now()->subMinutes(16)])->saveQuietly();
+
+    $payloads = app(ToolReplayer::class)->replay($conversation->fresh(['messages']));
+
+    expect($payloads['call_boundary'])->toBe($stored);
+});
+
+test('a generation one second past the window boundary is settled', function () {
+    $this->travelTo(CarbonImmutable::parse('2026-08-19 12:00:00'));
+
+    $workspace = Workspace::factory()->create();
+    $user = User::factory()->create();
+    $conversation = WorkspaceConversation::factory()->for($workspace)->for($user)->create();
+
+    $stored = json_encode(['data' => ['creation_id' => 'call_past_boundary', 'channel' => "user.{$user->id}.ai-creation.call_past_boundary"]]);
+
+    $message = WorkspaceConversationMessage::factory()->for($conversation, 'conversation')->create([
+        'role' => Role::Assistant,
+        'content' => 'Generating it now.',
+        'tool_calls' => [['id' => 'call_past_boundary', 'name' => 'generate_post', 'arguments' => ['prompt' => 'hello']]],
+        'tool_results' => [['id' => 'call_past_boundary', 'result' => $stored]],
+    ]);
+
+    $message->forceFill(['created_at' => now()->subMinutes(16)->subSecond()])->saveQuietly();
+
+    $payloads = app(ToolReplayer::class)->replay($conversation->fresh(['messages']));
+
+    expect(data_get(json_decode($payloads['call_past_boundary'], true), 'data.settled'))->toBeTrue();
 });

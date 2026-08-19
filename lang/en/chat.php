@@ -93,6 +93,7 @@ return [
         'sentence_brand_on' => 'with brand colors',
         'sentence_brand_off' => 'without brand colors',
         'result_waiting' => 'Generating your post…',
+        'result_elapsed_label' => 'Elapsed: :elapsed',
         'result_waiting_hint' => "This keeps running if you leave. The post shows up here when it's ready.",
         'result_detached_hint' => 'This keeps running in the background. Reopen this conversation to see the post.',
         'result_ready' => 'Your post is ready.',

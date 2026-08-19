@@ -93,6 +93,7 @@ return [
         'sentence_brand_on' => '使用品牌配色',
         'sentence_brand_off' => '不使用品牌配色',
         'result_waiting' => '正在生成你的帖子…',
+        'result_elapsed_label' => '已用时间：:elapsed',
         'result_waiting_hint' => '即使你离开页面也会继续运行。帖子准备好后会显示在这里。',
         'result_detached_hint' => '这会在后台继续运行。重新打开这个对话即可看到帖子。',
         'result_ready' => '你的帖子已就绪。',

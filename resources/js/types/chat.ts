@@ -163,7 +163,13 @@ export interface ChatPostGenerationStyle {
  */
 export interface ChatPostGeneration {
     creation_id: string;
-    channel: string;
+    /**
+     * Optional because the card must survive a payload that never named one —
+     * an older or hand-written stored result, or a tool return that changed
+     * shape. `ChatPostGenerationResult` treats its absence as a failure rather
+     * than subscribing to `private-undefined`.
+     */
+    channel?: string;
     post?: ChatPost | null;
     /**
      * Set by `ToolReplayer` when the generation is over and produced no post —

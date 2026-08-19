@@ -93,6 +93,7 @@ return [
         'sentence_brand_on' => '브랜드 컬러 적용',
         'sentence_brand_off' => '브랜드 컬러 미적용',
         'result_waiting' => '게시물을 생성하는 중…',
+        'result_elapsed_label' => '경과 시간: :elapsed',
         'result_waiting_hint' => '페이지를 벗어나도 계속 진행됩니다. 준비되면 여기에 게시물이 표시됩니다.',
         'result_detached_hint' => '백그라운드에서 계속 진행됩니다. 이 대화를 다시 열면 게시물을 확인할 수 있습니다.',
         'result_ready' => '게시물이 준비되었습니다.',

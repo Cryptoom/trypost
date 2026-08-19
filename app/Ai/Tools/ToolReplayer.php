@@ -49,9 +49,18 @@ use Throwable;
  * generate_post is the one tool that is neither replayed nor left entirely
  * alone: it is a WRITE tool, so replaying it would dispatch a second
  * generation — spending the account's AI credits and creating a duplicate
- * post — every single time the conversation is opened. It must never enter
- * REPLAYABLE. Its stored payload is AUGMENTED instead, see
- * {@see withGeneratedPost()}.
+ * post — every single time the conversation is opened. Its stored payload is
+ * AUGMENTED instead, see {@see withGeneratedPost()}.
+ *
+ * What actually prevents it from being re-run is the early branch in
+ * {@see replay()}, which handles generate_post and `continue`s BEFORE the
+ * REPLAYABLE lookup happens — not its absence from that map. Absent from the
+ * map it also is, and it must stay that way, but that is the braces; the
+ * branch is the belt. Adding it to REPLAYABLE today would be a silent no-op,
+ * which is a safe way to be wrong. Folding the branch back into the map is
+ * not: whoever does that removes the only thing standing between a reopened
+ * conversation and a second billed generation, and must re-establish the
+ * guarantee some other way before doing so.
  */
 class ToolReplayer
 {
@@ -65,7 +74,9 @@ class ToolReplayer
     ];
 
     /**
-     * Never add this to REPLAYABLE — see the class docblock.
+     * Matched by the early branch in {@see replay()}, which is what keeps this
+     * tool from being re-run. Never add it to REPLAYABLE either — see the
+     * class docblock for why the branch, not the map, is the guarantee.
      */
     private const GENERATE_POST = 'generate_post';
 

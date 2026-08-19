@@ -93,6 +93,7 @@ return [
         'sentence_brand_on' => 'بألوان العلامة التجارية',
         'sentence_brand_off' => 'بدون ألوان العلامة التجارية',
         'result_waiting' => 'جارٍ إنشاء منشورك…',
+        'result_elapsed_label' => 'الوقت المنقضي: :elapsed',
         'result_waiting_hint' => 'تستمر العملية حتى لو غادرت الصفحة. سيظهر المنشور هنا بمجرد أن يصبح جاهزًا.',
         'result_detached_hint' => 'تستمر العملية في الخلفية. أعد فتح هذه المحادثة لرؤية المنشور.',
         'result_ready' => 'منشورك جاهز.',

@@ -140,12 +140,27 @@ onBeforeUnmount(stopElapsed);
             data-testid="chat-post-generation-waiting"
         >
             <div class="flex items-center gap-2 text-sm text-muted-foreground">
-                <IconLoader2 class="size-4 shrink-0 animate-spin" />
+                <IconLoader2
+                    class="size-4 shrink-0 animate-spin"
+                    aria-hidden="true"
+                />
                 <span>{{ $t('chat.post_generation.result_waiting') }}</span>
-                <span class="ms-auto font-mono text-xs">{{ elapsedLabel }}</span>
+                <span
+                    class="ms-auto font-mono text-xs"
+                    :aria-label="$t('chat.post_generation.result_elapsed_label', { elapsed: elapsedLabel })"
+                >
+                    {{ elapsedLabel }}
+                </span>
             </div>
 
-            <div class="h-1.5 w-full overflow-hidden rounded-full bg-accent">
+            <div
+                class="h-1.5 w-full overflow-hidden rounded-full bg-accent"
+                role="progressbar"
+                :aria-valuenow="progressPercent"
+                aria-valuemin="0"
+                aria-valuemax="100"
+                :aria-label="$t('chat.post_generation.result_waiting')"
+            >
                 <div
                     class="h-full rounded-full bg-primary transition-[width] duration-700 ease-out"
                     :style="{ width: `${progressPercent}%` }"

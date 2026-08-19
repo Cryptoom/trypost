@@ -93,6 +93,7 @@ return [
         'sentence_brand_on' => 'marka renkleriyle',
         'sentence_brand_off' => 'marka renkleri olmadan',
         'result_waiting' => 'Gönderin oluşturuluyor…',
+        'result_elapsed_label' => 'Geçen süre: :elapsed',
         'result_waiting_hint' => 'Sayfadan ayrılsan da devam eder. Gönderi hazır olduğunda burada görünür.',
         'result_detached_hint' => 'Bu arka planda çalışmaya devam ediyor. Gönderiyi görmek için bu sohbeti yeniden aç.',
         'result_ready' => 'Gönderin hazır.',
