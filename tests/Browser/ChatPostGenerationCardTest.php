@@ -289,3 +289,43 @@ test('a workspace with one connected network opens straight on the styles', func
 
     expect($selected)->toBeTrue();
 });
+
+test('revealing a step scrolls the thread to keep it in view', function () {
+    [$conversation] = chatWithPostGenerationCard();
+
+    $page = visit(route('app.chat.show', $conversation));
+
+    waitForChatTestId($page, 'chat-post-generation-card');
+
+    // The app shell is `h-svh overflow-hidden`, so the window never scrolls —
+    // the thread lives inside an overflow-y-auto ancestor. Find it the same
+    // way the composable does, so this test fails if that assumption breaks.
+    $scrolledToBottom = $page->script(<<<'JS'
+        (async () => {
+            const scroller = (() => {
+                let node = document.querySelector('[data-testid="chat-thread"]')?.parentElement ?? null;
+                while (node && node !== document.body) {
+                    const { overflowY } = getComputedStyle(node);
+                    if (overflowY === 'auto' || overflowY === 'scroll') return node;
+                    node = node.parentElement;
+                }
+                return null;
+            })();
+
+            if (!scroller) return 'no-scroller';
+
+            document.querySelector('[data-testid="chat-post-generation-format-x_post"]').click();
+            await new Promise((r) => setTimeout(r, 400));
+            document.querySelector('[data-testid="chat-post-generation-style-image_card"]').click();
+
+            for (let i = 0; i < 60; i++) {
+                await new Promise((r) => setTimeout(r, 50));
+                if (scroller.scrollHeight - scroller.clientHeight - scroller.scrollTop <= 4) return true;
+            }
+
+            return `stuck: ${Math.round(scroller.scrollHeight - scroller.clientHeight - scroller.scrollTop)}px from bottom`;
+        })()
+    JS);
+
+    expect($scrolledToBottom)->toBeTrue();
+});
