@@ -80,7 +80,6 @@ return [
         'style_question' => 'Welchen Stil soll es haben?',
         'topic_question' => 'Worum soll es in dem Beitrag gehen?',
         'topic_placeholder' => 'z. B. der Launch unserer neuen Preise',
-        'topic_confirm' => 'Bestätigen',
         'topic_too_long' => 'Bitte unter :max Zeichen bleiben.',
         'images_question' => 'Wie viele Bilder sollen es sein?',
         'images_none' => 'Keine',

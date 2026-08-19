@@ -80,7 +80,6 @@ return [
         'style_question' => 'Quel style dois-je utiliser ?',
         'topic_question' => 'De quoi doit parler la publication ?',
         'topic_placeholder' => 'ex. le lancement de nos nouveaux tarifs',
-        'topic_confirm' => 'Confirmer',
         'topic_too_long' => 'Restez sous :max caractères.',
         'images_question' => 'Combien d’images voulez-vous ?',
         'images_none' => 'Aucune',

@@ -80,7 +80,6 @@ return [
         'style_question' => '要用哪种风格？',
         'topic_question' => '这条帖子要讲什么？',
         'topic_placeholder' => '例如：我们新定价的发布',
-        'topic_confirm' => '确认',
         'topic_too_long' => '请控制在 :max 个字符以内。',
         'images_question' => '需要几张图片？',
         'images_none' => '无',

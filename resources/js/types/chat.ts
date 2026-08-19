@@ -181,7 +181,6 @@ export interface ChatPostGenerationCopy {
     style_question: string;
     topic_question: string;
     topic_placeholder: string;
-    topic_confirm: string;
     topic_too_long: string;
     images_question: string;
     images_none: string;

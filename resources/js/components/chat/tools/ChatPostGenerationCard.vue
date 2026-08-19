@@ -83,7 +83,7 @@ const CAROUSEL_DEFAULT_IMAGE_COUNT = 5;
 const SINGLE_IMAGE_FORMAT_COUNT = 1;
 
 /** The steps that read back as the user's own message once answered. */
-type RecordedStep = 'format' | 'style' | 'topic' | 'account';
+type RecordedStep = 'format' | 'style' | 'account';
 
 /**
  * The topic becomes `generate_post`'s `prompt`, so the card refuses to submit
@@ -141,7 +141,6 @@ const accountAnswered = ref(false);
  */
 const topicDraft = ref<string | null>(null);
 
-const topicAnswered = ref(false);
 
 /**
  * The choices were already sent — either in this session, or in an earlier one
@@ -319,7 +318,7 @@ const styleNeedsAccount = computed(() => resolvedStyle.value?.needs_account ?? f
 const topicStepVisible = computed(() => styleAnswered.value);
 
 const accountStepVisible = computed(
-    () => topicAnswered.value && (accountsForFormat.value.length > 1 || styleNeedsAccount.value),
+    () => topicUsable.value && (accountsForFormat.value.length > 1 || styleNeedsAccount.value),
 );
 
 const selectedAccount = computed(
@@ -330,7 +329,6 @@ const choicesComplete = computed(
     () =>
         selectedFormat.value !== null &&
         styleAnswered.value &&
-        topicAnswered.value &&
         topicUsable.value &&
         selectedAccount.value !== null,
 );
@@ -386,11 +384,7 @@ const styleChoiceVisible = computed(
     () => styleStepVisible.value && selectedStyleKey.value !== null && resolvedStyle.value !== null,
 );
 
-const topicQuestionVisible = computed(() => topicStepVisible.value && ! topicAnswered.value);
-
-const topicChoiceVisible = computed(
-    () => topicStepVisible.value && topicAnswered.value && topicUsable.value,
-);
+const topicQuestionVisible = computed(() => topicStepVisible.value);
 
 const accountQuestionVisible = computed(
     () => accountStepVisible.value && selectedAccountId.value === null,
@@ -439,12 +433,6 @@ const accountChoiceLogos = computed(() => {
  */
 const reopen = (step: RecordedStep): void => {
     if (settled.value) {
-        return;
-    }
-
-    if (step === 'topic') {
-        topicAnswered.value = false;
-
         return;
     }
 
@@ -537,28 +525,6 @@ const selectStyle = (key: string): void => {
     }
 
     selectedStyleKey.value = key;
-};
-
-const canConfirmTopic = computed(() => topicUsable.value && ! settled.value);
-
-const confirmTopic = (): void => {
-    if (! canConfirmTopic.value) {
-        return;
-    }
-
-    topicAnswered.value = true;
-};
-
-/**
- * Enter confirms, Shift+Enter breaks the line — the same bargain
- * `ChatComposer` strikes, so the field behaves like every other place the user
- * types into this thread.
- */
-const onTopicKeydown = (event: KeyboardEvent): void => {
-    if (event.key === 'Enter' && ! event.shiftKey) {
-        event.preventDefault();
-        confirmTopic();
-    }
 };
 
 const selectImageCount = (count: number): void => {
@@ -658,7 +624,7 @@ const summaryParts = computed<string[]>(() => {
         parts.push(resolvedStyle.value.name);
     }
 
-    if (topicAnswered.value && topicValue.value !== '') {
+    if (topicUsable.value) {
         parts.push(topicValue.value);
     }
 
@@ -842,12 +808,11 @@ const submit = (): void => {
                 <div class="space-y-2">
                     <textarea
                         v-model="topic"
-                        rows="3"
+                        rows="5"
                         :placeholder="line('topic_placeholder')"
-                        class="w-full resize-none rounded-lg border border-foreground/15 bg-background px-3 py-2 text-sm leading-relaxed text-foreground outline-none placeholder:text-muted-foreground focus:border-foreground"
+                        class="w-full resize-y rounded-lg border border-foreground/15 bg-background px-3 py-2 text-sm leading-relaxed text-foreground outline-none placeholder:text-muted-foreground focus:border-foreground"
                         data-testid="chat-post-generation-topic-input"
                         dusk="chat-post-generation-topic-input"
-                        @keydown="onTopicKeydown"
                     />
 
                     <p
@@ -857,30 +822,8 @@ const submit = (): void => {
                     >
                         {{ fill(line('topic_too_long'), { max: String(TOPIC_MAX_LENGTH) }) }}
                     </p>
-
-                    <div class="flex justify-end">
-                        <Button
-                            type="button"
-                            size="sm"
-                            :disabled="! canConfirmTopic"
-                            data-testid="chat-post-generation-topic-confirm"
-                            dusk="chat-post-generation-topic-confirm"
-                            @click="confirmTopic"
-                        >
-                            {{ line('topic_confirm') }}
-                        </Button>
-                    </div>
                 </div>
             </ChatAssistantMessage>
-
-            <ChatPostGenerationChoice
-                v-else-if="topicChoiceVisible"
-                :text="topicValue"
-                changeable
-                :change-label="line('change')"
-                test-id="chat-post-generation-topic-choice"
-                @change="reopen('topic')"
-            />
 
             <ChatAssistantMessage
                 v-if="accountQuestionVisible"

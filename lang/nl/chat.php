@@ -80,7 +80,6 @@ return [
         'style_question' => 'Welke stijl moet het krijgen?',
         'topic_question' => 'Waar moet de post over gaan?',
         'topic_placeholder' => 'bijv. de lancering van onze nieuwe prijzen',
-        'topic_confirm' => 'Bevestigen',
         'topic_too_long' => 'Houd het onder :max tekens.',
         'images_question' => 'Hoeveel afbeeldingen wil je?',
         'images_none' => 'Geen',

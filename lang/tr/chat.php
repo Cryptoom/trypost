@@ -80,7 +80,6 @@ return [
         'style_question' => 'Hangi stili kullanayım?',
         'topic_question' => 'Gönderi ne hakkında olsun?',
         'topic_placeholder' => 'örn. yeni fiyatlandırmamızın duyurusu',
-        'topic_confirm' => 'Onayla',
         'topic_too_long' => ':max karakterin altında tutun.',
         'images_question' => 'Kaç görsel olsun?',
         'images_none' => 'Yok',

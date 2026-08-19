@@ -80,7 +80,6 @@ return [
         'style_question' => 'ما النمط الذي سأستخدمه؟',
         'topic_question' => 'عمّ يجب أن يكون المنشور؟',
         'topic_placeholder' => 'مثال: إطلاق خطة الأسعار الجديدة',
-        'topic_confirm' => 'تأكيد',
         'topic_too_long' => 'اجعله أقل من :max حرف.',
         'images_question' => 'كم عدد الصور التي تريدها؟',
         'images_none' => 'بدون',

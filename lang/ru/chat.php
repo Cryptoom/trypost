@@ -80,7 +80,6 @@ return [
         'style_question' => 'Какой стиль использовать?',
         'topic_question' => 'О чём должен быть пост?',
         'topic_placeholder' => 'например, запуск новых тарифов',
-        'topic_confirm' => 'Подтвердить',
         'topic_too_long' => 'Уложитесь в :max символов.',
         'images_question' => 'Сколько изображений нужно?',
         'images_none' => 'Без изображений',

@@ -80,7 +80,6 @@ return [
         'style_question' => 'Ποιο στυλ να χρησιμοποιήσω;',
         'topic_question' => 'Για ποιο θέμα να είναι η ανάρτηση;',
         'topic_placeholder' => 'π.χ. η κυκλοφορία της νέας τιμολόγησης',
-        'topic_confirm' => 'Επιβεβαίωση',
         'topic_too_long' => 'Κράτησέ το κάτω από :max χαρακτήρες.',
         'images_question' => 'Πόσες εικόνες θέλεις;',
         'images_none' => 'Καμία',

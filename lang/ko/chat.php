@@ -80,7 +80,6 @@ return [
         'style_question' => '어떤 스타일로 할까요?',
         'topic_question' => '게시물 주제는 무엇인가요?',
         'topic_placeholder' => '예: 새 요금제 출시',
-        'topic_confirm' => '확인',
         'topic_too_long' => ':max자 이내로 작성해 주세요.',
         'images_question' => '이미지는 몇 장으로 할까요?',
         'images_none' => '없음',

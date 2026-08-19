@@ -80,7 +80,6 @@ return [
         'style_question' => 'Qual estilo devo usar?',
         'topic_question' => 'Sobre o que deve ser o post?',
         'topic_placeholder' => 'ex.: o lançamento da nossa nova tabela de preços',
-        'topic_confirm' => 'Confirmar',
         'topic_too_long' => 'Use menos de :max caracteres.',
         'images_question' => 'Quantas imagens você quer?',
         'images_none' => 'Nenhuma',

@@ -35,7 +35,6 @@ final class PostGenerationCardCopy
         'style_question',
         'topic_question',
         'topic_placeholder',
-        'topic_confirm',
         'topic_too_long',
         'images_question',
         'images_none',

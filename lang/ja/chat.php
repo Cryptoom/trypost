@@ -80,7 +80,6 @@ return [
         'style_question' => 'どのスタイルにしますか？',
         'topic_question' => '投稿のテーマは何ですか？',
         'topic_placeholder' => '例：新しい料金プランのリリース',
-        'topic_confirm' => '確定',
         'topic_too_long' => ':max 文字以内にしてください。',
         'images_question' => '画像は何枚にしますか？',
         'images_none' => 'なし',

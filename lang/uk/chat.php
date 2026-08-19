@@ -80,7 +80,6 @@ return [
         'style_question' => 'Який стиль використати?',
         'topic_question' => 'Про що має бути допис?',
         'topic_placeholder' => 'напр. запуск нових тарифів',
-        'topic_confirm' => 'Підтвердити',
         'topic_too_long' => 'Умістіться в :max символів.',
         'images_question' => 'Скільки зображень потрібно?',
         'images_none' => 'Без зображень',
