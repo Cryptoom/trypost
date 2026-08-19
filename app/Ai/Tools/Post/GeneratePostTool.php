@@ -81,18 +81,24 @@ class GeneratePostTool extends WorkspaceWriteTool
             ? $request->string('social_account_id')->trim()->value()
             : null;
 
-        $error = $this->aiAccessError()
-            ?? $this->argumentError($request)
-            ?? $this->formatError($format)
+        $error = $this->aiAccessError() ?? $this->argumentError($request);
+
+        if ($error !== null) {
+            return $this->error($error);
+        }
+
+        $catalog = PostGenerationCatalog::forWorkspace($this->workspace);
+
+        $error = $this->formatError($catalog, $format)
             ?? $this->styleError($style, $socialAccountId)
-            ?? $this->socialAccountError($socialAccountId)
+            ?? $this->socialAccountError($catalog, $format, $socialAccountId)
             ?? $this->imageCountError($format, $request->integer('image_count'));
 
         if ($error !== null) {
             return $this->error($error);
         }
 
-        $creationId = Str::uuid()->toString();
+        $creationId = $this->creationIdFor($request);
 
         StreamPostCreation::dispatch(
             userId: $this->user->id,
@@ -151,11 +157,13 @@ class GeneratePostTool extends WorkspaceWriteTool
      * The format must be one the catalog offers for THIS workspace, not merely
      * a format the platform knows: a format whose platform has no connected
      * account cannot produce a publishable post.
+     *
+     * @param  array<string, mixed>  $catalog
      */
-    private function formatError(string $format): ?string
+    private function formatError(array $catalog, string $format): ?string
     {
         $available = array_values(array_unique(
-            array_column(data_get(PostGenerationCatalog::forWorkspace($this->workspace), 'formats', []), 'value')
+            array_column(data_get($catalog, 'formats', []), 'value')
         ));
 
         if ($available === []) {
@@ -203,17 +211,76 @@ class GeneratePostTool extends WorkspaceWriteTool
         return null;
     }
 
-    private function socialAccountError(?string $socialAccountId): ?string
+    /**
+     * The account must be one the catalog itself offers for the chosen format,
+     * which is stricter than mere workspace ownership in two ways that matter:
+     * the catalog lists only ACTIVE accounts, and it lists them per format, so
+     * an account on a platform the format cannot post to is refused here
+     * rather than producing a post bound to the wrong account.
+     *
+     * @param  array<string, mixed>  $catalog
+     */
+    private function socialAccountError(array $catalog, string $format, ?string $socialAccountId): ?string
     {
         if ($socialAccountId === null) {
             return null;
         }
 
-        $owned = $this->workspace->socialAccounts()->whereKey($socialAccountId)->exists();
+        $accounts = $this->accountsForFormat($catalog, $format);
 
-        return $owned
-            ? null
-            : "The social account \"{$socialAccountId}\" doesn't belong to this workspace. Use one of the account ids start_post_generation returned.";
+        if (in_array($socialAccountId, array_column($accounts, 'id'), true)) {
+            return null;
+        }
+
+        $options = implode(', ', array_map(
+            fn (array $account): string => data_get($account, 'id').' ('.data_get($account, 'label').')',
+            $accounts,
+        ));
+
+        return "The social account \"{$socialAccountId}\" can't be used for the \"{$format}\" format — it belongs to another workspace, is disconnected, or is on a different platform. Use one of these account ids instead: {$options}.";
+    }
+
+    /**
+     * The catalog's active accounts for one format, flattened across the
+     * platforms that format is compatible with. Never empty for a format that
+     * passed formatError(): the catalog only lists a format once at least one
+     * active account can post it.
+     *
+     * @param  array<string, mixed>  $catalog
+     * @return list<array{id: string, label: string}>
+     */
+    private function accountsForFormat(array $catalog, string $format): array
+    {
+        $accounts = [];
+
+        foreach (data_get($catalog, 'formats', []) as $entry) {
+            if (data_get($entry, 'value') !== $format) {
+                continue;
+            }
+
+            foreach (data_get($entry, 'accounts', []) as $account) {
+                $accounts[data_get($account, 'id')] = $account;
+            }
+        }
+
+        return array_values($accounts);
+    }
+
+    /**
+     * The generation's id, and with it the uniqueness lock on
+     * {@see StreamPostCreation} (`ShouldBeUnique`, keyed on
+     * `{userId}:{creationId}`).
+     *
+     * The provider's tool call id is the right key: an SDK-level retry of the
+     * SAME tool call carries the same id, so the second dispatch is swallowed
+     * by the lock instead of generating — and billing — twice, while two
+     * deliberate calls carry different ids and both run. A minted uuid is the
+     * fallback for a caller that supplies no id (a direct handle() call, or a
+     * provider that omits one), where nothing can be deduplicated anyway.
+     */
+    private function creationIdFor(Request $request): string
+    {
+        return $request->toolCallId() ?? Str::uuid()->toString();
     }
 
     /**

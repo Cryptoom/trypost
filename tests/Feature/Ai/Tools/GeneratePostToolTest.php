@@ -77,11 +77,34 @@ it('returns the same channel PostCreationReady broadcasts on', function (): void
         ->toBe("private-{$output['data']['channel']}");
 });
 
-it('generates a unique creation id per call', function (): void {
+it('mints a unique creation id per call when the provider supplies no tool call id', function (): void {
     $first = json_decode($this->tool->handle(new Request(generatePostPayload())), true);
     $second = json_decode($this->tool->handle(new Request(generatePostPayload())), true);
 
     expect($first['data']['creation_id'])->not->toBe($second['data']['creation_id']);
+
+    Bus::assertDispatchedTimes(StreamPostCreation::class, 2);
+});
+
+it('reuses the tool call id as the creation id so a retry hits the job uniqueness lock', function (): void {
+    $first = json_decode($this->tool->handle(new Request(generatePostPayload(), 'call_retried_once')), true);
+    $second = json_decode($this->tool->handle(new Request(generatePostPayload(), 'call_retried_once')), true);
+
+    expect($first['data']['creation_id'])->toBe('call_retried_once')
+        ->and($second['data']['creation_id'])->toBe($first['data']['creation_id'])
+        ->and($second['data']['channel'])->toBe($first['data']['channel']);
+
+    Bus::assertDispatched(StreamPostCreation::class, function (StreamPostCreation $job): bool {
+        return $job->uniqueId() === "{$this->user->id}:call_retried_once";
+    });
+});
+
+it('gives two distinct tool calls two distinct creation ids', function (): void {
+    $first = json_decode($this->tool->handle(new Request(generatePostPayload(), 'call_one')), true);
+    $second = json_decode($this->tool->handle(new Request(generatePostPayload(), 'call_two')), true);
+
+    expect($first['data']['creation_id'])->toBe('call_one')
+        ->and($second['data']['creation_id'])->toBe('call_two');
 
     Bus::assertDispatchedTimes(StreamPostCreation::class, 2);
 });
@@ -123,6 +146,39 @@ it('refuses a social account from another workspace', function (): void {
 
     expect($output)->toHaveKey('error')
         ->and($output['error'])->toContain('social account');
+
+    Bus::assertNotDispatched(StreamPostCreation::class);
+});
+
+it('refuses a deactivated account even though the workspace owns it', function (): void {
+    $deactivated = SocialAccount::factory()->for($this->workspace)->create([
+        'platform' => Platform::Threads,
+        'is_active' => false,
+    ]);
+
+    $output = json_decode($this->tool->handle(new Request(generatePostPayload([
+        'social_account_id' => $deactivated->id,
+    ]))), true);
+
+    expect($output)->toHaveKey('error')
+        ->and($output['error'])->toContain($deactivated->id)
+        ->and($output['error'])->toContain($this->account->id);
+
+    Bus::assertNotDispatched(StreamPostCreation::class);
+});
+
+it('refuses an account whose platform cannot post the chosen format', function (): void {
+    $linkedin = SocialAccount::factory()->for($this->workspace)->create([
+        'platform' => Platform::LinkedIn,
+    ]);
+
+    $output = json_decode($this->tool->handle(new Request(generatePostPayload([
+        'social_account_id' => $linkedin->id,
+    ]))), true);
+
+    expect($output)->toHaveKey('error')
+        ->and($output['error'])->toContain('threads_post')
+        ->and($output['error'])->toContain($this->account->id);
 
     Bus::assertNotDispatched(StreamPostCreation::class);
 });
