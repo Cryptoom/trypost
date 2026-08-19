@@ -33,7 +33,6 @@ use App\Models\WorkspaceLabel;
 use App\Models\WorkspaceSignature;
 use App\Services\Ai\Conversations\WorkspaceConversationStore;
 use App\Services\PostHogService;
-use App\Services\PostTemplate\Registry as PostTemplateRegistry;
 use App\Socialite\DiscordProvider;
 use App\Socialite\InstagramProvider;
 use App\Socialite\LinkedInPageExtendSocialite;
@@ -73,7 +72,6 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        $this->app->singleton(PostTemplateRegistry::class);
         $this->app->singleton(ConversationStore::class, WorkspaceConversationStore::class);
 
         if ($this->app->environment('local') && class_exists(\Laravel\Telescope\TelescopeServiceProvider::class)) {
