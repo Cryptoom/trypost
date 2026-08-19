@@ -43,18 +43,6 @@ final class PostGenerationCatalog
     }
 
     /**
-     * Every format value the catalog can offer, regardless of which
-     * platforms a workspace has connected. This is the single source of
-     * truth for validating a submitted format in `generate_post`.
-     *
-     * @return list<string>
-     */
-    public static function allowedFormats(): array
-    {
-        return array_column(self::formatCatalog(), 'value');
-    }
-
-    /**
      * Each account carries its `username` and `platform` alongside the display
      * label because the label alone cannot identify it: a workspace connected
      * to Instagram both directly and through a Facebook Page has two accounts

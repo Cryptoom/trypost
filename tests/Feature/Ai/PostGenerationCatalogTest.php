@@ -43,17 +43,6 @@ it('never leaks another workspace accounts', function (): void {
     expect($format['accounts'])->toHaveCount(1);
 });
 
-it('only ever offers formats drawn from its own allow-list', function (): void {
-    $workspace = Workspace::factory()->create();
-    SocialAccount::factory()->for($workspace)->create(['platform' => 'threads']);
-    SocialAccount::factory()->for($workspace)->create(['platform' => 'pinterest']);
-
-    $catalog = PostGenerationCatalog::forWorkspace($workspace);
-    $values = collect($catalog['formats'])->pluck('value')->unique()->all();
-
-    expect(array_diff($values, PostGenerationCatalog::allowedFormats()))->toBe([]);
-});
-
 it('reflects each template\'s needs_account requirement, not a hardcoded value', function (): void {
     $catalog = PostGenerationCatalog::forWorkspace(Workspace::factory()->create());
     $styles = collect($catalog['styles'])->keyBy('key');
