@@ -6,26 +6,25 @@ namespace App\Support;
 
 /**
  * Single source of truth for the user-supplied AI generation prompt length,
- * shared by the create wizard (StartPostCreationRequest) and the editor's
- * content generation (GeneratePostContentRequest). The frontend counter in
- * resources/js/components/posts/create/AiPostWizard.vue mirrors these bounds.
+ * shared by the chat's generate_post tool and the editor's content generation
+ * (GeneratePostContentRequest).
  */
 class AiPromptRules
 {
     /**
-     * Minimum prompt length (characters) for the create wizard.
+     * Minimum prompt length (characters) for AI post generation.
      */
     public const PROMPT_MIN_LENGTH = 3;
 
     /**
-     * Maximum prompt length (characters); mirrored by the frontend counter.
+     * Maximum prompt length (characters).
      */
     public const PROMPT_MAX_LENGTH = 2000;
 
     /**
-     * Validation rules for the create wizard's generation prompt. The editor's
-     * content generation reuses only PROMPT_MAX_LENGTH — it has no minimum,
-     * since it has no character counter to mirror one.
+     * Validation rules for the generation prompt. The editor's content
+     * generation reuses only PROMPT_MAX_LENGTH — it has no minimum, since it
+     * has no character counter to mirror one.
      *
      * @return array<int, string>
      */

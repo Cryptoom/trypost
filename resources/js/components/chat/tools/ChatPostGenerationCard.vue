@@ -55,13 +55,12 @@ const CAROUSEL_MAX_IMAGES: Record<string, number> = {
 
 /**
  * Formats that always carry exactly one generated image, so there is no image
- * step to show — carried over from `AiPostWizard.vue`'s `requiresImage`.
+ * step to show.
  */
 const SINGLE_IMAGE_FORMATS = ['facebook_post', 'pinterest_pin', 'instagram_story'];
 
 /**
- * Formats where images are optional, mapped to the highest count offered —
- * carried over from `AiPostWizard.vue`'s `maxOptionalImages`.
+ * Formats where images are optional, mapped to the highest count offered.
  */
 const OPTIONAL_IMAGE_MAX: Record<string, number> = {
     instagram_feed: 1,
@@ -237,7 +236,7 @@ const imageStepVisible = computed(() => styleAnswered.value && imageChoices.valu
  * the account is mandatory rather than merely offered — the server refuses a
  * generation without it. Otherwise the step only earns its place when there is
  * more than one account to choose between; a lone account is picked silently
- * in `selectFormat`, mirroring `AiPostWizard.vue`'s `watch(accountsForFormat)`.
+ * in `selectFormat`.
  */
 const styleNeedsAccount = computed(() => resolvedStyle.value?.needs_account ?? false);
 

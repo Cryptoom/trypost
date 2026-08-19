@@ -17,10 +17,9 @@ use Illuminate\Support\Collection;
  *
  * The format list is `ContentType::aiSupported()` plus the Instagram-carousel
  * pseudo-format — the backend's own definition of a valid AI generation
- * format, already enforced by `StartPostCreationRequest::rules()`. Sourcing
- * it from there instead of hand-listing formats means the catalog can never
- * drift from what the generation pipeline actually accepts, and a new
- * platform never has to be added twice.
+ * format. Sourcing it from there instead of hand-listing formats means the
+ * catalog can never drift from what the generation pipeline actually
+ * accepts, and a new platform never has to be added twice.
  */
 final class PostGenerationCatalog
 {
@@ -46,9 +45,7 @@ final class PostGenerationCatalog
     /**
      * Every format value the catalog can offer, regardless of which
      * platforms a workspace has connected. This is the single source of
-     * truth for validating a submitted format (`generate_post`, Task 4) once
-     * `StartPostCreationRequest` — the current holder of this same list — is
-     * retired.
+     * truth for validating a submitted format in `generate_post`.
      *
      * @return list<string>
      */
@@ -90,13 +87,11 @@ final class PostGenerationCatalog
     }
 
     /**
-     * `ContentType::aiSupported()` — the same allow-list
-     * `StartPostCreationRequest` validates a submitted format against —
-     * paired with the `ContentType` case used to resolve compatible
-     * platforms, plus the Instagram-carousel pseudo-format appended the same
-     * way that request appends it. `CAROUSEL_FORMAT` is not itself a
-     * `ContentType` case — a carousel post is persisted as `InstagramFeed` —
-     * so it resolves platforms through `InstagramFeed` too.
+     * `ContentType::aiSupported()` paired with the `ContentType` case used
+     * to resolve compatible platforms, plus the Instagram-carousel
+     * pseudo-format. `CAROUSEL_FORMAT` is not itself a `ContentType` case —
+     * a carousel post is persisted as `InstagramFeed` — so it resolves
+     * platforms through `InstagramFeed` too.
      *
      * @return list<array{value: string, type: ContentType}>
      */
@@ -113,9 +108,8 @@ final class PostGenerationCatalog
     }
 
     /**
-     * Same shape `PostController::create()` builds from the AI template
-     * registry, reused here rather than called there — that controller
-     * method is being deleted once the chat replaces the dedicated screen.
+     * The style list the chat's generation card renders, built from the AI
+     * template registry.
      *
      * @return list<array{key: string, name: string, description: string, preview: string, needs_account: bool, supported_formats: list<string>, applies_brand_visuals: bool}>
      */

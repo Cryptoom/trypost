@@ -14,11 +14,10 @@ const props = defineProps<{
 }>();
 
 /**
- * How long the bar takes to reach its ceiling. The card, unlike the loading
- * screen it replaces, never sees the image count — that lives in the tool
- * CALL's arguments, not its result — so this is a flat estimate rather than
- * `AiPostWizard`'s per-image one. The elapsed clock beside it is the honest
- * number; the bar only exists so a long wait still looks alive.
+ * How long the bar takes to reach its ceiling. The card never sees the image
+ * count — that lives in the tool CALL's arguments, not its result — so this is
+ * a flat estimate. The elapsed clock beside it is the honest number; the bar
+ * only exists so a long wait still looks alive.
  */
 const ESTIMATED_SECONDS = 120;
 const MAX_PROGRESS = 0.95;

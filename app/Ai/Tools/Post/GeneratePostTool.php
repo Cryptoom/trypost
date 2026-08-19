@@ -31,18 +31,14 @@ use Stringable;
  * Every argument comes from a language model, so each one is validated here
  * and every failure names both what was wrong and the valid options, so the
  * model can correct itself and retry instead of reporting a dead end.
- *
- * It replaces App\Http\Controllers\App\PostAiCreateController::start() and
- * carries that endpoint's rules (App\Http\Requests\App\Ai\StartPostCreationRequest)
- * over to chat.
  */
 class GeneratePostTool extends WorkspaceWriteTool
 {
     use ResolvesContentType;
 
     /**
-     * Upper bound on generated images, inherited from StartPostCreationRequest.
-     * A format may allow fewer — see ContentType::maxMediaCount().
+     * Upper bound on generated images. A format may allow fewer — see
+     * ContentType::maxMediaCount().
      */
     private const MAX_IMAGE_COUNT = 10;
 
@@ -121,9 +117,9 @@ class GeneratePostTool extends WorkspaceWriteTool
     }
 
     /**
-     * The same `useAi` gate the replaced controller ran before dispatching.
-     * Usage itself is recorded by StreamPostCreation, so nothing is metered
-     * here — doing it in both places would bill the account twice.
+     * The `useAi` gate, run before dispatching. Usage itself is recorded by
+     * StreamPostCreation, so nothing is metered here — doing it in both
+     * places would bill the account twice.
      */
     private function aiAccessError(): ?string
     {
@@ -133,9 +129,9 @@ class GeneratePostTool extends WorkspaceWriteTool
     }
 
     /**
-     * Shape rules carried over from StartPostCreationRequest, including the
-     * shared prompt bounds. The framework's own messages already name the
-     * offending argument and the bound it broke.
+     * Shape rules for the model-supplied arguments, including the shared
+     * prompt bounds. The framework's own messages already name the offending
+     * argument and the bound it broke.
      */
     private function argumentError(Request $request): ?string
     {
