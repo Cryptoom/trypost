@@ -13,7 +13,14 @@ return [
         'posts' => '最近の投稿',
         'metrics' => '投稿の指標',
     ],
-    'coming_soon' => 'チャット接続後に調べられます。今はレイアウトだけです。',
+    'thinking' => '考え中…',
+    'groups' => [
+        'today' => '今日',
+        'yesterday' => '昨日',
+        'last_7_days' => '過去 7 日間',
+        'last_30_days' => '過去 30 日間',
+        'older' => 'それ以前',
+    ],
     'tools' => [
         'post_not_found' => '投稿が見つかりません。',
         'error' => '問題が発生しました。もう一度お試しください。',
@@ -27,6 +34,9 @@ return [
     'errors' => [
         'turn_in_progress' => 'この会話はまだ応答中です。完了してから次のメッセージを送信してください。',
         'request_failed' => 'メッセージの送信中に問題が発生しました。もう一度お試しください。',
+        'stream_failed' => '応答中に問題が発生しました。もう一度お試しください。',
+        'payment_required_cta' => '請求情報を管理',
+        'access_error' => 'この会話は利用できません。削除されたか、別のユーザーのものである可能性があります。',
     ],
     'tool_names' => [
         'list_posts' => '投稿一覧を表示',

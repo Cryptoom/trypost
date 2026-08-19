@@ -13,7 +13,14 @@ return [
         'posts' => 'Posts recientes',
         'metrics' => 'Métricas de posts',
     ],
-    'coming_soon' => 'Podré buscarlo cuando el chat esté conectado. Por ahora solo es el diseño.',
+    'thinking' => 'Pensando…',
+    'groups' => [
+        'today' => 'Hoy',
+        'yesterday' => 'Ayer',
+        'last_7_days' => 'Últimos 7 días',
+        'last_30_days' => 'Últimos 30 días',
+        'older' => 'Anteriores',
+    ],
     'tools' => [
         'post_not_found' => 'Post no encontrado.',
         'error' => 'Algo salió mal. Inténtalo de nuevo.',
@@ -27,6 +34,9 @@ return [
     'errors' => [
         'turn_in_progress' => 'Esta conversación todavía está respondiendo. Espera a que termine antes de enviar otro mensaje.',
         'request_failed' => 'Algo salió mal al enviar tu mensaje. Inténtalo de nuevo.',
+        'stream_failed' => 'Algo salió mal al responder. Inténtalo de nuevo.',
+        'payment_required_cta' => 'Gestionar facturación',
+        'access_error' => 'Esta conversación no está disponible. Puede que se haya eliminado o que pertenezca a otra persona.',
     ],
     'tool_names' => [
         'list_posts' => 'Listar posts',

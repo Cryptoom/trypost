@@ -13,7 +13,14 @@ return [
         'posts' => '最近的帖子',
         'metrics' => '帖子数据',
     ],
-    'coming_soon' => '聊天接通后我就能查。现在只是界面骨架。',
+    'thinking' => '思考中…',
+    'groups' => [
+        'today' => '今天',
+        'yesterday' => '昨天',
+        'last_7_days' => '过去 7 天',
+        'last_30_days' => '过去 30 天',
+        'older' => '更早',
+    ],
     'tools' => [
         'post_not_found' => '未找到该帖子。',
         'error' => '出了点问题，请重试。',
@@ -27,6 +34,9 @@ return [
     'errors' => [
         'turn_in_progress' => '该对话仍在回复中。请等待回复完成后再发送新消息。',
         'request_failed' => '发送消息时出了点问题，请重试。',
+        'stream_failed' => '回复时出了点问题，请重试。',
+        'payment_required_cta' => '管理账单',
+        'access_error' => '此对话不可用，可能已被删除，或属于其他用户。',
     ],
     'tool_names' => [
         'list_posts' => '列出帖子',

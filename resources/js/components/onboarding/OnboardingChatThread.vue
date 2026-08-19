@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import ChatThread from '@/components/chat/ChatThread.vue';
+import ChatScrollContainer from '@/components/chat/ChatScrollContainer.vue';
 </script>
 
 <template>
-    <ChatThread
+    <ChatScrollContainer
         test-id="onboarding-chat-thread"
         end-test-id="onboarding-chat-end"
     >
         <slot />
-    </ChatThread>
+    </ChatScrollContainer>
 </template>

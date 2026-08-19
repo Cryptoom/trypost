@@ -13,7 +13,14 @@ return [
         'posts' => 'Son gönderiler',
         'metrics' => 'Gönderi metrikleri',
     ],
-    'coming_soon' => 'Sohbet bağlandığında bakabilirim. Şimdilik yalnızca düzen.',
+    'thinking' => 'Düşünüyor…',
+    'groups' => [
+        'today' => 'Bugün',
+        'yesterday' => 'Dün',
+        'last_7_days' => 'Son 7 gün',
+        'last_30_days' => 'Son 30 gün',
+        'older' => 'Daha eski',
+    ],
     'tools' => [
         'post_not_found' => 'Gönderi bulunamadı.',
         'error' => 'Bir şeyler ters gitti. Lütfen tekrar deneyin.',
@@ -27,6 +34,9 @@ return [
     'errors' => [
         'turn_in_progress' => 'Bu sohbet hâlâ yanıt veriyor. Yeni bir mesaj göndermeden önce bitmesini bekleyin.',
         'request_failed' => 'Mesajınız gönderilirken bir şeyler ters gitti. Lütfen tekrar deneyin.',
+        'stream_failed' => 'Yanıt verilirken bir şeyler ters gitti. Lütfen tekrar deneyin.',
+        'payment_required_cta' => 'Faturalandırmayı yönet',
+        'access_error' => 'Bu sohbet kullanılamıyor. Silinmiş olabilir veya başka birine ait olabilir.',
     ],
     'tool_names' => [
         'list_posts' => 'Gönderileri listele',

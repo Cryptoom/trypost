@@ -13,7 +13,14 @@ return [
         'posts' => '최근 게시물',
         'metrics' => '게시물 지표',
     ],
-    'coming_soon' => '채팅이 연결되면 찾아볼 수 있습니다. 지금은 레이아웃만 있습니다.',
+    'thinking' => '생각 중…',
+    'groups' => [
+        'today' => '오늘',
+        'yesterday' => '어제',
+        'last_7_days' => '지난 7일',
+        'last_30_days' => '지난 30일',
+        'older' => '이전',
+    ],
     'tools' => [
         'post_not_found' => '게시물을 찾을 수 없습니다.',
         'error' => '문제가 발생했습니다. 다시 시도해 주세요.',
@@ -27,6 +34,9 @@ return [
     'errors' => [
         'turn_in_progress' => '이 대화는 아직 응답 중입니다. 완료된 뒤에 다음 메시지를 보내세요.',
         'request_failed' => '메시지를 보내는 중 문제가 발생했습니다. 다시 시도해 주세요.',
+        'stream_failed' => '응답하는 중 문제가 발생했습니다. 다시 시도해 주세요.',
+        'payment_required_cta' => '결제 관리',
+        'access_error' => '이 대화를 사용할 수 없습니다. 삭제되었거나 다른 사용자의 대화일 수 있습니다.',
     ],
     'tool_names' => [
         'list_posts' => '게시물 목록',

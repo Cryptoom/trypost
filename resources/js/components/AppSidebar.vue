@@ -61,6 +61,7 @@ import { index as labels } from '@/routes/app/labels';
 import { index as mcp } from '@/routes/app/mcp';
 import { index as signatures } from '@/routes/app/signatures';
 import type { NavItem, User } from '@/types';
+import type { ChatConversationSummary } from '@/types/chat';
 
 interface Workspace {
     id: string;
@@ -78,6 +79,12 @@ const workspaces = computed<Workspace[]>(
 );
 const subscriptionPastDue = computed<boolean>(() =>
     Boolean(page.props.auth.subscriptionPastDue),
+);
+
+// Only sent as a page prop by ChatController's `index`/`show` actions — undefined
+// (empty history) everywhere else, since no shared Inertia prop carries it sitewide.
+const conversations = computed<ChatConversationSummary[] | undefined>(
+    () => page.props.conversations as ChatConversationSummary[] | undefined,
 );
 
 const {
@@ -303,7 +310,7 @@ const bottomNavItems = computed(() => [
                         { hidden: sidebarMode !== 'chat' },
                     ]"
                 >
-                    <SidebarChatHistory />
+                    <SidebarChatHistory :conversations="conversations" />
                 </TabsContent>
             </Tabs>
 

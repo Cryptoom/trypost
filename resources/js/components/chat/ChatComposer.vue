@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 
 const model = defineModel<string>({ default: '' });
 
-defineProps<{
+const props = defineProps<{
     placeholder: string;
     sendLabel: string;
     disabled?: boolean;
@@ -16,7 +16,7 @@ const emit = defineEmits<{
 }>();
 
 const onSubmit = (): void => {
-    if (! model.value.trim()) {
+    if (props.disabled || ! model.value.trim()) {
         return;
     }
 

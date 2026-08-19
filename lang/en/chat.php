@@ -13,7 +13,14 @@ return [
         'posts' => 'Recent posts',
         'metrics' => 'Post metrics',
     ],
-    'coming_soon' => 'I can look that up once chat is connected. This is just the layout for now.',
+    'thinking' => 'Thinking…',
+    'groups' => [
+        'today' => 'Today',
+        'yesterday' => 'Yesterday',
+        'last_7_days' => 'Last 7 days',
+        'last_30_days' => 'Last 30 days',
+        'older' => 'Older',
+    ],
     'tools' => [
         'post_not_found' => 'Post not found.',
         'error' => 'Something went wrong. Please try again.',
@@ -27,6 +34,9 @@ return [
     'errors' => [
         'turn_in_progress' => 'This conversation is still replying. Wait for it to finish before sending another message.',
         'request_failed' => 'Something went wrong sending your message. Please try again.',
+        'stream_failed' => 'Something went wrong while replying. Try again.',
+        'payment_required_cta' => 'Manage billing',
+        'access_error' => "This conversation isn't available. It may have been deleted, or it belongs to someone else.",
     ],
     'tool_names' => [
         'list_posts' => 'List posts',

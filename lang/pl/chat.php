@@ -13,7 +13,14 @@ return [
         'posts' => 'Ostatnie posty',
         'metrics' => 'Statystyki postów',
     ],
-    'coming_soon' => 'Sprawdzę to, gdy czat będzie podłączony. Na razie to tylko układ.',
+    'thinking' => 'Myślę…',
+    'groups' => [
+        'today' => 'Dziś',
+        'yesterday' => 'Wczoraj',
+        'last_7_days' => 'Ostatnie 7 dni',
+        'last_30_days' => 'Ostatnie 30 dni',
+        'older' => 'Starsze',
+    ],
     'tools' => [
         'post_not_found' => 'Nie znaleziono posta.',
         'error' => 'Coś poszło nie tak. Spróbuj ponownie.',
@@ -27,6 +34,9 @@ return [
     'errors' => [
         'turn_in_progress' => 'Ta rozmowa wciąż generuje odpowiedź. Poczekaj, aż się zakończy, zanim wyślesz kolejną wiadomość.',
         'request_failed' => 'Coś poszło nie tak podczas wysyłania wiadomości. Spróbuj ponownie.',
+        'stream_failed' => 'Coś poszło nie tak podczas odpowiadania. Spróbuj ponownie.',
+        'payment_required_cta' => 'Zarządzaj płatnościami',
+        'access_error' => 'Ta rozmowa jest niedostępna. Mogła zostać usunięta lub należy do kogoś innego.',
     ],
     'tool_names' => [
         'list_posts' => 'Lista postów',

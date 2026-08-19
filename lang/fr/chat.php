@@ -13,7 +13,14 @@ return [
         'posts' => 'Posts récents',
         'metrics' => 'Métriques des posts',
     ],
-    'coming_soon' => 'Je pourrai chercher ça une fois le chat connecté. Pour l’instant, c’est juste la mise en page.',
+    'thinking' => 'Réflexion en cours…',
+    'groups' => [
+        'today' => 'Aujourd\'hui',
+        'yesterday' => 'Hier',
+        'last_7_days' => '7 derniers jours',
+        'last_30_days' => '30 derniers jours',
+        'older' => 'Plus anciens',
+    ],
     'tools' => [
         'post_not_found' => 'Post introuvable.',
         'error' => 'Une erreur s’est produite. Réessayez.',
@@ -27,6 +34,9 @@ return [
     'errors' => [
         'turn_in_progress' => 'Cette conversation est encore en train de répondre. Attendez la fin avant d\'envoyer un autre message.',
         'request_failed' => 'Une erreur s’est produite lors de l’envoi de votre message. Réessayez.',
+        'stream_failed' => 'Une erreur s’est produite pendant la réponse. Réessayez.',
+        'payment_required_cta' => 'Gérer la facturation',
+        'access_error' => 'Cette conversation n’est pas disponible. Elle a peut-être été supprimée ou appartient à quelqu’un d’autre.',
     ],
     'tool_names' => [
         'list_posts' => 'Lister les posts',

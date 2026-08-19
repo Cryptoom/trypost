@@ -89,3 +89,35 @@ export interface ChatApprovalDecision {
     action: 'approve' | 'reject';
     result?: string;
 }
+
+/** Mirrors `App\Http\Resources\Chat\ConversationResource`. */
+export interface ChatConversationSummary {
+    id: string;
+    title: string | null;
+    status: string | null;
+    updated_at: string | null;
+}
+
+/**
+ * One entry of a stored assistant message's `tool_calls` array — mirrors
+ * `Laravel\Ai\Responses\Data\ToolCall::toArray()`, narrowed to the fields the
+ * frontend reads back out when replaying a reopened conversation.
+ */
+export interface ChatServerToolCall {
+    id: string;
+    name: string;
+    arguments: Record<string, unknown> | null;
+}
+
+/**
+ * Mirrors `App\Http\Resources\Chat\ConversationMessageResource`. `payloads`
+ * is keyed by tool call id, scoped to this message's own `tool_calls` (see
+ * the resource's docblock) — never the whole conversation's payload map.
+ */
+export interface ChatServerMessage {
+    id: string;
+    role: 'user' | 'assistant';
+    content: string | null;
+    tool_calls: ChatServerToolCall[] | null;
+    payloads: Record<string, string>;
+}

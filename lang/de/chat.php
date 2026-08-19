@@ -13,7 +13,14 @@ return [
         'posts' => 'Aktuelle Posts',
         'metrics' => 'Post-Kennzahlen',
     ],
-    'coming_soon' => 'Das kann ich nachschlagen, sobald der Chat verbunden ist. Das ist vorerst nur das Layout.',
+    'thinking' => 'Denkt nach…',
+    'groups' => [
+        'today' => 'Heute',
+        'yesterday' => 'Gestern',
+        'last_7_days' => 'Letzte 7 Tage',
+        'last_30_days' => 'Letzte 30 Tage',
+        'older' => 'Älter',
+    ],
     'tools' => [
         'post_not_found' => 'Beitrag nicht gefunden.',
         'error' => 'Etwas ist schiefgelaufen. Bitte versuche es erneut.',
@@ -27,6 +34,9 @@ return [
     'errors' => [
         'turn_in_progress' => 'Diese Unterhaltung antwortet noch. Warte, bis sie fertig ist, bevor du eine weitere Nachricht sendest.',
         'request_failed' => 'Beim Senden deiner Nachricht ist etwas schiefgelaufen. Bitte versuche es erneut.',
+        'stream_failed' => 'Beim Antworten ist etwas schiefgelaufen. Bitte versuche es erneut.',
+        'payment_required_cta' => 'Abrechnung verwalten',
+        'access_error' => 'Diese Unterhaltung ist nicht verfügbar. Sie wurde möglicherweise gelöscht oder gehört einer anderen Person.',
     ],
     'tool_names' => [
         'list_posts' => 'Posts auflisten',

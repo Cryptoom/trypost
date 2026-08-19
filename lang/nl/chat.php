@@ -13,7 +13,14 @@ return [
         'posts' => 'Recente posts',
         'metrics' => 'Poststatistieken',
     ],
-    'coming_soon' => 'Dat kan ik opzoeken zodra chat verbonden is. Dit is voorlopig alleen de layout.',
+    'thinking' => 'Aan het nadenken…',
+    'groups' => [
+        'today' => 'Vandaag',
+        'yesterday' => 'Gisteren',
+        'last_7_days' => 'Laatste 7 dagen',
+        'last_30_days' => 'Laatste 30 dagen',
+        'older' => 'Ouder',
+    ],
     'tools' => [
         'post_not_found' => 'Post niet gevonden.',
         'error' => 'Er is iets misgegaan. Probeer het opnieuw.',
@@ -27,6 +34,9 @@ return [
     'errors' => [
         'turn_in_progress' => 'Dit gesprek is nog aan het antwoorden. Wacht tot het klaar is voordat je een nieuw bericht stuurt.',
         'request_failed' => 'Er is iets misgegaan bij het versturen van je bericht. Probeer het opnieuw.',
+        'stream_failed' => 'Er is iets misgegaan tijdens het antwoorden. Probeer het opnieuw.',
+        'payment_required_cta' => 'Facturering beheren',
+        'access_error' => 'Dit gesprek is niet beschikbaar. Het is mogelijk verwijderd of behoort aan iemand anders toe.',
     ],
     'tool_names' => [
         'list_posts' => 'Posts weergeven',
