@@ -1,0 +1,6 @@
+integrations:
+  forge:
+    app.trypost.it:
+      org-slug: castellanos
+      server-id: 1203353
+      site-id: 3188663
