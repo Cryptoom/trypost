@@ -26,8 +26,10 @@ const props = withDefaults(
          * `ChatComposer` refuses to emit while disabled.
          */
         disabled?: boolean;
+        /** The turn this card sent failed, so its choices were never delivered. */
+        failed?: boolean;
     }>(),
-    { disabled: false },
+    { disabled: false, failed: false },
 );
 
 const emit = defineEmits<{
@@ -120,6 +122,23 @@ const selectedStyleKey = ref<string | null>(null);
 const imageCount = ref(DEFAULT_IMAGE_COUNT);
 const selectedAccountId = ref<string | null>(null);
 const submitted = ref(false);
+
+/**
+ * A failed turn hands the card back. `submit()` latches optimistically because
+ * nothing calls back on success, which is fine while the message lands — but a
+ * request that fails leaves the card collapsed into "Choices sent." beside a
+ * banner offering a retry the user has no way to take, since the card was the
+ * only place the choices existed. Un-latching is not a second submit: it
+ * restores the buttons and waits for the user to press Generate again.
+ */
+watch(
+    () => props.failed,
+    (failed): void => {
+        if (failed) {
+            submitted.value = false;
+        }
+    },
+);
 
 /**
  * Whether the account came from the user or from the card. `selectFormat`
@@ -309,8 +328,20 @@ const imageStepVisible = computed(() => styleAnswered.value && imageChoices.valu
  */
 const styleNeedsAccount = computed(() => resolvedStyle.value?.needs_account ?? false);
 
+/**
+ * The account is the last thing asked, so it waits on the style — both because
+ * a style that needs an account decides whether it is asked at all, and
+ * because a card must never hold two open questions at once. Without the
+ * `styleAnswered` gate the account question appears beneath the style question
+ * the user has not answered yet, and answering it leaves a record sitting
+ * under an open question. It also un-asks itself when the style is reopened,
+ * which is what keeps everything below a reopened step out of the way.
+ */
 const accountStepVisible = computed(
-    () => topicUsable.value && (accountsForFormat.value.length > 1 || styleNeedsAccount.value),
+    () =>
+        styleAnswered.value &&
+        topicUsable.value &&
+        (accountsForFormat.value.length > 1 || styleNeedsAccount.value),
 );
 
 const selectedAccount = computed(

@@ -140,6 +140,7 @@ const onDecide = (decision: ChatApprovalDecision): void => {
                     :messages="renderedMessages"
                     :pending="isWaitingForAssistant"
                     :disabled="isBusy"
+                    :failed="error !== undefined && error !== null"
                     @submit="ask"
                     @decide="onDecide"
                 />

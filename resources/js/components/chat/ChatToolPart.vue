@@ -16,8 +16,9 @@ const props = withDefaults(
          * sent mid-turn. `display` cards have nothing to disable.
          */
         disabled?: boolean;
+        failed?: boolean;
     }>(),
-    { disabled: false },
+    { disabled: false, failed: false },
 );
 
 const emit = defineEmits<{
@@ -44,7 +45,7 @@ const toolComponent = computed(() => toolEntry.value?.component ?? null);
 
 /** Bound only for `prompt` cards, so a `display` card never receives a stray attribute. */
 const promptProps = computed<Record<string, unknown>>(() =>
-    toolEntry.value?.kind === 'prompt' ? { disabled: props.disabled } : {},
+    toolEntry.value?.kind === 'prompt' ? { disabled: props.disabled, failed: props.failed } : {},
 );
 
 type ParsedResult = { kind: 'data'; data: unknown } | { kind: 'error'; message: string } | { kind: 'unreadable' };

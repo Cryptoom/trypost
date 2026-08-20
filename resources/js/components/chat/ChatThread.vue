@@ -20,12 +20,20 @@ withDefaults(
          * the same guard `ChatComposer` gets.
          */
         disabled?: boolean;
+        /**
+         * True while the turn the card sent is in a failed state. Forwarded to
+         * prompt-kind cards so one that latched into "sent" can un-latch: the
+         * message never landed, and the card is the only place the choices
+         * still exist.
+         */
+        failed?: boolean;
         testId?: string;
         endTestId?: string;
     }>(),
     {
         pending: false,
         disabled: false,
+        failed: false,
         testId: 'chat-thread',
         endTestId: 'chat-end',
     },
@@ -100,6 +108,7 @@ const onDecide = (decision: ChatApprovalDecision): void => emit('decide', decisi
                     v-else-if="part.type.startsWith('tool-')"
                     :part="{ ...(part as unknown as ChatToolInvocation) }"
                     :disabled="disabled"
+                    :failed="failed"
                     @submit="onSubmit"
                     @decide="onDecide"
                 />

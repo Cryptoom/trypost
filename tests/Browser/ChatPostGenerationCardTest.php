@@ -720,7 +720,11 @@ test('the card is rendered in the language of the conversation, not the interfac
         'images' => __('chat.post_generation.sentence_images_other', ['count' => 2], 'pt-BR'),
         'account' => 'Acme X (@acmex)',
         'brand' => __('chat.post_generation.sentence_brand_on', [], 'pt-BR'),
-    ], 'pt-BR'))->assertSee(__('chat.post_generation.sent', [], 'pt-BR'));
+    ], 'pt-BR'));
+
+    // The stubbed turn fails, so the card hands the choices back rather than
+    // latching — the sent state belongs to a message that actually landed.
+    $page->assertDontSee(__('chat.post_generation.sent', [], 'pt-BR'));
 });
 
 test('a format the user already named is recorded rather than asked again', function () {
@@ -812,4 +816,110 @@ test('the assistant introduces a card but cannot talk over it', function () {
     JS);
 
     expect($introAboveCard)->toBeTrue();
+});
+
+test('the card never holds two open questions at once', function () {
+    [$conversation] = chatWithPostGenerationCard();
+
+    $page = visit(route('app.chat.show', $conversation));
+
+    waitForChatTestId($page, 'chat-post-generation-card');
+
+    // Instagram feed has two connected accounts, so the account step earns a
+    // question — but not yet: the style above it is still unanswered, and a
+    // card that asks two things at once cannot be answered top to bottom.
+    $page->click('@chat-post-generation-format-instagram_feed');
+    waitForChatTestId($page, 'chat-post-generation-style-step');
+
+    $page->assertVisible('@chat-post-generation-style-step')
+        ->assertMissing('@chat-post-generation-account-step');
+
+    expect(chatCardBlocks($page))->toBe('record,question|ordered');
+});
+
+test('a card opened on a named format still asks one thing at a time', function () {
+    // The format arrives answered, so the very first render is the case that
+    // skips a click entirely — and the one where two stacked questions used to
+    // appear before the user had touched anything.
+    [$conversation] = chatWithPostGenerationCard(0, 'the pricing launch', ['format' => 'instagram_feed']);
+
+    $page = visit(route('app.chat.show', $conversation));
+
+    waitForChatTestId($page, 'chat-post-generation-card');
+    waitForChatTestId($page, 'chat-post-generation-style-step');
+
+    $page->assertMissing('@chat-post-generation-account-step');
+
+    expect(chatCardBlocks($page))->toBe('record,question|ordered');
+});
+
+test('reopening a step takes the answers below it out of the thread', function () {
+    [$conversation, $instagramBusiness] = chatWithPostGenerationCard();
+
+    $page = visit(route('app.chat.show', $conversation));
+
+    waitForChatTestId($page, 'chat-post-generation-card');
+
+    $page->click('@chat-post-generation-format-instagram_feed');
+    waitForChatTestId($page, 'chat-post-generation-style-image_card');
+
+    $page->click('@chat-post-generation-style-image_card');
+    waitForChatTestId($page, 'chat-post-generation-account-step');
+
+    $page->click("@chat-post-generation-account-{$instagramBusiness->id}");
+    waitForChatTestId($page, 'chat-post-generation-final');
+
+    expect(chatCardBlocks($page))->toBe('record,record,record,final|ordered');
+
+    // Changing the style must take the account answer with it: it was given
+    // after the style, so leaving it behind puts an answer under an open
+    // question and inverts the order the user answered in.
+    $page->click('@chat-post-generation-style-choice-change');
+
+    waitForChatTestId($page, 'chat-post-generation-style-step');
+
+    $page->assertMissing('@chat-post-generation-account-choice')
+        ->assertMissing('@chat-post-generation-final');
+
+    expect(chatCardBlocks($page))->toBe('record,question|ordered');
+});
+
+test('a card whose message never landed hands the choices back', function () {
+    [$conversation, $instagramBusiness] = chatWithPostGenerationCard();
+
+    $page = visit(route('app.chat.show', $conversation));
+
+    waitForChatTestId($page, 'chat-post-generation-card');
+
+    // The turn fails. The card latched optimistically on submit, so without a
+    // way back it would sit collapsed into "Choices sent." beside a banner
+    // offering a retry the user cannot take — the card was the only place the
+    // choices ever existed.
+    $page->script(<<<'JS'
+        (async () => {
+            window.fetch = async () => new Response(JSON.stringify({ message: 'nope' }), {
+                status: 500,
+                headers: { 'Content-Type': 'application/json' },
+            });
+
+            return true;
+        })()
+    JS);
+
+    $page->click('@chat-post-generation-format-instagram_feed');
+    waitForChatTestId($page, 'chat-post-generation-style-image_card');
+
+    $page->click('@chat-post-generation-style-image_card');
+    waitForChatTestId($page, 'chat-post-generation-account-step');
+
+    $page->click("@chat-post-generation-account-{$instagramBusiness->id}");
+    waitForChatTestId($page, 'chat-post-generation-submit');
+
+    $page->click('@chat-post-generation-submit');
+
+    // Back to a card the user can press again.
+    waitForChatTestId($page, 'chat-post-generation-submit');
+
+    $page->assertVisible('@chat-post-generation-submit')
+        ->assertDontSee(__('chat.post_generation.sent'));
 });
