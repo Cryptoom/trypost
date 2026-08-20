@@ -5,7 +5,10 @@ import ChatAssistantMessage from '@/components/chat/ChatAssistantMessage.vue';
 import ChatScrollContainer from '@/components/chat/ChatScrollContainer.vue';
 import ChatToolPart from '@/components/chat/ChatToolPart.vue';
 import ChatUserMessage from '@/components/chat/ChatUserMessage.vue';
+import { resolveToolComponent } from '@/lib/chat/toolComponents';
 import type { ChatApprovalDecision, ChatToolInvocation } from '@/types/chat';
+
+const TOOL_TYPE_PREFIX = 'tool-';
 
 withDefaults(
     defineProps<{
@@ -33,6 +36,34 @@ const emit = defineEmits<{
     decide: [ChatApprovalDecision];
 }>();
 
+/**
+ * Text an assistant turn produced AFTER opening an interactive card, which the
+ * thread drops.
+ *
+ * An interactive card asks its own question and the user answers it by
+ * clicking. Anything the model says once the card is on screen therefore lands
+ * below it, either duplicating the question — two prompts competing to be
+ * answered — or, by the time the user reads it, commenting on a choice they
+ * have already made. The prompt asks the model to introduce a card and then
+ * stop; this is what makes it so, since a prompt is a request and this is not.
+ *
+ * Only text after the card is dropped. The introduction written before it is
+ * the point: it lands above the card and says why it is there.
+ */
+const isStaleAfterCard = (message: UIMessage, index: number): boolean => {
+    if (message.role !== 'assistant') {
+        return false;
+    }
+
+    return message.parts.slice(0, index).some((part) => {
+        if (! part.type.startsWith(TOOL_TYPE_PREFIX)) {
+            return false;
+        }
+
+        return resolveToolComponent(part.type.slice(TOOL_TYPE_PREFIX.length))?.kind === 'prompt';
+    });
+};
+
 const onSubmit = (text: string): void => emit('submit', text);
 const onDecide = (decision: ChatApprovalDecision): void => emit('decide', decision);
 </script>
@@ -46,7 +77,7 @@ const onDecide = (decision: ChatApprovalDecision): void => emit('decide', decisi
                     :text="part.text"
                 />
                 <ChatAssistantMessage
-                    v-else-if="part.type === 'text'"
+                    v-else-if="part.type === 'text' && ! isStaleAfterCard(message, index)"
                     :description="part.text"
                     :streaming="part.state === 'streaming'"
                 />

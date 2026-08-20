@@ -610,30 +610,34 @@ test('a stored turn renders its pre-tool text above the card and its answer belo
 
     WorkspaceConversationMessage::factory()->for($conversation, 'conversation')->create([
         'role' => Role::Assistant,
-        'content' => "Let me show you the formats.\n\nAll set, pick one above.",
+        'content' => "Let me look at your posts.\n\nNothing scheduled yet.",
         'parts' => [
-            ['type' => 'text', 'text' => 'Let me show you the formats.'],
-            ['type' => 'tool', 'id' => 'call_start', 'name' => 'start_post_generation'],
-            ['type' => 'text', 'text' => 'All set, pick one above.'],
+            ['type' => 'text', 'text' => 'Let me look at your posts.'],
+            ['type' => 'tool', 'id' => 'call_list', 'name' => 'list_posts'],
+            ['type' => 'text', 'text' => 'Nothing scheduled yet.'],
         ],
-        'tool_calls' => [['id' => 'call_start', 'name' => 'start_post_generation', 'arguments' => ['topic' => 'the pricing launch']]],
-        'tool_results' => [['id' => 'call_start', 'result' => '{"data":{"formats":[],"styles":[],"applies_brand_visuals_default":true}}']],
+        'tool_calls' => [['id' => 'call_list', 'name' => 'list_posts', 'arguments' => []]],
+        'tool_results' => [['id' => 'call_list', 'result' => '{"data":[]}']],
     ]);
 
     $page = visit(route('app.chat.show', $conversation));
 
-    waitForChatTestId($page, 'chat-post-generation-card');
+    $page->assertSee('Let me look at your posts.');
 
     // DOCUMENT_POSITION_PRECEDING is 2, DOCUMENT_POSITION_FOLLOWING is 4: the
-    // announcement must come before the card it introduces, and the answer after.
+    // announcement must come before the card it introduces, and the remark
+    // after. A `list_posts` card only reports, so a comment below it is the
+    // model saying something about what it found — unlike an interactive card,
+    // which the user answers by clicking and which nothing may talk over.
     $order = $page->script(<<<'JS'
         (async () => {
-            const card = document.querySelector('[data-testid="chat-post-generation-card"]');
+            const card = document.querySelector('[data-testid="chat-tool-part"]')
+                ?? document.querySelector('[data-testid^="chat-post-list"]');
             const find = (needle) => Array.from(document.querySelectorAll('.prose-chat'))
                 .find((el) => el.textContent.includes(needle));
 
-            const before = find('Let me show you the formats.');
-            const after = find('All set, pick one above.');
+            const before = find('Let me look at your posts.');
+            const after = find('Nothing scheduled yet.');
 
             if (!card || !before || !after) return 'missing';
 
@@ -647,23 +651,21 @@ test('a stored turn renders its pre-tool text above the card and its answer belo
     expect($order)->toBe('before|after');
 });
 
-test('a turn stored without parts still renders its card and its text', function () {
+test('a turn stored without parts renders its card without the question its text duplicated', function () {
     [$conversation] = chatWithPostGenerationCard();
 
     $page = visit(route('app.chat.show', $conversation));
 
     waitForChatTestId($page, 'chat-post-generation-card');
 
-    $page->assertSee('Pick how you want it generated.');
+    // The card still renders. Its text does not: a row stored before parts
+    // existed was written under the rule that said to speak only after the
+    // call, so whatever it says about an interactive card is the duplicated
+    // question that rule produced.
+    $page->assertDontSee('Pick how you want it generated.');
 
     $rendered = $page->script(<<<'JS'
-        (async () => {
-            const card = document.querySelector('[data-testid="chat-post-generation-card"]');
-            const text = Array.from(document.querySelectorAll('.prose-chat'))
-                .find((el) => el.textContent.includes('Pick how you want it generated.'));
-
-            return Boolean(card && text);
-        })()
+        (async () => Boolean(document.querySelector('[data-testid="chat-post-generation-card"]')))()
     JS);
 
     expect($rendered)->toBeTrue();
@@ -765,4 +767,49 @@ test('a format the workspace cannot post is ignored and the card asks', function
     $page->assertVisible('@chat-post-generation-format-step')
         ->assertMissing('@chat-post-generation-format-choice')
         ->assertDontSee(__('posts.create.steps.format.linkedin_post'));
+});
+
+test('the assistant introduces a card but cannot talk over it', function () {
+    [$user, $workspace] = actingAsWorkspaceUser();
+
+    seedGenerationAccounts($workspace);
+
+    $conversation = WorkspaceConversation::factory()->for($workspace)->for($user)->create();
+
+    // A turn that spoke before the card and again after it. The introduction
+    // belongs above the card; the remark below it is about a choice the user
+    // makes by clicking, so it can only ever arrive too late.
+    WorkspaceConversationMessage::factory()->for($conversation, 'conversation')->create([
+        'role' => Role::Assistant,
+        'content' => 'INTRO_LINE STALE_LINE',
+        'parts' => [
+            ['type' => 'text', 'text' => 'INTRO_LINE'],
+            ['type' => 'tool', 'id' => 'call_start', 'name' => 'start_post_generation'],
+            ['type' => 'text', 'text' => 'STALE_LINE'],
+        ],
+        'tool_calls' => [['id' => 'call_start', 'name' => 'start_post_generation', 'arguments' => ['topic' => 'the pricing launch']]],
+        'tool_results' => [['id' => 'call_start', 'result' => '{"data":{"formats":[],"styles":[],"applies_brand_visuals_default":true}}']],
+    ]);
+
+    $page = visit(route('app.chat.show', $conversation));
+
+    waitForChatTestId($page, 'chat-post-generation-card');
+
+    $page->assertSee('INTRO_LINE')
+        ->assertDontSee('STALE_LINE');
+
+    $introAboveCard = $page->script(<<<'JS'
+        (async () => {
+            const card = document.querySelector('[data-testid="chat-post-generation-card"]');
+            const intro = Array.from(document.querySelectorAll('div'))
+                .reverse()
+                .find((el) => el.textContent.trim() === 'INTRO_LINE');
+
+            if (!card || !intro) return 'missing';
+
+            return (intro.compareDocumentPosition(card) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0;
+        })()
+    JS);
+
+    expect($introAboveCard)->toBeTrue();
 });
