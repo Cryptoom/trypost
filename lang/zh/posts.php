@@ -591,24 +591,18 @@ return [
         'cancel' => '取消',
     ],
 
-    'create' => [
-        'steps' => [
-            'format' => [
-                'instagram_feed' => 'Instagram 信息流帖子',
-                'instagram_carousel' => 'Instagram 轮播',
-                'linkedin_post' => 'LinkedIn 帖子',
-                'linkedin_page_post' => 'LinkedIn 页面帖子',
-                'x_post' => 'X 帖子',
-                'bluesky_post' => 'Bluesky 帖子',
-                'threads_post' => 'Threads 帖子',
-                'mastodon_post' => 'Mastodon 帖子',
-                'telegram_post' => 'Telegram 帖子',
-                'discord_message' => 'Discord 消息',
-                'facebook_post' => 'Facebook 帖子',
-                'pinterest_pin' => 'Pinterest Pin',
-                'instagram_story' => 'Instagram 快拍',
-                'facebook_story' => 'Facebook 快拍',
-            ],
-        ],
+    /** Display names for the formats AI post generation can produce. */
+    'formats' => [
+        'instagram_feed' => 'Instagram 信息流帖子',
+        'instagram_carousel' => 'Instagram 轮播',
+        'linkedin_post' => 'LinkedIn 帖子',
+        'linkedin_page_post' => 'LinkedIn 页面帖子',
+        'x_post' => 'X 帖子',
+        'bluesky_post' => 'Bluesky 帖子',
+        'threads_post' => 'Threads 帖子',
+        'mastodon_post' => 'Mastodon 帖子',
+        'facebook_post' => 'Facebook 帖子',
+        'pinterest_pin' => 'Pinterest Pin',
+        'instagram_story' => 'Instagram 快拍',
     ],
 ];

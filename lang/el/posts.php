@@ -591,24 +591,18 @@ return [
         'cancel' => 'Ακύρωση',
     ],
 
-    'create' => [
-        'steps' => [
-            'format' => [
-                'instagram_feed' => 'Δημοσίευση feed Instagram',
-                'instagram_carousel' => 'Carousel Instagram',
-                'linkedin_post' => 'Δημοσίευση LinkedIn',
-                'linkedin_page_post' => 'Δημοσίευση σελίδας LinkedIn',
-                'x_post' => 'Δημοσίευση X',
-                'bluesky_post' => 'Δημοσίευση Bluesky',
-                'threads_post' => 'Δημοσίευση Threads',
-                'mastodon_post' => 'Δημοσίευση Mastodon',
-                'telegram_post' => 'Δημοσίευση Telegram',
-                'discord_message' => 'Μήνυμα Discord',
-                'facebook_post' => 'Δημοσίευση Facebook',
-                'pinterest_pin' => 'Pin Pinterest',
-                'instagram_story' => 'Story Instagram',
-                'facebook_story' => 'Story Facebook',
-            ],
-        ],
+    /** Display names for the formats AI post generation can produce. */
+    'formats' => [
+        'instagram_feed' => 'Δημοσίευση feed Instagram',
+        'instagram_carousel' => 'Carousel Instagram',
+        'linkedin_post' => 'Δημοσίευση LinkedIn',
+        'linkedin_page_post' => 'Δημοσίευση σελίδας LinkedIn',
+        'x_post' => 'Δημοσίευση X',
+        'bluesky_post' => 'Δημοσίευση Bluesky',
+        'threads_post' => 'Δημοσίευση Threads',
+        'mastodon_post' => 'Δημοσίευση Mastodon',
+        'facebook_post' => 'Δημοσίευση Facebook',
+        'pinterest_pin' => 'Pin Pinterest',
+        'instagram_story' => 'Story Instagram',
     ],
 ];

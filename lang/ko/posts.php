@@ -591,24 +591,18 @@ return [
         'cancel' => '취소',
     ],
 
-    'create' => [
-        'steps' => [
-            'format' => [
-                'instagram_feed' => 'Instagram 피드 게시물',
-                'instagram_carousel' => 'Instagram 캐러셀',
-                'linkedin_post' => 'LinkedIn 게시물',
-                'linkedin_page_post' => 'LinkedIn 페이지 게시물',
-                'x_post' => 'X 게시물',
-                'bluesky_post' => 'Bluesky 게시물',
-                'threads_post' => 'Threads 게시물',
-                'mastodon_post' => 'Mastodon 게시물',
-                'telegram_post' => 'Telegram 게시물',
-                'discord_message' => 'Discord 메시지',
-                'facebook_post' => 'Facebook 게시물',
-                'pinterest_pin' => 'Pinterest 핀',
-                'instagram_story' => 'Instagram 스토리',
-                'facebook_story' => 'Facebook 스토리',
-            ],
-        ],
+    /** Display names for the formats AI post generation can produce. */
+    'formats' => [
+        'instagram_feed' => 'Instagram 피드 게시물',
+        'instagram_carousel' => 'Instagram 캐러셀',
+        'linkedin_post' => 'LinkedIn 게시물',
+        'linkedin_page_post' => 'LinkedIn 페이지 게시물',
+        'x_post' => 'X 게시물',
+        'bluesky_post' => 'Bluesky 게시물',
+        'threads_post' => 'Threads 게시물',
+        'mastodon_post' => 'Mastodon 게시물',
+        'facebook_post' => 'Facebook 게시물',
+        'pinterest_pin' => 'Pinterest 핀',
+        'instagram_story' => 'Instagram 스토리',
     ],
 ];

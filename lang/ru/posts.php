@@ -591,24 +591,18 @@ return [
         'cancel' => 'Отмена',
     ],
 
-    'create' => [
-        'steps' => [
-            'format' => [
-                'instagram_feed' => 'Пост в ленте Instagram',
-                'instagram_carousel' => 'Карусель Instagram',
-                'linkedin_post' => 'Пост LinkedIn',
-                'linkedin_page_post' => 'Пост страницы LinkedIn',
-                'x_post' => 'Пост X',
-                'bluesky_post' => 'Пост Bluesky',
-                'threads_post' => 'Пост Threads',
-                'mastodon_post' => 'Пост Mastodon',
-                'telegram_post' => 'Пост Telegram',
-                'discord_message' => 'Сообщение Discord',
-                'facebook_post' => 'Пост Facebook',
-                'pinterest_pin' => 'Пин Pinterest',
-                'instagram_story' => 'История Instagram',
-                'facebook_story' => 'История Facebook',
-            ],
-        ],
+    /** Display names for the formats AI post generation can produce. */
+    'formats' => [
+        'instagram_feed' => 'Пост в ленте Instagram',
+        'instagram_carousel' => 'Карусель Instagram',
+        'linkedin_post' => 'Пост LinkedIn',
+        'linkedin_page_post' => 'Пост страницы LinkedIn',
+        'x_post' => 'Пост X',
+        'bluesky_post' => 'Пост Bluesky',
+        'threads_post' => 'Пост Threads',
+        'mastodon_post' => 'Пост Mastodon',
+        'facebook_post' => 'Пост Facebook',
+        'pinterest_pin' => 'Пин Pinterest',
+        'instagram_story' => 'История Instagram',
     ],
 ];

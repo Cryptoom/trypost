@@ -593,24 +593,18 @@ return [
         'cancel' => 'İptal',
     ],
 
-    'create' => [
-        'steps' => [
-            'format' => [
-                'instagram_feed' => 'Instagram Akış Gönderisi',
-                'instagram_carousel' => 'Instagram Karuseli',
-                'linkedin_post' => 'LinkedIn Gönderisi',
-                'linkedin_page_post' => 'LinkedIn Sayfa Gönderisi',
-                'x_post' => 'X Gönderisi',
-                'bluesky_post' => 'Bluesky Gönderisi',
-                'threads_post' => 'Threads Gönderisi',
-                'mastodon_post' => 'Mastodon Gönderisi',
-                'telegram_post' => 'Telegram Gönderisi',
-                'discord_message' => 'Discord Mesajı',
-                'facebook_post' => 'Facebook Gönderisi',
-                'pinterest_pin' => 'Pinterest Pin\'i',
-                'instagram_story' => 'Instagram Hikayesi',
-                'facebook_story' => 'Facebook Hikayesi',
-            ],
-        ],
+    /** Display names for the formats AI post generation can produce. */
+    'formats' => [
+        'instagram_feed' => 'Instagram Akış Gönderisi',
+        'instagram_carousel' => 'Instagram Karuseli',
+        'linkedin_post' => 'LinkedIn Gönderisi',
+        'linkedin_page_post' => 'LinkedIn Sayfa Gönderisi',
+        'x_post' => 'X Gönderisi',
+        'bluesky_post' => 'Bluesky Gönderisi',
+        'threads_post' => 'Threads Gönderisi',
+        'mastodon_post' => 'Mastodon Gönderisi',
+        'facebook_post' => 'Facebook Gönderisi',
+        'pinterest_pin' => 'Pinterest Pin\'i',
+        'instagram_story' => 'Instagram Hikayesi',
     ],
 ];

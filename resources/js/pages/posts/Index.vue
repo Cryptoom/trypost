@@ -158,8 +158,15 @@ const handleDelete = (post: Post) => {
     });
 };
 
+const duplicatingPost = ref(false);
+
 const handleDuplicate = (post: Post) => {
-    router.post(duplicatePost.url(post.id));
+    if (duplicatingPost.value) return;
+
+    duplicatingPost.value = true;
+    router.post(duplicatePost.url(post.id), {}, {
+        onFinish: () => { duplicatingPost.value = false; },
+    });
 };
 
 const creatingPost = ref(false);

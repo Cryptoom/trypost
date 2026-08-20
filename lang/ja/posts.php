@@ -591,24 +591,18 @@ return [
         'cancel' => 'キャンセル',
     ],
 
-    'create' => [
-        'steps' => [
-            'format' => [
-                'instagram_feed' => 'Instagram フィード投稿',
-                'instagram_carousel' => 'Instagram カルーセル',
-                'linkedin_post' => 'LinkedIn 投稿',
-                'linkedin_page_post' => 'LinkedIn ページ投稿',
-                'x_post' => 'X 投稿',
-                'bluesky_post' => 'Bluesky 投稿',
-                'threads_post' => 'Threads 投稿',
-                'mastodon_post' => 'Mastodon 投稿',
-                'telegram_post' => 'Telegram 投稿',
-                'discord_message' => 'Discord メッセージ',
-                'facebook_post' => 'Facebook 投稿',
-                'pinterest_pin' => 'Pinterest ピン',
-                'instagram_story' => 'Instagram ストーリー',
-                'facebook_story' => 'Facebook ストーリー',
-            ],
-        ],
+    /** Display names for the formats AI post generation can produce. */
+    'formats' => [
+        'instagram_feed' => 'Instagram フィード投稿',
+        'instagram_carousel' => 'Instagram カルーセル',
+        'linkedin_post' => 'LinkedIn 投稿',
+        'linkedin_page_post' => 'LinkedIn ページ投稿',
+        'x_post' => 'X 投稿',
+        'bluesky_post' => 'Bluesky 投稿',
+        'threads_post' => 'Threads 投稿',
+        'mastodon_post' => 'Mastodon 投稿',
+        'facebook_post' => 'Facebook 投稿',
+        'pinterest_pin' => 'Pinterest ピン',
+        'instagram_story' => 'Instagram ストーリー',
     ],
 ];

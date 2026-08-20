@@ -160,7 +160,7 @@ export interface ChatPostGenerationFormat {
     platform: string;
     /**
      * The format's display name, resolved server-side in the conversation's
-     * language. The card renders it as-is: `posts.create.steps.format.*` is
+     * language. The card renders it as-is: `posts.formats.*` is
      * bound to the app locale on the client, which is not the language the
      * thread is being held in.
      */

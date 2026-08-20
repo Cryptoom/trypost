@@ -591,24 +591,18 @@ return [
         'cancel' => 'Скасувати',
     ],
 
-    'create' => [
-        'steps' => [
-            'format' => [
-                'instagram_feed' => 'Пост у стрічці Instagram',
-                'instagram_carousel' => 'Карусель Instagram',
-                'linkedin_post' => 'Пост LinkedIn',
-                'linkedin_page_post' => 'Пост сторінки LinkedIn',
-                'x_post' => 'Пост X',
-                'bluesky_post' => 'Пост Bluesky',
-                'threads_post' => 'Пост Threads',
-                'mastodon_post' => 'Пост Mastodon',
-                'telegram_post' => 'Пост Telegram',
-                'discord_message' => 'Повідомлення Discord',
-                'facebook_post' => 'Пост Facebook',
-                'pinterest_pin' => 'Pin Pinterest',
-                'instagram_story' => 'Stories Instagram',
-                'facebook_story' => 'Stories Facebook',
-            ],
-        ],
+    /** Display names for the formats AI post generation can produce. */
+    'formats' => [
+        'instagram_feed' => 'Пост у стрічці Instagram',
+        'instagram_carousel' => 'Карусель Instagram',
+        'linkedin_post' => 'Пост LinkedIn',
+        'linkedin_page_post' => 'Пост сторінки LinkedIn',
+        'x_post' => 'Пост X',
+        'bluesky_post' => 'Пост Bluesky',
+        'threads_post' => 'Пост Threads',
+        'mastodon_post' => 'Пост Mastodon',
+        'facebook_post' => 'Пост Facebook',
+        'pinterest_pin' => 'Pin Pinterest',
+        'instagram_story' => 'Stories Instagram',
     ],
 ];

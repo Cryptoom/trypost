@@ -276,9 +276,16 @@ const onAssetDeleted = async () => {
     await loadUploadsFirstPage();
 };
 
+const creatingFromAsset = ref(false);
+
 const createPostFromAsset = (asset: AssetMedia) => {
+    if (creatingFromAsset.value) return;
+
+    creatingFromAsset.value = true;
     router.post(storePost.url(), {
         media: [{ id: asset.id, path: asset.path, url: asset.url, type: asset.type, mime_type: asset.mime_type }],
+    }, {
+        onFinish: () => { creatingFromAsset.value = false; },
     });
 };
 
@@ -722,7 +729,7 @@ onUnmounted(() => {
                                 <TooltipProvider>
                                     <Tooltip>
                                         <TooltipTrigger as-child>
-                                            <Button variant="outline" size="icon" class="size-8" @click.stop="createPostFromAsset(asset)">
+                                            <Button variant="outline" size="icon" class="size-8" :disabled="creatingFromAsset" @click.stop="createPostFromAsset(asset)">
                                                 <IconPencilPlus class="size-4" />
                                             </Button>
                                         </TooltipTrigger>

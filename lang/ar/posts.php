@@ -591,24 +591,18 @@ return [
         'cancel' => 'إلغاء',
     ],
 
-    'create' => [
-        'steps' => [
-            'format' => [
-                'instagram_feed' => 'منشور خلاصة Instagram',
-                'instagram_carousel' => 'عرض Instagram الدائري',
-                'linkedin_post' => 'منشور LinkedIn',
-                'linkedin_page_post' => 'منشور صفحة LinkedIn',
-                'x_post' => 'منشور X',
-                'bluesky_post' => 'منشور Bluesky',
-                'threads_post' => 'منشور Threads',
-                'mastodon_post' => 'منشور Mastodon',
-                'telegram_post' => 'منشور Telegram',
-                'discord_message' => 'رسالة Discord',
-                'facebook_post' => 'منشور Facebook',
-                'pinterest_pin' => 'دبوس Pinterest',
-                'instagram_story' => 'قصة Instagram',
-                'facebook_story' => 'قصة Facebook',
-            ],
-        ],
+    /** Display names for the formats AI post generation can produce. */
+    'formats' => [
+        'instagram_feed' => 'منشور خلاصة Instagram',
+        'instagram_carousel' => 'عرض Instagram الدائري',
+        'linkedin_post' => 'منشور LinkedIn',
+        'linkedin_page_post' => 'منشور صفحة LinkedIn',
+        'x_post' => 'منشور X',
+        'bluesky_post' => 'منشور Bluesky',
+        'threads_post' => 'منشور Threads',
+        'mastodon_post' => 'منشور Mastodon',
+        'facebook_post' => 'منشور Facebook',
+        'pinterest_pin' => 'دبوس Pinterest',
+        'instagram_story' => 'قصة Instagram',
     ],
 ];

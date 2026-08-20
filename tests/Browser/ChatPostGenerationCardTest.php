@@ -130,7 +130,7 @@ test('the card reveals its choices and submits them as one sentence', function (
     // that replaced it is gone.
     $page->assertVisible('@chat-post-generation-format-choice')
         ->assertMissing('@chat-post-generation-format-step')
-        ->assertSee(__('posts.create.steps.format.x_post'));
+        ->assertSee(__('posts.formats.x_post'));
 
     $page->click('@chat-post-generation-style-image_card');
 
@@ -146,7 +146,7 @@ test('the card reveals its choices and submits them as one sentence', function (
     // The sentence carries the topic: it is what the model reads before it
     // calls generate_post with its `prompt` argument.
     $page->assertSee(__('chat.post_generation.sentence_with_brand', [
-        'format' => __('posts.create.steps.format.x_post'),
+        'format' => __('posts.formats.x_post'),
         'topic' => 'the pricing launch',
         'style' => __('posts.ai.templates.image_card.name'),
         'images' => __('chat.post_generation.sentence_images_other', ['count' => 2]),
@@ -188,7 +188,7 @@ test('a format connected on two platforms is offered once with both accounts', f
 
     // Instagram feed defaults to a single image, unlike every other format.
     $page->assertSee(__('chat.post_generation.sentence_with_brand', [
-        'format' => __('posts.create.steps.format.instagram_feed'),
+        'format' => __('posts.formats.instagram_feed'),
         'topic' => 'the pricing launch',
         'style' => __('posts.ai.templates.image_card.name'),
         'images' => __('chat.post_generation.sentence_images_one'),
@@ -251,7 +251,7 @@ test('the card refuses to submit while a turn is still streaming', function () {
     // Neither latched into its sent state nor sent as a message.
     $page->assertMissing('@chat-post-generation-sent')
         ->assertDontSee(__('chat.post_generation.sentence_with_brand', [
-            'format' => __('posts.create.steps.format.x_post'),
+            'format' => __('posts.formats.x_post'),
             'topic' => 'the pricing launch',
             'style' => __('posts.ai.templates.image_card.name'),
             'images' => __('chat.post_generation.sentence_images_other', ['count' => 2]),
@@ -324,7 +324,7 @@ test('a workspace with one connected network opens straight on the styles', func
     // The format still opens the thread, as the choice the card made on the
     // user's behalf — and with nothing to switch to, it offers no way back.
     $page->assertVisible('@chat-post-generation-format-choice')
-        ->assertSee(__('posts.create.steps.format.threads_post'))
+        ->assertSee(__('posts.formats.threads_post'))
         ->assertMissing('@chat-post-generation-format-step')
         ->assertMissing('@chat-post-generation-format-choice-change');
 });
@@ -442,7 +442,7 @@ test('an account the card picked itself is never recorded as the user\'s choice'
     // tweet_card renders the post as that account's own card and applies no
     // brand visuals, so the sentence carries no brand clause.
     $page->assertSee(__('chat.post_generation.sentence', [
-        'format' => __('posts.create.steps.format.threads_post'),
+        'format' => __('posts.formats.threads_post'),
         'topic' => 'the pricing launch',
         'style' => __('posts.ai.templates.tweet_card.name'),
         'images' => __('chat.post_generation.sentence_images_other', ['count' => 2]),
@@ -476,7 +476,7 @@ test('the topic question opens pre-filled with what the model extracted', functi
     $page->click('@chat-post-generation-submit');
 
     $page->assertSee(__('chat.post_generation.sentence_with_brand', [
-        'format' => __('posts.create.steps.format.x_post'),
+        'format' => __('posts.formats.x_post'),
         'topic' => 'o lançamento do X',
         'style' => __('posts.ai.templates.image_card.name'),
         'images' => __('chat.post_generation.sentence_images_other', ['count' => 2]),
@@ -544,8 +544,8 @@ test('a recorded choice can be reopened and changed', function () {
     $page->click('@chat-post-generation-format-instagram_feed');
     waitForChatTestId($page, 'chat-post-generation-style-image_card');
 
-    $page->assertSee(__('posts.create.steps.format.instagram_feed'))
-        ->assertDontSee(__('posts.create.steps.format.x_post'));
+    $page->assertSee(__('posts.formats.instagram_feed'))
+        ->assertDontSee(__('posts.formats.x_post'));
 });
 
 test('revealing a step scrolls the thread to keep it in view', function () {
@@ -686,8 +686,8 @@ test('the card is rendered in the language of the conversation, not the interfac
 
     $page->assertSee(__('chat.post_generation.format_question', [], 'pt-BR'))
         ->assertDontSee(__('chat.post_generation.format_question', [], 'en'))
-        ->assertSee(__('posts.create.steps.format.x_post', [], 'pt-BR'))
-        ->assertDontSee(__('posts.create.steps.format.x_post', [], 'en'));
+        ->assertSee(__('posts.formats.x_post', [], 'pt-BR'))
+        ->assertDontSee(__('posts.formats.x_post', [], 'en'));
 
     $page->click('@chat-post-generation-format-x_post');
     waitForChatTestId($page, 'chat-post-generation-style-image_card');
@@ -714,7 +714,7 @@ test('the card is rendered in the language of the conversation, not the interfac
     // The sentence is what the model reads before it calls generate_post, and
     // it is the user's own message in the thread — so it, too, is Portuguese.
     $page->assertSee(__('chat.post_generation.sentence_with_brand', [
-        'format' => __('posts.create.steps.format.x_post', [], 'pt-BR'),
+        'format' => __('posts.formats.x_post', [], 'pt-BR'),
         'topic' => 'o lançamento do X',
         'style' => __('posts.ai.templates.image_card.name', [], 'pt-BR'),
         'images' => __('chat.post_generation.sentence_images_other', ['count' => 2], 'pt-BR'),
@@ -736,10 +736,10 @@ test('a format the user already named is recorded rather than asked again', func
 
     $page->assertMissing('@chat-post-generation-format-step')
         ->assertVisible('@chat-post-generation-format-choice')
-        ->assertSee(__('posts.create.steps.format.instagram_carousel'))
+        ->assertSee(__('posts.formats.instagram_carousel'))
         ->assertMissing('@chat-post-generation-format-instagram_carousel')
         ->assertMissing('@chat-post-generation-format-x_post')
-        ->assertDontSee(__('posts.create.steps.format.x_post'));
+        ->assertDontSee(__('posts.formats.x_post'));
 
     // A pick made from a closed list is reversible in one click — which is
     // what makes recording it, rather than asking, safe.
@@ -766,7 +766,7 @@ test('a format the workspace cannot post is ignored and the card asks', function
 
     $page->assertVisible('@chat-post-generation-format-step')
         ->assertMissing('@chat-post-generation-format-choice')
-        ->assertDontSee(__('posts.create.steps.format.linkedin_post'));
+        ->assertDontSee(__('posts.formats.linkedin_post'));
 });
 
 test('the assistant introduces a card but cannot talk over it', function () {

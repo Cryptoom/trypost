@@ -72,7 +72,7 @@ final class PostGenerationCatalog
      */
     private static function formatLabel(string $value, ?string $locale): string
     {
-        $key = "posts.create.steps.format.{$value}";
+        $key = "posts.formats.{$value}";
         $label = trans($key, [], $locale);
 
         return $label === $key ? $value : $label;

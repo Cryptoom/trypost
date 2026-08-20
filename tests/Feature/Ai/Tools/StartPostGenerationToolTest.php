@@ -88,7 +88,7 @@ it('resolves every string it returns in the language the model reported', functi
         ->and($output['data']['copy']['format_question'])->toBe(__('chat.post_generation.format_question', [], 'pt-BR'))
         ->and($output['data']['copy']['sentence'])->toBe(__('chat.post_generation.sentence', [], 'pt-BR'))
         ->and($output['data']['copy']['change'])->toBe(__('chat.post_generation.change', [], 'pt-BR'))
-        ->and($output['data']['formats'][0]['label'])->toBe(__('posts.create.steps.format.threads_post', [], 'pt-BR'))
+        ->and($output['data']['formats'][0]['label'])->toBe(__('posts.formats.threads_post', [], 'pt-BR'))
         ->and(collect($output['data']['styles'])->firstWhere('key', 'tweet_card')['name'])
         ->toBe(__('posts.ai.templates.tweet_card.name', [], 'pt-BR'));
 });
@@ -117,7 +117,7 @@ it('falls back to the app locale when the model reported no language', function 
 
     expect($output['data']['locale'])->toBe('en')
         ->and($output['data']['copy']['format_question'])->toBe(__('chat.post_generation.format_question', [], 'en'))
-        ->and($output['data']['formats'][0]['label'])->toBe(__('posts.create.steps.format.threads_post', [], 'en'));
+        ->and($output['data']['formats'][0]['label'])->toBe(__('posts.formats.threads_post', [], 'en'));
 });
 
 it('falls back to the app locale for a language this app does not ship', function (): void {

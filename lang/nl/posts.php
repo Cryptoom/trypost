@@ -591,24 +591,18 @@ return [
         'cancel' => 'Annuleren',
     ],
 
-    'create' => [
-        'steps' => [
-            'format' => [
-                'instagram_feed' => 'Instagram-feedpost',
-                'instagram_carousel' => 'Instagram-carrousel',
-                'linkedin_post' => 'LinkedIn-post',
-                'linkedin_page_post' => 'LinkedIn-paginapost',
-                'x_post' => 'X-post',
-                'bluesky_post' => 'Bluesky-post',
-                'threads_post' => 'Threads-post',
-                'mastodon_post' => 'Mastodon-post',
-                'telegram_post' => 'Telegram-post',
-                'discord_message' => 'Discord-bericht',
-                'facebook_post' => 'Facebook-post',
-                'pinterest_pin' => 'Pinterest-pin',
-                'instagram_story' => 'Instagram-story',
-                'facebook_story' => 'Facebook-story',
-            ],
-        ],
+    /** Display names for the formats AI post generation can produce. */
+    'formats' => [
+        'instagram_feed' => 'Instagram-feedpost',
+        'instagram_carousel' => 'Instagram-carrousel',
+        'linkedin_post' => 'LinkedIn-post',
+        'linkedin_page_post' => 'LinkedIn-paginapost',
+        'x_post' => 'X-post',
+        'bluesky_post' => 'Bluesky-post',
+        'threads_post' => 'Threads-post',
+        'mastodon_post' => 'Mastodon-post',
+        'facebook_post' => 'Facebook-post',
+        'pinterest_pin' => 'Pinterest-pin',
+        'instagram_story' => 'Instagram-story',
     ],
 ];
