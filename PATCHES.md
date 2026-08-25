@@ -42,6 +42,20 @@ vorbefuellen) einen manuellen Umweg ueber die UI.
   `brand_color`, Cross-Workspace-Isolation, Ability-Check fuer Member ohne Admin/Owner-Rolle).
 - Bricht bei einem Merge NUR falls upstream `UpdateWorkspaceRequest`, `WorkspaceResource` oder
   die `update`-Ability in `WorkspacePolicy` umbenennt/entfernt, dann Patch-Regeln nachziehen.
+- **Deployed** 25.08.2026: `/opt/trypost` auf web02 laeuft seit diesem Patch auf dem Fork-Remote
+  `Cryptoom/trypost` (vorher `trypostit/trypost` upstream), `docker compose up -d --build`
+  erfolgreich, live verifiziert (Klasse instanziierbar im Produktions-Container).
+
+## Geprueft und NICHT gepatcht: is_aigc-Composer-Toggle (25.08.2026)
+
+Der urspruenglich fuer diesen Fork geplante Patch (TikTok-`is_aigc`-Toggle im Post-Composer,
+fuer die KI-Kennzeichnungs-Pflicht) ist **obsolet**: das Feature existiert bereits vollstaendig
+upstream (`resources/js/components/posts/editor/TikTokSettings.vue`, Checkbox `isAigc`;
+`app/Support/PostPlatformMetaRules.php`, `platforms.*.meta.is_aigc`; `TikTokPublisher.php`,
+setzt `$postInfo['is_aigc']`; auch im MCP `CreatePostTool.php`). Kein Patch noetig. Meta/
+Instagram und YouTube haben kein aequivalentes API-Feld (nur Checklisten-Eintrag), das bleibt
+eine offene Luecke, aber kein Fork-Patch-Kandidat solange die Plattformen selbst kein API-Feld
+anbieten.
 
 ## Wie ein neuer Patch hier reinkommt
 
@@ -49,8 +63,8 @@ vorbefuellen) einen manuellen Umweg ueber die UI.
    (Datei, Zeile/Funktion, WARUM, welcher Marker-String das Wiedererkennen nach einem Merge
    erlaubt).
 2. `web02`-Deploy: `/opt/trypost` laeuft als lokaler Build aus Git-Checkout (Update-Klasse C,
-   siehe `~/.claude/CLAUDE.md` Docker-Tabelle), NICHT das published Image. Fork-Checkout auf
-   dem Server auf `Cryptoom/trypost` umstellen sobald der erste Patch aktiv wird (aktuell laeuft
-   der Server-Checkout noch gegen upstream, unveraendert).
+   siehe `~/.claude/CLAUDE.md` Docker-Tabelle), NICHT das published Image. Seit Patch 1
+   (25.08.2026) laeuft der Server-Checkout gegen `Cryptoom/trypost` (Fork), nicht mehr gegen
+   upstream.
 3. Nach jedem `git merge upstream/main`: alle Marker-Strings unten gegenpruefen, dieser
    Abschnitt fasst dann "Stand nach Merge <datum>" analog zum whatsapp-mcp-Muster.
