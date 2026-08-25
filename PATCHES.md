@@ -18,10 +18,30 @@ noch nachtragen sobald der erste echte Patch aktiv ist).
 
 ## Aktive Patches
 
-Keine. Diese Datei ist bewusst als leeres Geruest angelegt (Olli-Entscheidung 25.08.2026:
-"Fork jetzt anlegen, Infrastruktur vorbereiten"), damit ein spaeterer Patch (z.B. der
-`is_aigc`-Composer-UI-Toggle aus dem TryPost-Phase-4-Planungs-Pass, falls das GitHub-Issue
-nicht zeitnah beantwortet wird) sofort in der etablierten Struktur landet statt einer neuen.
+### Patch 1 · update-workspace-tool
+
+Fuegt ein schreibendes MCP-Tool fuer die Workspace-Brand-Settings hinzu. Upstream hat nur
+`GetWorkspaceTool` (read-only, `#[IsReadOnly]`), keinen API- oder MCP-Weg um `name`,
+`brand_website`, `brand_description`, `brand_voice_traits`, `brand_color`, `background_color`,
+`text_color`, `brand_font`, `image_style` oder `content_language` programmatisch zu setzen. Ohne
+diesen Patch braucht jedes automatisierte Kunden-Onboarding (neuer Workspace, Brand per Skript
+vorbefuellen) einen manuellen Umweg ueber die UI.
+
+- **Dateien**:
+  - `app/Mcp/Tools/Workspace/UpdateWorkspaceTool.php` (neu). Validiert dieselben Regeln wie
+    `App\Http\Requests\App\Workspace\UpdateWorkspaceRequest`, aber PATCH-Semantik (`sometimes`
+    statt `required`, nur uebergebene Felder werden geschrieben). Autorisierung ueber
+    `AuthorizesMcpTool::authorizeCurrentWorkspace($request, 'update', ...)`, spiegelt
+    `WorkspaceController::updateSettings()`.
+  - `app/Mcp/Servers/TryPostServer.php` (Import + Registry-Eintrag unter "Workspace").
+- **Marker-String zum Wiedererkennen nach `git merge upstream/main`**: Klassenname
+  `UpdateWorkspaceTool` (Datei existiert upstream nicht) plus der Registry-Kommentar
+  `// Workspace` in `TryPostServer.php` (dort pruefen ob `UpdateWorkspaceTool::class` noch
+  direkt nach `GetWorkspaceTool::class` steht).
+- **Test**: `tests/Feature/Mcp/WorkspaceToolTest.php` (4 neue Tests: valides Update, ungueltige
+  `brand_color`, Cross-Workspace-Isolation, Ability-Check fuer Member ohne Admin/Owner-Rolle).
+- Bricht bei einem Merge NUR falls upstream `UpdateWorkspaceRequest`, `WorkspaceResource` oder
+  die `update`-Ability in `WorkspacePolicy` umbenennt/entfernt, dann Patch-Regeln nachziehen.
 
 ## Wie ein neuer Patch hier reinkommt
 

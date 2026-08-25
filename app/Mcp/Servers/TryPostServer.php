@@ -35,6 +35,7 @@ use App\Mcp\Tools\SocialAccount\ListPinterestBoardsTool;
 use App\Mcp\Tools\SocialAccount\ListSocialAccountsTool;
 use App\Mcp\Tools\SocialAccount\ToggleSocialAccountTool;
 use App\Mcp\Tools\Workspace\GetWorkspaceTool;
+use App\Mcp\Tools\Workspace\UpdateWorkspaceTool;
 use Laravel\Mcp\Server;
 use Laravel\Mcp\Server\Attributes\Icon;
 use Laravel\Mcp\Server\Attributes\Instructions;
@@ -91,6 +92,7 @@ class TryPostServer extends Server
 
         // Workspace
         GetWorkspaceTool::class,
+        UpdateWorkspaceTool::class,
 
         // API Keys
         ListApiKeysTool::class,
