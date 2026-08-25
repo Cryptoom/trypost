@@ -67,7 +67,7 @@ test('update workspace rejects an invalid brand color', function () {
     expect($this->workspace->fresh()->brand_color)->toBeNull();
 });
 
-test('update workspace cannot change a workspace outside the caller current workspace', function () {
+test('update workspace only touches the caller current workspace, other workspaces are untouched', function () {
     $this->workspace->members()->updateExistingPivot($this->user->id, ['role' => Role::Admin->value]);
 
     $otherWorkspace = Workspace::factory()->create(['name' => 'Untouched Workspace']);
@@ -99,4 +99,22 @@ test('update workspace denies a member without admin or owner role', function ()
     $response->assertHasErrors(['Not authorized to update this workspace.']);
 
     expect($this->workspace->fresh()->name)->not->toBe('Should Not Apply');
+});
+
+test('update workspace coerces brand_voice_traits to a coherent selection', function () {
+    $this->workspace->members()->updateExistingPivot($this->user->id, ['role' => Role::Admin->value]);
+
+    $response = TryPostServer::actingAs($this->user)
+        ->tool(UpdateWorkspaceTool::class, [
+            'brand_voice_traits' => ['formal', 'casual', 'direct'],
+        ]);
+
+    $response->assertOk();
+
+    $traits = $this->workspace->fresh()->brand_voice_traits;
+
+    expect($traits)->toContain('direct')
+        ->and($traits)->toContain('formal')
+        ->and($traits)->not->toContain('casual')
+        ->and($traits)->toHaveCount(2);
 });

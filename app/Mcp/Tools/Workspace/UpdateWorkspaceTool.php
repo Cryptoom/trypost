@@ -52,6 +52,10 @@ class UpdateWorkspaceTool extends Tool
             'content_language' => ['sometimes', 'string', Rule::in(ContentLanguage::values())],
         ]);
 
+        if (array_key_exists('brand_voice_traits', $validated) && $validated['brand_voice_traits'] !== null) {
+            $validated['brand_voice_traits'] = BrandVoiceTrait::coerce($validated['brand_voice_traits']);
+        }
+
         // PATCH semantics: only the fillable fields the caller actually passed
         // are written. Mirrors UpdateWorkspaceRequest's field set minus
         // logo_url (logo upload has its own dedicated flow, not brand settings).
