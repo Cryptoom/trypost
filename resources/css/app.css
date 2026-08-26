@@ -16,65 +16,65 @@
 
 
 :root {
-  /* TryPost design system — warm cream + ink + signature violet.
-     Mirrors the marketing site (~/Herd/trypost-site) so the app and the
-     site share one identity. All structural borders are ink-black. */
-  --background: #faf8f5;
-  --foreground: #0a0a0a;
+  /* madevisible.io brand tokens (Mediterranean Light / Premium), see
+     digital-mind-agency/DESIGN.md. Replaces the upstream Gumroad-style
+     warm cream + violet identity for this concept branch. */
+  --background: #fbf7f1;
+  --foreground: #0a2540;
   --card: #ffffff;
-  --card-foreground: #0a0a0a;
+  --card-foreground: #0a2540;
   --popover: #ffffff;
-  --popover-foreground: #0a0a0a;
-  --primary: #7c3aed;
+  --popover-foreground: #0a2540;
+  --primary: #0c6e6d;
   --primary-foreground: #ffffff;
-  --secondary: #f4f4f0;
-  --secondary-foreground: #0a0a0a;
-  --muted: #f4f4f0;
-  --muted-foreground: #52525b;
-  --accent: #ede9fe;
-  --accent-foreground: #5b21b6;
-  --destructive: #e54b4f;
+  --secondary: #f4ece0;
+  --secondary-foreground: #0a2540;
+  --muted: #f4ece0;
+  --muted-foreground: #475c73;
+  --accent: #c99a5c;
+  --accent-foreground: #0a2540;
+  --destructive: #b8462f;
   --destructive-foreground: #ffffff;
-  --success: #16a34a;
-  --error: #e54b4f;
-  --warning: #d97706;
-  --info: #2563eb;
-  --border: #0a0a0a;
-  --input: #0a0a0a;
-  --ring: #7c3aed;
-  --chart-1: #7c3aed;
-  --chart-2: #8b5cf6;
-  --chart-3: #a78bfa;
-  --chart-4: #5b21b6;
-  --chart-5: #4c1d95;
+  --success: #0f8a88;
+  --error: #b8462f;
+  --warning: #c99a5c;
+  --info: #0c6e6d;
+  --border: #0a2540;
+  --input: #0a2540;
+  --ring: #0c6e6d;
+  --chart-1: #0c6e6d;
+  --chart-2: #0f8a88;
+  --chart-3: #a67c3f;
+  --chart-4: #084e4d;
+  --chart-5: #806026;
   --sidebar: #ffffff;
-  --sidebar-foreground: #0a0a0a;
-  --sidebar-primary: #7c3aed;
+  --sidebar-foreground: #0a2540;
+  --sidebar-primary: #0c6e6d;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #ede9fe;
-  --sidebar-accent-foreground: #5b21b6;
-  --sidebar-border: #0a0a0a;
-  --sidebar-ring: #7c3aed;
-  --font-sans: Figtree, ui-sans-serif, system-ui, -apple-system,
+  --sidebar-accent: #c99a5c;
+  --sidebar-accent-foreground: #0a2540;
+  --sidebar-border: #0a2540;
+  --sidebar-ring: #0c6e6d;
+  --font-sans: Geist, ui-sans-serif, system-ui, -apple-system,
     BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
     'Noto Sans', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
     'Segoe UI Symbol', 'Noto Color Emoji';
-  --font-serif: 'Instrument Serif', ui-serif, Georgia, Cambria,
-    'Times New Roman', Times, serif;
-  --font-display: 'Instrument Serif', ui-serif, Georgia, Cambria,
-    'Times New Roman', Times, serif;
+  --font-serif: Geist, ui-sans-serif, system-ui, -apple-system,
+    'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-display: Geist, ui-sans-serif, system-ui, -apple-system,
+    'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco,
     Consolas, 'Liberation Mono', 'Courier New', monospace;
-  --radius: 0.75rem;
-  /* Gumroad-style offset shadows: solid ink, no blur. */
-  --shadow-2xs: 1px 1px 0 0 #0a0a0a;
-  --shadow-xs: 2px 2px 0 0 #0a0a0a;
-  --shadow-sm: 3px 3px 0 0 #0a0a0a;
-  --shadow: 4px 4px 0 0 #0a0a0a;
-  --shadow-md: 5px 5px 0 0 #0a0a0a;
-  --shadow-lg: 6px 6px 0 0 #0a0a0a;
-  --shadow-xl: 8px 8px 0 0 #0a0a0a;
-  --shadow-2xl: 10px 10px 0 0 #0a0a0a;
+  --radius: 10px;
+  /* Soft tinted shadows instead of the upstream hard-ink offset shadows. */
+  --shadow-2xs: 0px 1px 2px 0 rgba(10, 37, 64, 0.05);
+  --shadow-xs: 0px 1px 3px 0 rgba(10, 37, 64, 0.06);
+  --shadow-sm: 0px 2px 4px 0 rgba(10, 37, 64, 0.07);
+  --shadow: 0px 4px 8px 0 rgba(10, 37, 64, 0.08);
+  --shadow-md: 0px 6px 12px 0 rgba(10, 37, 64, 0.08);
+  --shadow-lg: 0px 10px 20px 0 rgba(10, 37, 64, 0.09);
+  --shadow-xl: 0px 16px 32px 0 rgba(10, 37, 64, 0.1);
+  --shadow-2xl: 0px 24px 48px 0 rgba(10, 37, 64, 0.12);
   --tracking-normal: 0em;
   --spacing: 0.25rem;
 }
