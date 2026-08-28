@@ -46,6 +46,54 @@ vorbefuellen) einen manuellen Umweg ueber die UI.
   `Cryptoom/trypost` (vorher `trypostit/trypost` upstream), `docker compose up -d --build`
   erfolgreich, live verifiziert (Klasse instanziierbar im Produktions-Container).
 
+### Patch 2 · madevisible-brand-token-reskin
+
+Ersetzt die komplette upstream Gumroad-Optik (warmes Cream, Ink-Border, Violett-Akzent,
+Figtree/Instrument-Serif, harte Offset-Shadows) in der `:root`-Deklaration durch die
+madevisible.io-Brand-Tokens (tiefes Teal-Primary, Navy-Text, Gold-Akzent, weiche getoente
+Shadows, Geist-Font-Stack). Concept-Only-Reskin, damit App und die madevisible.io-Kunden-Instanz
+optisch zusammengehoeren.
+
+- **Datei**: `resources/css/app.css`, die `:root`-Deklaration (aktuell Zeilen ca. 16-80).
+- **Marker-Strings zum Wiedererkennen nach `git merge upstream/main`**: die konkreten
+  Hex-Werte `#0c6e6d` (`--primary`/`--ring`/`--sidebar-primary`), `#0a2540` (`--foreground`),
+  `#c99a5c` (`--accent`) und `#a67c3f` (`--chart-3`, WCAG-korrigiert von urspruenglich `#c99a5c`
+  in Review Round 1). Keiner dieser Werte kommt in der upstream-Fassung vor (dort `#7c3aed`
+  Primary/Violett, `#0a0a0a` Foreground/Ink, `#faf8f5` Background). Ebenso der Kommentar
+  `madevisible.io brand tokens (Mediterranean Light / Premium)` direkt unter `:root {`.
+- **Bruchbedingung**: Upstream aendert dieselbe `:root`-Block-Struktur in `app.css` (neue
+  Variablen, umbenannte Tokens, andere Reihenfolge) und `git merge upstream/main` laeuft
+  **konfliktfrei** durch. Ein konfliktfreier Merge ueberschreibt in diesem Fall die
+  Fork-Farbwerte stillschweigend mit den upstream-Originalwerten, weil beide Seiten dieselben
+  Zeilen anfassen und Git sonst laut einen Konflikt melden wuerde. Nach jedem Merge darum
+  gezielt gegen die obigen Hex-Werte greppen (`grep -c '#0c6e6d' resources/css/app.css`), nicht
+  nur auf einen Merge-Konflikt verlassen.
+- Betrifft NUR `:root` (Light-Theme-Tokens). Ein eventueller `.dark`-Block bleibt unangetastet,
+  falls upstream einen ergaenzt, muesste der Reskin dort nachgezogen werden.
+
+### Patch 3 · sidebar-referral-discord-entfernung
+
+Entfernt die zwei untersten Bottom-Nav-Eintraege der Sidebar ("Earn 30% referral" und "Discord
+community"), auf Ollis ausdruecklichen Wunsch (das TryPost-eigene Affiliate-/Community-Programm
+soll im Digital-Mind-Agency-Weissabel-Kontext nicht auftauchen). Entfernt zugleich die dadurch
+unbenutzten Icon-Imports.
+
+- **Datei**: `resources/js/components/AppSidebar.vue`.
+- **Marker-Strings zum Wiedererkennen nach `git merge upstream/main`**: die Imports
+  `IconBrandDiscord` und `IconGift` (aktuell in der Fork-Fassung NICHT mehr im
+  `@tabler/icons-vue`-Import-Block von `AppSidebar.vue` vorhanden) sowie die beiden
+  Objekt-Eintraege mit `href: 'https://affiliates.trypost.it/'` und
+  `href: 'https://trypost.it/discord'` im `bottomNavItems`-Computed (in der Fork-Fassung
+  entfernt). Der Docs-Link (`https://docs.trypost.it`) und `IconAffiliate` bleiben unveraendert
+  bestehen und sind NICHT Teil dieses Patches.
+- **Bruchbedingung**: Upstream ergaenzt in `bottomNavItems` neue Eintraege oder aendert die
+  Struktur des Arrays (z.B. fuegt selbst wieder einen Referral- oder Community-Link hinzu) und
+  `git merge upstream/main` laeuft konfliktfrei durch, weil der Fork die betroffenen Zeilen
+  bereits geloescht hat und Git keinen Konflikt sieht. Ein solcher Merge kann den
+  Referral-/Discord-Link stillschweigend zurueckbringen. Nach jedem Merge pruefen:
+  `grep -n "trypost.it/discord\|affiliates.trypost.it" resources/js/components/AppSidebar.vue`
+  muss leer bleiben.
+
 ## Geprueft und NICHT gepatcht: is_aigc-Composer-Toggle (25.08.2026)
 
 Der urspruenglich fuer diesen Fork geplante Patch (TikTok-`is_aigc`-Toggle im Post-Composer,
