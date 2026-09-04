@@ -133,6 +133,12 @@ nie zutraf.
   gegenpruefen statt blind erneut einzufuegen.
 - **Test**: keine automatisierten Tests vorhanden (reine Template-/Copy-Aenderung), Verifikation
   ueber Live-Check nach Deploy (siehe unten).
+- **Deploy-Falle (Review Round 2)**: `lang/*/auth.php` wirken erst nach einem ECHTEN Frontend-
+  Build. `vite.config.ts` nutzt `laravel-vue-i18n/vite`, das die PHP-Locales zur Build-Zeit nach
+  `lang/php_*.json` kompiliert (die JSON-Dateien selbst stehen in `.gitignore`). Ein reines
+  Kopieren der geaenderten PHP-Datei in den laufenden Container plus Neustart behaelt die alten
+  `trypost.it`-URLs im bereits gebundelten JSON, ohne Fehlermeldung. Zwingend
+  `docker compose up -d --build` (voller Rebuild), NICHT nur `restart`.
 - **Deployed**: <Datum nach Merge + `docker compose up -d --build` auf web02 nachtragen>.
 
 ## Geprueft und NICHT gepatcht: is_aigc-Composer-Toggle (25.08.2026)
