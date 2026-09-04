@@ -10,7 +10,7 @@ return [
         'welcome_trial' => '¡Bienvenido a TryPost! Tu prueba ha comenzado.',
     ],
 
-    'legal' => 'Al continuar, aceptas nuestros <a href="https://trypost.it/terms" target="_blank">Términos de Servicio</a> y <a href="https://trypost.it/privacy" target="_blank">Política de Privacidad</a>.',
+    'legal' => 'Al continuar, aceptas nuestros <a href="https://madevisible.io/agb/" target="_blank">Términos de Servicio</a> y <a href="https://madevisible.io/privacy/" target="_blank">Política de Privacidad</a>.',
 
     'slides' => [
         'calendar' => [

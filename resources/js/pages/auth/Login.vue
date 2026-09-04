@@ -183,6 +183,12 @@ const pageErrors = usePageErrors();
                     }}</TextLink>
                 </div>
             </Form>
+
+            <!-- eslint-disable-next-line vue/no-v-html -->
+            <div
+                class="text-center text-xs text-muted-foreground [&_a]:underline [&_a]:underline-offset-4 [&_a]:hover:text-primary"
+                v-html="$t('auth.legal')"
+            />
         </div>
     </AuthBase>
 </template>

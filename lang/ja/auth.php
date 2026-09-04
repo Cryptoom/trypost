@@ -22,7 +22,7 @@ return [
         'welcome_trial' => 'TryPost へようこそ！トライアルが開始されました。',
     ],
 
-    'legal' => '続行すると、<a href="https://trypost.it/terms" target="_blank">利用規約</a>および<a href="https://trypost.it/privacy" target="_blank">プライバシーポリシー</a>に同意したものとみなされます。',
+    'legal' => '続行すると、<a href="https://madevisible.io/agb/" target="_blank">利用規約</a>および<a href="https://madevisible.io/privacy/" target="_blank">プライバシーポリシー</a>に同意したものとみなされます。',
 
     'slides' => [
         'calendar' => [
