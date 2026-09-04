@@ -94,6 +94,47 @@ unbenutzten Icon-Imports.
   `grep -n "trypost.it/discord\|affiliates.trypost.it" resources/js/components/AppSidebar.vue`
   muss leer bleiben.
 
+### Patch 4 · madevisible-legal-footer-links
+
+Grund: TikToks App-Review lehnte "madevisible.io Social" am 04.09.2026 ab, unter anderem weil
+`social.madevisible.io/login` **ueberhaupt keine** Privacy-/ToS-Links zeigte (live per Playwright
+mit frisch gecleartem Cookie-Zustand als echter ausgeloggter Besucher verifiziert). Root-Cause:
+Upstream haengt den einzigen Legal-Footer-Block (`auth.legal`-Uebersetzung) an
+`v-if="!isSelfHosted"` in `Register.vue`, und `Login.vue` hatte den Block gar nicht erst. Unser
+Docker-Deployment laeuft mit `trypost.self_hosted=true` (Betreiber-Modell, nicht Multi-Tenant-
+SaaS wie trypost.it selbst), darum blieb der Footer bei uns immer unsichtbar, upstream-seitig
+vermutlich bewusst so gedacht ("Self-Hoster bringt eigene Legal-Links mit"), was fuer uns aber
+nie zutraf.
+
+- **Dateien**:
+  - `lang/*/auth.php` (alle 16 Locales): der `legal`-String zeigte in JEDER Sprache hart auf
+    `https://trypost.it/terms` und `https://trypost.it/privacy`. Beide URLs auf
+    `https://madevisible.io/agb/` bzw. `https://madevisible.io/privacy/` umgestellt (reiner
+    URL-Tausch, uebersetzter Fliesstext unveraendert). Diese beiden Seiten nennen
+    "madevisible.io Social" seit `Cryptoom/digital-mind-agency#396` explizit beim Namen.
+  - `resources/js/pages/auth/Register.vue`: `v-if="!isSelfHosted"`-Guard auf dem Legal-Footer-Div
+    entfernt (zeigt jetzt immer), dadurch wurde die `isSelfHosted`-Computed-Variable unbenutzt und
+    wurde mitentfernt. `page`/`usePage()` bleiben (weiterhin fuer `hasSocial` gebraucht).
+  - `resources/js/pages/auth/Login.vue`: denselben Legal-Footer-Block (identisches Markup wie
+    `Register.vue`, `v-html="$t('auth.legal')"`) direkt nach dem `</Form>` neu ergaenzt, vorher
+    gab es dort ueberhaupt keinen.
+- **Marker-Strings zum Wiedererkennen nach `git merge upstream/main`**: `madevisible.io` in
+  `lang/en/auth.php`s `legal`-Zeile (kommt upstream nicht vor). In `Login.vue`: das
+  `v-html="$t('auth.legal')"`-Div direkt vor dem schliessenden `</div></AuthBase></template>`
+  (existiert upstream nicht in dieser Datei). In `Register.vue`: Abwesenheit von
+  `v-if="!isSelfHosted"` auf dem Legal-Div (upstream hat es).
+- **Bruchbedingung**: Upstream aendert den `auth.legal`-Text selbst (neue Formulierung, neue
+  Platzhalter) und `git merge upstream/main` ueberschreibt konfliktfrei unsere URL-Werte mit den
+  originalen `trypost.it`-URLs zurueck, weil beide Seiten dieselbe Zeile aendern koennten aber
+  Git bei reinem Text-Unterschied idR einen Konflikt meldet (text-basiertes 3-Way-Merge), pruefen
+  nach jedem Merge trotzdem gezielt: `grep -rn "trypost.it/terms\|trypost.it/privacy" lang/*/auth.php`
+  muss leer bleiben. Ergaenzt upstream `Login.vue`/`Register.vue` selbst einen aehnlichen
+  Legal-Footer oder aendert die `isSelfHosted`-Logik grundlegend, Patch-Platzierung manuell
+  gegenpruefen statt blind erneut einzufuegen.
+- **Test**: keine automatisierten Tests vorhanden (reine Template-/Copy-Aenderung), Verifikation
+  ueber Live-Check nach Deploy (siehe unten).
+- **Deployed**: <Datum nach Merge + `docker compose up -d --build` auf web02 nachtragen>.
+
 ## Geprueft und NICHT gepatcht: is_aigc-Composer-Toggle (25.08.2026)
 
 Der urspruenglich fuer diesen Fork geplante Patch (TikTok-`is_aigc`-Toggle im Post-Composer,

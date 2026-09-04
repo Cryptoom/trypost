@@ -22,7 +22,7 @@ return [
         'welcome_trial' => 'Witamy w TryPost! Twój okres próbny właśnie się rozpoczął.',
     ],
 
-    'legal' => 'Kontynuując, akceptujesz nasze <a href="https://trypost.it/terms" target="_blank">Warunki korzystania z usługi</a> oraz <a href="https://trypost.it/privacy" target="_blank">Politykę prywatności</a>.',
+    'legal' => 'Kontynuując, akceptujesz nasze <a href="https://madevisible.io/agb/" target="_blank">Warunki korzystania z usługi</a> oraz <a href="https://madevisible.io/privacy/" target="_blank">Politykę prywatności</a>.',
 
     'slides' => [
         'calendar' => [
