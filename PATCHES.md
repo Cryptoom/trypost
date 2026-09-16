@@ -227,8 +227,12 @@ gleichzeitig angehaengt. `facebook_story` akzeptiert gar keine Bilder, beide Sto
 nur mit dem Video, weil es keinen Weg gibt, ein einzelnes Media-Item aus einem Post zu entfernen
 oder Media pro Plattform unterschiedlich zuzuweisen.
 
-**Ist-Zustand verifiziert**: `Post::media()` ist eine `morphMany`-Relation direkt am Post
-(`app/Models/Traits/HasMedia.php`), nicht an `PostPlatform`. `PostPlatform` hat keine eigene
+**Ist-Zustand verifiziert (korrigiert 17.09.2026)**: `Post.media` ist eine JSON-Array-Spalte
+(`'media' => 'array'` Cast, `app/Models/Post.php:49`), kein `morphMany`. Der Zugriff laeuft ueber
+den `mediaItems()`-Attribute-Accessor (`app/Models/Post.php:57-65`), der jedes Array-Item per
+`MediaItem::fromArray()` in ein DTO wandelt. `Post` nutzt den `HasMedia`-Trait
+(`app/Models/Traits/HasMedia.php`, echte `morphMany`-Relation `media()`) NICHT, den haben nur
+`User` und `Workspace` (Avatar/Logo/Asset-Collections). `PostPlatform` hat keine eigene
 Media-Relation. `ContentTypeCompatibleWithMedia::media()` prueft fuer JEDE aktivierte Plattform
 dieselbe Post-Media-Liste, ohne Filterung. Alle 13 Publisher-Services
 (`app/Services/Social/*Publisher.php`) konsumieren dieselbe ungefilterte Liste beim Publish-Call.
