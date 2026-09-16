@@ -5,8 +5,13 @@ declare(strict_types=1);
 namespace App\Support;
 
 use App\Enums\Media\Source;
+use App\Models\Media;
+use App\Models\Workspace;
 use Closure;
+use Illuminate\Database\Eloquent\Relations\Relation;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Validator;
 
 /**
  * Single source of truth for inline post `media` validation, shared by the post
@@ -61,5 +66,68 @@ class PostMediaRules
             'media.*.source' => ['sometimes', 'nullable', 'string', Rule::in(array_column(Source::cases(), 'value'))],
             'media.*.source_meta' => ['sometimes', 'nullable', 'array'],
         ];
+    }
+
+    /**
+     * Reject inline media items that claim to already be hosted (`id` and/or
+     * `path` set) but don't resolve to a real `medias` row owned by this
+     * workspace. `rules()` above only checks shape (id is a non-empty string).
+     * It never confirms the id exists, so a client could otherwise write an
+     * arbitrary id/path pair straight into `posts.media`, including another
+     * workspace's real asset (IDOR) or a path nothing backs at all. Mirrors
+     * the lookup `FindWorkspaceAsset` already uses for `attach-existing-asset`.
+     *
+     * A bare `url` with no `id`/`path` is left alone: that's the API-only
+     * "please download this external URL" case (`PostMediaRules::rules`
+     * with `hosted: false`), and `HostInlineMedia`/`MediaAttacher` handle it
+     * by fetching the URL and creating a fresh, workspace-owned `Media` row
+     * before anything is persisted. There's no pre-existing id to check yet.
+     *
+     * @param  array<int, array<string, mixed>>  $media
+     */
+    public static function assertHostedMediaExists(Validator $validator, Workspace $workspace, array $media): void
+    {
+        foreach ($media as $index => $item) {
+            $id = data_get($item, 'id');
+            $path = data_get($item, 'path');
+
+            if (blank($id)) {
+                if (filled($path)) {
+                    $validator->errors()->add(
+                        "media.{$index}.id",
+                        'The media id field is required when path is present.',
+                    );
+                }
+
+                // Blank id, blank path: a bare external url for HostInlineMedia to fetch. Nothing to verify yet.
+                continue;
+            }
+
+            if ($validator->errors()->has("media.{$index}.id")) {
+                // A shape rule (e.g. "must be a string") already failed for this item.
+                continue;
+            }
+
+            // A non-UUID id can never match a real medias row (id is a UUID
+            // primary key), and Postgres rejects it as an invalid uuid literal
+            // before the query even runs, an unhandled 500 instead of a
+            // graceful 422. Fail the same way a real, absent id would.
+            if (! Str::isUuid((string) $id)) {
+                $validator->errors()->add("media.{$index}.id", 'Media not found.');
+
+                continue;
+            }
+
+            $exists = Media::query()
+                ->where('mediable_type', Relation::getMorphAlias(Workspace::class))
+                ->where('mediable_id', $workspace->id)
+                ->where('collection', 'assets')
+                ->whereKey($id)
+                ->exists();
+
+            if (! $exists) {
+                $validator->errors()->add("media.{$index}.id", 'Media not found.');
+            }
+        }
     }
 }

@@ -7,6 +7,7 @@ use App\Enums\Post\Status as PostStatus;
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
 use App\Jobs\PublishPost;
+use App\Models\Media;
 use App\Models\Post;
 use App\Models\PostPlatform;
 use App\Models\SocialAccount;
@@ -101,10 +102,14 @@ it('ignores a client-supplied created_via and always records api', function () {
 
 it('creates a post with content, media, and labels', function () {
     $label = WorkspaceLabel::factory()->create(['workspace_id' => $this->workspace->id]);
+    $asset = Media::factory()->assets()->create([
+        'mediable_type' => (new Workspace)->getMorphClass(),
+        'mediable_id' => $this->workspace->id,
+    ]);
 
     $payload = [
         'content' => 'Hello from the API',
-        'media' => [['id' => 'media-1', 'path' => 'media/foo.jpg', 'url' => 'https://example.com/foo.jpg', 'type' => 'image']],
+        'media' => [['id' => $asset->id, 'path' => $asset->path, 'url' => 'https://example.com/'.$asset->path, 'type' => 'image']],
         'platforms' => [
             ['social_account_id' => $this->socialAccount->id, 'content_type' => 'linkedin_post'],
         ],
