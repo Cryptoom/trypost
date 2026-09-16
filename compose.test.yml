@@ -1,0 +1,37 @@
+# TryPost: dedicated local Postgres for the test suite (host-run PHP, no Docker app container).
+#
+# This is intentionally separate from compose.yaml (the full Docker dev stack).
+# compose.yaml's pgsql service is meant to run alongside the Dockerized app
+# service and already occupies host port 5432 by default. On a machine where
+# 5432 is taken by another project's container, this file gives the test
+# suite its own isolated Postgres on a different port, without touching the
+# main dev compose setup.
+#
+# Start: docker compose -f compose.test.yml -p trypost-test up -d
+# Wait:  docker compose -f compose.test.yml -p trypost-test exec pgsql-test pg_isready -U postgres -d trypost
+# Stop:  docker compose -f compose.test.yml -p trypost-test down
+# Reset: docker compose -f compose.test.yml -p trypost-test down -v (drops the named volume, fresh DB next start)
+#
+# See .env.testing and phpunit.xml for the matching DB_HOST/DB_PORT/DB_DATABASE/
+# DB_USERNAME/DB_PASSWORD values, and docs/testing.md for the full write up.
+
+services:
+    pgsql-test:
+        image: postgres:16-alpine
+        environment:
+            POSTGRES_DB: trypost
+            POSTGRES_USER: postgres
+            POSTGRES_PASSWORD: password
+        volumes:
+            - trypost_test_pgdata:/var/lib/postgresql/data
+            - ./docker/postgres-init.sh:/docker-entrypoint-initdb.d/10-create-test-db.sh:ro
+        ports:
+            - '127.0.0.1:5433:5432'
+        healthcheck:
+            test: ['CMD-SHELL', 'pg_isready -U postgres -d trypost']
+            interval: 5s
+            timeout: 3s
+            retries: 10
+
+volumes:
+    trypost_test_pgdata:
