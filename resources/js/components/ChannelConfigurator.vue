@@ -124,6 +124,7 @@ const settingsProps = (channel: Channel) => ({
 
         <template v-for="channel in selectedChannels" :key="channel.id">
             <MediaAssignmentGrid
+                :platform="channel.platform"
                 :media="media"
                 :selected-media-ids="channel.mediaIds"
                 :disabled="disabled"

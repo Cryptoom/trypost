@@ -1,12 +1,15 @@
 <script setup lang="ts">
 import { IconCheck } from '@tabler/icons-vue';
 
+import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { getPlatformLogo } from '@/composables/usePlatformLogo';
 import { isVideo } from '@/lib/mediaType';
 import type { MediaItem } from '@/types/media';
 
 const props = withDefaults(
     defineProps<{
+        platform: string;
         media: MediaItem[];
         selectedMediaIds: string[];
         disabled?: boolean;
@@ -29,19 +32,32 @@ const toggle = (mediaId: string): void => {
         ? props.media.map((item) => item.id)
         : props.selectedMediaIds;
 
-    const next = isIncluded(mediaId)
-        ? current.filter((id) => id !== mediaId)
-        : [...current, mediaId];
+    if (isIncluded(mediaId)) {
+        // An empty array means "unscoped, applies to all" everywhere this is
+        // read (scopedMediaItems(), the grid itself), so it can never also
+        // mean "explicitly none". Deselecting the last remaining item would
+        // silently flip back to "all", the opposite of what was just done,
+        // so the last one stays on: a platform always publishes something.
+        if (current.length <= 1) return;
 
-    emit('update:selectedMediaIds', next);
+        emit('update:selectedMediaIds', current.filter((id) => id !== mediaId));
+        return;
+    }
+
+    emit('update:selectedMediaIds', [...current, mediaId]);
 };
 </script>
 
 <template>
-    <div v-if="media.length > 1" class="space-y-2">
-        <p class="text-[11px] font-black uppercase tracking-widest text-foreground/60">
-            {{ $t('posts.edit.media_assignment.label') }}
-        </p>
+    <div v-if="media.length > 1" class="rounded-xl border-2 border-foreground bg-card p-4 shadow-2xs">
+        <div class="mb-3 flex items-center gap-2">
+            <span class="inline-flex size-6 shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-foreground bg-card shadow-2xs">
+                <img :src="getPlatformLogo(platform)" :alt="platform" class="size-full object-cover" />
+            </span>
+            <p class="text-[11px] font-black uppercase tracking-widest text-foreground/60">
+                {{ $t('posts.edit.media_assignment.label') }}
+            </p>
+        </div>
         <div class="flex flex-wrap gap-2">
             <TooltipProvider v-for="item in media" :key="item.id" :delay-duration="200">
                 <Tooltip>
@@ -57,13 +73,14 @@ const toggle = (mediaId: string): void => {
                         >
                             <video v-if="isVideo(item)" :src="item.url" class="size-full object-cover" muted playsinline />
                             <img v-else :src="item.url" :alt="item.meta?.alt_text ?? item.original_filename ?? ''" class="size-full object-cover" />
-                            <span
+                            <Badge
                                 v-if="isIncluded(item.id)"
-                                class="absolute -bottom-1 -right-1 inline-flex size-5 items-center justify-center rounded-full border-2 border-foreground bg-emerald-200 text-foreground shadow-2xs"
+                                variant="success"
+                                class="absolute -bottom-1 -right-1 size-5 rounded-full p-0"
                                 :data-testid="`media-assignment-${item.id}-on`"
                             >
                                 <IconCheck class="size-3" stroke-width="3" />
-                            </span>
+                            </Badge>
                         </button>
                     </TooltipTrigger>
                     <TooltipContent>
