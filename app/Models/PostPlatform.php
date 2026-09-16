@@ -104,13 +104,28 @@ class PostPlatform extends Model
     }
 
     /**
-     * Only platforms still enabled for publishing — disabled ones are
+     * Only platforms still enabled for publishing (disabled ones are
      * excluded from PublishPost, so anything else that mirrors publish
-     * eligibility (previews, validation, proactive checks) must too.
+     * eligibility (previews, validation, proactive checks) must too).
      */
     public function scopeEnabled(Builder $query): Builder
     {
         return $query->where('post_platforms.enabled', true);
+    }
+
+    /**
+     * The ids of media items currently scoped to this platform. Empty means
+     * "no scoping, applies to every post media item", see scopedMediaItems().
+     * Only used for the editor's per-platform media assignment UI, so this
+     * relies on `media` already being eager-loaded (or explicitly appended
+     * via `append('media_ids')`, see PostController::edit()) to avoid a lazy
+     * load nobody asked for on every other page that serializes this model.
+     *
+     * @return array<int, string>
+     */
+    public function getMediaIdsAttribute(): array
+    {
+        return $this->media->pluck('id')->all();
     }
 
     /**

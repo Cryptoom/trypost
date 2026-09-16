@@ -344,6 +344,11 @@ return [
         'drop_zone_subtitle' => 'Sleep bestanden hierheen of klik om te bladeren',
         'add' => 'Toevoegen',
         'publish_to' => 'Publiceren naar',
+        'media_assignment' => [
+            'label' => 'Media voor dit kanaal',
+            'included' => 'Inbegrepen voor dit kanaal',
+            'excluded' => 'Uitgesloten van dit kanaal',
+        ],
         'organize' => 'Organiseren',
         'signatures' => 'Handtekeningen',
         'view_on_platform' => 'Bekijken op platform',

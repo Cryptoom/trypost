@@ -6,6 +6,7 @@ import DiscordSettings from '@/components/posts/editor/DiscordSettings.vue';
 import FacebookSettings from '@/components/posts/editor/FacebookSettings.vue';
 import InstagramSettings from '@/components/posts/editor/InstagramSettings.vue';
 import LinkedInSettings from '@/components/posts/editor/LinkedInSettings.vue';
+import MediaAssignmentGrid from '@/components/posts/editor/MediaAssignmentGrid.vue';
 import PinterestSettings from '@/components/posts/editor/PinterestSettings.vue';
 import TikTokSettings from '@/components/posts/editor/TikTokSettings.vue';
 import { Avatar } from '@/components/ui/avatar';
@@ -33,6 +34,7 @@ const emit = defineEmits<{
     toggle: [id: string];
     'update:contentType': [id: string, value: string];
     'update:meta': [id: string, value: Record<string, any>];
+    'update:mediaIds': [id: string, mediaIds: string[]];
 }>();
 
 const isSelected = (id: string): boolean => props.selectedIds.includes(id);
@@ -121,6 +123,12 @@ const settingsProps = (channel: Channel) => ({
         <slot />
 
         <template v-for="channel in selectedChannels" :key="channel.id">
+            <MediaAssignmentGrid
+                :media="media"
+                :selected-media-ids="channel.mediaIds"
+                :disabled="disabled"
+                @update:selected-media-ids="(ids) => emit('update:mediaIds', channel.id, ids)"
+            />
             <InstagramSettings
                 v-if="channel.platform === Platform.Instagram || channel.platform === Platform.InstagramFacebook"
                 v-bind="settingsProps(channel)"

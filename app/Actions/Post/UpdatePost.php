@@ -49,20 +49,20 @@ class UpdatePost
 
                 foreach (data_get($data, 'platforms', []) as $platformData) {
                     $updateData = ['enabled' => true];
+                    $needsExistingRow = data_get($platformData, 'meta') !== null || Arr::has($platformData, 'media_ids');
+                    $postPlatform = $needsExistingRow
+                        ? $post->postPlatforms()->where('id', data_get($platformData, 'id'))->first()
+                        : null;
 
                     if (data_get($platformData, 'content_type') !== null) {
                         $updateData['content_type'] = data_get($platformData, 'content_type');
                     }
 
-                    if (data_get($platformData, 'meta') !== null) {
-                        $postPlatform = $post->postPlatforms()->where('id', data_get($platformData, 'id'))->first();
-
-                        if ($postPlatform) {
-                            $updateData['meta'] = array_filter(
-                                array_merge($postPlatform->meta ?? [], data_get($platformData, 'meta') ?? []),
-                                fn (mixed $value): bool => $value !== null,
-                            );
-                        }
+                    if (data_get($platformData, 'meta') !== null && $postPlatform) {
+                        $updateData['meta'] = array_filter(
+                            array_merge($postPlatform->meta ?? [], data_get($platformData, 'meta') ?? []),
+                            fn (mixed $value): bool => $value !== null,
+                        );
                     }
 
                     $post->postPlatforms()
@@ -74,11 +74,11 @@ class UpdatePost
                     // client that never sends it must not accidentally clear every
                     // platform's scoping), while an explicit empty array clears it
                     // back to "publish every media item on the post" (see
-                    // PostPlatform::scopedMediaItems()).
-                    if (Arr::has($platformData, 'media_ids')) {
-                        $postPlatform = $post->postPlatforms()->where('id', data_get($platformData, 'id'))->first();
-
-                        $postPlatform?->media()->sync(data_get($platformData, 'media_ids', []));
+                    // PostPlatform::scopedMediaItems()). $postPlatform is already
+                    // resolved above via $needsExistingRow when media_ids is present,
+                    // no need to re-fetch it here.
+                    if (Arr::has($platformData, 'media_ids') && $postPlatform) {
+                        $postPlatform->media()->sync(data_get($platformData, 'media_ids', []));
                     }
                 }
             }

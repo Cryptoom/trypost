@@ -248,7 +248,13 @@ class PostController extends Controller
             SyncPostPlatforms::execute($post);
         }
 
-        $post->load(['postPlatforms.socialAccount', 'labels']);
+        $post->load(['postPlatforms.socialAccount', 'postPlatforms.media', 'labels']);
+
+        // `media_ids` is only appended here, not globally on the model, so the
+        // Index/Calendar listings (which don't eager-load `media`) don't take
+        // an unwanted lazy-load hit on every post_platform they render.
+        $post->postPlatforms->each(fn (PostPlatform $postPlatform) => $postPlatform->append('media_ids'));
+
         $socialAccounts = $workspace->socialAccounts()->active()->get();
         $labels = $workspace->labels;
         $signatures = $workspace->signatures;

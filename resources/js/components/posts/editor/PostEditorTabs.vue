@@ -60,6 +60,7 @@ const props = defineProps<{
     selectedPlatformIds: string[];
     platformMeta: Record<string, Record<string, any>>;
     platformContentTypes: Record<string, string>;
+    platformMediaIds: Record<string, string[]>;
     platformIssues: Record<string, PlatformIssue>;
     platformConfigs: Record<string, any>;
     labels: { id: string; name: string; color: string }[];
@@ -79,6 +80,7 @@ const emit = defineEmits<{
     (e: 'toggle-label', labelId: string): void;
     (e: 'update:platformMeta', platformId: string, meta: Record<string, any>): void;
     (e: 'update:platformContentType', platformId: string, contentType: string): void;
+    (e: 'update:platformMediaIds', platformId: string, mediaIds: string[]): void;
 }>();
 
 const commentsTabRef = ref<InstanceType<typeof CommentsTab> | null>(null);
@@ -122,6 +124,7 @@ defineExpose({
                 :platform-configs="platformConfigs"
                 :platform-meta="platformMeta"
                 :platform-content-types="platformContentTypes"
+                :platform-media-ids="platformMediaIds"
                 :platform-issues="platformIssues"
                 :tiktok-creator-infos="tiktokCreatorInfos"
                 :pinterest-boards="pinterestBoards"
@@ -130,6 +133,7 @@ defineExpose({
                 @toggle-label="(id) => emit('toggle-label', id)"
                 @update:platform-meta="(id, meta) => emit('update:platformMeta', id, meta)"
                 @update:platform-content-type="(id, contentType) => emit('update:platformContentType', id, contentType)"
+                @update:platform-media-ids="(id, mediaIds) => emit('update:platformMediaIds', id, mediaIds)"
             />
         </TabsContent>
 

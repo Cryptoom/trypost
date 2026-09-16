@@ -53,6 +53,7 @@ interface PostPlatform {
     published_at: string | null;
     social_account: SocialAccount | null;
     meta?: Record<string, any>;
+    media_ids?: string[];
 }
 
 interface Post {
@@ -133,6 +134,15 @@ const platformContentTypes = ref<Record<string, string>>(
 
 const updatePlatformContentType = (platformId: string, contentType: string) => {
     platformContentTypes.value = { ...platformContentTypes.value, [platformId]: contentType };
+};
+
+// Per-platform media assignment (empty array means "applies to every media item").
+const platformMediaIds = ref<Record<string, string[]>>(
+    Object.fromEntries(post.value.post_platforms.map((pp) => [pp.id, pp.media_ids ?? []])),
+);
+
+const updatePlatformMediaIds = (platformId: string, mediaIds: string[]) => {
+    platformMediaIds.value = { ...platformMediaIds.value, [platformId]: mediaIds };
 };
 
 const {
@@ -265,6 +275,7 @@ const getSubmitData = () => {
             id: pp.id,
             content_type: platformContentTypes.value[pp.id] ?? pp.content_type,
             meta: platformMeta.value[pp.id] ?? pp.meta ?? {},
+            media_ids: platformMediaIds.value[pp.id] ?? pp.media_ids ?? [],
         }));
 
     return {
@@ -312,7 +323,7 @@ const triggerAutosave = () => {
     }
 };
 
-watch([content, media, selectedPlatformIds, scheduledDateTime, selectedLabelIds, platformMeta, platformContentTypes], triggerAutosave, { deep: true });
+watch([content, media, selectedPlatformIds, scheduledDateTime, selectedLabelIds, platformMeta, platformContentTypes, platformMediaIds], triggerAutosave, { deep: true });
 
 onUnmounted(() => {
     debouncedSave.cancel();
@@ -457,6 +468,7 @@ usePostEcho(post.value.id, '.post.comment.created', (e: any) => {
                             :selected-platform-ids="selectedPlatformIds"
                             :platform-meta="platformMeta"
                             :platform-content-types="platformContentTypes"
+                            :platform-media-ids="platformMediaIds"
                             :platform-issues="platformIssues"
                             :platform-configs="platformConfigs"
                             :labels="labels"
@@ -471,6 +483,7 @@ usePostEcho(post.value.id, '.post.comment.created', (e: any) => {
                             @toggle-label="toggleLabel"
                             @update:platform-meta="updatePlatformMeta"
                             @update:platform-content-type="updatePlatformContentType"
+                            @update:platform-media-ids="updatePlatformMediaIds"
                         />
                     </div>
                 </div>

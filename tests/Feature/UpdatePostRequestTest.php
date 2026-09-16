@@ -865,3 +865,115 @@ test('pinterest meta title and link validation bounds are enforced', function ()
             'platforms.0.meta.link' => __('posts.form.pinterest.link_invalid'),
         ]);
 });
+
+test('saving a platform with media_ids scopes it to only those media items', function () {
+    $imageOne = Media::factory()->assets()->create([
+        'mediable_type' => (new Workspace)->getMorphClass(),
+        'mediable_id' => $this->workspace->id,
+    ]);
+    $imageTwo = Media::factory()->assets()->create([
+        'mediable_type' => (new Workspace)->getMorphClass(),
+        'mediable_id' => $this->workspace->id,
+    ]);
+
+    $mediaPayload = [
+        ['id' => $imageOne->id, 'path' => $imageOne->path, 'url' => 'https://example.com/one.jpg', 'type' => 'image'],
+        ['id' => $imageTwo->id, 'path' => $imageTwo->path, 'url' => 'https://example.com/two.jpg', 'type' => 'image'],
+    ];
+
+    $this->actingAs($this->user)
+        ->put(route('app.posts.update', $this->post), [
+            'status' => Status::Draft->value,
+            'media' => $mediaPayload,
+            'platforms' => [[
+                'id' => $this->postPlatform->id,
+                'content_type' => ContentType::TikTokVideo->value,
+                'meta' => [],
+                'media_ids' => [$imageOne->id],
+            ]],
+        ])
+        ->assertSessionDoesntHaveErrors();
+
+    $scoped = $this->postPlatform->fresh()->scopedMediaItems();
+
+    expect($scoped)->toHaveCount(1)
+        ->and($scoped->first()->id)->toBe($imageOne->id);
+});
+
+test('a media_id not on this request is rejected', function () {
+    $foreignAsset = Media::factory()->assets()->create([
+        'mediable_type' => (new Workspace)->getMorphClass(),
+        'mediable_id' => $this->workspace->id,
+    ]);
+
+    $this->actingAs($this->user)
+        ->put(route('app.posts.update', $this->post), [
+            'status' => Status::Draft->value,
+            'media' => $this->mediaPayload,
+            'platforms' => [[
+                'id' => $this->postPlatform->id,
+                'content_type' => ContentType::TikTokVideo->value,
+                'meta' => [],
+                'media_ids' => [$foreignAsset->id],
+            ]],
+        ])
+        ->assertSessionHasErrors('platforms.0.media_ids.0');
+});
+
+test('clearing media_ids with an empty array removes the scoping', function () {
+    $imageOne = Media::factory()->assets()->create([
+        'mediable_type' => (new Workspace)->getMorphClass(),
+        'mediable_id' => $this->workspace->id,
+    ]);
+    $imageTwo = Media::factory()->assets()->create([
+        'mediable_type' => (new Workspace)->getMorphClass(),
+        'mediable_id' => $this->workspace->id,
+    ]);
+    $this->postPlatform->media()->sync([$imageOne->id]);
+
+    $mediaPayload = [
+        ['id' => $imageOne->id, 'path' => $imageOne->path, 'url' => 'https://example.com/one.jpg', 'type' => 'image'],
+        ['id' => $imageTwo->id, 'path' => $imageTwo->path, 'url' => 'https://example.com/two.jpg', 'type' => 'image'],
+    ];
+
+    $this->actingAs($this->user)
+        ->put(route('app.posts.update', $this->post), [
+            'status' => Status::Draft->value,
+            'media' => $mediaPayload,
+            'platforms' => [[
+                'id' => $this->postPlatform->id,
+                'content_type' => ContentType::TikTokVideo->value,
+                'meta' => [],
+                'media_ids' => [],
+            ]],
+        ])
+        ->assertSessionDoesntHaveErrors();
+
+    expect($this->postPlatform->fresh()->scopedMediaItems())->toHaveCount(2);
+});
+
+test('omitting media_ids leaves existing scoping untouched', function () {
+    $imageOne = Media::factory()->assets()->create([
+        'mediable_type' => (new Workspace)->getMorphClass(),
+        'mediable_id' => $this->workspace->id,
+    ]);
+    $this->post->update(['media' => [
+        ['id' => $imageOne->id, 'path' => $imageOne->path, 'url' => 'https://example.com/one.jpg', 'type' => 'image'],
+    ]]);
+    $this->postPlatform->media()->sync([$imageOne->id]);
+
+    $this->actingAs($this->user)
+        ->put(route('app.posts.update', $this->post), [
+            'status' => Status::Draft->value,
+            'platforms' => [[
+                'id' => $this->postPlatform->id,
+                'content_type' => ContentType::TikTokVideo->value,
+                'meta' => [],
+            ]],
+        ])
+        ->assertSessionDoesntHaveErrors();
+
+    $scoped = $this->postPlatform->fresh()->scopedMediaItems();
+    expect($scoped)->toHaveCount(1)
+        ->and($scoped->first()->id)->toBe($imageOne->id);
+});

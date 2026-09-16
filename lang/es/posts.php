@@ -338,6 +338,11 @@ return [
         'drop_zone_subtitle' => 'Arrastra archivos o haz clic para seleccionar',
         'add' => 'Añadir',
         'publish_to' => 'Publicar en',
+        'media_assignment' => [
+            'label' => 'Contenido para este canal',
+            'included' => 'Incluido en este canal',
+            'excluded' => 'Excluido de este canal',
+        ],
         'organize' => 'Organizar',
         'no_labels' => 'Todavía no hay etiquetas creadas',
         'pick_time' => 'Elegir hora',

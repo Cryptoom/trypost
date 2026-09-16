@@ -344,6 +344,11 @@ return [
         'drop_zone_subtitle' => 'اسحب الملفات وأفلتها أو انقر للتصفح',
         'add' => 'إضافة',
         'publish_to' => 'النشر إلى',
+        'media_assignment' => [
+            'label' => 'الوسائط لهذه القناة',
+            'included' => 'مضمّن لهذه القناة',
+            'excluded' => 'مستبعد من هذه القناة',
+        ],
         'organize' => 'تنظيم',
         'signatures' => 'التوقيعات',
         'view_on_platform' => 'العرض على المنصة',

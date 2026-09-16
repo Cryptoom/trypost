@@ -55,6 +55,11 @@ class UpdatePostRequest extends FormRequest
                 'string',
                 Rule::in(array_column(ContentType::cases(), 'value')),
             ],
+            // Per-platform media assignment (Edit.vue's media toggle grid). An
+            // id must be one of the media items this same request is saving on
+            // the post, never an arbitrary/unrelated media id (IDOR guard).
+            'platforms.*.media_ids' => ['sometimes', 'array'],
+            'platforms.*.media_ids.*' => ['string', Rule::in($this->postMediaIds())],
             ...PostPlatformMetaRules::rules(),
             'label_ids' => ['sometimes', 'array'],
             'label_ids.*' => ['uuid', Rule::exists('workspace_labels', 'id')->where('workspace_id', $this->user()->currentWorkspace->id)],
@@ -148,6 +153,17 @@ class UpdatePostRequest extends FormRequest
         foreach (ContentTypeCompatibleWithMedia::errorsFor($entries) as $key => $message) {
             $validator->errors()->add($key, $message);
         }
+    }
+
+    /**
+     * The media ids this request is saving on the post itself, the only ids
+     * a `platforms.*.media_ids` entry is allowed to reference.
+     *
+     * @return array<int, string>
+     */
+    private function postMediaIds(): array
+    {
+        return collect($this->input('media', []))->pluck('id')->filter()->all();
     }
 
     /**
