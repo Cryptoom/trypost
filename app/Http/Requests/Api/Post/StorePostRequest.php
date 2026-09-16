@@ -14,6 +14,7 @@ use App\Support\PostPlatformMetaRules;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Validator;
 
 class StorePostRequest extends FormRequest
 {
@@ -59,6 +60,17 @@ class StorePostRequest extends FormRequest
                 Rule::exists('workspace_labels', 'id')->where('workspace_id', $workspaceId),
             ],
         ];
+    }
+
+    public function withValidator(Validator $validator): void
+    {
+        $validator->after(function (Validator $validator): void {
+            PostMediaRules::assertHostedMediaExists(
+                $validator,
+                $this->user()->currentWorkspace,
+                (array) $this->input('media', []),
+            );
+        });
     }
 
     /**

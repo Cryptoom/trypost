@@ -6,6 +6,7 @@ use App\Enums\Post\Status;
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
 use App\Enums\UserWorkspace\Role;
+use App\Models\Media;
 use App\Models\Post;
 use App\Models\PostPlatform;
 use App\Models\SocialAccount;
@@ -625,9 +626,15 @@ test('scheduling across multiple platforms enforces the strictest content-length
 });
 
 test('draft save accepts media source metadata for ai regeneration', function () {
+    $asset = Media::factory()->assets()->create([
+        'mediable_type' => (new Workspace)->getMorphClass(),
+        'mediable_id' => $this->workspace->id,
+        'path' => 'ai-images/generated.webp',
+    ]);
+
     $payload = [
         [
-            'id' => 'media-ai-keep-meta',
+            'id' => $asset->id,
             'path' => 'ai-images/generated.webp',
             'url' => 'https://example.com/ai-images/generated.webp',
             'type' => 'image',

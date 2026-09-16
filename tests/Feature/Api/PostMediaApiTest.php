@@ -490,6 +490,12 @@ it('rejects creating a post when an external media url is not a supported type',
 it('keeps an already-hosted item and a freshly-hosted url in order', function () {
     $this->socialAccount->update(['is_active' => true]);
 
+    $asset = Media::factory()->assets()->create([
+        'mediable_type' => (new Workspace)->getMorphClass(),
+        'mediable_id' => $this->workspace->id,
+        'path' => 'assets/already.jpg',
+    ]);
+
     Http::fake([
         '93.184.216.34/external.jpg' => Http::response(
             file_get_contents(__DIR__.'/../../fixtures/1x1.png'),
@@ -502,7 +508,7 @@ it('keeps an already-hosted item and a freshly-hosted url in order', function ()
         ->postJson(route('api.posts.store'), [
             'content' => 'Mixed media post',
             'media' => [
-                ['id' => 'hosted-1', 'path' => 'assets/already.jpg', 'url' => 'https://cdn.trypost.test/assets/already.jpg', 'type' => 'image'],
+                ['id' => $asset->id, 'path' => $asset->path, 'url' => 'https://cdn.trypost.test/assets/already.jpg', 'type' => 'image'],
                 ['url' => 'https://93.184.216.34/external.jpg'],
             ],
             'platforms' => [
@@ -517,19 +523,25 @@ it('keeps an already-hosted item and a freshly-hosted url in order', function ()
         ->and(data_get($media, '0.path'))->toBe('assets/already.jpg')
         ->and(data_get($media, '1.url'))->not->toContain('93.184.216.34')
         ->and(data_get($media, '1.path'))->not->toBeNull();
-    // Only the external URL is hosted; the passed-through item creates no new row.
-    expect(Media::where('mediable_id', $this->workspace->id)->count())->toBe(1);
+    // The pre-existing asset is reused (no duplicate row); only the external url is newly hosted.
+    expect(Media::where('mediable_id', $this->workspace->id)->count())->toBe(2);
 });
 
 it('passes already-hosted media through on create without downloading', function () {
     $this->socialAccount->update(['is_active' => true]);
     Http::preventStrayRequests();
 
+    $asset = Media::factory()->assets()->create([
+        'mediable_type' => (new Workspace)->getMorphClass(),
+        'mediable_id' => $this->workspace->id,
+        'path' => 'assets/foo.jpg',
+    ]);
+
     $this->withHeaders(['Authorization' => 'Bearer '.$this->plainToken])
         ->postJson(route('api.posts.store'), [
             'content' => 'Hosted media post',
             'media' => [[
-                'id' => 'media-1',
+                'id' => $asset->id,
                 'path' => 'assets/foo.jpg',
                 'url' => 'https://cdn.trypost.test/assets/foo.jpg',
                 'type' => 'image',
@@ -541,7 +553,8 @@ it('passes already-hosted media through on create without downloading', function
         ->assertCreated();
 
     expect(data_get(Post::where('content', 'Hosted media post')->firstOrFail()->media, '0.path'))->toBe('assets/foo.jpg');
-    expect(Media::where('mediable_id', $this->workspace->id)->count())->toBe(0);
+    // The pre-existing asset is reused; nothing new is downloaded or hosted.
+    expect(Media::where('mediable_id', $this->workspace->id)->count())->toBe(1);
 });
 
 it('downloads and hosts an external media url when updating a post', function () {
@@ -587,11 +600,17 @@ it('accepts and persists media alt text on create', function () {
     $this->socialAccount->update(['is_active' => true]);
     Http::preventStrayRequests();
 
+    $asset = Media::factory()->assets()->create([
+        'mediable_type' => (new Workspace)->getMorphClass(),
+        'mediable_id' => $this->workspace->id,
+        'path' => 'assets/foo.jpg',
+    ]);
+
     $this->withHeaders(['Authorization' => 'Bearer '.$this->plainToken])
         ->postJson(route('api.posts.store'), [
             'content' => 'Alt text post',
             'media' => [[
-                'id' => 'media-1',
+                'id' => $asset->id,
                 'path' => 'assets/foo.jpg',
                 'url' => 'https://cdn.trypost.test/assets/foo.jpg',
                 'type' => 'image',
@@ -609,11 +628,17 @@ it('accepts and persists media alt text on create', function () {
 });
 
 it('accepts and persists media alt text on update', function () {
+    $asset = Media::factory()->assets()->create([
+        'mediable_type' => (new Workspace)->getMorphClass(),
+        'mediable_id' => $this->workspace->id,
+        'path' => 'assets/foo.jpg',
+    ]);
+
     $this->withHeaders(['Authorization' => 'Bearer '.$this->plainToken])
         ->putJson(route('api.posts.update', $this->post), [
             'status' => 'draft',
             'media' => [[
-                'id' => 'media-1',
+                'id' => $asset->id,
                 'path' => 'assets/foo.jpg',
                 'url' => 'https://cdn.trypost.test/assets/foo.jpg',
                 'type' => 'image',
@@ -626,11 +651,17 @@ it('accepts and persists media alt text on update', function () {
 });
 
 it('preserves every media meta key on update, not just alt_text', function () {
+    $asset = Media::factory()->assets()->create([
+        'mediable_type' => (new Workspace)->getMorphClass(),
+        'mediable_id' => $this->workspace->id,
+        'path' => 'assets/foo.jpg',
+    ]);
+
     $this->withHeaders(['Authorization' => 'Bearer '.$this->plainToken])
         ->putJson(route('api.posts.update', $this->post), [
             'status' => 'draft',
             'media' => [[
-                'id' => 'media-1',
+                'id' => $asset->id,
                 'path' => 'assets/foo.jpg',
                 'url' => 'https://cdn.trypost.test/assets/foo.jpg',
                 'type' => 'image',
