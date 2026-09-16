@@ -19,16 +19,14 @@ Status-Symbole: ✓ done · 🚀 deployed · ⏳ in_progress · ❓ waiting · �
 
 | Chip | Paket | Status | Started | Worktree/Branch |
 |---|---|---|---|---|
-| TPX-05 | A2 · Validierungs-Umbau | ⏳ in_progress | 2026-09-17 | claude/tpx-05-a2-validation |
-| TPX-08 | A5 · Vue-UI | ⏳ in_progress | 2026-09-17 | claude/tpx-08-a5-vue-ui |
+| TPX-07 | A4 · MCP-Tool-Parameter | ⏳ wird gestartet | 2026-09-17 | - |
+| TPX-08 | A5 · Vue-UI | ⏳ in_progress (rebased auf A2-Merge) | 2026-09-17 | claude/tpx-08-a5-vue-ui |
 
 ## Pending (Startreihenfolge)
 
 | Chip | Paket | Status | Dependencies | Branch/PR | Plan/Real |
 |---|---|---|---|---|---|
-| TPX-05 | A2 · Validierungs-Umbau | ⏳ (siehe oben) | ✓ A1 gemergt | - | - |
-| TPX-06 | A3 · Publisher-Rollout | ⏳ (siehe oben) | ✓ A1 gemergt | - | - |
-| TPX-07 | A4 · MCP-Tool-Parameter | 🔄 pending | A2 | - | - |
+| TPX-07 | A4 · MCP-Tool-Parameter | ⏳ (siehe oben) | ✓ A2 gemergt | - | - |
 | TPX-08 | A5 · Vue-UI | ⏳ (siehe oben) | ✓ A1 gemergt | - | - |
 | TPX-09 | B0 · Nachweis-Paket | 🔄 pending | Welle A komplett gemergt | - | - |
 | TPX-10 | B1 · UnpublishPost + DeletePost | 🔄 pending | B0 | - | - |
@@ -46,6 +44,7 @@ Status-Symbole: ✓ done · 🚀 deployed · ⏳ in_progress · ❓ waiting · �
 |---|---|---|---|---|
 | TPX-04 | A1 · Migration + Model + Media-ID-Fix | [#9](https://github.com/Cryptoom/trypost/pull/9) | `877a2a9c` | `media_post_platform`-Pivot (uuid), `MediaPostPlatform`-Custom-Pivot-Model (`HasUuids`), `PostPlatform::media()`+`scopedMediaItems()`. TPX-03-Fix workspace-gescoped ueber `medias.mediable_type`/`mediable_id` (polymorph, KEINE literale workspace_id-Spalte, Abweichung vom Briefing-Wortlaut zugunsten der verifizierten TPX-03-Implementierung). 975/975 Post-Tests, 367/367 Mcp-Tests, 2 Review-Runden PASS, autonom gemergt (Nachtmodus) |
 | TPX-06 | A3 · Publisher-Rollout | [#10](https://github.com/Cryptoom/trypost/pull/10) | `f411d274` | 12 Dateien geaendert (Plan-Liste nannte nur 9, `DiscordPublisher.php`+`TelegramPublisher.php` fehlten in der Plan-Liste, per Grep gefunden und mitgefixt), 16 Call-Site-Ersetzungen. `mediaSnapshot()` bewusst unveraendert. 420/420 Publisher-Tests gruen, 1 Review-Runde PASS, autonom gemergt |
+| TPX-05 | A2 · Validierungs-Umbau | [#11](https://github.com/Cryptoom/trypost/pull/11) | `7b73cf56` | `ContentTypeCompatibleWithMedia::entriesForUpdate()` loest pro Plattform eigene Media-Liste auf (Request-Media > scopedMediaItems() > volle Post-Liste). Randfall (Media-Pflicht, Liste leer) bleibt korrekt ein Fehler. Web-Aufrufstelle auf `after()`-Validator umgestellt (schliesst nebenbei eine API-Luecke). Lazy-Loading-Bug in scopedMediaItems() unter shouldBeStrict() nebenbei gefixt. 849/850 breiter Sweep gruen, 2 Review-Runden PASS. Koordinierte Kollision mit A5 (platforms.*.media_ids) per direktem SendMessage zwischen den Chips geloest |
 | TPX-01 | T0 · Test-Infrastruktur | [#6](https://github.com/Cryptoom/trypost/pull/6) | `72dc5d5c` | 4553/4553 gruen, Koeder bestanden. Root Cause der urspruenglichen 306 Fehlschlaege: fehlende Passport-Keys (`passport:keys --force`), nicht der Port. Zwischenfall: `gh pr create` legte kurz einen PR gegen das oeffentliche Upstream trypostit/trypost an (PR #358, 1-2 Min sichtbar, sofort geschlossen), Regel-Fix als Backlog-Chip vorgemerkt (task_1fba1d69) |
 | TPX-02 | A0 · Nachweis-Paket | [#7](https://github.com/Cryptoom/trypost/pull/7) MERGED | `45c08fb9` | (b) Postgres 16 in Produktion, medias.id/post_platforms.id beide uuid. (c) PostFactory sauber, ~15+ Testdateien nutzen erfundene Media-IDs. (d) Upstream-PR #287 KEIN Konflikt (nur numerische Constraints, keine Migration). (a) Echter Blocker gefunden, aufgeloest durch TPX-03 |
 | TPX-03 | A0b · Media-ID-Design-Vertiefung | [#8](https://github.com/Cryptoom/trypost/pull/8) DO NOT MERGE, Referenz fuer A1 | - | **Root-Cause: Bug, nicht Feature.** Alle legitimen Schreibpfade (3 MCP-Attach-Tools, Web-Asset-Gallery, Unsplash/Giphy, AI-Regenerierung) liefern IDs ausschliesslich aus Server-Antworten, kein Client-Code erzeugt eigene IDs. **Empfehlung: `Rule::exists('medias','id')` in `PostMediaRules.php` ergaenzen**, workspace-gescoped gegen IDOR. Verifiziert: 11 neue Tests rot-vor-Fix/gruen-danach, voller `--filter=Post`-Lauf 967/967 gruen, 0 Regressionen. Nebenfund: ungefangenes Postgres-500 bei Nicht-UUID-id wird zu korrektem 422. IDOR bestaetigt+geschlossen (Test beweist Cross-Tenant-Ablehnung). Produktions-Check web02: 0/32 Posts betroffen, kein Backfill-Risiko fuer die harte FK in A1. Zwischenfall: erneut `gh pr create` ohne `--repo` traf kurz Upstream (PR #359), sofort geschlossen, bekanntes Muster (Regel-Fix von TPX-01 wirkt erst in neuer Session) |
