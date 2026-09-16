@@ -19,8 +19,8 @@ Status-Symbole: ✓ done · 🚀 deployed · ⏳ in_progress · ❓ waiting · �
 
 | Chip | Paket | Status | Started | Worktree/Branch |
 |---|---|---|---|---|
-| TPX-07 | A4 · MCP-Tool-Parameter | ⏳ wird gestartet | 2026-09-17 | - |
-| TPX-08 | A5 · Vue-UI | ⏳ in_progress (rebased auf A2-Merge) | 2026-09-17 | claude/tpx-08-a5-vue-ui |
+| TPX-07 | A4 · MCP-Tool-Parameter | ⏳ in_progress | 2026-09-17 | claude/tpx-07-a4-mcp |
+| TPX-08 | A5 · Vue-UI | 🔍 review-Fix (2 echte Findings, PR #12 nicht gemergt) | 2026-09-17 | claude/tpx-08-a5-vue-ui |
 
 ## Pending (Startreihenfolge)
 
@@ -62,7 +62,13 @@ Status-Symbole: ✓ done · 🚀 deployed · ⏳ in_progress · ❓ waiting · �
 
 ## Code-Review-Status
 
-(keine PRs bisher)
+- **PR #12 (A5, TPX-08)**: Code-Review PASS mit wichtigem Finding (Toggle-Logik-Bug, letztes
+  Media-Item abwaehlen kippt auf "alle an" zurueck, vom Orchestrator selbst nachgerechnet und
+  bestaetigt). Design-Review NEEDS-WORK (fehlender Card-Wrapper, Plattform-Zuordnung nicht
+  erkennbar bei mehreren Plattform-Karten). Beide Nested-Review-Notifications kamen an den
+  Orchestrator statt an den Chip (Routing-Anomalie bei verschachtelten Subagenten, dritter
+  Beleg in dieser Welle). Chip wurde mit vollem Befund zurueckgeschickt, Fix + neue Review-
+  Runde laeuft.
 
 ## Olli-Touchpoints
 
