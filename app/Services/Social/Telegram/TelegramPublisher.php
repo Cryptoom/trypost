@@ -37,7 +37,7 @@ class TelegramPublisher
             ? app(ContentSanitizer::class)->sanitize($postPlatform->post->content, $postPlatform->platform)
             : '';
 
-        $media = $postPlatform->post->mediaItems->take(self::ALBUM_CHUNK);
+        $media = $postPlatform->scopedMediaItems()->take(self::ALBUM_CHUNK);
 
         $messageId = $media->isEmpty()
             ? $this->sendText($chatId, $content)

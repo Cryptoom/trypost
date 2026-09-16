@@ -37,7 +37,7 @@ class YouTubePublisher
             app(ConnectionVerifier::class)->refreshToken($account);
         }
 
-        $media = $postPlatform->post->mediaItems;
+        $media = $postPlatform->scopedMediaItems();
 
         if ($media->isEmpty()) {
             throw new YouTubePublishException(

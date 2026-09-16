@@ -61,7 +61,7 @@ class BlueskyPublisher
             app(ConnectionVerifier::class)->refreshToken($account);
         }
 
-        $medias = $postPlatform->post->mediaItems;
+        $medias = $postPlatform->scopedMediaItems();
         $embed = null;
 
         // Upload images if present (max 4)

@@ -61,7 +61,7 @@ class InstagramPublisher
             return $this->resumeWorkflow($instagramId, $accessToken, $content, $pendingWorkflow);
         }
 
-        $media = $postPlatform->post->mediaItems;
+        $media = $postPlatform->scopedMediaItems();
 
         if ($media->isEmpty()) {
             throw new InstagramPublishException(

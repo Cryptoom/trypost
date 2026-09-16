@@ -29,7 +29,7 @@ class MastodonPublisher
         $account = $postPlatform->socialAccount;
         $instance = $account->meta['instance'] ?? config('trypost.platforms.mastodon.default_instance');
 
-        $medias = $postPlatform->post->mediaItems;
+        $medias = $postPlatform->scopedMediaItems();
         $mediaIds = [];
 
         // Upload media first (max 4)

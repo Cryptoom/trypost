@@ -46,7 +46,7 @@ class ThreadsPublisher
         $userId = $account->platform_user_id;
         $accessToken = $account->access_token;
 
-        $media = $postPlatform->post->mediaItems;
+        $media = $postPlatform->scopedMediaItems();
 
         // Text only post
         if ($media->isEmpty()) {
