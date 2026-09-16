@@ -350,16 +350,86 @@ test('facebook publisher can publish video story', function () {
 
     Http::fake([
         '*/page_123/video_stories' => Http::sequence()
-            ->push(['video_id' => 'story_video_123'], 200)
-            ->push(['post_id' => 'video_story_post_123'], 200),
-        '*/story_video_123' => Http::response(['success' => true], 200),
-        '*' => Http::response('', 200),
+            ->push([
+                'video_id' => 'story_video_123',
+                'upload_url' => 'https://rupload.facebook.com/video-upload/v25.0/story_video_123',
+            ], 200)
+            ->push(['success' => true, 'post_id' => 'video_story_post_123'], 200),
+        '*example.com/media/*' => Http::response('fake-video-binary-content', 200),
+        '*rupload.facebook.com/*' => Http::response(['success' => true], 200),
     ]);
 
     $result = $this->publisher->publish($this->postPlatform);
 
     expect($result)->toHaveKey('id');
     expect($result['id'])->toBe('video_story_post_123');
+    expect($result['url'])->toBe('https://www.facebook.com/stories/page_123/video_story_post_123');
+
+    // Same transfer-phase contract as the reel test: raw bytes to
+    // upload_url (rupload host) with OAuth + Offset + file_size headers,
+    // not a URL string posted as a video_file_chunk body field.
+    Http::assertSent(function ($request) {
+        if (! str_contains($request->url(), 'rupload.facebook.com')) {
+            return false;
+        }
+
+        return ($request->header('Offset')[0] ?? null) === '0'
+            && ($request->header('file_size')[0] ?? null) === (string) strlen('fake-video-binary-content')
+            && str_starts_with($request->header('Authorization')[0] ?? '', 'OAuth ');
+    });
+});
+
+test('facebook publisher fails story publish when start does not return upload_url', function () {
+    $this->postPlatform->update(['content_type' => ContentType::FacebookStory]);
+
+    $this->post->update([
+        'media' => [
+            [
+                'id' => 'test-media-video-story',
+                'path' => 'media/2026-01/story.mp4',
+                'url' => 'https://example.com/media/2026-01/story.mp4',
+                'mime_type' => 'video/mp4',
+                'original_filename' => 'story.mp4',
+            ],
+        ],
+    ]);
+
+    Http::fake([
+        '*/page_123/video_stories' => Http::response(['video_id' => 'story_video_123'], 200),
+    ]);
+
+    expect(fn () => $this->publisher->publish($this->postPlatform))
+        ->toThrow(FacebookPublishException::class, 'Facebook did not return upload_url for story start.');
+});
+
+test('facebook publisher throws exception when story media download fails', function () {
+    $this->postPlatform->update(['content_type' => ContentType::FacebookStory]);
+
+    $this->post->update([
+        'media' => [
+            [
+                'id' => 'test-media-video-story',
+                'path' => 'media/2026-01/story.mp4',
+                'url' => 'https://example.com/media/2026-01/story.mp4',
+                'mime_type' => 'video/mp4',
+                'original_filename' => 'story.mp4',
+            ],
+        ],
+    ]);
+
+    Http::fake([
+        '*/page_123/video_stories' => Http::response([
+            'video_id' => 'story_video_123',
+            'upload_url' => 'https://rupload.facebook.com/video-upload/v25.0/story_video_123',
+        ], 200),
+        '*example.com/media/*' => Http::response('', 404),
+    ]);
+
+    expect(fn () => $this->publisher->publish($this->postPlatform))
+        ->toThrow(
+            FacebookPublishException::class,
+            'Could not download media for Facebook story.'
+        );
 });
 
 test('facebook publisher throws exception on api error', function () {

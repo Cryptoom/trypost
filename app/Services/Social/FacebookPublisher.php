@@ -375,33 +375,79 @@ class FacebookPublisher
             );
         }
 
-        $response = $this->facebookHttp()->post("{$this->baseUrl}/{$pageId}/video_stories", [
+        $startResponse = $this->facebookHttp()->post("{$this->baseUrl}/{$pageId}/video_stories", [
             'upload_phase' => 'start',
             'access_token' => $accessToken,
         ]);
 
-        if ($response->failed()) {
-            $this->handleApiError($response);
+        if ($startResponse->failed()) {
+            $this->handleApiError($startResponse);
         }
 
-        $videoId = $response->json()['video_id'] ?? null;
+        $startData = $startResponse->json();
+        $videoId = data_get($startData, 'video_id');
+        $uploadUrl = data_get($startData, 'upload_url');
 
-        if (! $videoId) {
+        if (! $videoId || ! $uploadUrl) {
             throw new FacebookPublishException(
-                userMessage: 'Facebook did not accept the story video. Please try again.',
+                userMessage: 'Facebook did not return upload_url for story start.',
                 category: ErrorCategory::ServerError,
+                platformErrorCode: null,
+                rawResponse: $startResponse->body(),
             );
         }
 
-        $transferResponse = $this->facebookHttp()->post("{$this->baseUrl}/{$videoId}", [
-            'upload_phase' => 'transfer',
-            'video_file_chunk' => $media->url,
-            'access_token' => $accessToken,
-        ]);
+        // Same rupload flow as publishReel() (this file, above): the
+        // documented file_url-header shortcut against upload_url is
+        // unreliable in practice, so download our hosted media and POST raw
+        // bytes with the Offset/file_size headers rupload requires. The
+        // previous implementation posted the media URL as a body field
+        // called video_file_chunk to /{video_id} on the regular Graph host,
+        // which is not the transfer step this API expects (Graph API error
+        // 6000, "Problem with file", on every story regardless of the
+        // actual video).
+        $tempFile = tempnam(sys_get_temp_dir(), 'fb_story_');
 
-        if ($transferResponse->failed()) {
-            Log::error('Facebook video story transfer failed', ['body' => $this->redactResponseBody($transferResponse->body())]);
-            $this->handleApiError($transferResponse);
+        try {
+            $download = Http::withOptions(['sink' => $tempFile])
+                ->timeout(600)
+                ->get($media->url);
+
+            if ($download->failed()) {
+                throw new FacebookPublishException(
+                    userMessage: 'Could not download media for Facebook story.',
+                    category: ErrorCategory::ServerError,
+                    platformErrorCode: (string) $download->status(),
+                    rawResponse: null,
+                );
+            }
+
+            $fileSize = filesize($tempFile);
+            $stream = fopen($tempFile, 'rb');
+
+            try {
+                $uploadResponse = Http::withHeaders([
+                    'Authorization' => "OAuth {$accessToken}",
+                    'Offset' => '0',
+                    'file_size' => (string) $fileSize,
+                ])
+                    ->timeout(600)
+                    ->withBody($stream, $media->mime_type ?? 'video/mp4')
+                    ->post($uploadUrl);
+            } finally {
+                if (is_resource($stream)) {
+                    fclose($stream);
+                }
+            }
+
+            if ($uploadResponse->failed()) {
+                Log::error('Facebook video story transfer failed', ['body' => $this->redactResponseBody($uploadResponse->body())]);
+                $this->handleApiError($uploadResponse);
+            }
+        } finally {
+            if (! unlink($tempFile)) {
+                Log::warning('Facebook story temp file cleanup failed', ['path' => $tempFile]);
+            }
         }
 
         $finishResponse = $this->facebookHttp()->post("{$this->baseUrl}/{$pageId}/video_stories", [
