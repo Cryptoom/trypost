@@ -218,3 +218,41 @@ anbieten.
   `"legal":{"terms":"https:\/\/madevisible.io\/agb\/","privacy":"https:\/\/madevisible.io\/privacy\/"}`
   in den Inertia-Props, Sidebar-Screenshot (eingeloggte Session) zeigt keinen
   Referral-/Discord-/Docs-Footer mehr.
+
+## Geplant, noch nicht gepatcht: Medien pro Plattform statt pro Post (16.09.2026)
+
+Ausloeser: PlayCraft-Story-Draft ("Fresh Toys Just Arrived") bekam versehentlich Bild UND Video
+gleichzeitig angehaengt. `facebook_story` akzeptiert gar keine Bilder, beide Story-Formate
+(`facebook_story`, `instagram_story`) erlauben nur 1 Media-Item. Fix war ein komplett neuer Post
+nur mit dem Video, weil es keinen Weg gibt, ein einzelnes Media-Item aus einem Post zu entfernen
+oder Media pro Plattform unterschiedlich zuzuweisen.
+
+**Ist-Zustand verifiziert**: `Post::media()` ist eine `morphMany`-Relation direkt am Post
+(`app/Models/Traits/HasMedia.php`), nicht an `PostPlatform`. `PostPlatform` hat keine eigene
+Media-Relation. `ContentTypeCompatibleWithMedia::media()` prueft fuer JEDE aktivierte Plattform
+dieselbe Post-Media-Liste, ohne Filterung. Alle 13 Publisher-Services
+(`app/Services/Social/*Publisher.php`) konsumieren dieselbe ungefilterte Liste beim Publish-Call.
+Das Frontend (`useMedia.ts`/`useMediaRules.ts`) spiegelt dieselbe ungescopte Logik. Kein MCP-Tool
+kennt eine Plattform-Zuordnung fuer Media.
+
+**Ziel-Design**: optionale Pivot-Tabelle `media_post_platform` (`media_id`, `post_platform_id`).
+Leere Zuordnung = gilt weiter fuer alle Plattformen (Default, rueckwaertskompatibel). Mit
+Zuordnung gilt ein Media-Item nur fuer die genannten Plattformen, z.B. Bild nur fuer Instagram,
+Video nur fuer Facebook/TikTok im selben Post.
+
+**Aufwand-Einschaetzung**: kein Ein-Sitzungs-Patch. Migration + Model-Relation ist klein, die
+Validierungs-Anpassung (Backend + Frontend-Spiegel) ist mittel, das Umstellen aller 13 Publisher
+auf gefilterte Media ist der groesste Posten (viele Dateien, gleiches Muster, aber jede braucht
+eigenen Test), dazu 4 MCP-Tools erweitern und eine neue Vue-Editor-UI (Toggle pro Media-Item pro
+Plattform). Eher eine eigene Chip-Welle als ein einzelner Patch.
+
+**AGPL-Hinweis, jetzt relevant, nicht erst "vor dem ersten Kunden"**: PlayCraft (Menelaos
+Georgiou) ist bereits ein echter, zahlender Kunden-Workspace auf dieser Instanz. Sobald ein
+Patch (dieser oder ein anderer) live laeuft, waehrend ein echter Kunde die Instanz nutzt, greift
+die AGPL-Netzwerk-Copyleft-Offenlegungspflicht (Footer-/Impressum-Link zum Fork-Repo) bereits
+jetzt, nicht erst bei diesem Feature. Vor dem Umsetzen dieses Plans mit Olli klaeren.
+
+**Empfehlung**: technisch sauber machbar, aber kein Quick-Win. Sinnvoll bei wiederkehrendem
+Bedarf (mehrere Kunden mit unterschiedlichen Plattform-Formaten im selben Post), nicht nur fuer
+den PlayCraft-Einzelfall. Fuer den akuten Fall bleibt der pragmatische Workaround (zwei getrennte
+Posts, einer pro Medien-Kombination) die schnellere Loesung, bis diese Welle ansteht.
