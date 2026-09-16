@@ -11,6 +11,7 @@ use App\Models\Media;
 use App\Models\Post;
 use App\Models\Workspace;
 use App\Support\PostMediaRules;
+use App\Support\PostPlatformMediaScope;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
@@ -18,23 +19,17 @@ use Laravel\Mcp\ResponseFactory;
 use Laravel\Mcp\Server\Attributes\Description;
 use Laravel\Mcp\Server\Tool;
 
-#[Description('Attach a Media uploaded via request-media-upload-tool to a post. The upload_token is the value returned by request-media-upload-tool; the Media is resolved by that token within the current workspace, then appended to the post. The media type must be accepted by the platforms enabled on the post. Size, video duration, GIF and MOV caps per content_type (see list-content-types-tool) are checked when the post is scheduled or published, not here.')]
+#[Description('Attach a Media uploaded via request-media-upload-tool to a post. The upload_token is the value returned by request-media-upload-tool; the Media is resolved by that token within the current workspace, then appended to the post. The media type must be accepted by the platforms enabled on the post. Optional post_platform_ids scopes the media to specific platforms via the per-platform media selection; omit to keep it available to every enabled platform. Size, video duration, GIF and MOV caps per content_type (see list-content-types-tool) are checked when the post is scheduled or published, not here.')]
 class AttachMediaFromUploadTool extends Tool
 {
     use AuthorizesMcpTool;
 
     public function handle(Request $request): Response|ResponseFactory
     {
-        $validated = $request->validate([
-            'post_id' => ['required', 'uuid'],
-            'upload_token' => ['required', 'uuid'],
-            'alt' => ['nullable', 'string', 'max:'.PostMediaRules::ALT_TEXT_MAX_LENGTH],
-        ]);
-
         $workspaceId = $request->user()?->current_workspace_id;
 
         $post = $workspaceId
-            ? Post::where('workspace_id', $workspaceId)->find(data_get($validated, 'post_id'))
+            ? Post::where('workspace_id', $workspaceId)->find(data_get($request->all(), 'post_id'))
             : null;
 
         if (! $post) {
@@ -44,6 +39,13 @@ class AttachMediaFromUploadTool extends Tool
         if ($denied = $this->denyUnlessCan($request, 'update', $post, 'Not authorized to update this post.')) {
             return $denied;
         }
+
+        $validated = $request->validate([
+            'post_id' => ['required', 'uuid'],
+            'upload_token' => ['required', 'uuid'],
+            'alt' => ['nullable', 'string', 'max:'.PostMediaRules::ALT_TEXT_MAX_LENGTH],
+            ...PostPlatformMediaScope::rules($post),
+        ]);
 
         $media = Media::query()
             ->where('upload_token', data_get($validated, 'upload_token'))
@@ -61,6 +63,8 @@ class AttachMediaFromUploadTool extends Tool
 
         $post->appendMedia([MediaItem::fromMedia($media, data_get($validated, 'alt'))->toArray()]);
 
+        PostPlatformMediaScope::apply($post, data_get($validated, 'post_platform_ids', []), [$media->id]);
+
         $post->refresh()->load(['postPlatforms.socialAccount', 'labels']);
 
         return Response::structured([
@@ -74,6 +78,9 @@ class AttachMediaFromUploadTool extends Tool
             'post_id' => $schema->string()->required()->description('UUID of the post to attach the uploaded media to.'),
             'upload_token' => $schema->string()->required()->description('upload_token returned by RequestMediaUploadTool, after the user has POSTed the file to the upload_url.'),
             'alt' => $schema->string()->description('Optional accessibility alt text for the media (applies to images).'),
+            'post_platform_ids' => $schema->array()
+                ->items($schema->string())
+                ->description('Optional post_platform row UUIDs (from get-post-tool / list-posts-tool) this post already has. When set, the uploaded media is scoped to publish only on these platforms via the per-platform media selection. Omit or pass an empty array to keep today\'s behaviour: the media is available to every enabled platform.'),
         ];
     }
 }
