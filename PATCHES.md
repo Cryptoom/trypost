@@ -136,7 +136,8 @@ nie zutraf.
   Kopieren der geaenderten PHP-Datei in den laufenden Container plus Neustart behaelt die alten
   `trypost.it`-URLs im bereits gebundelten JSON, ohne Fehlermeldung. Zwingend
   `docker compose up -d --build` (voller Rebuild), NICHT nur `restart`.
-- **Deployed**: 25.08.2026 (Ursprungspatch, `trypost.it`-URLs hart im Code).
+- **Deployed**: 25.08.2026 (Ursprungspatch, `trypost.it`-URLs hart im Code). Abgeloest durch den
+  env-var-Ansatz unten, deployed 16.09.2026.
 
 **Obsolet seit dem Merge von upstream `main` am 2026-09-16**: Upstream hat das Problem, das
 diesen Patch ausloeste, sauber geloest, mit einer besseren Loesung als unserer eigenen.
@@ -208,11 +209,12 @@ anbieten.
   Typen kommen, weil `php artisan package:discover` lokal ohne volle `.env`/DB scheitert, nicht
   von diesem Merge). Kein `npm test`/`composer test` gefahren (keine lokale Postgres-Instanz
   fuer die Feature-Tests aufgesetzt) und kein Vite-Build gefahren, siehe Naechste Schritte.
-- **NICHT gepusht, NICHT deployed.** Merge-Commit liegt lokal auf `main` in
-  `~/Sites/trypost-fork`, wartet auf Olli-OK.
-- **Naechste Schritte vor Deploy**: (1) `LEGAL_TERMS_URL`/`LEGAL_PRIVACY_URL` in web02s
-  `/opt/trypost/.env` setzen (siehe Patch 4). (2) Idealerweise einen echten `vite build` +
-  `composer test`/`npm test`-Lauf fahren, entweder lokal mit vollem `.env`+Postgres-Setup oder
-  direkt als Teil des Docker-Rebuilds auf web02 (Update-Klasse C, eigener Build sowieso). (3)
-  Nach Deploy Login-/Register-Seite live pruefen (Legal-Links sichtbar, Sidebar ohne
-  Referral/Discord/Docs-Footer).
+- **Gepusht + deployed 16.09.2026** (Olli-OK): `origin/main` auf `88d497d1`, web02
+  `/opt/trypost/src` per `git pull --ff-only` synchronisiert, `LEGAL_TERMS_URL`/
+  `LEGAL_PRIVACY_URL` in `/opt/trypost/compose.yml` gesetzt (Backup:
+  `compose.yml.bak-pre-legal-env-20260916-143356`), `docker compose up -d --build app` erfolgreich
+  (Container `trypost` healthy, `php artisan migrate --force` meldete "Nothing to migrate").
+  Live-Check bestanden: `curl https://social.madevisible.io/login` liefert HTTP 200 mit
+  `"legal":{"terms":"https:\/\/madevisible.io\/agb\/","privacy":"https:\/\/madevisible.io\/privacy\/"}`
+  in den Inertia-Props, Sidebar-Screenshot (eingeloggte Session) zeigt keinen
+  Referral-/Discord-/Docs-Footer mehr.
