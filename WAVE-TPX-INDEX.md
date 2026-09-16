@@ -19,17 +19,18 @@ Status-Symbole: ✓ done · 🚀 deployed · ⏳ in_progress · ❓ waiting · �
 
 | Chip | Paket | Status | Started | Worktree/Branch |
 |---|---|---|---|---|
-| TPX-04 | A1 · Migration + Model | ⏳ wird gestartet | 2026-09-17 | - |
+| TPX-05 | A2 · Validierungs-Umbau | ⏳ wird gestartet | 2026-09-17 | - |
+| TPX-06 | A3 · Publisher-Rollout | ⏳ wird gestartet (parallel zu A2) | 2026-09-17 | - |
+| TPX-08 | A5 · Vue-UI | ⏳ wird gestartet (parallel) | 2026-09-17 | - |
 
 ## Pending (Startreihenfolge)
 
 | Chip | Paket | Status | Dependencies | Branch/PR | Plan/Real |
 |---|---|---|---|---|---|
-| TPX-04 | A1 · Migration + Model | ⏳ wird gestartet (siehe oben) | ✓ T0, ✓ A0, ✓ A0b Design-Vorgabe | - | - |
-| TPX-05 | A2 · Validierungs-Umbau | 🔄 pending | A1 | - | - |
-| TPX-06 | A3 · Publisher-Rollout | 🔄 pending | A1 | - | - |
+| TPX-05 | A2 · Validierungs-Umbau | ⏳ (siehe oben) | ✓ A1 gemergt | - | - |
+| TPX-06 | A3 · Publisher-Rollout | ⏳ (siehe oben) | ✓ A1 gemergt | - | - |
 | TPX-07 | A4 · MCP-Tool-Parameter | 🔄 pending | A2 | - | - |
-| TPX-08 | A5 · Vue-UI | 🔄 pending | A1 | - | - |
+| TPX-08 | A5 · Vue-UI | ⏳ (siehe oben) | ✓ A1 gemergt | - | - |
 | TPX-09 | B0 · Nachweis-Paket | 🔄 pending | Welle A komplett gemergt | - | - |
 | TPX-10 | B1 · UnpublishPost + DeletePost | 🔄 pending | B0 | - | - |
 | TPX-11 | B2a · Facebook/Instagram delete() | 🔄 pending | B0, B1, A3 | - | - |
