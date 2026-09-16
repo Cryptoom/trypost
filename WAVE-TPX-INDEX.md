@@ -1,0 +1,71 @@
+# Master-Index · Welle TPX (TryPost eXtension)
+
+> Plan: `~/.claude/plans/proud-bubbling-dewdrop.md` (REVISION 1, 16.09.2026)
+> Orchestrator-Session: TPX-00 (Origin: playcraft-toys, gespawnt 16.09.2026)
+> Hinweis: `docs/` ist in diesem Repo gitignored (`.gitignore:33`), darum liegt dieser
+> Master-Index versioniert im Repo-Root statt unter `docs/plans/`.
+> Push-Gate-Klaerung (16.09.2026, Olli): Chips pushen ihren eigenen Branch + eroeffnen den PR
+> autonom, ohne Rueckfrage. Merge nach main und Deploy auf web02 bleiben harte Olli-Gates.
+
+Status-Symbole: ✓ done · 🚀 deployed · ⏳ in_progress · ❓ waiting · 🔄 pending · ⛔ blocked ·
+❌ failed · 🔍 review · 📝 discovered
+
+## Active Chips
+
+| Chip | Paket | Status | Started | Worktree/Branch |
+|---|---|---|---|---|
+| TPX-03 | A0b · Media-ID-Design-Vertiefung (Blocker-Aufloesung) | ⏳ in_progress | 2026-09-16/17 | investigator+scratch, kein PR (Design-Vorbereitung fuer A1) |
+
+## Pending (Startreihenfolge)
+
+| Chip | Paket | Status | Dependencies | Branch/PR | Plan/Real |
+|---|---|---|---|---|---|
+| TPX-03 | A0b · Media-ID-Design-Vertiefung | ⏳ in_progress (siehe oben) | ✓ A0 (Blocker gefunden) | - | - |
+| TPX-04 | A1 · Migration + Model | ⛔ blocked | TPX-03 Design-Entscheidung + Olli-OK | - | - |
+| TPX-04 | A2 · Validierungs-Umbau | 🔄 pending | A1 | - | - |
+| TPX-05 | A3 · Publisher-Rollout | 🔄 pending | A1 | - | - |
+| TPX-06 | A4 · MCP-Tool-Parameter | 🔄 pending | A2 | - | - |
+| TPX-07 | A5 · Vue-UI | 🔄 pending | A1 | - | - |
+| TPX-08 | B0 · Nachweis-Paket | 🔄 pending | Welle A komplett gemergt | - | - |
+| TPX-09 | B1 · UnpublishPost + DeletePost | 🔄 pending | B0 | - | - |
+| TPX-10 | B2a · Facebook/Instagram delete() | 🔄 pending | B0, B1, A3 | - | - |
+| TPX-11 | B2b · Threads delete() | 🔄 pending | B0, B1, A3, Threads-Gate | - | - |
+| TPX-12 | B2c · LinkedIn delete() | 🔄 pending | B0, B1, A3 | - | - |
+| TPX-13 | B2d · YouTube delete() | 🔄 pending | B0, B1, A3, YouTube-Scope-Gate | - | - |
+| TPX-14 | B3 · MCP UnpublishPostTool | 🔄 pending | B1 | - | - |
+| TPX-15 | B4 · Vue-UI + Web-Route | 🔄 pending | B1 | - | - |
+| TPX-16 | U1 · Upstream-PR-Vorbereitung | 🔄 pending | Welle B gemergt + deployed | - | - |
+
+## Completed
+
+| Chip | Paket | PR | Merge-Commit | Notiz |
+|---|---|---|---|---|
+| TPX-01 | T0 · Test-Infrastruktur | [#6](https://github.com/Cryptoom/trypost/pull/6) | `72dc5d5c` | 4553/4553 gruen, Koeder bestanden. Root Cause der urspruenglichen 306 Fehlschlaege: fehlende Passport-Keys (`passport:keys --force`), nicht der Port. Zwischenfall: `gh pr create` legte kurz einen PR gegen das oeffentliche Upstream trypostit/trypost an (PR #358, 1-2 Min sichtbar, sofort geschlossen), Regel-Fix als Backlog-Chip vorgemerkt (task_1fba1d69) |
+| TPX-02 | A0 · Nachweis-Paket | [#7](https://github.com/Cryptoom/trypost/pull/7) (PATCHES.md-Fix, NICHT gemergt) | - | (b) Postgres 16 in Produktion, medias.id/post_platforms.id beide uuid. (c) PostFactory sauber, ~15+ Testdateien nutzen erfundene Media-IDs. (d) Upstream-PR #287 KEIN Konflikt (nur numerische Constraints, keine Migration). **(a) ECHTER BLOCKER: `media.*.id` wird nie gegen `medias.id` validiert (`PostMediaRules.php:35`), API/MCP-Clients koennen erfundene IDs senden, bewiesen durch `PostApiTest.php:107`. Selbst mechanisch nachgeprueft (`CreatePost.php`, `PostMediaRules.php`). A1 blockiert bis TPX-03 (Design-Vertiefung) abgeschlossen** |
+
+## Discovered Backlog
+
+(keine Funde bisher)
+
+## Code-Review-Status
+
+(keine PRs bisher)
+
+## Olli-Touchpoints
+
+| Gate | Status | Notiz |
+|---|---|---|
+| YouTube-Scope-Gate (nach B0) | offen | Falls `youtube.force-ssl` fehlt: Re-Consent-Entscheidung noetig, Olli entscheidet ob/wann |
+| Threads-App-Review (nach B0) | offen | Falls `threads_delete` nicht freigegeben: B2b parken, Olli macht Meta-App-Dashboard-Antrag |
+| B4-Produktfrage | offen | Delete-von-Published im Web-UI freischalten oder nur Unpublish? Vor B4 fragen |
+| U1-Freigabe | offen | Issue-Kommentar + PR-Text sieht Olli vor dem Absenden |
+| Separater Upstream-PR fuer publishStory()-Fix (a30d83c2) | offen | Sofort machbar, unabhaengig von U1, Olli-OK vor Absenden |
+| Upstream-PR #287 Ueberschneidung mit Feature A | zu pruefen in A0 | `gh pr view 287 --repo trypostit/trypost` |
+| AGPL-Copyleft-Frage | AUSDRUECKLICH NICHT TEIL DIESER WELLE | Olli-Korrektur, nicht erwaehnen |
+| Push-Gate-Scope | GEKLAERT 16.09.2026 | Branch-Push + PR autonom, Merge/Deploy bleiben Gates |
+
+## Deploy-Status
+
+Kein Deploy in dieser Welle bisher. Letzter bekannter Live-Stand: Commit `a30d83c2`
+(Facebook-Story-Fix, 16.09.2026, laut vorherigem Chip deployed, hier nicht erneut verifiziert
+bis zum ersten TPX-Deploy).
