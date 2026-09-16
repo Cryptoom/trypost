@@ -3,7 +3,6 @@ import { Link, usePage } from '@inertiajs/vue3';
 import {
     IconAffiliate,
     IconAlertTriangle,
-    IconBolt,
     IconCalendar,
     IconChartBar,
     IconChevronRight,
@@ -11,24 +10,23 @@ import {
     IconFileCheck,
     IconFileText,
     IconHash,
-    IconLifebuoy,
     IconPencil,
     IconPhoto,
     IconPlugConnected,
+    IconRepeat,
     IconSelector,
     IconTag,
+    IconWebhook,
 } from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 
 import {
     create as createPost,
     index as postsIndex,
 } from '@/actions/App/Http/Controllers/App/PostController';
 import NavMain from '@/components/NavMain.vue';
-import NavSupport from '@/components/NavSupport.vue';
 import NotificationBell from '@/components/NotificationBell.vue';
-import SidebarOnboarding from '@/components/onboarding/SidebarOnboarding.vue';
 import { Avatar } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import {
@@ -47,14 +45,16 @@ import {
     useSidebar,
 } from '@/components/ui/sidebar';
 import WorkspaceMenuContent from '@/components/WorkspaceMenuContent.vue';
+import WorkspaceUpgradeDialog from '@/components/workspaces/WorkspaceUpgradeDialog.vue';
 import { useWorkspaceRole } from '@/composables/useWorkspaceRole';
 import { accounts, analytics, calendar } from '@/routes/app';
 import { index as assets } from '@/routes/app/assets';
-import { index as automations } from '@/routes/app/automations';
 import { portal } from '@/routes/app/billing';
 import { index as labels } from '@/routes/app/labels';
 import { index as mcp } from '@/routes/app/mcp';
+import { index as repurposes } from '@/routes/app/repurposes';
 import { index as signatures } from '@/routes/app/signatures';
+import { index as webhooks } from '@/routes/app/webhooks';
 import type { NavItem, User } from '@/types';
 
 interface Workspace {
@@ -77,11 +77,14 @@ const subscriptionPastDue = computed<boolean>(() =>
 
 const {
     canCreatePost,
+    canManageRepurposes,
     canManageAccounts,
-    canManageAutomations,
+    canManageWebhooks,
     canCreateWorkspace,
 } = useWorkspaceRole();
 const { isMobile } = useSidebar();
+
+const workspaceUpgradeDialogOpen = ref(false);
 
 const mainNavItems = computed<NavItem[]>(() => [
     {
@@ -94,12 +97,12 @@ const mainNavItems = computed<NavItem[]>(() => [
         href: analytics.url(),
         icon: IconChartBar,
     },
-    ...(canManageAutomations.value
+    ...(canManageRepurposes.value
         ? [
               {
-                  title: trans('sidebar.automations'),
-                  href: automations.url(),
-                  icon: IconBolt,
+                  title: trans('sidebar.repurposes'),
+                  href: repurposes.url(),
+                  icon: IconRepeat,
                   badge: trans('common.beta'),
               },
           ]
@@ -163,18 +166,19 @@ const workspaceNavItems = computed<NavItem[]>(() => [
               },
           ]
         : []),
+    ...(canManageWebhooks.value
+        ? [
+              {
+                  title: trans('sidebar.workspace.webhooks'),
+                  href: webhooks.url(),
+                  icon: IconWebhook,
+              },
+          ]
+        : []),
     {
         title: trans('sidebar.workspace.mcp'),
         href: mcp.url(),
         icon: IconPlugConnected,
-    },
-]);
-
-const bottomNavItems = computed(() => [
-    {
-        title: trans('sidebar.support.docs'),
-        href: 'https://docs.trypost.it',
-        icon: IconLifebuoy,
     },
 ]);
 </script>
@@ -192,7 +196,6 @@ const bottomNavItems = computed(() => [
                                     class="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
                                     data-test="sidebar-menu-button"
                                     data-testid="sidebar-workspace-menu"
-                                    dusk="sidebar-workspace-menu"
                                 >
                                     <Avatar
                                         :src="currentWorkspace?.logo_url"
@@ -231,6 +234,9 @@ const bottomNavItems = computed(() => [
                                     :current-workspace="currentWorkspace"
                                     :workspaces="workspaces"
                                     :can-create-workspace="canCreateWorkspace"
+                                    @upgrade-required="
+                                        workspaceUpgradeDialogOpen = true
+                                    "
                                 />
                             </DropdownMenuContent>
                         </DropdownMenu>
@@ -261,21 +267,10 @@ const bottomNavItems = computed(() => [
                 :items="workspaceNavItems"
                 :label="$t('sidebar.groups.workspace')"
             />
-
-            <div class="mt-auto">
-                <NavSupport
-                    v-if="currentWorkspace"
-                    :items="bottomNavItems"
-                    :label="$t('sidebar.groups.others')"
-                />
-            </div>
         </SidebarContent>
         <SidebarFooter>
-            <SidebarOnboarding v-if="currentWorkspace" />
-
             <div
                 v-if="subscriptionPastDue"
-                dusk="past-due-notice"
                 class="mx-1 mb-1 rounded-md border-2 border-destructive bg-destructive/10 p-3"
             >
                 <div class="flex items-center gap-2 text-destructive">
@@ -293,11 +288,12 @@ const bottomNavItems = computed(() => [
                     variant="destructive"
                     size="sm"
                     class="mt-2 w-full"
-                    dusk="past-due-cta"
                 >
                     {{ $t('billing.past_due_notice.cta') }}
                 </Button>
             </div>
         </SidebarFooter>
+
+        <WorkspaceUpgradeDialog v-model:open="workspaceUpgradeDialogOpen" />
     </Sidebar>
 </template>

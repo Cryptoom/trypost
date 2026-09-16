@@ -92,6 +92,16 @@ class Workspace extends Model
         return $this->hasMany(WorkspaceLabel::class);
     }
 
+    public function webhooks(): HasMany
+    {
+        return $this->hasMany(Webhook::class);
+    }
+
+    public function repurposes(): HasMany
+    {
+        return $this->hasMany(Repurpose::class);
+    }
+
     /**
      * Get invites for this workspace (invites from the same account that include this workspace).
      *
@@ -107,15 +117,5 @@ class Workspace extends Model
     public function hasMember(User $user): bool
     {
         return $this->account?->owner_id === $user->id || $this->members()->where('user_id', $user->id)->exists();
-    }
-
-    public function hasConnectedPlatform(string $platform): bool
-    {
-        return $this->socialAccounts()->where('platform', $platform)->exists();
-    }
-
-    public function getSocialAccount(string $platform): ?SocialAccount
-    {
-        return $this->socialAccounts()->where('platform', $platform)->first();
     }
 }

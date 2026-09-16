@@ -5,6 +5,18 @@ return [
     'page_title' => 'Comptes sociaux',
     'description' => 'Vue d\'ensemble de tous vos comptes sociaux connectés',
     'connect_cta' => 'Connecter',
+    'connect_another' => 'Connecter un autre',
+    'actions' => 'Actions du compte',
+    'activate' => 'Activer',
+    'deactivate' => 'Désactiver',
+    'active' => 'Actif',
+    'paused' => 'Désactivé',
+    'accounts_count' => ':count compte|:count comptes',
+
+    'variants' => [
+        'linkedin-page' => 'Page',
+        'instagram-facebook' => 'via Facebook',
+    ],
 
     'not_connected' => 'Non connecté',
     'connect' => 'Connecter',
@@ -75,6 +87,8 @@ return [
         'retry' => 'Réessayer',
         'error_generic' => 'Impossible de démarrer la connexion. Veuillez réessayer.',
         'network_taken' => 'Cet espace de travail a déjà un canal Telegram connecté. Déconnectez-le d\'abord.',
+        'wrong_chat' => 'Publiez la commande dans le canal que vous reconnectez.',
+        'busy' => 'Une autre connexion est en cours de finalisation. Publiez à nouveau la commande dans un instant.',
     ],
 
     'facebook' => [
@@ -120,6 +134,9 @@ return [
     ],
 
     'flash' => [
+        'activated_resumed_repurposes' => 'Compte activé. :count automatisation reprise.|Compte activé. :count automatisations reprises.',
+        'disconnected_paused_repurposes' => 'Compte déconnecté. :count automatisation en pause.|Compte déconnecté. :count automatisations en pause.',
+        'deactivated_paused_repurposes' => 'Compte désactivé. :count automatisation en pause.|Compte désactivé. :count automatisations en pause.',
         'disconnected' => 'Compte déconnecté avec succès !',
         'connected' => 'Compte connecté avec succès !',
         'session_expired' => 'Session expirée. Veuillez réessayer.',
@@ -140,6 +157,9 @@ return [
         'reconnected' => 'Compte reconnecté !',
         'error_connecting' => 'Erreur lors de la connexion du compte. Veuillez réessayer.',
         'network_taken' => 'Cet espace de travail a déjà un compte pour ce réseau. Déconnectez-le d\'abord.',
+        'wrong_account' => 'C\'est un autre compte. Autorisez celui que vous reconnectez.',
+        'all_connected' => 'Tous les comptes de cette connexion sont déjà connectés.',
+        'busy' => 'Une autre connexion est en cours de finalisation. Veuillez réessayer dans un instant.',
         'error_connecting_page' => 'Erreur lors de la connexion de la page. Veuillez réessayer.',
         'error_connecting_channel' => 'Erreur lors de la connexion de la chaîne. Veuillez réessayer.',
         'session_expired' => 'Session expirée. Veuillez réessayer.',
@@ -149,6 +169,9 @@ return [
         'failed_to_get_profile' => 'Impossible de récupérer le profil.',
         'page_not_found' => 'Page introuvable.',
         'channel_not_found' => 'Chaîne introuvable.',
+        'pages_read_incomplete' => 'Nous n’avons pas pu finir de lire vos Pages. Réessayez dans un instant.',
+        'publish_permission_refused' => 'Cette connexion a refusé une autorisation nécessaire pour publier. Reconnectez-vous en les acceptant toutes.',
+        'pages_missing_permission' => 'Nous avons trouvé des Pages, mais aucune où publier. Il vous faut un rôle sur la Page elle-même et toutes les autorisations acceptées.',
         'no_facebook_pages' => 'Aucune page Facebook trouvée. Vous devez être administrateur d\'au moins une page.',
         'no_facebook_instagram_pages' => 'Aucune page Facebook associée à un compte Instagram trouvée.',
         'no_youtube_channels' => 'Aucune chaîne YouTube trouvée. Veuillez d\'abord créer une chaîne.',

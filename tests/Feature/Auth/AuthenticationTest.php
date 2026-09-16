@@ -41,6 +41,7 @@ test('users can authenticate using the login screen', function () {
     $response = $this->post(route('login.store'), [
         'email' => $user->email,
         'password' => 'password',
+        'locale' => 'en',
     ]);
 
     $this->assertAuthenticated();
@@ -67,6 +68,7 @@ test('login with a valid invite param redirects to the invite page instead of th
         'email' => $user->email,
         'password' => 'password',
         'invite' => $invite->id,
+        'locale' => 'en',
     ]);
 
     $this->assertAuthenticated();
@@ -80,6 +82,7 @@ test('login with an unknown invite param falls back to the calendar redirect', f
         'email' => $user->email,
         'password' => 'password',
         'invite' => (string) Str::uuid(),
+        'locale' => 'en',
     ]);
 
     $this->assertAuthenticated();
@@ -92,6 +95,7 @@ test('users can not authenticate with invalid password', function () {
     $this->post(route('login.store'), [
         'email' => $user->email,
         'password' => 'wrong-password',
+        'locale' => 'en',
     ]);
 
     $this->assertGuest();
@@ -120,6 +124,7 @@ test('users are rate limited', function () {
     $response = $this->post(route('login.store'), [
         'email' => $user->email,
         'password' => 'wrong-password',
+        'locale' => 'en',
     ]);
 
     $response->assertSessionHasErrors('email');

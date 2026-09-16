@@ -5,6 +5,18 @@ return [
     'page_title' => 'Social accounts',
     'description' => 'Overzicht van al je gekoppelde social accounts',
     'connect_cta' => 'Koppelen',
+    'connect_another' => 'Nog een koppelen',
+    'actions' => 'Accountacties',
+    'activate' => 'Inschakelen',
+    'deactivate' => 'Uitschakelen',
+    'active' => 'Actief',
+    'paused' => 'Uit',
+    'accounts_count' => ':count account|:count accounts',
+
+    'variants' => [
+        'linkedin-page' => 'Pagina',
+        'instagram-facebook' => 'via Facebook',
+    ],
 
     'not_connected' => 'Niet gekoppeld',
     'connect' => 'Koppelen',
@@ -75,6 +87,8 @@ return [
         'retry' => 'Opnieuw proberen',
         'error_generic' => 'Kon de koppeling niet starten. Probeer het opnieuw.',
         'network_taken' => 'Deze workspace heeft al een Telegram-kanaal gekoppeld. Koppel dat eerst los.',
+        'wrong_chat' => 'Plaats de opdracht in het kanaal dat je opnieuw koppelt.',
+        'busy' => 'Een andere koppeling wordt nog afgerond. Plaats de opdracht zo meteen opnieuw.',
     ],
 
     'facebook' => [
@@ -120,6 +134,9 @@ return [
     ],
 
     'flash' => [
+        'activated_resumed_repurposes' => 'Account ingeschakeld. :count automatisering hervat.|Account ingeschakeld. :count automatiseringen hervat.',
+        'disconnected_paused_repurposes' => 'Account losgekoppeld. :count automatisering gepauzeerd.|Account losgekoppeld. :count automatiseringen gepauzeerd.',
+        'deactivated_paused_repurposes' => 'Account uitgeschakeld. :count automatisering gepauzeerd.|Account uitgeschakeld. :count automatiseringen gepauzeerd.',
         'disconnected' => 'Account succesvol losgekoppeld!',
         'connected' => 'Account succesvol gekoppeld!',
         'session_expired' => 'Sessie verlopen. Probeer het opnieuw.',
@@ -140,6 +157,9 @@ return [
         'reconnected' => 'Account opnieuw gekoppeld!',
         'error_connecting' => 'Fout bij het koppelen van het account. Probeer het opnieuw.',
         'network_taken' => 'Deze workspace heeft al een account voor dit netwerk. Koppel dat eerst los.',
+        'wrong_account' => 'Dat is een ander account. Autoriseer het account dat je opnieuw koppelt.',
+        'all_connected' => 'Alle accounts van deze login zijn al gekoppeld.',
+        'busy' => 'Een andere koppeling wordt nog afgerond. Probeer het zo meteen opnieuw.',
         'error_connecting_page' => 'Fout bij het koppelen van de pagina. Probeer het opnieuw.',
         'error_connecting_channel' => 'Fout bij het koppelen van het kanaal. Probeer het opnieuw.',
         'session_expired' => 'Sessie verlopen. Probeer het opnieuw.',
@@ -149,6 +169,9 @@ return [
         'failed_to_get_profile' => 'Kon profiel niet ophalen.',
         'page_not_found' => 'Pagina niet gevonden.',
         'channel_not_found' => 'Kanaal niet gevonden.',
+        'pages_read_incomplete' => 'We konden je pagina’s niet volledig uitlezen. Probeer het zo meteen opnieuw.',
+        'publish_permission_refused' => 'Deze login heeft een recht geweigerd dat we nodig hebben om te posten. Maak opnieuw verbinding en accepteer alles.',
+        'pages_missing_permission' => 'We vonden pagina\'s, maar geen waar je op kunt posten. Je hebt een rol op de pagina zelf nodig en alle rechten.',
         'no_facebook_pages' => 'Geen Facebook-pagina\'s gevonden. Je moet beheerder zijn van ten minste één pagina.',
         'no_facebook_instagram_pages' => 'Geen Facebook-pagina\'s met gekoppelde Instagram-accounts gevonden.',
         'no_youtube_channels' => 'Geen YouTube-kanalen gevonden. Maak eerst een kanaal aan.',

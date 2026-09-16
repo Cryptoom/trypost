@@ -61,6 +61,18 @@ test('assets search returns paginated json filtered by name', function () {
     $response->assertJsonPath('data.0.id', $matching->id);
 });
 
+test('assets search matches filenames case-insensitively', function () {
+    $matching = $this->workspace->addMedia(UploadedFile::fake()->image('VACATION-Beach.jpg'), 'assets');
+    $this->workspace->addMedia(UploadedFile::fake()->image('office-shot.jpg'), 'assets');
+
+    $response = $this->actingAs($this->user)
+        ->getJson(route('app.assets.search', ['search' => 'vacation']));
+
+    $response->assertOk();
+    $response->assertJsonCount(1, 'data');
+    $response->assertJsonPath('data.0.id', $matching->id);
+});
+
 test('assets search filters by type', function () {
     $this->workspace->addMedia(UploadedFile::fake()->image('photo.jpg'), 'assets');
     $this->workspace->addMedia(UploadedFile::fake()->create('clip.mp4', 100, 'video/mp4'), 'assets');
@@ -116,6 +128,38 @@ test('can delete an asset', function () {
 
     $response->assertRedirect();
     expect(Media::find($media->id))->toBeNull();
+});
+
+test('can download an asset from the current workspace', function () {
+    $media = $this->workspace->addMedia(UploadedFile::fake()->image('vacation-beach.jpg'), 'assets');
+
+    $response = $this->actingAs($this->user)
+        ->get(route('app.assets.download', $media));
+
+    $response->assertOk();
+    $response->assertDownload('vacation-beach.jpg');
+});
+
+test('cannot download an asset from another workspace', function () {
+    $otherWorkspace = Workspace::factory()->create([
+        'account_id' => $this->account->id,
+        'user_id' => $this->user->id,
+    ]);
+
+    $media = $otherWorkspace->addMedia(UploadedFile::fake()->image('photo.jpg'), 'assets');
+
+    $response = $this->actingAs($this->user)
+        ->get(route('app.assets.download', $media));
+
+    $response->assertForbidden();
+});
+
+test('asset download requires authentication', function () {
+    $media = $this->workspace->addMedia(UploadedFile::fake()->image('photo.jpg'), 'assets');
+
+    $response = $this->get(route('app.assets.download', $media));
+
+    $response->assertRedirect(route('login'));
 });
 
 test('cannot delete asset from another workspace', function () {

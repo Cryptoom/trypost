@@ -106,7 +106,10 @@ test('tiktok publisher does not report success before processing completes', fun
 
     expect(fn () => $this->publisher->publish($this->postPlatform))
         ->toThrow(function (PlatformUnavailableException $exception): void {
-            expect($exception->context)->toBe(['tiktok_publish_id' => 'pub_processing'])
+            expect($exception->context)->toBe([
+                'tiktok_publish_id' => 'pub_processing',
+                'tiktok_status' => 'PROCESSING_DOWNLOAD',
+            ])
                 ->and($exception->retryDelaySeconds)->toBe(30)
                 ->and($exception->maxRetries)->toBe(120);
         });
@@ -1373,4 +1376,31 @@ test('tiktok publisher still reports success when derivative cleanup throws on t
     $result = $this->publisher->publish($this->postPlatform);
 
     expect($result['id'])->toBe('pub_cleanup_throws_123');
+});
+
+test('tiktok publisher keeps links intact', function () {
+    config()->set('trypost.platforms.x.defuse_links', true);
+
+    $this->post->update([
+        'content' => 'New post: https://acme.com/blog',
+        'media' => [[
+            'id' => 'test-media-video',
+            'path' => 'media/2026-01/test-video.mp4',
+            'url' => 'https://example.com/media/2026-01/test-video.mp4',
+            'mime_type' => 'video/mp4',
+            'original_filename' => 'test-video.mp4',
+        ]],
+    ]);
+
+    Http::fake([
+        $this->api.'/post/publish/video/init/' => Http::response(['data' => ['publish_id' => 'pub_123']], 200),
+        $this->api.'/post/publish/status/fetch/' => Http::response([
+            'data' => ['status' => 'PUBLISH_COMPLETE', 'publish_id' => 'pub_123'],
+        ], 200),
+    ]);
+
+    $this->publisher->publish($this->postPlatform);
+
+    Http::assertSent(fn ($request) => str_contains($request->url(), '/video/init/')
+        && data_get($request->data(), 'post_info.title') === 'New post: https://acme.com/blog');
 });

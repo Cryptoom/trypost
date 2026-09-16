@@ -71,30 +71,27 @@ optisch zusammengehoeren.
 - Betrifft NUR `:root` (Light-Theme-Tokens). Ein eventueller `.dark`-Block bleibt unangetastet,
   falls upstream einen ergaenzt, muesste der Reskin dort nachgezogen werden.
 
-### Patch 3 · sidebar-referral-discord-entfernung
+### Patch 3 · sidebar-referral-discord-entfernung  (Status: upstream-merged, seit 2026-09-16)
 
-Entfernt die zwei untersten Bottom-Nav-Eintraege der Sidebar ("Earn 30% referral" und "Discord
+Entfernte die zwei untersten Bottom-Nav-Eintraege der Sidebar ("Earn 30% referral" und "Discord
 community"), auf Ollis ausdruecklichen Wunsch (das TryPost-eigene Affiliate-/Community-Programm
-soll im Digital-Mind-Agency-Weissabel-Kontext nicht auftauchen). Entfernt zugleich die dadurch
-unbenutzten Icon-Imports.
+soll im Digital-Mind-Agency-Weissabel-Kontext nicht auftauchen).
 
-- **Datei**: `resources/js/components/AppSidebar.vue`.
-- **Marker-Strings zum Wiedererkennen nach `git merge upstream/main`**: die Imports
-  `IconBrandDiscord` und `IconGift` (aktuell in der Fork-Fassung NICHT mehr im
-  `@tabler/icons-vue`-Import-Block von `AppSidebar.vue` vorhanden) sowie die beiden
-  Objekt-Eintraege mit `href: 'https://affiliates.trypost.it/'` und
-  `href: 'https://trypost.it/discord'` im `bottomNavItems`-Computed (in der Fork-Fassung
-  entfernt). Der Docs-Link (`https://docs.trypost.it`) und `IconAffiliate` bleiben unveraendert
-  bestehen und sind NICHT Teil dieses Patches.
-- **Bruchbedingung**: Upstream ergaenzt in `bottomNavItems` neue Eintraege oder aendert die
-  Struktur des Arrays (z.B. fuegt selbst wieder einen Referral- oder Community-Link hinzu) und
-  `git merge upstream/main` laeuft konfliktfrei durch, weil der Fork die betroffenen Zeilen
-  bereits geloescht hat und Git keinen Konflikt sieht. Ein solcher Merge kann den
-  Referral-/Discord-Link stillschweigend zurueckbringen. Nach jedem Merge pruefen:
-  `grep -n "trypost.it/discord\|affiliates.trypost.it" resources/js/components/AppSidebar.vue`
-  muss leer bleiben.
+**Obsolet seit dem Merge von upstream `main` am 2026-09-16** (201 Commits, v2.14.0-Basis auf
+den Stand nach `e28f42d0` gezogen): Upstream hat den kompletten `bottomNavItems`-Block
+(inkl. Docs-Link) aus `AppSidebar.vue` entfernt, kein Bottom-Nav-Footer mehr vorhanden. Damit
+gibt es weder Referral- noch Discord-Link mehr, unser Patch ist gegenstandslos. Beim Mergen kam
+es zu einem echten Konflikt (Git sah beide Seiten dieselben Zeilen anfassen), nicht zum
+befuerchteten stillen Ueberschreiben. Aufgeloest durch Uebernahme der upstream-Loeschung.
+Zusaetzlich ein unbenutzter `IconBolt`-Import entfernt (Leiche aus einer frueheren
+Fork-Bearbeitung, nicht Teil dieses Patches, nirgends mehr referenziert).
 
-### Patch 4 · madevisible-legal-footer-links
+- **Ehemalige Datei**: `resources/js/components/AppSidebar.vue`.
+- **Pruefung falls upstream den Bottom-Nav-Footer je wieder einfuehrt**: `grep -n
+  "trypost.it/discord\|affiliates.trypost.it" resources/js/components/AppSidebar.vue` muss
+  weiterhin leer bleiben.
+
+### Patch 4 · madevisible-legal-footer-links  (Status: upstream-merged, seit 2026-09-16)
 
 Grund: TikToks App-Review lehnte "madevisible.io Social" am 04.09.2026 ab, unter anderem weil
 `social.madevisible.io/login` **ueberhaupt keine** Privacy-/ToS-Links zeigte (live per Playwright
@@ -139,7 +136,30 @@ nie zutraf.
   Kopieren der geaenderten PHP-Datei in den laufenden Container plus Neustart behaelt die alten
   `trypost.it`-URLs im bereits gebundelten JSON, ohne Fehlermeldung. Zwingend
   `docker compose up -d --build` (voller Rebuild), NICHT nur `restart`.
-- **Deployed**: <Datum nach Merge + `docker compose up -d --build` auf web02 nachtragen>.
+- **Deployed**: 25.08.2026 (Ursprungspatch, `trypost.it`-URLs hart im Code).
+
+**Obsolet seit dem Merge von upstream `main` am 2026-09-16**: Upstream hat das Problem, das
+diesen Patch ausloeste, sauber geloest, mit einer besseren Loesung als unserer eigenen.
+`config/trypost.php` hat jetzt `legal.terms_url`/`legal.privacy_url` (env-konfigurierbar via
+`LEGAL_TERMS_URL`/`LEGAL_PRIVACY_URL`, Default weiterhin `trypost.it`), geteilt via
+`HandleInertiaRequests`-Middleware als `page.props.legal.{terms,privacy}`. Beide Auth-Seiten
+nutzen jetzt eine gemeinsame Komponente `resources/js/components/auth/LegalLinks.vue`
+(`Login.vue` UND `Register.vue`, der `isSelfHosted`-Guard ist komplett weg, kein
+Sichtbarkeits-Unterschied zwischen den beiden mehr). Der upstream-Kommentar in
+`config/trypost.php` nennt explizit "Platform app reviews (TikTok explicitly) require Terms
+and Privacy links to be clearly visible", genau unser Grund.
+
+- **Neue Loesung, kein Code-Patch mehr**: `lang/*/auth.php` auf upstreams `:terms_url`/
+  `:privacy_url`-Platzhalter zurueckgesetzt (16 Locales, uebersetzter Text unveraendert),
+  `Login.vue`/`Register.vue` nutzen `<LegalLinks />` wie upstream.
+- **PFLICHT vor dem naechsten Deploy auf web02**: `LEGAL_TERMS_URL=https://madevisible.io/agb/`
+  und `LEGAL_PRIVACY_URL=https://madevisible.io/privacy/` in `/opt/trypost/.env` (bzw.
+  `docker-compose.yml`-Env-Block) setzen, SONST fallen die Links beim naechsten Container-Rebuild
+  stillschweigend auf `trypost.it/terms`/`trypost.it/privacy` zurueck (Upstream-Default). Noch
+  NICHT auf web02 gesetzt, Stand dieses Merges.
+- **Pruefung nach dem naechsten Merge**: `grep -rn "trypost.it/terms\|trypost.it/privacy"
+  lang/*/auth.php` MUSS leer bleiben (Platzhalter, keine harten URLs mehr, also triviales Grep).
+  Der eigentliche Wert kommt jetzt aus der `.env` auf dem Server, nicht mehr aus dem Repo.
 
 ## Geprueft und NICHT gepatcht: is_aigc-Composer-Toggle (25.08.2026)
 
@@ -163,3 +183,36 @@ anbieten.
    upstream.
 3. Nach jedem `git merge upstream/main`: alle Marker-Strings unten gegenpruefen, dieser
    Abschnitt fasst dann "Stand nach Merge <datum>" analog zum whatsapp-mcp-Muster.
+
+## Stand nach Merge 2026-09-16
+
+- 201 Commits von `upstream/main` gemergt (Basis vorher: v2.14.0-Aequivalent nach Patch 1,
+  Ziel: Commit `e28f42d0`, ueber v1.0.8/v1.0.9 hinweg). Composer-`vendor`/`node_modules` waren
+  lokal nicht vorinstalliert, mit `PATH=.../php8.4.17:$PATH composer install` (MAMP-PHP 8.4,
+  System-PHP 8.3 reicht nicht mehr, upstream verlangt jetzt PHP >=8.4) und `npm install`
+  nachgeholt.
+- 19 echte Datei-Konflikte (16x `lang/*/auth.php`, `AppSidebar.vue`, `Login.vue`,
+  `Register.vue`). KEIN stilles Ueberschreiben, alle vier PATCHES.md-Bruchbedingungen haben
+  wie dokumentiert einen echten Git-Konflikt ausgeloest statt zu schweigen.
+- Patch 1 (`UpdateWorkspaceTool`) und Patch 2 (Brand-Reskin `app.css`) sind AUTOMATISCH
+  konfliktfrei gemergt UND intakt (Marker-Check bestanden: `UpdateWorkspaceTool::class` steht
+  weiter in `TryPostServer.php`, `#0c6e6d` weiter 6x in `app.css`).
+- Patch 3 und Patch 4 sind **upstream-merged** (siehe dort), eigener Code dafuer entfernt.
+- Upstream hat parallel das komplette Automations-Modul entfernt (`d8149ef0`, viele geloeschte
+  Dateien unter `app/Actions/Automation/*`, `tests/Feature/Automation/*` etc.), das ist reine
+  Upstream-Entscheidung, kein Fork-Patch betroffen davon.
+- **Verifikation**: keine Merge-Marker mehr im Repo (`grep -rl '^<<<<<<<'` leer), `php -l` auf
+  allen 16 `lang/*/auth.php` sauber, `vue-tsc --noEmit` zeigt fuer `Login.vue`/`Register.vue`/
+  `AppSidebar.vue` KEINE eigenen Fehler (nur die repo-weiten, vorbestehenden
+  `Cannot find module '@/routes/...'`-Fehler, die von fehlenden Laravel-Wayfinder-generierten
+  Typen kommen, weil `php artisan package:discover` lokal ohne volle `.env`/DB scheitert, nicht
+  von diesem Merge). Kein `npm test`/`composer test` gefahren (keine lokale Postgres-Instanz
+  fuer die Feature-Tests aufgesetzt) und kein Vite-Build gefahren, siehe Naechste Schritte.
+- **NICHT gepusht, NICHT deployed.** Merge-Commit liegt lokal auf `main` in
+  `~/Sites/trypost-fork`, wartet auf Olli-OK.
+- **Naechste Schritte vor Deploy**: (1) `LEGAL_TERMS_URL`/`LEGAL_PRIVACY_URL` in web02s
+  `/opt/trypost/.env` setzen (siehe Patch 4). (2) Idealerweise einen echten `vite build` +
+  `composer test`/`npm test`-Lauf fahren, entweder lokal mit vollem `.env`+Postgres-Setup oder
+  direkt als Teil des Docker-Rebuilds auf web02 (Update-Klasse C, eigener Build sowieso). (3)
+  Nach Deploy Login-/Register-Seite live pruefen (Legal-Links sichtbar, Sidebar ohne
+  Referral/Discord/Docs-Footer).

@@ -37,7 +37,10 @@ const showsFacebook = () => props.methods.includes(Platform.InstagramFacebook);
 
 <template>
     <Dialog v-model:open="open">
-        <DialogContent class="sm:max-w-md" dusk="instagram-connect-dialog">
+        <DialogContent
+            class="sm:max-w-md"
+            data-testid="instagram-connect-dialog"
+        >
             <DialogHeader>
                 <div class="flex items-start gap-3">
                     <img
@@ -61,7 +64,7 @@ const showsFacebook = () => props.methods.includes(Platform.InstagramFacebook);
                     v-if="showsStandalone()"
                     variant="outline"
                     class="h-auto justify-start gap-3 px-4 py-3 text-left whitespace-normal"
-                    dusk="instagram-connect-standalone"
+                    data-testid="instagram-connect-standalone"
                     @click="choose(Platform.Instagram)"
                 >
                     <span
@@ -70,12 +73,22 @@ const showsFacebook = () => props.methods.includes(Platform.InstagramFacebook);
                         <IconBrandInstagram class="size-5" />
                     </span>
                     <span class="min-w-0 flex-1">
-                        <span class="block text-sm font-semibold text-foreground">{{
-                            $t('accounts.instagram_connect.standalone_title')
-                        }}</span>
-                        <span class="mt-0.5 block text-xs font-normal text-muted-foreground">{{
-                            $t('accounts.instagram_connect.standalone_description')
-                        }}</span>
+                        <span
+                            class="block text-sm font-semibold text-foreground"
+                            >{{
+                                $t(
+                                    'accounts.instagram_connect.standalone_title',
+                                )
+                            }}</span
+                        >
+                        <span
+                            class="mt-0.5 block text-xs font-normal text-muted-foreground"
+                            >{{
+                                $t(
+                                    'accounts.instagram_connect.standalone_description',
+                                )
+                            }}</span
+                        >
                     </span>
                 </Button>
 
@@ -83,7 +96,7 @@ const showsFacebook = () => props.methods.includes(Platform.InstagramFacebook);
                     v-if="showsFacebook()"
                     variant="outline"
                     class="h-auto justify-start gap-3 px-4 py-3 text-left whitespace-normal"
-                    dusk="instagram-connect-facebook"
+                    data-testid="instagram-connect-facebook"
                     @click="choose(Platform.InstagramFacebook)"
                 >
                     <span
@@ -92,12 +105,20 @@ const showsFacebook = () => props.methods.includes(Platform.InstagramFacebook);
                         <IconBrandFacebook class="size-5" />
                     </span>
                     <span class="min-w-0 flex-1">
-                        <span class="block text-sm font-semibold text-foreground">{{
-                            $t('accounts.instagram_connect.facebook_title')
-                        }}</span>
-                        <span class="mt-0.5 block text-xs font-normal text-muted-foreground">{{
-                            $t('accounts.instagram_connect.facebook_description')
-                        }}</span>
+                        <span
+                            class="block text-sm font-semibold text-foreground"
+                            >{{
+                                $t('accounts.instagram_connect.facebook_title')
+                            }}</span
+                        >
+                        <span
+                            class="mt-0.5 block text-xs font-normal text-muted-foreground"
+                            >{{
+                                $t(
+                                    'accounts.instagram_connect.facebook_description',
+                                )
+                            }}</span
+                        >
                     </span>
                 </Button>
             </div>

@@ -5,6 +5,18 @@ return [
     'page_title' => 'Cuentas Sociales',
     'description' => 'Resumen de todas tus cuentas sociales conectadas',
     'connect_cta' => 'Conectar',
+    'connect_another' => 'Conectar otra',
+    'actions' => 'Acciones de la cuenta',
+    'activate' => 'Activar',
+    'deactivate' => 'Desactivar',
+    'active' => 'Activa',
+    'paused' => 'Desactivada',
+    'accounts_count' => ':count cuenta|:count cuentas',
+
+    'variants' => [
+        'linkedin-page' => 'Página',
+        'instagram-facebook' => 'vía Facebook',
+    ],
 
     'not_connected' => 'No conectado',
     'connect' => 'Conectar',
@@ -75,6 +87,8 @@ return [
         'retry' => 'Reintentar',
         'error_generic' => 'No se pudo iniciar la conexión. Inténtalo de nuevo.',
         'network_taken' => 'Este workspace ya tiene un canal de Telegram conectado. Desconéctalo primero.',
+        'wrong_chat' => 'Publica el comando en el canal que estás reconectando.',
+        'busy' => 'Otra conexión aún se está completando. Vuelve a enviar el comando en un momento.',
     ],
 
     'facebook' => [
@@ -120,6 +134,9 @@ return [
     ],
 
     'flash' => [
+        'activated_resumed_repurposes' => 'Cuenta activada. :count automatización reanudada.|Cuenta activada. :count automatizaciones reanudadas.',
+        'disconnected_paused_repurposes' => 'Cuenta desconectada. :count automatización en pausa.|Cuenta desconectada. :count automatizaciones en pausa.',
+        'deactivated_paused_repurposes' => 'Cuenta desactivada. :count automatización en pausa.|Cuenta desactivada. :count automatizaciones en pausa.',
         'disconnected' => '¡Cuenta desconectada correctamente!',
         'connected' => '¡Cuenta conectada correctamente!',
         'session_expired' => 'Sesión expirada. Inténtalo de nuevo.',
@@ -140,6 +157,9 @@ return [
         'reconnected' => '¡Cuenta reconectada!',
         'error_connecting' => 'Error al conectar la cuenta. Inténtalo de nuevo.',
         'network_taken' => 'Este workspace ya tiene una cuenta para esta red. Desconéctala primero.',
+        'wrong_account' => 'Esa es una cuenta diferente. Autoriza la que estás reconectando.',
+        'all_connected' => 'Todas las cuentas de este inicio de sesión ya están conectadas.',
+        'busy' => 'Otra conexión aún se está completando. Inténtalo de nuevo en un momento.',
         'error_connecting_page' => 'Error al conectar la página. Inténtalo de nuevo.',
         'error_connecting_channel' => 'Error al conectar el canal. Inténtalo de nuevo.',
         'session_expired' => 'Sesión expirada. Inténtalo de nuevo.',
@@ -149,6 +169,9 @@ return [
         'failed_to_get_profile' => 'Falló al obtener el perfil.',
         'page_not_found' => 'Página no encontrada.',
         'channel_not_found' => 'Canal no encontrado.',
+        'pages_read_incomplete' => 'No pudimos terminar de leer tus páginas. Inténtalo de nuevo en un momento.',
+        'publish_permission_refused' => 'Este inicio de sesión rechazó un permiso necesario para publicar. Vuelve a conectar y acéptalos todos.',
+        'pages_missing_permission' => 'Encontramos páginas, pero ninguna en la que puedas publicar. Necesitas un rol en la página y aceptar todos los permisos.',
         'no_facebook_pages' => 'No se encontraron páginas de Facebook. Debes ser administrador de al menos una página.',
         'no_facebook_instagram_pages' => 'No se encontraron páginas de Facebook con cuentas de Instagram vinculadas.',
         'no_youtube_channels' => 'No se encontraron canales de YouTube. Crea un canal primero.',

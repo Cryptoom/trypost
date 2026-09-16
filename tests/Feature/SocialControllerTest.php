@@ -43,6 +43,31 @@ test('accounts index shows platforms and connected accounts', function () {
     );
 });
 
+test('accounts index lists every account of the same network', function () {
+    [$first, $second] = SocialAccount::withoutEvents(fn () => [
+        SocialAccount::factory()->create([
+            'workspace_id' => $this->workspace->id,
+            'platform' => Platform::LinkedIn,
+            'platform_user_id' => 'li-a',
+        ]),
+        SocialAccount::factory()->create([
+            'workspace_id' => $this->workspace->id,
+            'platform' => Platform::LinkedIn,
+            'platform_user_id' => 'li-b',
+        ]),
+    ]);
+
+    $response = $this->actingAs($this->user)->get(route('app.accounts'));
+
+    $response->assertOk();
+    $response->assertInertia(fn ($page) => $page
+        ->component('accounts/Index', false)
+        ->has('connectedAccounts', 2)
+        ->where('connectedAccounts', fn ($accounts): bool => collect($accounts)->pluck('id')->contains($first->id)
+            && collect($accounts)->pluck('id')->contains($second->id))
+    );
+});
+
 test('accounts index lists platforms alphabetically by label', function () {
     $response = $this->actingAs($this->user)->get(route('app.accounts'));
 
@@ -187,7 +212,7 @@ test('a connected instagram-facebook account is still returned so it surfaces un
     );
 });
 
-test('an unsubscribed account can disconnect during onboarding (no active subscription required)', function () {
+test('an unsubscribed account can disconnect without an active subscription', function () {
     config(['trypost.self_hosted' => false]);
 
     $account = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id]);
