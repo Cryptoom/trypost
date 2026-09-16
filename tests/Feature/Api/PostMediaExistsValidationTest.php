@@ -156,3 +156,25 @@ it('rejects a media item that sends a path without a resolvable id', function ()
         ->assertStatus(Response::HTTP_UNPROCESSABLE_ENTITY)
         ->assertJsonValidationErrors(['media.0.id']);
 });
+
+it('rejects a real media id from the workspace that belongs to a different collection', function () {
+    $logo = Media::factory()->logo()->create([
+        'mediable_type' => (new Workspace)->getMorphClass(),
+        'mediable_id' => $this->workspace->id,
+    ]);
+
+    $payload = [
+        'content' => 'Wrong collection',
+        'media' => [['id' => $logo->id, 'path' => $logo->path, 'url' => $logo->url, 'type' => 'image']],
+        'platforms' => [
+            ['social_account_id' => $this->socialAccount->id, 'content_type' => 'linkedin_post'],
+        ],
+    ];
+
+    $this->withHeaders(['Authorization' => 'Bearer '.$this->plainToken])
+        ->postJson(route('api.posts.store'), $payload)
+        ->assertStatus(Response::HTTP_UNPROCESSABLE_ENTITY)
+        ->assertJsonValidationErrors(['media.0.id']);
+
+    expect(Post::where('workspace_id', $this->workspace->id)->count())->toBe(0);
+});

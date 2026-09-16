@@ -10,10 +10,11 @@ use Illuminate\Database\Eloquent\Relations\Pivot;
 /**
  * Pivot for `PostPlatform::media()`: which of a post's media items apply to a
  * given platform. A dedicated `id` primary key (via HasUuids) instead of the
- * plain composite-key pivot used elsewhere (see `post_workspace_label`),
- * because the same media item can be attached to more than one platform of
- * the same post, so there is no natural single unique key here, and an
- * explicit id makes a row directly addressable when debugging.
+ * plain composite-key pivot used elsewhere (see `post_workspace_label`) is
+ * deliberate: it makes an individual row directly addressable for debugging
+ * (single id in a log line, `firstOrFail()` by id) instead of needing both
+ * foreign keys every time. The `(media_id, post_platform_id)` uniqueness is
+ * still enforced separately by the migration's own unique index.
  *
  * HasUuids generates the id in the model's `creating` event, which only fires
  * for a custom pivot class (`belongsToMany(...)->using(self::class)`). The

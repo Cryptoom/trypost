@@ -14,10 +14,11 @@ return new class extends Migration
      * an empty pivot set for a platform means "all of the post's media",
      * today's behaviour, so no special-casing is needed anywhere reading it.
      *
-     * A dedicated `id` primary key (instead of a plain composite-key pivot)
-     * is deliberate: the same media item can be attached to more than one
-     * platform of the same post, so there is no natural single-column key,
-     * and an explicit id makes this row directly addressable when debugging.
+     * A dedicated `id` primary key (instead of the plain composite-key pivot
+     * used by `post_workspace_label`) is deliberate: it makes an individual
+     * row directly addressable for debugging (single id in a log line,
+     * `firstOrFail()` by id) rather than needing both foreign keys every
+     * time. Uniqueness is still enforced separately below.
      */
     public function up(): void
     {
