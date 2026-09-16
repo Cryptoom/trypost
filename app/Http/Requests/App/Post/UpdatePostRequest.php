@@ -7,6 +7,7 @@ namespace App\Http\Requests\App\Post;
 use App\Enums\Post\Status;
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
+use App\Models\Post;
 use App\Rules\ContentFitsPlatformLimits;
 use App\Rules\ContentTypeCompatibleWithMedia;
 use App\Support\PostMediaRules;
@@ -53,7 +54,6 @@ class UpdatePostRequest extends FormRequest
                 $enforcesMediaCompatibility ? 'required' : 'sometimes',
                 'string',
                 Rule::in(array_column(ContentType::cases(), 'value')),
-                Rule::when($enforcesMediaCompatibility, [new ContentTypeCompatibleWithMedia]),
             ],
             ...PostPlatformMetaRules::rules(),
             'label_ids' => ['sometimes', 'array'],
@@ -92,6 +92,14 @@ class UpdatePostRequest extends FormRequest
                 return;
             }
 
+            $this->addMediaCompatibilityErrors($validator);
+        });
+
+        $validator->after(function (Validator $validator): void {
+            if (! $this->isPublishingOrScheduling()) {
+                return;
+            }
+
             $platforms = $this->input('platforms', []);
             $ids = collect($platforms)->pluck('id')->filter()->all();
 
@@ -115,6 +123,31 @@ class UpdatePostRequest extends FormRequest
             [Status::Scheduled->value, Status::Publishing->value],
             true,
         );
+    }
+
+    /**
+     * Validate every platform's *effective* content_type (resubmitted in this
+     * request, or its stored value) against its own *effective* media: the
+     * request's media when resubmitted (applied to every platform, there's no
+     * per-platform media field in the request today), otherwise that
+     * platform's own scoped media (PostPlatform::scopedMediaItems()), falling
+     * back further to the post's full stored media. Mirrors the public API's
+     * withValidator check (App\Http\Requests\Api\Post\UpdatePostRequest).
+     */
+    private function addMediaCompatibilityErrors(Validator $validator): void
+    {
+        /** @var Post $post */
+        $post = $this->route('post');
+
+        $entries = ContentTypeCompatibleWithMedia::entriesForUpdate(
+            $post,
+            $this->has('platforms') ? (array) $this->input('platforms', []) : null,
+            $this->has('media') ? (array) $this->input('media', []) : null,
+        );
+
+        foreach (ContentTypeCompatibleWithMedia::errorsFor($entries) as $key => $message) {
+            $validator->errors()->add($key, $message);
+        }
     }
 
     /**
