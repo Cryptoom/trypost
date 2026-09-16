@@ -109,25 +109,28 @@ class UpdatePostRequest extends FormRequest
 
     /**
      * On publish/schedule, validate every platform's *effective* content_type
-     * (resubmitted in this request, or its stored value) against the *effective*
-     * media (the request's media when sent, otherwise the post's stored media).
-     * This closes the gap where a client publishes a misconfigured post — e.g. a
-     * PDF on a regular LinkedIn post — without resubmitting content_type, which a
-     * field-level rule on `platforms.*.content_type` would skip.
+     * (resubmitted in this request, or its stored value) against its own
+     * *effective* media: the request's media when resubmitted (applied to
+     * every platform, there's no per-platform media field in the request
+     * today), otherwise that platform's own scoped media
+     * (PostPlatform::scopedMediaItems()), falling back further to the post's
+     * full stored media. This closes the gap where a client publishes a
+     * misconfigured post, e.g. a PDF on a regular LinkedIn post, without
+     * resubmitting content_type, which a field-level rule on
+     * `platforms.*.content_type` would skip.
      */
     private function addMediaCompatibilityErrors(Validator $validator): void
     {
         /** @var Post $post */
         $post = $this->route('post');
 
-        $media = $this->has('media') ? (array) $this->input('media', []) : (array) ($post->media ?? []);
-
         $entries = ContentTypeCompatibleWithMedia::entriesForUpdate(
             $post,
             $this->has('platforms') ? (array) $this->input('platforms', []) : null,
+            $this->has('media') ? (array) $this->input('media', []) : null,
         );
 
-        foreach (ContentTypeCompatibleWithMedia::errorsFor($entries, $media) as $key => $message) {
+        foreach (ContentTypeCompatibleWithMedia::errorsFor($entries) as $key => $message) {
             $validator->errors()->add($key, $message);
         }
     }

@@ -80,7 +80,6 @@ class UpdatePostTool extends Tool
         if ($status === Status::Scheduled->value) {
             $errors = ContentTypeCompatibleWithMedia::errorsFor(
                 ContentTypeCompatibleWithMedia::entriesForUpdate($post, data_get($validated, 'platforms')),
-                (array) ($post->media ?? []),
             );
 
             if ($errors !== []) {

@@ -4,12 +4,15 @@ declare(strict_types=1);
 
 namespace App\Rules;
 
+use App\Dto\MediaItem;
 use App\Enums\Media\Type as MediaType;
 use App\Enums\PostPlatform\ContentType;
 use App\Models\Post;
+use App\Models\PostPlatform;
 use Closure;
 use Illuminate\Contracts\Validation\DataAwareRule;
 use Illuminate\Contracts\Validation\ValidationRule;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Number;
 use Illuminate\Translation\PotentiallyTranslatedString;
 use Illuminate\Validation\ValidationException;
@@ -40,19 +43,18 @@ class ContentTypeCompatibleWithMedia implements DataAwareRule, ValidationRule
     }
 
     /**
-     * Validate every enabled platform's stored content_type against the post's
-     * stored media. Used by publish flows that don't resubmit media (e.g. the
-     * MCP publish tool) — the media-side mirror of
+     * Validate every enabled platform's stored content_type against its own
+     * scoped media (falling back to the post's full media when the platform
+     * has no per-platform selection, see PostPlatform::scopedMediaItems()).
+     * Used by publish flows that don't resubmit media (e.g. the MCP publish
+     * tool), the media-side mirror of
      * PostPlatformMetaRules::assertStoredPostPublishable().
      *
      * @throws ValidationException
      */
     public static function assertStoredPostCompatible(Post $post): void
     {
-        $errors = self::errorsFor(
-            self::entriesForUpdate($post, null),
-            (array) ($post->media ?? []),
-        );
+        $errors = self::errorsFor(self::entriesForUpdate($post, null));
 
         if ($errors !== []) {
             throw ValidationException::withMessages($errors);
@@ -62,50 +64,104 @@ class ContentTypeCompatibleWithMedia implements DataAwareRule, ValidationRule
     /**
      * The per-platform entries to validate for a post update: each platform's
      * effective content_type (resubmitted in this request, else its stored
-     * value), keyed by the error path the caller surfaces. When $requestPlatforms
-     * is null, the post's currently-enabled platforms are used.
+     * value) paired with the media it publishes, keyed by the error path the
+     * caller surfaces. When $requestPlatforms is null, the post's
+     * currently-enabled platforms are used.
+     *
+     * Per entry, the media to validate against is resolved in this order:
+     * 1. $requestMedia: the request's resubmitted media, when present. This
+     *    applies uniformly to every entry (there's no per-platform media field
+     *    in the request today), matching what the client is about to save.
+     * 2. The stored PostPlatform's own scoped media
+     *    (PostPlatform::scopedMediaItems()), the per-platform selection, once
+     *    one exists. An empty selection already falls back to every post media
+     *    item inside that helper.
+     * 3. The post's full stored media, only reached when no PostPlatform row
+     *    could be resolved for the entry at all (defensive, every real caller
+     *    today has one).
      *
      * @param  array<int, mixed>|null  $requestPlatforms
-     * @return array<int, array{key: string, content_type: string|null}>
+     * @param  array<int, mixed>|null  $requestMedia
+     * @return array<int, array{key: string, content_type: string|null, media: array<int, array<string, mixed>>}>
      */
-    public static function entriesForUpdate(Post $post, ?array $requestPlatforms): array
+    public static function entriesForUpdate(Post $post, ?array $requestPlatforms, ?array $requestMedia = null): array
     {
         if (is_array($requestPlatforms)) {
-            $stored = $post->postPlatforms()->get()->keyBy('id');
+            $stored = self::postPlatformsFor($post)->keyBy('id');
 
-            return collect($requestPlatforms)->map(fn ($platform, $index): array => [
-                'key' => "platforms.{$index}.content_type",
-                'content_type' => data_get($platform, 'content_type')
-                    ?? $stored->get(data_get($platform, 'id'))?->content_type?->value,
-            ])->all();
+            return collect($requestPlatforms)->map(function ($platform, $index) use ($stored, $post, $requestMedia): array {
+                $storedPlatform = $stored->get(data_get($platform, 'id'));
+
+                return [
+                    'key' => "platforms.{$index}.content_type",
+                    'content_type' => data_get($platform, 'content_type')
+                        ?? $storedPlatform?->content_type?->value,
+                    'media' => self::resolveMedia($storedPlatform, $post, $requestMedia),
+                ];
+            })->all();
         }
 
-        return $post->postPlatforms()->enabled()->get()->values()
+        return self::postPlatformsFor($post)
+            ->filter(fn (PostPlatform $postPlatform): bool => $postPlatform->enabled)
+            ->values()
             ->map(fn ($postPlatform, $index): array => [
                 'key' => "platforms.{$index}.content_type",
                 'content_type' => $postPlatform->content_type?->value,
+                'media' => self::resolveMedia($postPlatform, $post, $requestMedia),
             ])->all();
     }
 
     /**
-     * Validate a set of platform entries against the given media, returning
-     * `[errorKey => message]` for each incompatible content_type.
+     * The post's platforms with the inverse `post` relation pre-set, so
+     * PostPlatform::scopedMediaItems() (which reads `$this->post->mediaItems`)
+     * never triggers a lazy load under Model::shouldBeStrict() in tests/local.
      *
-     * @param  array<int, array{key: string, content_type: string|null}>  $entries
-     * @param  array<int, mixed>  $media
+     * @return Collection<int, PostPlatform>
+     */
+    private static function postPlatformsFor(Post $post): Collection
+    {
+        return $post->postPlatforms()->get()
+            ->each(fn (PostPlatform $postPlatform) => $postPlatform->setRelation('post', $post));
+    }
+
+    /**
+     * @param  array<int, mixed>|null  $requestMedia
+     * @return array<int, array<string, mixed>>
+     */
+    private static function resolveMedia(?PostPlatform $storedPlatform, Post $post, ?array $requestMedia): array
+    {
+        if ($requestMedia !== null) {
+            return collect($requestMedia)->map(fn (mixed $item): array => (array) $item)->all();
+        }
+
+        if ($storedPlatform !== null) {
+            return $storedPlatform->scopedMediaItems()
+                ->map(fn (MediaItem $item): array => $item->toArray())
+                ->all();
+        }
+
+        return (array) ($post->media ?? []);
+    }
+
+    /**
+     * Validate a set of platform entries, each against its own media, returning
+     * `[errorKey => message]` for each incompatible content_type. A kind
+     * violation ("does not accept GIF") is the root cause, so a size violation
+     * on the same item must not overwrite it, one message per entry.
+     *
+     * @param  array<int, array{key: string, content_type: string|null, media: array<int, array<string, mixed>>}>  $entries
      * @return array<string, string>
      */
-    public static function errorsFor(array $entries, array $media): array
+    public static function errorsFor(array $entries): array
     {
         $errors = [];
-        $rule = new self($media);
 
-        foreach ($entries as ['key' => $key, 'content_type' => $contentType]) {
+        foreach ($entries as ['key' => $key, 'content_type' => $contentType, 'media' => $media]) {
             if ($contentType === null) {
                 continue;
             }
 
-            $rule->validate($key, $contentType, function (string $message) use (&$errors, $key): void {
+            (new self($media))->validate($key, $contentType, function (string $message) use (&$errors, $key): void {
                 $errors[$key] = $message;
             });
         }
