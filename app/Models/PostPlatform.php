@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Dto\MediaItem;
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\PostPlatform\Status;
 use App\Enums\SocialAccount\Platform as SocialPlatform;
@@ -13,6 +14,8 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Storage;
 
 class PostPlatform extends Model
@@ -61,6 +64,43 @@ class PostPlatform extends Model
     public function socialAccount(): BelongsTo
     {
         return $this->belongsTo(SocialAccount::class);
+    }
+
+    /**
+     * The subset of the post's media items scoped to this platform. Empty
+     * unless a caller has explicitly narrowed which media this platform
+     * publishes (per-platform media selection).
+     */
+    public function media(): BelongsToMany
+    {
+        return $this->belongsToMany(Media::class, 'media_post_platform')
+            ->using(MediaPostPlatform::class)
+            ->withTimestamps();
+    }
+
+    /**
+     * The media items this platform actually publishes. An empty pivot set
+     * for this platform means "no per-platform selection was made", which is
+     * today's behaviour: fall back to every media item on the post. This is
+     * the one place that decides that, so every publisher and validator
+     * reads media through this helper instead of `$postPlatform->post->mediaItems`
+     * directly, or the two would silently disagree once a selection exists.
+     *
+     * @return Collection<int, MediaItem>
+     */
+    public function scopedMediaItems(): Collection
+    {
+        $selectedIds = $this->media()->pluck('medias.id');
+
+        $allMediaItems = $this->post->mediaItems;
+
+        if ($selectedIds->isEmpty()) {
+            return $allMediaItems;
+        }
+
+        return $allMediaItems->filter(
+            fn (MediaItem $item) => $selectedIds->contains($item->id)
+        )->values();
     }
 
     /**
