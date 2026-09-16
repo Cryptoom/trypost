@@ -84,7 +84,7 @@ abstract class AbstractLinkedInPublisher
 
     private function dispatchByMedia(?string $content, PostPlatform $postPlatform): array
     {
-        $media = $postPlatform->post->mediaItems;
+        $media = $postPlatform->scopedMediaItems();
 
         if ($media->contains(fn ($item) => $item->isDocument())) {
             return $this->publishDocument($content, $media, $this->resolveDocumentTitle($postPlatform));
@@ -247,7 +247,7 @@ abstract class AbstractLinkedInPublisher
             return (string) $title;
         }
 
-        return $postPlatform->post->mediaItems->first(fn ($media) => $media->isDocument())?->original_filename ?? 'Document';
+        return $postPlatform->scopedMediaItems()->first(fn ($media) => $media->isDocument())?->original_filename ?? 'Document';
     }
 
     private function uploadMedia($mediaItem): ?string

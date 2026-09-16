@@ -48,7 +48,7 @@ class FacebookPublisher
         $pageId = $account->platform_user_id;
         $accessToken = $account->access_token;
 
-        $media = $postPlatform->post->mediaItems;
+        $media = $postPlatform->scopedMediaItems();
         $contentType = $postPlatform->content_type;
         $aspectRatio = data_get($postPlatform->meta, 'aspect_ratio');
 

@@ -66,7 +66,7 @@ class DiscordPublisher
         }
 
         $embeds = $this->buildEmbeds($postPlatform);
-        $media = $postPlatform->post->mediaItems->take($postPlatform->platform->maxImages());
+        $media = $postPlatform->scopedMediaItems()->take($postPlatform->platform->maxImages());
 
         $payload = array_filter([
             'content' => $content !== '' ? $content : null,
