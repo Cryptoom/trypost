@@ -80,6 +80,14 @@ class UpdatePostRequest extends FormRequest
     public function withValidator(Validator $validator): void
     {
         $validator->after(function (Validator $validator): void {
+            PostMediaRules::assertHostedMediaExists(
+                $validator,
+                $this->user()->currentWorkspace,
+                (array) $this->input('media', []),
+            );
+        });
+
+        $validator->after(function (Validator $validator): void {
             if (! $this->isPublishingOrScheduling()) {
                 return;
             }

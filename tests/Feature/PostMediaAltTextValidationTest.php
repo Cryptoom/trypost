@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Enums\UserWorkspace\Role;
+use App\Models\Media;
 use App\Models\Post;
 use App\Models\User;
 use App\Models\Workspace;
@@ -18,11 +19,17 @@ test('post update keeps media alt_text in meta', function () {
         'user_id' => $user->id,
     ]);
 
+    $asset = Media::factory()->assets()->create([
+        'mediable_type' => (new Workspace)->getMorphClass(),
+        'mediable_id' => $workspace->id,
+        'path' => 'uploads/x.jpg',
+    ]);
+
     $response = $this->actingAs($user)->put(route('app.posts.update', $post), [
         'status' => 'draft',
         'content' => 'hi',
         'media' => [[
-            'id' => 'm1', 'path' => 'uploads/x.jpg', 'url' => 'https://cdn.test/x.jpg',
+            'id' => $asset->id, 'path' => 'uploads/x.jpg', 'url' => 'https://cdn.test/x.jpg',
             'meta' => ['alt_text' => 'a golden retriever on a beach'],
         ]],
     ]);
@@ -42,11 +49,17 @@ test('post update preserves every media meta key, not just alt_text', function (
         'user_id' => $user->id,
     ]);
 
+    $asset = Media::factory()->assets()->create([
+        'mediable_type' => (new Workspace)->getMorphClass(),
+        'mediable_id' => $workspace->id,
+        'path' => 'uploads/x.jpg',
+    ]);
+
     $response = $this->actingAs($user)->put(route('app.posts.update', $post), [
         'status' => 'draft',
         'content' => 'hi',
         'media' => [[
-            'id' => 'm1', 'path' => 'uploads/x.jpg', 'url' => 'https://cdn.test/x.jpg', 'type' => 'image',
+            'id' => $asset->id, 'path' => 'uploads/x.jpg', 'url' => 'https://cdn.test/x.jpg', 'type' => 'image',
             'meta' => [
                 'width' => 1080,
                 'height' => 1350,
@@ -102,13 +115,19 @@ test('media alt_text at exactly 2000 chars is accepted', function () {
         'user_id' => $user->id,
     ]);
 
+    $asset = Media::factory()->assets()->create([
+        'mediable_type' => (new Workspace)->getMorphClass(),
+        'mediable_id' => $workspace->id,
+        'path' => 'uploads/x.jpg',
+    ]);
+
     $altText = str_repeat('a', 2000);
 
     $response = $this->actingAs($user)->put(route('app.posts.update', $post), [
         'status' => 'draft',
         'content' => 'hi',
         'media' => [[
-            'id' => 'm1', 'path' => 'uploads/x.jpg', 'url' => 'https://cdn.test/x.jpg',
+            'id' => $asset->id, 'path' => 'uploads/x.jpg', 'url' => 'https://cdn.test/x.jpg',
             'meta' => ['alt_text' => $altText],
         ]],
     ]);

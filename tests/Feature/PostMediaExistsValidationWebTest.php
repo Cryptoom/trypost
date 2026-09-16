@@ -1,0 +1,110 @@
+<?php
+
+declare(strict_types=1);
+
+use App\Enums\SocialAccount\Platform;
+use App\Enums\UserWorkspace\Role;
+use App\Models\Media;
+use App\Models\Post;
+use App\Models\SocialAccount;
+use App\Models\User;
+use App\Models\Workspace;
+
+/**
+ * TPX-03 verification, web (Inertia) side. Mirrors
+ * tests/Feature/Api/PostMediaExistsValidationTest.php: App\Http\Requests\App\Post\StorePostRequest
+ * previously had NO item-level media validation at all ('media' => ['nullable', 'array']),
+ * and App\Http\Requests\App\Post\UpdatePostRequest validated shape only (id/path required
+ * strings) with no check that the id actually resolves to a medias row owned by the
+ * workspace. Both now run App\Support\PostMediaRules::assertHostedMediaExists.
+ */
+beforeEach(function () {
+    $this->user = User::factory()->create([]);
+    $this->workspace = Workspace::factory()->create(['user_id' => $this->user->id]);
+    $this->workspace->members()->attach($this->user->id, ['role' => Role::Member->value]);
+    $this->user->update(['current_workspace_id' => $this->workspace->id]);
+
+    $this->socialAccount = SocialAccount::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'platform' => Platform::LinkedIn,
+    ]);
+});
+
+test('store post rejects a fabricated media id/path (no matching medias row)', function () {
+    $response = $this->actingAs($this->user)->post(route('app.posts.store'), [
+        'media' => [['id' => 'media-1', 'path' => 'media/foo.jpg', 'url' => 'https://example.com/foo.jpg', 'type' => 'image']],
+    ]);
+
+    $response->assertSessionHasErrors(['media.0.id']);
+    expect(Post::where('workspace_id', $this->workspace->id)->count())->toBe(0);
+});
+
+test('store post accepts a media id that resolves to a real workspace asset', function () {
+    $asset = Media::factory()->assets()->create([
+        'mediable_type' => (new Workspace)->getMorphClass(),
+        'mediable_id' => $this->workspace->id,
+    ]);
+
+    $response = $this->actingAs($this->user)->post(route('app.posts.store'), [
+        'media' => [['id' => $asset->id, 'path' => $asset->path, 'url' => 'https://example.com/'.$asset->path, 'type' => 'image']],
+    ]);
+
+    $response->assertSessionDoesntHaveErrors();
+    $response->assertRedirect();
+
+    $post = Post::where('workspace_id', $this->workspace->id)->first();
+    expect($post)->not->toBeNull();
+    expect($post->media)->toHaveCount(1)
+        ->and(data_get($post->media, '0.id'))->toBe($asset->id);
+});
+
+test('store post rejects another workspace\'s real media id (cross-tenant IDOR)', function () {
+    $other = Workspace::factory()->create();
+    $foreignAsset = Media::factory()->assets()->create([
+        'mediable_type' => (new Workspace)->getMorphClass(),
+        'mediable_id' => $other->id,
+    ]);
+
+    $response = $this->actingAs($this->user)->post(route('app.posts.store'), [
+        'media' => [['id' => $foreignAsset->id, 'path' => $foreignAsset->path, 'url' => 'https://example.com/'.$foreignAsset->path, 'type' => 'image']],
+    ]);
+
+    $response->assertSessionHasErrors(['media.0.id']);
+    expect(Post::where('workspace_id', $this->workspace->id)->count())->toBe(0);
+});
+
+test('update post rejects a fabricated media id/path', function () {
+    $post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+    ]);
+
+    $response = $this->actingAs($this->user)->put(route('app.posts.update', $post), [
+        'status' => 'draft',
+        'media' => [['id' => 'forged-id', 'path' => 'media/forged.jpg', 'url' => 'https://example.com/forged.jpg', 'type' => 'image']],
+    ]);
+
+    $response->assertSessionHasErrors(['media.0.id']);
+    expect($post->fresh()->media)->toBe([]);
+});
+
+test('update post accepts a media id that resolves to a real workspace asset', function () {
+    $post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+    ]);
+
+    $asset = Media::factory()->assets()->create([
+        'mediable_type' => (new Workspace)->getMorphClass(),
+        'mediable_id' => $this->workspace->id,
+    ]);
+
+    $response = $this->actingAs($this->user)->put(route('app.posts.update', $post), [
+        'status' => 'draft',
+        'media' => [['id' => $asset->id, 'path' => $asset->path, 'url' => 'https://example.com/'.$asset->path, 'type' => 'image']],
+    ]);
+
+    $response->assertSessionDoesntHaveErrors();
+    expect($post->fresh()->media)->toHaveCount(1)
+        ->and(data_get($post->fresh()->media, '0.id'))->toBe($asset->id);
+});
