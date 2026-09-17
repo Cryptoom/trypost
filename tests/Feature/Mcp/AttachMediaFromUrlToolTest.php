@@ -181,6 +181,28 @@ test('post 404 from another workspace', function () {
     $response->assertHasErrors(['Post not found.']);
 });
 
+test('rejects a malformed post_id with a clean validation error instead of throwing', function () {
+    $response = TryPostServer::actingAs($this->user)
+        ->tool(AttachMediaFromUrlTool::class, [
+            'post_id' => 'not-a-uuid',
+            'urls' => [['url' => 'https://example.com/photo.jpg']],
+        ]);
+
+    $response->assertHasErrors();
+    expect($this->post->fresh()->media)->toHaveCount(0);
+});
+
+test('rejects a non-scalar post_id with a clean validation error instead of throwing', function () {
+    $response = TryPostServer::actingAs($this->user)
+        ->tool(AttachMediaFromUrlTool::class, [
+            'post_id' => [$this->post->id],
+            'urls' => [['url' => 'https://example.com/photo.jpg']],
+        ]);
+
+    $response->assertHasErrors();
+    expect($this->post->fresh()->media)->toHaveCount(0);
+});
+
 test('rejects urls with non-http(s) schemes', function () {
     $response = TryPostServer::actingAs($this->user)
         ->tool(AttachMediaFromUrlTool::class, [
@@ -233,4 +255,98 @@ test('rejects more than 10 urls per call', function () {
         ]);
 
     $response->assertHasErrors();
+});
+
+test('post_platform_ids scopes every attached url to that platform via the pivot', function () {
+    Http::fake([
+        'example.com/photo.jpg' => Http::response(
+            file_get_contents(__DIR__.'/../../fixtures/1x1.png'),
+            200,
+            ['Content-Type' => 'image/png'],
+        ),
+    ]);
+
+    $account = SocialAccount::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'platform' => Platform::LinkedIn,
+    ]);
+    $platform = PostPlatform::factory()->create([
+        'post_id' => $this->post->id,
+        'social_account_id' => $account->id,
+    ]);
+
+    $response = TryPostServer::actingAs($this->user)
+        ->tool(AttachMediaFromUrlTool::class, [
+            'post_id' => $this->post->id,
+            'urls' => [['url' => 'https://example.com/photo.jpg']],
+            'post_platform_ids' => [$platform->id],
+        ]);
+
+    $response->assertOk();
+
+    $attachedId = data_get($this->post->fresh()->media, '0.id');
+    expect($platform->media()->pluck('medias.id')->all())->toBe([$attachedId]);
+});
+
+test('omitted post_platform_ids leaves the url attachment unscoped', function () {
+    Http::fake([
+        'example.com/photo.jpg' => Http::response(
+            file_get_contents(__DIR__.'/../../fixtures/1x1.png'),
+            200,
+            ['Content-Type' => 'image/png'],
+        ),
+    ]);
+
+    $account = SocialAccount::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'platform' => Platform::LinkedIn,
+    ]);
+    $platform = PostPlatform::factory()->create([
+        'post_id' => $this->post->id,
+        'social_account_id' => $account->id,
+    ]);
+
+    $response = TryPostServer::actingAs($this->user)
+        ->tool(AttachMediaFromUrlTool::class, [
+            'post_id' => $this->post->id,
+            'urls' => [['url' => 'https://example.com/photo.jpg']],
+        ]);
+
+    $response->assertOk();
+    expect($platform->media()->count())->toBe(0)
+        ->and($platform->scopedMediaItems())->toHaveCount(1);
+});
+
+test('rejects a post_platform_ids value belonging to another post', function () {
+    Http::fake([
+        'example.com/photo.jpg' => Http::response(
+            file_get_contents(__DIR__.'/../../fixtures/1x1.png'),
+            200,
+            ['Content-Type' => 'image/png'],
+        ),
+    ]);
+
+    $otherPost = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+    ]);
+    $account = SocialAccount::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'platform' => Platform::LinkedIn,
+    ]);
+    $foreignPlatform = PostPlatform::factory()->create([
+        'post_id' => $otherPost->id,
+        'social_account_id' => $account->id,
+    ]);
+
+    $response = TryPostServer::actingAs($this->user)
+        ->tool(AttachMediaFromUrlTool::class, [
+            'post_id' => $this->post->id,
+            'urls' => [['url' => 'https://example.com/photo.jpg']],
+            'post_platform_ids' => [$foreignPlatform->id],
+        ]);
+
+    $response->assertHasErrors();
+    expect($foreignPlatform->media()->count())->toBe(0);
+    expect(Media::where('mediable_id', $this->workspace->id)->count())->toBe(0);
 });

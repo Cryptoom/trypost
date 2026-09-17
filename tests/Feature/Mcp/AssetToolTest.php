@@ -323,6 +323,38 @@ test('rejects cross-workspace assets and posts without mutating the post', funct
     expect($this->post->fresh()->media)->toHaveCount(0);
 });
 
+test('rejects a malformed post_id with a clean validation error instead of throwing', function () {
+    $asset = Media::factory()->assets()->create([
+        'mediable_type' => (new Workspace)->getMorphClass(),
+        'mediable_id' => $this->workspace->id,
+    ]);
+
+    TryPostServer::actingAs($this->user)
+        ->tool(AttachExistingAssetTool::class, [
+            'post_id' => 'not-a-uuid',
+            'asset_id' => $asset->id,
+        ])
+        ->assertHasErrors();
+
+    expect($this->post->fresh()->media)->toHaveCount(0);
+});
+
+test('rejects a non-scalar post_id with a clean validation error instead of throwing', function () {
+    $asset = Media::factory()->assets()->create([
+        'mediable_type' => (new Workspace)->getMorphClass(),
+        'mediable_id' => $this->workspace->id,
+    ]);
+
+    TryPostServer::actingAs($this->user)
+        ->tool(AttachExistingAssetTool::class, [
+            'post_id' => [$this->post->id],
+            'asset_id' => $asset->id,
+        ])
+        ->assertHasErrors();
+
+    expect($this->post->fresh()->media)->toHaveCount(0);
+});
+
 test('rejects posts in non-editable states', function (PostStatus $status) {
     $this->post->update(['status' => $status]);
     $asset = Media::factory()->assets()->create([
@@ -365,4 +397,120 @@ test('rejects assets that enabled post platforms cannot publish', function () {
             'asset_id' => $asset->id,
         ])
         ->assertHasErrors([AttachExistingAsset::UNSUPPORTED_TYPE_MESSAGE]);
+});
+
+test('post_platform_ids scopes the attached asset to that platform via the pivot', function () {
+    $account = SocialAccount::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'platform' => Platform::LinkedIn,
+    ]);
+    $platform = PostPlatform::factory()->create([
+        'post_id' => $this->post->id,
+        'social_account_id' => $account->id,
+    ]);
+
+    $asset = Media::factory()->assets()->create([
+        'mediable_type' => (new Workspace)->getMorphClass(),
+        'mediable_id' => $this->workspace->id,
+    ]);
+
+    TryPostServer::actingAs($this->user)
+        ->tool(AttachExistingAssetTool::class, [
+            'post_id' => $this->post->id,
+            'asset_id' => $asset->id,
+            'post_platform_ids' => [$platform->id],
+        ])
+        ->assertOk();
+
+    expect($platform->media()->pluck('medias.id')->all())->toBe([$asset->id]);
+});
+
+test('omitted post_platform_ids leaves every platform without a scoped selection', function () {
+    $account = SocialAccount::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'platform' => Platform::LinkedIn,
+    ]);
+    $platform = PostPlatform::factory()->create([
+        'post_id' => $this->post->id,
+        'social_account_id' => $account->id,
+    ]);
+
+    $asset = Media::factory()->assets()->create([
+        'mediable_type' => (new Workspace)->getMorphClass(),
+        'mediable_id' => $this->workspace->id,
+    ]);
+
+    TryPostServer::actingAs($this->user)
+        ->tool(AttachExistingAssetTool::class, [
+            'post_id' => $this->post->id,
+            'asset_id' => $asset->id,
+        ])
+        ->assertOk();
+
+    expect($platform->media()->count())->toBe(0)
+        ->and($platform->scopedMediaItems())->toHaveCount(1);
+});
+
+test('rejects a post_platform_ids value that belongs to a different post', function () {
+    $otherPost = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+    ]);
+    $account = SocialAccount::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'platform' => Platform::LinkedIn,
+    ]);
+    $foreignPlatform = PostPlatform::factory()->create([
+        'post_id' => $otherPost->id,
+        'social_account_id' => $account->id,
+    ]);
+
+    $asset = Media::factory()->assets()->create([
+        'mediable_type' => (new Workspace)->getMorphClass(),
+        'mediable_id' => $this->workspace->id,
+    ]);
+
+    TryPostServer::actingAs($this->user)
+        ->tool(AttachExistingAssetTool::class, [
+            'post_id' => $this->post->id,
+            'asset_id' => $asset->id,
+            'post_platform_ids' => [$foreignPlatform->id],
+        ])
+        ->assertHasErrors();
+
+    expect($foreignPlatform->media()->count())->toBe(0);
+});
+
+test('repeating the same asset and post_platform_ids does not duplicate the pivot row', function () {
+    $account = SocialAccount::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'platform' => Platform::LinkedIn,
+    ]);
+    $platform = PostPlatform::factory()->create([
+        'post_id' => $this->post->id,
+        'social_account_id' => $account->id,
+    ]);
+
+    $asset = Media::factory()->assets()->create([
+        'mediable_type' => (new Workspace)->getMorphClass(),
+        'mediable_id' => $this->workspace->id,
+    ]);
+
+    TryPostServer::actingAs($this->user)
+        ->tool(AttachExistingAssetTool::class, [
+            'post_id' => $this->post->id,
+            'asset_id' => $asset->id,
+            'post_platform_ids' => [$platform->id],
+        ])
+        ->assertOk();
+
+    TryPostServer::actingAs($this->user)
+        ->tool(AttachExistingAssetTool::class, [
+            'post_id' => $this->post->id,
+            'asset_id' => $asset->id,
+            'post_platform_ids' => [$platform->id],
+        ])
+        ->assertOk();
+
+    expect($platform->media()->count())->toBe(1);
 });

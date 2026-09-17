@@ -68,6 +68,18 @@ class UpdatePost
                     $post->postPlatforms()
                         ->where('id', data_get($platformData, 'id'))
                         ->update($updateData);
+
+                    // Arr::has(), not data_get() !== null: an omitted media_ids key
+                    // must leave the platform's existing selection untouched (a
+                    // client that never sends it must not accidentally clear every
+                    // platform's scoping), while an explicit empty array clears it
+                    // back to "publish every media item on the post" (see
+                    // PostPlatform::scopedMediaItems()).
+                    if (Arr::has($platformData, 'media_ids')) {
+                        $postPlatform = $post->postPlatforms()->where('id', data_get($platformData, 'id'))->first();
+
+                        $postPlatform?->media()->sync(data_get($platformData, 'media_ids', []));
+                    }
                 }
             }
 

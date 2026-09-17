@@ -11,6 +11,7 @@ use App\Mcp\Tools\Post\DeletePostTool;
 use App\Mcp\Tools\Post\GetPostTool;
 use App\Mcp\Tools\Post\ListPostsTool;
 use App\Mcp\Tools\Post\UpdatePostTool;
+use App\Models\Media;
 use App\Models\Post;
 use App\Models\PostPlatform;
 use App\Models\SocialAccount;
@@ -576,4 +577,115 @@ test('viewers cannot create update or delete posts via mcp', function () {
         ->assertHasErrors(['Not authorized to delete this post.']);
 
     expect($post->fresh()->content)->toBe('Protected');
+});
+
+test('platforms.*.media_ids scopes the platform to the given post media via the pivot', function () {
+    $media = Media::factory()->assets()->create([
+        'mediable_type' => (new Workspace)->getMorphClass(),
+        'mediable_id' => $this->workspace->id,
+    ]);
+    $post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+        'media' => [['id' => $media->id, 'path' => $media->path, 'url' => $media->url, 'type' => $media->type->value]],
+    ]);
+    $platform = PostPlatform::factory()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $this->socialAccount->id,
+    ]);
+
+    TryPostServer::actingAs($this->user)
+        ->tool(UpdatePostTool::class, [
+            'post_id' => $post->id,
+            'platforms' => [
+                ['id' => $platform->id, 'media_ids' => [$media->id]],
+            ],
+        ])
+        ->assertOk();
+
+    expect($platform->media()->pluck('medias.id')->all())->toBe([$media->id]);
+});
+
+test('omitting media_ids leaves an existing selection untouched', function () {
+    $media = Media::factory()->assets()->create([
+        'mediable_type' => (new Workspace)->getMorphClass(),
+        'mediable_id' => $this->workspace->id,
+    ]);
+    $post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+        'media' => [['id' => $media->id, 'path' => $media->path, 'url' => $media->url, 'type' => $media->type->value]],
+    ]);
+    $platform = PostPlatform::factory()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $this->socialAccount->id,
+    ]);
+    $platform->media()->attach($media->id);
+
+    TryPostServer::actingAs($this->user)
+        ->tool(UpdatePostTool::class, [
+            'post_id' => $post->id,
+            'platforms' => [
+                ['id' => $platform->id, 'content_type' => 'linkedin_post'],
+            ],
+        ])
+        ->assertOk();
+
+    expect($platform->media()->pluck('medias.id')->all())->toBe([$media->id]);
+});
+
+test('an explicit empty media_ids array clears the platform selection', function () {
+    $media = Media::factory()->assets()->create([
+        'mediable_type' => (new Workspace)->getMorphClass(),
+        'mediable_id' => $this->workspace->id,
+    ]);
+    $post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+        'media' => [['id' => $media->id, 'path' => $media->path, 'url' => $media->url, 'type' => $media->type->value]],
+    ]);
+    $platform = PostPlatform::factory()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $this->socialAccount->id,
+    ]);
+    $platform->media()->attach($media->id);
+
+    TryPostServer::actingAs($this->user)
+        ->tool(UpdatePostTool::class, [
+            'post_id' => $post->id,
+            'platforms' => [
+                ['id' => $platform->id, 'media_ids' => []],
+            ],
+        ])
+        ->assertOk();
+
+    expect($platform->media()->count())->toBe(0)
+        ->and($platform->scopedMediaItems())->toHaveCount(1);
+});
+
+test('rejects a media_ids value that is not one of the post\'s own media items', function () {
+    $foreignMedia = Media::factory()->assets()->create([
+        'mediable_type' => (new Workspace)->getMorphClass(),
+        'mediable_id' => $this->workspace->id,
+    ]);
+    $post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+        'media' => [],
+    ]);
+    $platform = PostPlatform::factory()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $this->socialAccount->id,
+    ]);
+
+    TryPostServer::actingAs($this->user)
+        ->tool(UpdatePostTool::class, [
+            'post_id' => $post->id,
+            'platforms' => [
+                ['id' => $platform->id, 'media_ids' => [$foreignMedia->id]],
+            ],
+        ])
+        ->assertHasErrors();
+
+    expect($platform->media()->count())->toBe(0);
 });

@@ -67,6 +67,11 @@ class UpdatePostTool extends Tool
                     Rule::in(array_column(ContentType::cases(), 'value')),
                     new ContentTypeMatchesPostPlatform,
                 ],
+                // The tool can't resubmit media (see class description), so the
+                // selection is scoped to media the post already has, not an
+                // arbitrary/other-workspace media id (IDOR).
+                'platforms.*.media_ids' => ['sometimes', 'array'],
+                'platforms.*.media_ids.*' => ['uuid', Rule::in($post->mediaItems->pluck('id')->all())],
                 ...PostPlatformMetaRules::rules(),
             ],
             PostPlatformMetaRules::messages(),
@@ -119,6 +124,7 @@ class UpdatePostTool extends Tool
                     'id' => $p->string()->required()->description('UUID of the post_platform row (from get-post-tool / list-posts-tool).'),
                     'content_type' => $p->string()->description('New content_type for this platform.'),
                     'meta' => $p->object()->description('Per-platform metadata override. Instagram/Facebook: aspect_ratio. TikTok: privacy_level (required to publish) + flags. Pinterest: board_id (required to publish — call ListPinterestBoardsTool first), title (≤100), link (destination URL). Pin description comes from the post content. Discord: channel_id (required to publish — call ListDiscordChannelsTool first), mentions, embeds. Merged with existing meta.'),
+                    'media_ids' => $p->array()->items($p->string())->description('IDs of the post\'s existing media items (from get-post-tool) this platform should publish, replacing any previous selection for it. Cannot introduce new media: this tool does not resubmit media, use attach-media-from-upload-tool, attach-media-from-url-tool, or attach-existing-asset-tool for that, optionally with their own post_platform_ids. Omit this key to leave the platform\'s current selection untouched. Pass an empty array to clear it back to publishing every media item on the post (today\'s default).'),
                 ]))
                 ->description('Platforms to enable for publishing. Any platform NOT listed will be disabled. Pass an empty array to disable all.'),
         ];
