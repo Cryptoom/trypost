@@ -82,6 +82,14 @@ class PostPlatformFactory extends Factory
         ]);
     }
 
+    public function instagramFacebook(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'platform' => Platform::InstagramFacebook,
+            'content_type' => ContentType::InstagramFeed,
+        ]);
+    }
+
     public function bluesky(): static
     {
         return $this->state(fn (array $attributes) => [

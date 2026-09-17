@@ -2051,3 +2051,89 @@ test('instagram publisher keeps links intact', function () {
         && ! str_contains($request->url(), 'media_publish')
         && data_get($request->data(), 'caption') === 'New post: https://acme.com/blog');
 });
+
+/**
+ * delete() is only ever dispatched for InstagramFacebook accounts (see
+ * App\Actions\Post\UnpublishPost::resolveDeletePublisher()), which use the
+ * Facebook graph host (Platform::instagramGraphBaseUrl()), unlike the
+ * direct-login Instagram account used by the rest of this file.
+ */
+test('instagram publisher deletes a media object via the stored id, using the instagram-facebook graph host', function () {
+    $account = SocialAccount::factory()->instagramFacebook()->create([
+        'workspace_id' => $this->workspace->id,
+        'platform_user_id' => 'ig_fb_123456789',
+        'access_token' => 'page_access_token_123',
+    ]);
+
+    $postPlatform = PostPlatform::factory()->instagramFacebook()->create([
+        'post_id' => $this->post->id,
+        'social_account_id' => $account->id,
+        'platform_post_id' => 'ig_media_999',
+    ]);
+
+    Http::fake([
+        'https://graph.facebook.com/v25.0/ig_media_999' => Http::response(['success' => true], 200),
+    ]);
+
+    $this->publisher->delete($postPlatform);
+
+    Http::assertSent(function ($request) {
+        return $request->method() === 'DELETE'
+            && str_contains($request->url(), '/ig_media_999')
+            && data_get($request->data(), 'access_token') === 'page_access_token_123';
+    });
+});
+
+/**
+ * Carousels store the PARENT container id in platform_post_id (see
+ * publishCarousel()/finishCarousel()), so a carousel delete needs no
+ * different handling: deleting the parent removes the whole carousel.
+ */
+test('instagram publisher deletes a carousel using the parent container id', function () {
+    $account = SocialAccount::factory()->instagramFacebook()->create([
+        'workspace_id' => $this->workspace->id,
+        'access_token' => 'page_access_token_123',
+    ]);
+
+    $postPlatform = PostPlatform::factory()->instagramFacebook()->create([
+        'post_id' => $this->post->id,
+        'social_account_id' => $account->id,
+        'content_type' => ContentType::InstagramFeed,
+        'platform_post_id' => 'carousel_parent_555',
+    ]);
+
+    Http::fake([
+        'https://graph.facebook.com/v25.0/carousel_parent_555' => Http::response(['success' => true], 200),
+    ]);
+
+    $this->publisher->delete($postPlatform);
+
+    Http::assertSent(fn ($request) => $request->method() === 'DELETE'
+        && str_contains($request->url(), '/carousel_parent_555'));
+});
+
+test('instagram publisher throws exception when delete fails', function () {
+    $account = SocialAccount::factory()->instagramFacebook()->create([
+        'workspace_id' => $this->workspace->id,
+    ]);
+
+    $postPlatform = PostPlatform::factory()->instagramFacebook()->create([
+        'post_id' => $this->post->id,
+        'social_account_id' => $account->id,
+        'platform_post_id' => 'ig_media_999',
+    ]);
+
+    Http::fake([
+        'https://graph.facebook.com/v25.0/ig_media_999' => Http::response([
+            'error' => [
+                'message' => 'Media does not belong to this account.',
+                'type' => 'OAuthException',
+                'code' => 100,
+                'error_subcode' => 2207051,
+            ],
+        ], 400),
+    ]);
+
+    expect(fn () => $this->publisher->delete($postPlatform))
+        ->toThrow(InstagramPublishException::class);
+});

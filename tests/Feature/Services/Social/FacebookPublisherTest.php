@@ -1012,3 +1012,65 @@ test('facebook publisher keeps links intact', function () {
     Http::assertSent(fn ($request) => str_contains($request->url(), '/page_123/feed')
         && $request['message'] === 'New post: https://acme.com/blog');
 });
+
+/**
+ * Feed posts (text, single or multi image) store the composite
+ * `{page-id}_{post-id}` form in platform_post_id (see publishTextPost()).
+ * delete() must send that exact id as-is to the generic node-delete
+ * endpoint, not reformat or split it.
+ */
+test('facebook publisher deletes a feed post using the composite post id', function () {
+    $this->postPlatform->update(['platform_post_id' => 'page_123_post_456']);
+
+    Http::fake([
+        '*/page_123_post_456' => Http::response(['success' => true], 200),
+    ]);
+
+    $this->publisher->delete($this->postPlatform);
+
+    Http::assertSent(function ($request) {
+        return $request->method() === 'DELETE'
+            && str_contains($request->url(), '/page_123_post_456')
+            && $request['access_token'] === $this->postPlatform->socialAccount->access_token;
+    });
+});
+
+/**
+ * Videos, reels and stories store a bare video id in platform_post_id (see
+ * publishVideoPost(), publishReel(), publishStory()), no page-id prefix.
+ * The same generic delete endpoint applies, unchanged.
+ */
+test('facebook publisher deletes a video/reel/story using the bare video id', function () {
+    $this->postPlatform->update([
+        'content_type' => ContentType::FacebookReel,
+        'platform_post_id' => 'reel_video_789',
+    ]);
+
+    Http::fake([
+        '*/reel_video_789' => Http::response(['success' => true], 200),
+    ]);
+
+    $this->publisher->delete($this->postPlatform);
+
+    Http::assertSent(function ($request) {
+        return $request->method() === 'DELETE'
+            && str_contains($request->url(), '/reel_video_789');
+    });
+});
+
+test('facebook publisher throws exception when delete fails', function () {
+    $this->postPlatform->update(['platform_post_id' => 'page_123_post_456']);
+
+    Http::fake([
+        '*/page_123_post_456' => Http::response([
+            'error' => [
+                'message' => 'Unsupported delete request.',
+                'type' => 'GraphMethodException',
+                'code' => 100,
+            ],
+        ], 400),
+    ]);
+
+    expect(fn () => $this->publisher->delete($this->postPlatform))
+        ->toThrow(FacebookPublishException::class);
+});

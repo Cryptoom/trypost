@@ -259,6 +259,27 @@ enum Platform: string
         };
     }
 
+    /**
+     * Scopes required to delete/unpublish a remotely-published post. Distinct
+     * from requiredPublishScopes() because Meta gates deletion behind its own
+     * permission on top of publish access (Instagram's delete needs
+     * `instagram_manage_contents`, which the connect flow does not request
+     * for `instagram_content_publish` alone). Populated as each platform's
+     * delete() ships (see App\Actions\Post\UnpublishPost); a platform without
+     * a delete() implementation yet returns [] here because UnpublishPost
+     * routes those rows to `unsupported` before this is ever checked.
+     *
+     * @return array<string>
+     */
+    public function requiredDeleteScopes(): array
+    {
+        return match ($this) {
+            self::Facebook => ['pages_manage_posts'],
+            self::InstagramFacebook => ['instagram_manage_contents'],
+            default => [],
+        };
+    }
+
     public function supportsTextOnly(): bool
     {
         return match ($this) {
