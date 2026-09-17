@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
+use App\Exceptions\Social\LinkedInPublishException;
 use App\Exceptions\TokenExpiredException;
 use App\Models\Post;
 use App\Models\PostPlatform;
@@ -436,6 +437,55 @@ test('linkedin page publisher throws and does not post when document processing 
         ->toThrow(Exception::class, 'LinkedIn Page document processing failed');
 
     Http::assertNotSent(fn ($request) => str_contains($request->url(), '/rest/posts'));
+});
+
+test('linkedin page publisher deletes a post using the url-encoded urn', function () {
+    $this->postPlatform->update(['platform_post_id' => 'urn:li:share:1234567890']);
+
+    Http::fake([
+        config('trypost.platforms.linkedin-page.api').'/rest/posts/*' => Http::response(null, 204),
+    ]);
+
+    $this->publisher->delete($this->postPlatform);
+
+    Http::assertSent(function ($request) {
+        return $request->method() === 'DELETE'
+            && $request->url() === config('trypost.platforms.linkedin-page.api').'/rest/posts/urn%3Ali%3Ashare%3A1234567890'
+            && $request->hasHeader('Authorization')
+            && str_starts_with($request->header('Authorization')[0], 'Bearer ')
+            && $request->hasHeader('X-Restli-Protocol-Version', '2.0.0')
+            && $request->hasHeader('LinkedIn-Version')
+            && $request->hasHeader('X-RestLi-Method', 'DELETE');
+    });
+});
+
+test('linkedin page publisher treats a repeated delete on an already-deleted post as success', function () {
+    $this->postPlatform->update(['platform_post_id' => 'urn:li:share:1234567890']);
+
+    Http::fake([
+        config('trypost.platforms.linkedin-page.api').'/rest/posts/*' => Http::response(null, 204),
+    ]);
+
+    $this->publisher->delete($this->postPlatform);
+    $this->publisher->delete($this->postPlatform);
+
+    Http::assertSentCount(2);
+});
+
+test('linkedin page publisher throws when the delete api call fails', function () {
+    $this->postPlatform->update(['platform_post_id' => 'urn:li:share:1234567890']);
+
+    Http::fake([
+        config('trypost.platforms.linkedin-page.api').'/rest/posts/*' => Http::response([
+            'message' => 'Post not found',
+            'status' => 404,
+        ], 404),
+    ]);
+
+    expect(fn () => $this->publisher->delete($this->postPlatform))
+        ->toThrow(LinkedInPublishException::class);
+
+    Http::assertSentCount(1);
 });
 
 test('linkedin page publisher keeps links intact', function () {

@@ -82,6 +82,43 @@ abstract class AbstractLinkedInPublisher
         }
     }
 
+    /**
+     * Deletes an already-published LinkedIn post remotely, given the stored
+     * `platform_post_id` URN (e.g. urn:li:share:1234567890 or
+     * urn:li:ugcPost:1234567890). Per LinkedIn's Posts API docs, the URN is
+     * the last path segment and must be URL-encoded: its colons would
+     * otherwise break the path. A repeated delete on an already-deleted
+     * post is idempotent per the docs and also returns 204, which is
+     * treated as success here too.
+     */
+    public function delete(PostPlatform $postPlatform): void
+    {
+        $this->account = $postPlatform->socialAccount;
+
+        if ($this->account->needsProactiveTokenRefresh()) {
+            app(ConnectionVerifier::class)->refreshToken($this->account);
+        }
+
+        $this->accessToken = $this->account->access_token;
+
+        $encodedUrn = urlencode((string) $postPlatform->platform_post_id);
+
+        $response = $this->getHttpClient()
+            ->withHeaders(['X-RestLi-Method' => 'DELETE'])
+            ->delete("{$this->baseUrl()}/rest/posts/{$encodedUrn}");
+
+        if ($response->successful()) {
+            return;
+        }
+
+        Log::error("{$this->label()} post deletion failed", [
+            'status' => $response->status(),
+            'body' => $this->redactResponseBody($response->body()),
+        ]);
+
+        $this->handleApiError($response);
+    }
+
     private function dispatchByMedia(?string $content, PostPlatform $postPlatform): array
     {
         $media = $postPlatform->scopedMediaItems();
