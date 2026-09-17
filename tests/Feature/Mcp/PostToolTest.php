@@ -281,6 +281,38 @@ test('update post rejects instagram_carousel — carousel is not a stored conten
     $response->assertHasErrors();
 });
 
+test('update post rejects a malformed post_id with a clean validation error instead of throwing', function () {
+    $post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+    ]);
+
+    $response = TryPostServer::actingAs($this->user)
+        ->tool(UpdatePostTool::class, [
+            'post_id' => 'not-a-uuid',
+            'content' => 'updated',
+        ]);
+
+    $response->assertHasErrors();
+    expect($post->fresh()->content)->not->toBe('updated');
+});
+
+test('update post rejects a non-scalar post_id with a clean validation error instead of throwing', function () {
+    $post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+    ]);
+
+    $response = TryPostServer::actingAs($this->user)
+        ->tool(UpdatePostTool::class, [
+            'post_id' => [$post->id],
+            'content' => 'updated',
+        ]);
+
+    $response->assertHasErrors();
+    expect($post->fresh()->content)->not->toBe('updated');
+});
+
 test('create post rejects a content_type that does not match the social account platform', function () {
     // x_post on a LinkedIn account — ContentTypeMatchesPlatform should reject.
     $response = TryPostServer::actingAs($this->user)
