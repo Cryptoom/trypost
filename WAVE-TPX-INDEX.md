@@ -112,9 +112,18 @@ bis zum ersten TPX-Deploy).
 **Deploy-Freigabe 17.09.2026 (Olli, explizit im Chat)**: "darfst wenn es sauber ist selbst
 mergen und commit und push und deploy machen, dadurch schaltest du testmodus frei der auf dem
 oliver workspace testen kann mit pruefung ob gepostet und deletbar". Hebt den generellen
-Deploy-Gate-Stopp (siehe Olli-Touchpoints unten) fuer DIESEN konkreten Moment auf: TPXB-01
-(PR #14) und B1 (PR #16) nach sauberer Review-Runde selbst mergen, dann main auf web02
-deployen (etabliertes Muster: `git pull --ff-only`, `docker compose up -d --build app`,
-Health-Check), danach Live-Smoke-Test auf dem Oliver-Albrecht-Workspace (eigener, nicht
-Kunden-Account): posten und pruefen ob loeschbar. Gilt NICHT als generelle Dauerfreigabe fuer
-jeden kuenftigen Deploy dieser Welle, sondern als konkrete Freigabe fuer diesen Schritt.
+Deploy-Gate-Stopp (siehe Olli-Touchpoints unten) fuer DIESEN konkreten Moment auf. Gilt NICHT
+als generelle Dauerfreigabe fuer jeden kuenftigen Deploy dieser Welle, sondern als konkrete
+Freigabe fuer diesen Schritt.
+
+**Deploy DURCHGEFUEHRT 17.09.2026, 07:3x UTC**: `git pull --ff-only` auf `/opt/trypost/src`
+(web02), 30 Commits (A4 #13, A5 #12, B1b #15, TPXB-01 #14, B1 #16, plus Doku-Commits),
+`docker compose up -d --build app`, Migration `2026_09_17_120000_create_media_post_platform_table`
+lief automatisch beim Container-Start (Batch 4, per `migrate:status` + `\dt` in Postgres
+verifiziert). Health-Check: Container `trypost` healthy, `https://social.madevisible.io/login`
+HTTP 200, `php artisan --version` bestaetigt Laravel 13.24.0 hochgefahren. Live-Smoke-Test
+(posten + Loeschbarkeit pruefen auf dem Oliver-Albrecht-Workspace) noch NICHT durchgefuehrt,
+das MCP-Tool `trypost-playcraft` ist an den PlayCraft-Workspace gebunden, nicht an Oliver
+Albrecht, braucht einen anderen Zugriffsweg (Chrome-MCP mit Ollis eingeloggter Session oder
+eine eigene API-Key/MCP-Bindung fuer diesen Workspace). Mit Olli abzustimmen bevor real auf
+seinen verbundenen Facebook/Instagram-Accounts gepostet wird.
