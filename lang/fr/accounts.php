@@ -115,6 +115,7 @@ return [
         'description' => 'Choisissez comment connecter votre compte Instagram',
         'standalone_title' => 'Instagram Login',
         'standalone_description' => 'Connectez-vous avec votre compte Instagram professionnel',
+        'standalone_delete_notice' => 'Les publications faites via cette méthode ne pourront pas être supprimées ni dépubliées par la suite.',
         'facebook_title' => 'Pages Facebook',
         'facebook_description' => 'Connectez un compte Instagram lié à une page Facebook',
     ],

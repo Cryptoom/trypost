@@ -115,6 +115,7 @@ return [
         'description' => 'Choose how you want to connect your Instagram account',
         'standalone_title' => 'Instagram Login',
         'standalone_description' => 'Sign in with your Instagram professional account',
+        'standalone_delete_notice' => "Posts published this way can't be deleted or unpublished later.",
         'facebook_title' => 'Facebook Pages',
         'facebook_description' => 'Connect an Instagram account linked to a Facebook Page',
     ],

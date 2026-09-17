@@ -115,6 +115,7 @@ return [
         'description' => 'Wybierz sposób połączenia konta Instagram',
         'standalone_title' => 'Instagram Login',
         'standalone_description' => 'Zaloguj się kontem profesjonalnym Instagram',
+        'standalone_delete_notice' => 'Postów opublikowanych w ten sposób nie będzie można później usunąć ani cofnąć publikacji.',
         'facebook_title' => 'Strony na Facebooku',
         'facebook_description' => 'Połącz konto Instagram powiązane ze stroną na Facebooku',
     ],

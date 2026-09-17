@@ -115,6 +115,7 @@ return [
         'description' => 'Επιλέξτε πώς θέλετε να συνδέσετε τον λογαριασμό Instagram',
         'standalone_title' => 'Instagram Login',
         'standalone_description' => 'Συνδεθείτε με τον επαγγελματικό λογαριασμό Instagram',
+        'standalone_delete_notice' => 'Οι αναρτήσεις που δημοσιεύονται με αυτόν τον τρόπο δεν μπορούν να διαγραφούν ή να αποδημοσιευθούν αργότερα.',
         'facebook_title' => 'Σελίδες Facebook',
         'facebook_description' => 'Συνδέστε έναν λογαριασμό Instagram συνδεδεμένο με σελίδα Facebook',
     ],

@@ -117,6 +117,7 @@ return [
         'description' => 'Wähle, wie du dein Instagram-Konto verbinden möchtest',
         'standalone_title' => 'Instagram Login',
         'standalone_description' => 'Melde dich mit deinem professionellen Instagram-Konto an',
+        'standalone_delete_notice' => 'Beiträge, die auf diesem Weg veröffentlicht werden, können später nicht gelöscht oder zurückgezogen werden.',
         'facebook_title' => 'Facebook-Seiten',
         'facebook_description' => 'Verbinde ein Instagram-Konto, das mit einer Facebook-Seite verknüpft ist',
     ],

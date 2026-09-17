@@ -115,6 +115,7 @@ return [
         'description' => 'Instagram アカウントの接続方法を選択してください',
         'standalone_title' => 'Instagram Login',
         'standalone_description' => 'Instagram のプロフェッショナルアカウントでサインイン',
+        'standalone_delete_notice' => 'この方法で公開した投稿は、後から削除したり非公開に戻したりできません。',
         'facebook_title' => 'Facebook ページ',
         'facebook_description' => 'Facebook ページに連携された Instagram アカウントを接続',
     ],

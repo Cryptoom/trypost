@@ -115,6 +115,7 @@ return [
         'description' => '选择连接 Instagram 账号的方式',
         'standalone_title' => 'Instagram Login',
         'standalone_description' => '使用你的 Instagram 专业账号登录',
+        'standalone_delete_notice' => '以此方式发布的帖子之后将无法删除或取消发布。',
         'facebook_title' => 'Facebook 主页',
         'facebook_description' => '连接关联到 Facebook 主页的 Instagram 账号',
     ],
