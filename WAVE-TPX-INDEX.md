@@ -25,7 +25,10 @@ Status-Symbole: ✓ done · 🚀 deployed · ⏳ in_progress · ❓ waiting · �
 
 ## Active Chips
 
-(keine gerade · B0 abgeschlossen, B1 als naechstes)
+| Chip | Paket | Status | Started | Worktree/Branch |
+|---|---|---|---|---|
+| TPX-10 | B1 · UnpublishPost + DeletePost | ⏳ in_progress | 2026-09-17 | claude/tpx-10-b1-unpublish-core |
+| TPX-B1b | B1b · Instagram-Connect-Modal-Hinweis (NEU, Olli-Anlass 17.09.2026) | ⏳ in_progress | 2026-09-17 | claude/tpx-b1b-ig-modal-hint |
 
 ## Pending (Startreihenfolge)
 
@@ -88,7 +91,7 @@ Status-Symbole: ✓ done · 🚀 deployed · ⏳ in_progress · ❓ waiting · �
 | Threads-App-Review (nach B0) | offen, B2b geparkt | `threads_delete`-Scope fehlt im Code (muss ergaenzt werden), App-Review-Freigabestatus im Meta Dashboard nicht per Code pruefbar, Olli-Login noetig |
 | **NEU: Threads-Host-Diskrepanz** | offen, potenziell dringend | B0-Fund: Code nutzt `graph.threads.net` (`config/trypost.php`), die AKTUELLE Meta-Doku (mehrfach konsistent gefetcht 17.09.2026) zeigt durchgaengig `graph.threads.com`. Koennte den BESTEHENDEN Threads-Publish-Pfad betreffen, nicht nur das neue Delete-Feature. Braucht einen echten Testcall zur Klaerung, nicht nur Doku-Lesen |
 | Facebook "nur ausgewaehlte Entwickler"-Warnung (B0) | offen, vor B2a | Wortlaut auf der offiziellen Page-Post-Delete-Doku: "Only select developers can perform this operation using the API." Unklar ob Boilerplate oder echte Einschraenkung, Smoke-Test vor B2a-Aufwand klaert es |
-| Instagram Delete gilt nur fuer Facebook-Login-Accounts (B0) | Produktfrage | Der direkte Instagram-Login-Kontotyp (eigene Scopes) ist laut Doku von Delete ausgeschlossen. Eigener Unsupported-Pfad wie TikTok, oder laeuft dieser Login-Typ perspektivisch aus? Olli-Entscheidung vor B1/B3 |
+| Instagram Delete gilt nur fuer Facebook-Login-Accounts (B0) | GEKLAERT 17.09.2026 | Olli-Entscheid: sauberer Unsupported-Pfad fuer `Platform::Instagram` (direct login) analog TikTok, `Platform::InstagramFacebook` bekommt echtes delete(). Siehe Plan OLLI-ENTSCHEIDE Runde 4 Punkt 9. Betrifft B2a/B3 |
 | B4-Produktfrage | offen | Delete-von-Published im Web-UI freischalten oder nur Unpublish? Vor B4 fragen |
 | U1-Freigabe | offen | Issue-Kommentar + PR-Text sieht Olli vor dem Absenden |
 | Separater Upstream-PR fuer publishStory()-Fix (a30d83c2) | offen | Sofort machbar, unabhaengig von U1, Olli-OK vor Absenden |
