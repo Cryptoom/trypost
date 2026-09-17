@@ -28,7 +28,7 @@ Status-Symbole: ✓ done · 🚀 deployed · ⏳ in_progress · ❓ waiting · �
 | Chip | Paket | Status | Started | Worktree/Branch |
 |---|---|---|---|---|
 | TPX-10 | B1 · UnpublishPost + DeletePost | ⏳ in_progress | 2026-09-17 | claude/tpx-10-b1-unpublish-core |
-| TPX-B1b | B1b · Instagram-Connect-Modal-Hinweis (NEU, Olli-Anlass 17.09.2026) | ⏳ in_progress | 2026-09-17 | claude/tpx-b1b-ig-modal-hint |
+| TPX-B1b | B1b · Instagram-Connect-Modal-Hinweis (NEU, Olli-Anlass 17.09.2026) | 🔍 PR #15 offen, Review laeuft. Chip behauptete faelschlich "kein PHP 8.4+ auf der Maschine" (Grund: `php`-Zsh-Alias auf MAMP 8.3.30 nie umgangen, `unalias php` + `.env` aus `.env.testing` fehlten). Orchestrator hat LocalizationParityTest (18/18) + `npm run build` selbst nachgeholt, beide gruen | 2026-09-17 | claude/tpx-b1b-ig-modal-hint |
 
 ## Pending (Startreihenfolge)
 
