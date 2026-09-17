@@ -14,23 +14,23 @@
 > Handoff 2026-09-17: TPX-00 (urspruengliche Orchestrator-Session) offenbar nach Usage-Limit
 > idle. Diese Session (trypost-fork-46) hat die Orchestrierung auf Olli-Anweisung uebernommen,
 > lokalen main per Fast-Forward auf origin/main synchronisiert (war 12 Commits hinterher),
-> Plan + Nachtgate erneut gelesen. Uebernommen Stand: A4 (PR #13) noch ohne Review-Runde, A5
-> (PR #12) Fix fuer beide Runde-1-Findings ist gepusht (`ad169c54`), noch ohne Runde-2-Review.
+> Plan + Nachtgate erneut gelesen. **Welle A jetzt komplett gemergt** (A4 #13, A5 #12), inkl.
+> eines echten Merge-Konflikts zwischen A4 und A5 in `UpdatePost.php` (unabhaengig doppelt
+> gebaute `media_ids`-Sync-Logik), manuell aufgeloest und breit re-getestet. Naechster Schritt
+> laut Plan: B0 (Nachweis-Paket, kein Code). Pausiert hier fuer Olli-Ruecksprache statt
+> automatisch weiterzulaufen, da Welle-A-Ende ein sinnvoller Checkpoint ist.
 
 Status-Symbole: ✓ done · 🚀 deployed · ⏳ in_progress · ❓ waiting · 🔄 pending · ⛔ blocked ·
 ❌ failed · 🔍 review · 📝 discovered
 
 ## Active Chips
 
-| Chip | Paket | Status | Started | Worktree/Branch |
-|---|---|---|---|---|
-| TPX-08 | A5 · Vue-UI | 🔍 Design-Runde 2 PASS, Code-Runde 2 NEEDS-WORK (fehlender Test), Test-Fix laeuft | 2026-09-17 | claude/tpx-08-a5-vue-ui |
+(keine · Welle A vollstaendig gemergt, 2026-09-17)
 
 ## Pending (Startreihenfolge)
 
 | Chip | Paket | Status | Dependencies | Branch/PR | Plan/Real |
 |---|---|---|---|---|---|
-| TPX-08 | A5 · Vue-UI | ⏳ (siehe oben) | ✓ A1 gemergt | - | - |
 | TPX-09 | B0 · Nachweis-Paket | 🔄 pending | Welle A komplett gemergt | - | - |
 | TPX-10 | B1 · UnpublishPost + DeletePost | 🔄 pending | B0 | - | - |
 | TPX-11 | B2a · Facebook/Instagram delete() | 🔄 pending | B0, B1, A3 | - | - |
@@ -45,6 +45,7 @@ Status-Symbole: ✓ done · 🚀 deployed · ⏳ in_progress · ❓ waiting · �
 
 | Chip | Paket | PR | Merge-Commit | Notiz |
 |---|---|---|---|---|
+| TPX-08 | A5 · Vue-UI | [#12](https://github.com/Cryptoom/trypost/pull/12) | `dfb7a055` | `MediaAssignmentGrid.vue` (neu) plus `ChannelConfigurator.vue`-Integration, per-Plattform Media-Toggle-Grid. Design-Runde 1 NEEDS-WORK (fehlender Card-Wrapper) + Code-Runde 1 Fund (Toggle-Bug: letztes Item abwaehlen kippte auf "alle an" zurueck), beides gefixt (`ad169c54`). Design-Runde 2 PASS. Code-Runde 2 NEEDS-WORK (fehlender Regressionstest fuer den Toggle-Fix), Test ergaenzt (`tests/Browser/MediaAssignmentGridTest.php`, `f42c0546`), Code-Runde 3 PASS inkl. Mutationstest (Guard deaktiviert -> Test schlaegt korrekt fehl, zurueckgesetzt -> gruen). Echter Merge-Konflikt gegen A4 in `UpdatePost.php` (beide PRs implementierten unabhaengig dieselbe `media_ids`-Sync-Logik), manuell aufgeloest (A5s Variante ohne redundanten Re-Fetch von `$postPlatform` behalten), 1003/1003 Post-Sweep + Browser-Test danach gruen. Autonom gemergt (Nachtmodus, Handoff-Session trypost-fork-46) |
 | TPX-07 | A4 · MCP-Tool-Parameter | [#13](https://github.com/Cryptoom/trypost/pull/13) | `f3214f59` | `post_platform_ids` an 3 Attach-Tools, `platforms.*.media_ids` mit Sync-Semantik an `UpdatePostTool` (`Arr::has()`-Unterscheidung weggelassen/leer/gefuellt). IDOR-Schutz mehrfach getestet. Runde 1 PASS mit "Wichtig"-Fund (post_id-Lookup vor Validierung in 3 Attach-Tools, Crash-Risiko bei malformed/Array-post_id), gefixt (`60627d58`), Runde 2 PASS. Autonom gemergt (Nachtmodus, Handoff-Session trypost-fork-46). Nebenfund (nicht gefixt, vorbestehend, nicht Teil dieser PR): `UpdatePostTool.php` hat denselben Bug, als Backlog-Chip TPXB-01 vorgemerkt |
 | TPX-04 | A1 · Migration + Model + Media-ID-Fix | [#9](https://github.com/Cryptoom/trypost/pull/9) | `877a2a9c` | `media_post_platform`-Pivot (uuid), `MediaPostPlatform`-Custom-Pivot-Model (`HasUuids`), `PostPlatform::media()`+`scopedMediaItems()`. TPX-03-Fix workspace-gescoped ueber `medias.mediable_type`/`mediable_id` (polymorph, KEINE literale workspace_id-Spalte, Abweichung vom Briefing-Wortlaut zugunsten der verifizierten TPX-03-Implementierung). 975/975 Post-Tests, 367/367 Mcp-Tests, 2 Review-Runden PASS, autonom gemergt (Nachtmodus) |
 | TPX-06 | A3 · Publisher-Rollout | [#10](https://github.com/Cryptoom/trypost/pull/10) | `f411d274` | 12 Dateien geaendert (Plan-Liste nannte nur 9, `DiscordPublisher.php`+`TelegramPublisher.php` fehlten in der Plan-Liste, per Grep gefunden und mitgefixt), 16 Call-Site-Ersetzungen. `mediaSnapshot()` bewusst unveraendert. 420/420 Publisher-Tests gruen, 1 Review-Runde PASS, autonom gemergt |
