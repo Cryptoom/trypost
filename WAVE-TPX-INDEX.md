@@ -25,13 +25,14 @@ Status-Symbole: ✓ done · 🚀 deployed · ⏳ in_progress · ❓ waiting · �
 
 ## Active Chips
 
-(keine · Welle A vollstaendig gemergt, 2026-09-17)
+| Chip | Paket | Status | Started | Worktree/Branch |
+|---|---|---|---|---|
+| TPX-09 | B0 · Nachweis-Paket | ⏳ in_progress (investigator) | 2026-09-17 | - (read-only, Hauptrepo) |
 
 ## Pending (Startreihenfolge)
 
 | Chip | Paket | Status | Dependencies | Branch/PR | Plan/Real |
 |---|---|---|---|---|---|
-| TPX-09 | B0 · Nachweis-Paket | 🔄 pending | Welle A komplett gemergt | - | - |
 | TPX-10 | B1 · UnpublishPost + DeletePost | 🔄 pending | B0 | - | - |
 | TPX-11 | B2a · Facebook/Instagram delete() | 🔄 pending | B0, B1, A3 | - | - |
 | TPX-12 | B2b · Threads delete() | 🔄 pending | B0, B1, A3, Threads-Gate | - | - |
