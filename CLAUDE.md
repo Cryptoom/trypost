@@ -312,6 +312,17 @@ not reintroduce either. What still holds:
 - `accounts.popup_callback.network_taken` / `accounts.telegram.network_taken` stay
  in the lang files because `NetworkAlreadyConnectedException` still uses the key
  for a reconnect that collides on the unique identity index.
+- **`Platform::Instagram` (direct Instagram login) and `Platform::InstagramFacebook`
+  (Facebook Page login) both dispatch to the SAME `InstagramPublisher` instance**
+  (`PublishToSocialPlatform::getPublisher()`: `SocialPlatform::Instagram,
+  SocialPlatform::InstagramFacebook => app(InstagramPublisher::class)`). Any capability
+  check that inspects the resolved publisher object itself (e.g. `method_exists($publisher,
+  'delete')`) cannot tell the two platform types apart, they are literally the same
+  instance. Direct Instagram login intentionally has narrower API support than
+  Facebook-Page-connected Instagram (e.g. the Delete API only documents
+  "Instagram API with Facebook Login", not the standalone login), so anything gating a
+  feature on publisher capability must check the `Platform` enum case first, before or
+  instead of probing the publisher object.
 
 ## UI locale (`users.locale`)
 
@@ -557,6 +568,33 @@ docker compose -f compose.test.yml -p trypost-test down -v
   ```bash
   APP_ENV=testing php artisan passport:keys --force
   ```
+- **On this Mac, `php` on `$PATH` is a zsh alias to MAMP's PHP 8.3.30, not a real PATH
+  binary** (`composer.json` requires `^8.2` but the installed `vendor/` in this repo needs
+  `>=8.4.1` at the language-syntax level). A bare `php`/`vendor/bin/pest` call inherits the
+  alias in an interactive shell and silently runs the wrong major version, or in a
+  non-interactive/subprocess context (npm scripts, some agent shells) resolves to whichever
+  `php` happens to be first on `$PATH`, which is also often 8.3.x. Two chips in the same
+  session hit this and wrongly concluded "no PHP 8.4+ on this machine" before finding the
+  real binary. Fix: `unalias php 2>/dev/null` first if in an interactive shell, then use the
+  full path explicitly, every time:
+  ```bash
+  unalias php 2>/dev/null
+  /Applications/MAMP/bin/php/php8.5.2/bin/php artisan ...
+  APP_ENV=testing /Applications/MAMP/bin/php/php8.5.2/bin/php vendor/bin/pest --compact
+  ```
+  Check `/Applications/MAMP/bin/php/` for the newest available `php8.4.x`/`php8.5.x`
+  directory if this exact version has moved on.
+- **A freshly created `git worktree` has no `.env` file** (only `.env.testing`, which is
+  tracked). `php artisan test` fails early inside the full console-kernel boot (see above),
+  but so does anything that needs a real `.env` to boot at all: `php artisan
+  wayfinder:generate` (used by `npm run build`) fails with `rtrim(): Argument #1 ($string)
+  must be of type string, null given` in `filesystems.php`, and Vite embeds
+  `VITE_REVERB_APP_KEY` etc. at build time, so without it the Echo/Pusher client throws
+  during page setup and every Inertia page renders blank in a browser test. Fix once per
+  worktree: `cp .env.testing .env && php artisan key:generate --force` (both gitignored, do
+  not commit). For a build that also touches Reverb-dependent pages, add
+  `REVERB_APP_KEY`/`VITE_REVERB_APP_KEY` (and the matching secret/host/port pair) to that
+  local `.env` too.
 
 ## Browser Tests (Pest + Playwright)
 
