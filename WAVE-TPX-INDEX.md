@@ -25,16 +25,22 @@ Status-Symbole: ✓ done · 🚀 deployed · ⏳ in_progress · ❓ waiting · �
 
 ## Active Chips
 
-| Chip | Paket | Status | Started | Worktree/Branch |
-|---|---|---|---|---|
-| TPX-10 | B1 · UnpublishPost + DeletePost | 🔍 PR #16 offen, Review-Runde 1 laeuft | 2026-09-17 | claude/tpx-10-b1-unpublish-core |
+(keine gerade · Deploy auf web02 laeuft, siehe Deploy-Status)
 
 ## Pending (Startreihenfolge)
 
+**Pflicht-Nacharbeit VOR B2a-d** (aus B1-Review, siehe Completed-Tabelle): (1) `UnpublishPost::updatePostStatus()`
+nutzt bei Teil-Erfolg `Post::markAsPartiallyPublished()` zweckentfremdet, das setzt `published_at`
+faelschlich auf den Unpublish-Zeitpunkt statt ihn unangetastet zu lassen. (2) `method_exists($publisher,
+'delete')` prueft keine Sichtbarkeit, sollte bei neuen Implementierungen entweder `delete()` konsequent
+`public` halten oder per `ReflectionMethod::isPublic()` absichern. Beides aktuell folgenlos (Erfolgspfad ist
+noch dead code, 0 Publisher haben `delete()`), wird aber SCHARF sobald der erste B2a-d-Chip eine echte
+`delete()`-Methode liefert. Der jeweilige B2a-d-Chip MUSS Punkt 1 mitfixen (eine Zeile), bevor sein PR
+gemergt wird.
+
 | Chip | Paket | Status | Dependencies | Branch/PR | Plan/Real |
 |---|---|---|---|---|---|
-| TPX-10 | B1 · UnpublishPost + DeletePost | 🔄 pending, naechster Schritt | B0 ✓ | - | - |
-| TPX-11 | B2a · Facebook/Instagram delete() | 🔄 pending, 2 offene Olli-Gates (Facebook "select developers"-Warnung, Instagram POST/DELETE-Doku-Widerspruch, beide per Smoke-Test klaerbar) | B0, B1, A3 | - | - |
+| TPX-11 | B2a · Facebook/Instagram delete() | 🔄 pending, 2 offene Olli-Gates (Facebook "select developers"-Warnung, Instagram POST/DELETE-Doku-Widerspruch, beide per Smoke-Test klaerbar) | B0, B1 ✓, A3 | - | - |
 | TPX-12 | B2b · Threads delete() | ⛔ geparkt (Plan-Vorgabe: B0 hat threads_delete-Permission NICHT bestaetigen koennen, Olli-Login noetig). Zusaetzlich Host-Diskrepanz gefunden, siehe Olli-Gates | B0, B1, A3, Threads-Gate | - | - |
 | TPX-13 | B2c · LinkedIn delete() | 🔄 pending | B0, B1, A3 | - | - |
 | TPX-14 | B2d · YouTube delete() | 🔄 pending | B0, B1, A3, YouTube-Scope-Gate | - | - |
@@ -46,6 +52,7 @@ Status-Symbole: ✓ done · 🚀 deployed · ⏳ in_progress · ❓ waiting · �
 
 | Chip | Paket | PR | Merge-Commit | Notiz |
 |---|---|---|---|---|
+| TPX-10 | B1 · UnpublishPost + DeletePost | [#16](https://github.com/Cryptoom/trypost/pull/16) | `e81bc05c` | Neue `UnpublishPost.php`, `Post::markAsUnpublished()`, `PostPlatform::markAsUnpublished()`, `DeletePost::execute()` ruft Unpublish jetzt als ersten Schritt (best-effort). Bewusste Design-Abweichung vom Plan: `method_exists($publisher, 'delete')` statt hartem `match`, damit B2a-d ihre `delete()`-Methoden ergaenzen koennen ohne `UnpublishPost.php` nochmal anzufassen. TikTok-Negativtest auf beiden Ebenen (Unpublish + Delete). Review PASS mit 2 "Wichtig"-Funden (siehe Pflicht-Nacharbeit-Hinweis oben), aktuell folgenlos da Erfolgspfad noch dead code (0 Publisher haben delete()). 36 neue Tests, 1015/1015 breiter Post-Sweep gruen (nach migrate:fresh, erster Lauf zeigte Schema-Drift im geteilten Test-Container, Infra-Rauschen). Olli hat den Nachtmodus-Gate-Stopp fuer diesen Merge explizit aufgehoben, autonom gemergt |
 | TPXB-01 | UpdatePostTool post_id-Validierungsreihenfolge | [#14](https://github.com/Cryptoom/trypost/pull/14) | `07ca0469` | Vom Olli-gestarteten Backlog-Chip (task_fe146be6) gebaut, identisches Fix-Muster wie A4 (`60627d58`), diesmal auf `UpdatePostTool.php`. Review verifizierte per Revert-Test, dass die 2 neuen Regressionstests den Bug wirklich fangen (malformed post_id wirft ohne Fix eine echte QueryException). 308/308 Mcp-Tests gruen. Olli hat den Nachtmodus-Gate-Stopp fuer diesen Merge explizit aufgehoben ("darfst wenn es sauber ist selbst mergen"), autonom gemergt |
 | TPX-B1b | B1b · Instagram-Connect-Modal-Hinweis | [#15](https://github.com/Cryptoom/trypost/pull/15) | `468484b9` | NEU, Olli-Anlass 17.09.2026. Amber-Hinweis unter dem direkten Instagram-Login-Button, 16 Locales uebersetzt. Chip behauptete faelschlich "kein PHP 8.4+ auf der Maschine" (Zsh-Alias-Falle, `unalias php` + fehlende `.env` nie geloest), Orchestrator hat LocalizationParityTest (18/18) + `npm run build` selbst nachgeholt und gruen bekommen. Design-Review PASS (Amber-Konvention exakt getroffen, 16/16 Locales verifiziert, Uebersetzungen stichprobenartig gegengelesen). Autonom gemergt |
 | TPX-09 | B0 · Nachweis-Paket | kein PR (nur Recherche) | - | Facebook: `platform_post_id`-Format variiert je Content-Type (Feed=Komposit `{page}_{post}`, Video/Reel/Story=bare ID), DELETE braucht Komposit-Form. Instagram: Carousel-`platform_post_id`=Parent-Container bestaetigt, `instagram_manage_contents`-Scope FEHLT aktuell, Delete gilt laut Doku NUR fuer Facebook-Login-Instagram-Accounts (nicht fuer den direkten Instagram-Login-Typ). Threads: `threads_delete`-Scope fehlt aktuell, App-Review-Status nicht pruefbar (Olli-Gate). YouTube: `youtube.force-ssl` ist BEREITS im aktuell angeforderten Scope-Set, nur Bestandsaccounts vor diesem Scope ungeklaert. LinkedIn: URN aus `x-restli-id`-Header (nicht Body), DELETE laut Doku idempotent (204 bei Wiederholung), kein separater Delete-Scope dokumentiert. Bonus-Fund: `Platform::requiredPublishScopes()` + `failForMissingScopes()`-Gate existieren schon als Vorlage fuer ein analoges `requiredDeleteScopes()`. **7 Olli-Gates dokumentiert, siehe Abschnitt unten**, darunter eine potenziell kritische Threads-Host-Diskrepanz (`graph.threads.net` im Code vs. `graph.threads.com` in der aktuellen Meta-Doku), die auch den BESTEHENDEN Threads-Publish-Pfad betreffen koennte, nicht nur Delete |
