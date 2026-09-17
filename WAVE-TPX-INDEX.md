@@ -25,17 +25,15 @@ Status-Symbole: ✓ done · 🚀 deployed · ⏳ in_progress · ❓ waiting · �
 
 ## Active Chips
 
-| Chip | Paket | Status | Started | Worktree/Branch |
-|---|---|---|---|---|
-| TPX-09 | B0 · Nachweis-Paket | ⏳ in_progress (investigator) | 2026-09-17 | - (read-only, Hauptrepo) |
+(keine gerade · B0 abgeschlossen, B1 als naechstes)
 
 ## Pending (Startreihenfolge)
 
 | Chip | Paket | Status | Dependencies | Branch/PR | Plan/Real |
 |---|---|---|---|---|---|
-| TPX-10 | B1 · UnpublishPost + DeletePost | 🔄 pending | B0 | - | - |
-| TPX-11 | B2a · Facebook/Instagram delete() | 🔄 pending | B0, B1, A3 | - | - |
-| TPX-12 | B2b · Threads delete() | 🔄 pending | B0, B1, A3, Threads-Gate | - | - |
+| TPX-10 | B1 · UnpublishPost + DeletePost | 🔄 pending, naechster Schritt | B0 ✓ | - | - |
+| TPX-11 | B2a · Facebook/Instagram delete() | 🔄 pending, 2 offene Olli-Gates (Facebook "select developers"-Warnung, Instagram POST/DELETE-Doku-Widerspruch, beide per Smoke-Test klaerbar) | B0, B1, A3 | - | - |
+| TPX-12 | B2b · Threads delete() | ⛔ geparkt (Plan-Vorgabe: B0 hat threads_delete-Permission NICHT bestaetigen koennen, Olli-Login noetig). Zusaetzlich Host-Diskrepanz gefunden, siehe Olli-Gates | B0, B1, A3, Threads-Gate | - | - |
 | TPX-13 | B2c · LinkedIn delete() | 🔄 pending | B0, B1, A3 | - | - |
 | TPX-14 | B2d · YouTube delete() | 🔄 pending | B0, B1, A3, YouTube-Scope-Gate | - | - |
 | TPX-15 | B3 · MCP UnpublishPostTool | 🔄 pending | B1 | - | - |
@@ -46,6 +44,7 @@ Status-Symbole: ✓ done · 🚀 deployed · ⏳ in_progress · ❓ waiting · �
 
 | Chip | Paket | PR | Merge-Commit | Notiz |
 |---|---|---|---|---|
+| TPX-09 | B0 · Nachweis-Paket | kein PR (nur Recherche) | - | Facebook: `platform_post_id`-Format variiert je Content-Type (Feed=Komposit `{page}_{post}`, Video/Reel/Story=bare ID), DELETE braucht Komposit-Form. Instagram: Carousel-`platform_post_id`=Parent-Container bestaetigt, `instagram_manage_contents`-Scope FEHLT aktuell, Delete gilt laut Doku NUR fuer Facebook-Login-Instagram-Accounts (nicht fuer den direkten Instagram-Login-Typ). Threads: `threads_delete`-Scope fehlt aktuell, App-Review-Status nicht pruefbar (Olli-Gate). YouTube: `youtube.force-ssl` ist BEREITS im aktuell angeforderten Scope-Set, nur Bestandsaccounts vor diesem Scope ungeklaert. LinkedIn: URN aus `x-restli-id`-Header (nicht Body), DELETE laut Doku idempotent (204 bei Wiederholung), kein separater Delete-Scope dokumentiert. Bonus-Fund: `Platform::requiredPublishScopes()` + `failForMissingScopes()`-Gate existieren schon als Vorlage fuer ein analoges `requiredDeleteScopes()`. **7 Olli-Gates dokumentiert, siehe Abschnitt unten**, darunter eine potenziell kritische Threads-Host-Diskrepanz (`graph.threads.net` im Code vs. `graph.threads.com` in der aktuellen Meta-Doku), die auch den BESTEHENDEN Threads-Publish-Pfad betreffen koennte, nicht nur Delete |
 | TPX-08 | A5 · Vue-UI | [#12](https://github.com/Cryptoom/trypost/pull/12) | `dfb7a055` | `MediaAssignmentGrid.vue` (neu) plus `ChannelConfigurator.vue`-Integration, per-Plattform Media-Toggle-Grid. Design-Runde 1 NEEDS-WORK (fehlender Card-Wrapper) + Code-Runde 1 Fund (Toggle-Bug: letztes Item abwaehlen kippte auf "alle an" zurueck), beides gefixt (`ad169c54`). Design-Runde 2 PASS. Code-Runde 2 NEEDS-WORK (fehlender Regressionstest fuer den Toggle-Fix), Test ergaenzt (`tests/Browser/MediaAssignmentGridTest.php`, `f42c0546`), Code-Runde 3 PASS inkl. Mutationstest (Guard deaktiviert -> Test schlaegt korrekt fehl, zurueckgesetzt -> gruen). Echter Merge-Konflikt gegen A4 in `UpdatePost.php` (beide PRs implementierten unabhaengig dieselbe `media_ids`-Sync-Logik), manuell aufgeloest (A5s Variante ohne redundanten Re-Fetch von `$postPlatform` behalten), 1003/1003 Post-Sweep + Browser-Test danach gruen. Autonom gemergt (Nachtmodus, Handoff-Session trypost-fork-46) |
 | TPX-07 | A4 · MCP-Tool-Parameter | [#13](https://github.com/Cryptoom/trypost/pull/13) | `f3214f59` | `post_platform_ids` an 3 Attach-Tools, `platforms.*.media_ids` mit Sync-Semantik an `UpdatePostTool` (`Arr::has()`-Unterscheidung weggelassen/leer/gefuellt). IDOR-Schutz mehrfach getestet. Runde 1 PASS mit "Wichtig"-Fund (post_id-Lookup vor Validierung in 3 Attach-Tools, Crash-Risiko bei malformed/Array-post_id), gefixt (`60627d58`), Runde 2 PASS. Autonom gemergt (Nachtmodus, Handoff-Session trypost-fork-46). Nebenfund (nicht gefixt, vorbestehend, nicht Teil dieser PR): `UpdatePostTool.php` hat denselben Bug, als Backlog-Chip TPXB-01 vorgemerkt |
 | TPX-04 | A1 · Migration + Model + Media-ID-Fix | [#9](https://github.com/Cryptoom/trypost/pull/9) | `877a2a9c` | `media_post_platform`-Pivot (uuid), `MediaPostPlatform`-Custom-Pivot-Model (`HasUuids`), `PostPlatform::media()`+`scopedMediaItems()`. TPX-03-Fix workspace-gescoped ueber `medias.mediable_type`/`mediable_id` (polymorph, KEINE literale workspace_id-Spalte, Abweichung vom Briefing-Wortlaut zugunsten der verifizierten TPX-03-Implementierung). 975/975 Post-Tests, 367/367 Mcp-Tests, 2 Review-Runden PASS, autonom gemergt (Nachtmodus) |
@@ -85,8 +84,11 @@ Status-Symbole: ✓ done · 🚀 deployed · ⏳ in_progress · ❓ waiting · �
 
 | Gate | Status | Notiz |
 |---|---|---|
-| YouTube-Scope-Gate (nach B0) | offen | Falls `youtube.force-ssl` fehlt: Re-Consent-Entscheidung noetig, Olli entscheidet ob/wann |
-| Threads-App-Review (nach B0) | offen | Falls `threads_delete` nicht freigegeben: B2b parken, Olli macht Meta-App-Dashboard-Antrag |
+| YouTube-Scope-Gate (nach B0) | GROSSTEILS GEKLAERT | B0-Fund: `youtube.force-ssl` wird bereits im AKTUELLEN Connect-Flow angefordert (kein Code-Fix noetig fuer neue Accounts). Offen bleibt nur: haben ALTE Bestandsaccounts (vor Hinzufuegen dieses Scopes) ihn tatsaechlich, DB-Check noetig, bewusst nicht in B0 gemacht (Produktions-DB, kein Read-only-Recherche-Scope) |
+| Threads-App-Review (nach B0) | offen, B2b geparkt | `threads_delete`-Scope fehlt im Code (muss ergaenzt werden), App-Review-Freigabestatus im Meta Dashboard nicht per Code pruefbar, Olli-Login noetig |
+| **NEU: Threads-Host-Diskrepanz** | offen, potenziell dringend | B0-Fund: Code nutzt `graph.threads.net` (`config/trypost.php`), die AKTUELLE Meta-Doku (mehrfach konsistent gefetcht 17.09.2026) zeigt durchgaengig `graph.threads.com`. Koennte den BESTEHENDEN Threads-Publish-Pfad betreffen, nicht nur das neue Delete-Feature. Braucht einen echten Testcall zur Klaerung, nicht nur Doku-Lesen |
+| Facebook "nur ausgewaehlte Entwickler"-Warnung (B0) | offen, vor B2a | Wortlaut auf der offiziellen Page-Post-Delete-Doku: "Only select developers can perform this operation using the API." Unklar ob Boilerplate oder echte Einschraenkung, Smoke-Test vor B2a-Aufwand klaert es |
+| Instagram Delete gilt nur fuer Facebook-Login-Accounts (B0) | Produktfrage | Der direkte Instagram-Login-Kontotyp (eigene Scopes) ist laut Doku von Delete ausgeschlossen. Eigener Unsupported-Pfad wie TikTok, oder laeuft dieser Login-Typ perspektivisch aus? Olli-Entscheidung vor B1/B3 |
 | B4-Produktfrage | offen | Delete-von-Published im Web-UI freischalten oder nur Unpublish? Vor B4 fragen |
 | U1-Freigabe | offen | Issue-Kommentar + PR-Text sieht Olli vor dem Absenden |
 | Separater Upstream-PR fuer publishStory()-Fix (a30d83c2) | offen | Sofort machbar, unabhaengig von U1, Olli-OK vor Absenden |
