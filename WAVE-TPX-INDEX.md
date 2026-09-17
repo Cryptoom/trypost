@@ -77,7 +77,19 @@ abbrechen (kein console.error), brach auch den bereits gemergten `MediaAssignmen
 reversibel), konsistent zu Delete. Disabled-State visuell erkennbar (`data-[disabled]:opacity-50`),
 Tooltip-Ton konsistent zu B1b. 16/16 Locales stichprobenartig gegengelesen, idiomatisch nicht
 maschinell kopiert. Kein Browser-Screenshot moeglich (PHP-Alias-Falle in dieser Review-Session),
-Urteil auf Code-/Tailwind-Analyse gestuetzt. Code-Review noch offen.
+Urteil auf Code-/Tailwind-Analyse gestuetzt.
+**Code-Review PASS**, verifiziert (Autorisierung, `DELETE_BLOCKED_STATUSES`-Reduktion stimmt mit
+`Api\PostController::destroy()` ueberein, Mixed-Platform-Logik korrekt, IDOR-Test vorhanden, alle
+Tests selbst gruen bestaetigt). **Wichtiger Merge-Reihenfolge-Fund**: `Index.vue` nutzt eine
+EIGENE statische Liste (`UNPUBLISH_UNSUPPORTED_PLATFORMS = ['tiktok','instagram']`), nicht dieselbe
+Erkennung wie Backend `UnpublishPost::resolveDeletePublisher()`. Solange B4 OHNE B2a/c/d live geht,
+zeigt die UI fuer JEDEN Post mit Facebook/LinkedIn/YouTube/etc. den Unpublish-Button als aktiviert,
+obwohl das Backend noch fuer jede dieser Plattformen `unsupported` liefert (0 Publisher haben
+aktuell `delete()`). Kein Datenverlust, aber irrefuehrend (Button verspricht eine Faehigkeit die
+noch fehlt). **Empfehlung: B4 NICHT vor B2a/c/d live schalten**, sondern zusammen oder danach.
+Zwei kleinere, aktuell unerreichbare Nicht-Blocker: `unpublish()` mapped `failed`-only faelschlich
+auf die `unsupported`-Meldung (wird erst relevant sobald B2a/c/d live sind); kein server-seitiger
+Status-Guard fuer `unpublish()` bei `Publishing` (nur client-seitig, schmales Race-Fenster).
 
 **TPX-11 (B2a, Facebook/Instagram) fertig**: PR [#20](https://github.com/Cryptoom/trypost/pull/20).
 `FacebookPublisher::delete()` generisches Graph-Node-Delete (funktioniert fuer Feed-Komposit-ID
