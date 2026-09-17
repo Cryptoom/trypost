@@ -248,6 +248,7 @@ gemergt wird.
 | Upstream-PR #287 Ueberschneidung mit Feature A | zu pruefen in A0 | `gh pr view 287 --repo trypostit/trypost` |
 | AGPL-Copyleft-Frage | AUSDRUECKLICH NICHT TEIL DIESER WELLE | Olli-Korrektur, nicht erwaehnen |
 | Push-Gate-Scope | GEKLAERT 16.09.2026 | Branch-Push + PR autonom, Merge/Deploy bleiben Gates |
+| **NEU: `instagram_manage_contents`-Scope von Meta abgelehnt** | **KRITISCH, offen** | Live-Smoke-Test 17.09.2026: der Reconnect-Flow fuer Instagram(Facebook) fragt `instagram_manage_contents` an (B2a, `InstagramFacebookController::$scopes`, `Platform::requiredDeleteScopes()`). Meta lehnt den Scope live mit `Invalid Scopes: instagram_manage_contents. This message is only shown to developers.` ab (von Olli selbst per direktem OAuth-URL-Aufruf reproduziert, echte Meta-Fehlermeldung, kein UI-Automatisierungsproblem). Der Permission-Name existiert laut Recherche real in Metas Katalog, ist aber fuer diese App noch nicht auf Advanced Access freigegeben (Meta App Review noetig, kann Tage/Wochen dauern). **Konsequenz: JEDER Instagram(Facebook)-Account, der VOR diesem Fix verbunden wurde, kann den Scope nie erwerben, solange App Review nicht durch ist.** Delete/Unpublish fuer Instagram bleibt bis zur Freigabe faktisch tot (`missingDeleteScopes()` liefert immer `failed`, "Missing permissions"), unabhaengig vom sonst korrekten Code (`InstagramPublisher::delete()` selbst ist ungetestet-aber-plausibel richtig, wurde nie erreicht). Naechster Schritt: Olli muesste in Meta for Developers -> App Review -> Permissions and Features pruefen, ob `instagram_manage_contents` Advanced Access beantragt werden kann/muss. Bis dahin: Instagram-Delete ist real deployed, aber fuer praktisch keinen Bestandsaccount nutzbar. |
 
 ## Deploy-Status
 
@@ -312,9 +313,39 @@ Fall "leere Kandidatenliste durch Doppel-Klick" TOTAL. Verifikation lief ueber d
 DB/API-Antwort und den Facebook-Permalink, nicht ueber die (irrefuehrende) Toast-Meldung. Test-Post
 danach vollstaendig aufgeraeumt (aus Drafts geloescht, "delete"-Bestaetigung ueber echten UI-Dialog).
 
-Instagram/LinkedIn/YouTube nicht separat live getestet (Instagram braucht ein echtes Media-Item,
-LinkedIn/YouTube wurden bewusst nicht mit-getestet um die Live-Buttons-Verifikation auf einen
-minimalen, kontrollierten Eingriff zu beschraenken). Deren `delete()`-Implementierungen sind durch
-die bestehende Unit-/Feature-Test-Suite (122+ Tests B2a, 60+/44+ B2c, 12/12 B2d, alle mit echten
-`Http::fake()`-Response-Fixtures) abgedeckt, nur nicht durch einen echten Live-Klick in dieser
-Session. Bei Bedarf als Folge-Schritt nachholbar.
+**Nachtrag 17.09.2026, Chrome-MCP wieder erreichbar: LinkedIn und Instagram zusaetzlich live
+getestet, auf Olli-Wunsch ("chrome mcp geht wieder" -> alle drei verbleibenden Plattformen
+live testen).**
+
+**LinkedIn: End-to-End erfolgreich verifiziert.** Test-Post ("TEST POST: TPX Welle B
+Live-Smoke-Test LinkedIn"), nur LinkedIn aktiviert (API-Direct-Call statt UI-Toggle, siehe unten),
+Olli-Freigabe eingeholt, "Post now" geklickt: Post ging live (`urn:li:share:7506425294401142784`).
+"Unpublish" im Dropdown geklickt, Bestaetigungsdialog bestaetigt: LinkedIn-Permalink zeigt danach
+"Der Beitrag kann nicht angezeigt werden", also echte Loeschung bestaetigt.
+`AbstractLinkedInPublisher::delete()` (B2c) End-to-End auf Produktion verifiziert. Test-Post
+danach ueber echten Delete-Dialog aufgeraeumt.
+
+**Instagram: Post + Live-Verifikation erfolgreich, Unpublish BLOCKIERT durch einen echten,
+kritischen Meta-Permission-Befund** (siehe Olli-Touchpoints-Tabelle oben, Zeile
+"`instagram_manage_contents`-Scope von Meta abgelehnt"). Test-Post mit generiertem Testbild
+(lokal erzeugtes PNG, ueber Stock-Photos-Suche kamen keine Treffer, direkt hochgeladen) via
+"Post now" live auf Instagram gestellt (`instagram.com/p/DdZm3KBFIk_/`, per Tab-Check
+verifiziert). "Unpublish" schlug wiederholt fehl mit der Toast-Meldung "This post can't be
+unpublished automatically". Root-Cause NICHT der B4-Toast-Bug von oben (kein leerer
+Kandidaten-Doppelklick-Fall), sondern ein echter `missingDeleteScopes()`-Treffer: der
+verbundene Instagram-Account hat den von B2a neu geforderten Scope
+`instagram_manage_contents` nicht (Server-Scope-Check bestaetigt: `["public_profile",
+"pages_show_list","pages_read_engagement","business_management","instagram_basic",
+"instagram_content_publish","instagram_manage_insights"]`, kein `instagram_manage_contents`
+darin). Reconnect-Versuch ueber die UI (Connections -> Instagram -> Connect another ->
+Facebook Pages) von Olli selbst durchgefuehrt: Meta liefert bei diesem Scope live
+`Invalid Scopes: instagram_manage_contents. This message is only shown to developers.` Der
+Permission-Name selbst existiert real in Metas Katalog, ist fuer DIESE App aber noch nicht auf
+Advanced Access freigegeben (Meta App Review noetig). Instagram-Test-Post bleibt bis zur
+manuellen Loeschung durch Olli live (Instagram-Interface direkt, kein TryPost-Automatismus
+moeglich solange der Scope fehlt).
+
+**YouTube: NICHT live getestet.** Ein echtes Kurzvideo-Upload war fuer den Umfang dieser Session
+nicht verhaeltnismaessig, `YouTubePublisher::delete()` bleibt ueber die bestehende 12/12-Test-Suite
+(inkl. der B2d-Testbarkeits-Naht fuer Googles Guzzle-Transport) abgedeckt, aber ohne echten
+Live-Klick. Bei Bedarf als eigener Folge-Schritt nachholbar.
