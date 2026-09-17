@@ -24,14 +24,12 @@ Status-Symbole: ✓ done · 🚀 deployed · ⏳ in_progress · ❓ waiting · �
 
 | Chip | Paket | Status | Started | Worktree/Branch |
 |---|---|---|---|---|
-| TPX-07 | A4 · MCP-Tool-Parameter | 🔍 Runde 1 PASS mit Fund (post_id-Validierungsreihenfolge), Fix gepusht (`60627d58`), Runde 2 noch offen | 2026-09-17 | claude/tpx-07-a4-mcp |
 | TPX-08 | A5 · Vue-UI | 🔍 Design-Runde 2 PASS, Code-Runde 2 NEEDS-WORK (fehlender Test), Test-Fix laeuft | 2026-09-17 | claude/tpx-08-a5-vue-ui |
 
 ## Pending (Startreihenfolge)
 
 | Chip | Paket | Status | Dependencies | Branch/PR | Plan/Real |
 |---|---|---|---|---|---|
-| TPX-07 | A4 · MCP-Tool-Parameter | ⏳ (siehe oben) | ✓ A2 gemergt | - | - |
 | TPX-08 | A5 · Vue-UI | ⏳ (siehe oben) | ✓ A1 gemergt | - | - |
 | TPX-09 | B0 · Nachweis-Paket | 🔄 pending | Welle A komplett gemergt | - | - |
 | TPX-10 | B1 · UnpublishPost + DeletePost | 🔄 pending | B0 | - | - |
@@ -47,6 +45,7 @@ Status-Symbole: ✓ done · 🚀 deployed · ⏳ in_progress · ❓ waiting · �
 
 | Chip | Paket | PR | Merge-Commit | Notiz |
 |---|---|---|---|---|
+| TPX-07 | A4 · MCP-Tool-Parameter | [#13](https://github.com/Cryptoom/trypost/pull/13) | `f3214f59` | `post_platform_ids` an 3 Attach-Tools, `platforms.*.media_ids` mit Sync-Semantik an `UpdatePostTool` (`Arr::has()`-Unterscheidung weggelassen/leer/gefuellt). IDOR-Schutz mehrfach getestet. Runde 1 PASS mit "Wichtig"-Fund (post_id-Lookup vor Validierung in 3 Attach-Tools, Crash-Risiko bei malformed/Array-post_id), gefixt (`60627d58`), Runde 2 PASS. Autonom gemergt (Nachtmodus, Handoff-Session trypost-fork-46). Nebenfund (nicht gefixt, vorbestehend, nicht Teil dieser PR): `UpdatePostTool.php` hat denselben Bug, als Backlog-Chip TPXB-01 vorgemerkt |
 | TPX-04 | A1 · Migration + Model + Media-ID-Fix | [#9](https://github.com/Cryptoom/trypost/pull/9) | `877a2a9c` | `media_post_platform`-Pivot (uuid), `MediaPostPlatform`-Custom-Pivot-Model (`HasUuids`), `PostPlatform::media()`+`scopedMediaItems()`. TPX-03-Fix workspace-gescoped ueber `medias.mediable_type`/`mediable_id` (polymorph, KEINE literale workspace_id-Spalte, Abweichung vom Briefing-Wortlaut zugunsten der verifizierten TPX-03-Implementierung). 975/975 Post-Tests, 367/367 Mcp-Tests, 2 Review-Runden PASS, autonom gemergt (Nachtmodus) |
 | TPX-06 | A3 · Publisher-Rollout | [#10](https://github.com/Cryptoom/trypost/pull/10) | `f411d274` | 12 Dateien geaendert (Plan-Liste nannte nur 9, `DiscordPublisher.php`+`TelegramPublisher.php` fehlten in der Plan-Liste, per Grep gefunden und mitgefixt), 16 Call-Site-Ersetzungen. `mediaSnapshot()` bewusst unveraendert. 420/420 Publisher-Tests gruen, 1 Review-Runde PASS, autonom gemergt |
 | TPX-05 | A2 · Validierungs-Umbau | [#11](https://github.com/Cryptoom/trypost/pull/11) | `7b73cf56` | `ContentTypeCompatibleWithMedia::entriesForUpdate()` loest pro Plattform eigene Media-Liste auf (Request-Media > scopedMediaItems() > volle Post-Liste). Randfall (Media-Pflicht, Liste leer) bleibt korrekt ein Fehler. Web-Aufrufstelle auf `after()`-Validator umgestellt (schliesst nebenbei eine API-Luecke). Lazy-Loading-Bug in scopedMediaItems() unter shouldBeStrict() nebenbei gefixt. 849/850 breiter Sweep gruen, 2 Review-Runden PASS. Koordinierte Kollision mit A5 (platforms.*.media_ids) per direktem SendMessage zwischen den Chips geloest |
