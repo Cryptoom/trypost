@@ -64,14 +64,18 @@ Review-Runde noch offen.
 
 **TPX-15 (B3) gemergt**: siehe Completed-Tabelle.
 
-**TPX-13 (B2c, LinkedIn) fertig**: PR [#17](https://github.com/Cryptoom/trypost/pull/17),
+**TPX-13 (B2c, LinkedIn) fertig, Runde 1 PASS**: PR [#17](https://github.com/Cryptoom/trypost/pull/17),
 `AbstractLinkedInPublisher::delete()`, deckt beide Unterklassen ab, Idempotenz (204 bei
-Wiederholung) korrekt behandelt. 60/60 + 44/44 Sanity-Tests gruen. **Kollisions-Warnung vom
-Chip selbst**: `tests/Feature/Actions/Post/UnpublishPostTest.php` wurde angefasst (4 Szenarien
-nutzten LinkedIn als Beispiel fuer "kein delete-faehiger Publisher", jetzt auf TikTok
-umgestellt, da LinkedIn echtes delete() hat). B2a (TPX-11) aendert dieselbe Testdatei fuer seine
-eigenen Instagram/Facebook-Szenarien, mit echtem Merge-Konflikt-Risiko dort zu rechnen (analog
-A4/A5s `UpdatePost.php`-Konflikt), beim Mergen beider PRs beachten.
+Wiederholung) korrekt behandelt. 60/60 + 44/44 Sanity-Tests gruen. Review-Runde 1 PASS, ein
+nicht-blockierender "Wichtig"-Punkt (kein Retry-Pfad bei TokenExpiredException, im Gegensatz
+zu `publish()`, aber durch Idempotenz abgefedert) plus ein Reminder: `UnpublishPost.php`s
+Doc-Kommentar ("today no publisher has delete()") ist nach diesem Merge veraltet, B2a (der
+einzige der diese Datei anfasst) sollte das beim eigenen Fix mitnehmen. **Kollisions-Warnung
+vom Chip selbst**: `tests/Feature/Actions/Post/UnpublishPostTest.php` wurde angefasst (4
+Szenarien LinkedIn -> TikTok als "unsupported"-Beispiel). B2a (TPX-11) aendert dieselbe
+Testdatei fuer seine eigenen Instagram/Facebook-Szenarien, echtes Merge-Konflikt-Risiko dort
+(analog A4/A5s `UpdatePost.php`-Konflikt), beim Mergen beider PRs beachten. Runde 2 + Live-
+Smoke-Test noch offen, kein Merge bis dahin (Plan-Pflicht fuer B2a-d).
 
 ## Pending (Startreihenfolge)
 
