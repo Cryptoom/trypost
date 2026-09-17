@@ -32,6 +32,8 @@ return [
         'duplicate' => 'Duplicar',
         'copy_id' => 'Copiar ID',
         'copied' => 'ID copiado al portapapeles',
+        'unpublish' => 'Despublicar',
+        'unpublish_unsupported' => 'Esta publicación no se puede despublicar automáticamente. Elimínala manualmente en la(s) plataforma(s) donde se publicó.',
     ],
 
     'form' => [
@@ -438,6 +440,13 @@ return [
             'cancel' => 'Cancelar',
         ],
 
+        'unpublish_modal' => [
+            'title' => '¿Despublicar esta publicación?',
+            'description' => 'Esto elimina la publicación de todas las plataformas que admiten la eliminación automática y la devuelve a borrador.',
+            'action' => 'Despublicar',
+            'cancel' => 'Cancelar',
+        ],
+
         'sync_enable' => [
             'title' => '¿Activar sincronización?',
             'description' => 'Todas las plataformas compartirán el mismo contenido. Las ediciones personalizadas realizadas en plataformas individuales serán reemplazadas con el contenido actual.',
@@ -578,8 +587,10 @@ return [
         'scheduled' => '¡Post programado correctamente!',
         'deleted' => '¡Post eliminado correctamente!',
         'duplicated' => 'Post duplicado como borrador.',
+        'unpublished' => '¡Publicación despublicada correctamente!',
+        'unpublished_partial' => 'Publicación despublicada parcialmente: algunas plataformas no admiten la eliminación automática o la solicitud falló. Elimínalas manualmente si es necesario.',
         'cannot_edit_finalized' => 'Este post ya fue procesado y no puede republicarse. Duplícalo para intentar de nuevo.',
-        'cannot_delete_published' => 'Los posts publicados no se pueden eliminar.',
+        'cannot_delete_while_publishing' => 'Esta publicación se está publicando actualmente y todavía no se puede eliminar.',
         'connect_first' => 'Conecta al menos una red social antes de crear un post.',
     ],
 

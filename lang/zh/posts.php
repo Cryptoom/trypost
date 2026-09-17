@@ -32,6 +32,8 @@ return [
         'duplicate' => '复制',
         'copy_id' => '复制 ID',
         'copied' => 'ID 已复制到剪贴板',
+        'unpublish' => '取消发布',
+        'unpublish_unsupported' => '此帖子无法自动取消发布。请在已发布的平台上手动删除。',
     ],
 
     'form' => [
@@ -438,6 +440,13 @@ return [
             'cancel' => '取消',
         ],
 
+        'unpublish_modal' => [
+            'title' => '取消发布此帖子？',
+            'description' => '此操作会从所有支持自动删除的平台上移除该帖子，并将其转回草稿。',
+            'action' => '取消发布',
+            'cancel' => '取消',
+        ],
+
         'sync_enable' => [
             'title' => '启用同步？',
             'description' => '所有平台将共享相同的内容。对单个平台所做的任何自定义修改都将被替换为当前内容。',
@@ -578,8 +587,10 @@ return [
         'scheduled' => '帖子排期成功！',
         'deleted' => '帖子删除成功！',
         'duplicated' => '帖子已复制为草稿。',
+        'unpublished' => '帖子已成功取消发布！',
+        'unpublished_partial' => '帖子已部分取消发布：部分平台不支持自动删除或请求失败，如有需要请手动删除。',
         'cannot_edit_finalized' => '此帖子已处理完毕，无法重新发布。请复制后再试。',
-        'cannot_delete_published' => '已发布的帖子无法删除。',
+        'cannot_delete_while_publishing' => '此帖子正在发布中，暂时无法删除。',
         'connect_first' => '创建帖子前，请先至少连接一个社交平台。',
     ],
 

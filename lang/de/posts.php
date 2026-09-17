@@ -34,6 +34,8 @@ return [
         'duplicate' => 'Duplizieren',
         'copy_id' => 'ID kopieren',
         'copied' => 'ID in die Zwischenablage kopiert',
+        'unpublish' => 'Zurückziehen',
+        'unpublish_unsupported' => 'Dieser Beitrag kann nicht automatisch zurückgezogen werden. Entferne ihn manuell auf der bzw. den Plattform(en), auf der er veröffentlicht wurde.',
     ],
 
     'form' => [
@@ -440,6 +442,13 @@ return [
             'cancel' => 'Abbrechen',
         ],
 
+        'unpublish_modal' => [
+            'title' => 'Beitrag zurückziehen?',
+            'description' => 'Dadurch wird der Beitrag von allen Plattformen entfernt, die ein automatisches Entfernen unterstützen, und zurück in den Entwurf verschoben.',
+            'action' => 'Zurückziehen',
+            'cancel' => 'Abbrechen',
+        ],
+
         'sync_enable' => [
             'title' => 'Synchronisierung aktivieren?',
             'description' => 'Alle Plattformen teilen denselben Inhalt. Alle individuellen Anpassungen an einzelnen Plattformen werden durch den aktuellen Inhalt ersetzt.',
@@ -580,8 +589,10 @@ return [
         'scheduled' => 'Beitrag erfolgreich geplant!',
         'deleted' => 'Beitrag erfolgreich gelöscht!',
         'duplicated' => 'Beitrag als Entwurf dupliziert.',
+        'unpublished' => 'Beitrag erfolgreich zurückgezogen!',
+        'unpublished_partial' => 'Beitrag teilweise zurückgezogen: Einige Plattformen unterstützen kein automatisches Entfernen, oder die Anfrage ist fehlgeschlagen. Entferne diese bei Bedarf manuell.',
         'cannot_edit_finalized' => 'Dieser Beitrag wurde bereits verarbeitet und kann nicht erneut veröffentlicht werden. Dupliziere ihn, um es noch einmal zu versuchen.',
-        'cannot_delete_published' => 'Veröffentlichte Beiträge können nicht gelöscht werden.',
+        'cannot_delete_while_publishing' => 'Dieser Beitrag wird gerade veröffentlicht und kann noch nicht gelöscht werden.',
         'connect_first' => 'Verbinde mindestens ein soziales Netzwerk, bevor du einen Beitrag erstellst.',
     ],
 

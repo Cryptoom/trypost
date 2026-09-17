@@ -8,6 +8,7 @@ use App\Actions\Post\CreatePost;
 use App\Actions\Post\DeletePost;
 use App\Actions\Post\DuplicatePost;
 use App\Actions\Post\SyncPostPlatforms;
+use App\Actions\Post\UnpublishPost;
 use App\Actions\Post\UpdatePost;
 use App\Actions\SocialAccount\ListPinterestBoards;
 use App\Ai\Templates\AiContentTemplate;
@@ -344,7 +345,7 @@ class PostController extends Controller
         $this->authorize('delete', $post);
 
         if (PostStatusRules::blocksDeletion($post)) {
-            session()->flash('flash.banner', __('posts.flash.cannot_delete_published'));
+            session()->flash('flash.banner', __('posts.flash.cannot_delete_while_publishing'));
             session()->flash('flash.bannerStyle', 'danger');
 
             return back();
@@ -364,6 +365,45 @@ class PostController extends Controller
         }
 
         return redirect()->route('app.posts.index');
+    }
+
+    /**
+     * Deletes every already-published platform of the post remotely (best
+     * effort, see UnpublishPost) and, once every candidate came back, resets
+     * the post to Draft. Three outcomes, reflected in the flash banner:
+     * everything unpublished, only some did (mixed unsupported/failed
+     * platforms), or nothing did at all (e.g. a TikTok-only post).
+     */
+    public function unpublish(Request $request, Post $post): RedirectResponse
+    {
+        $workspace = $request->user()->currentWorkspace;
+
+        if (! $workspace) {
+            return redirect()->route('app.workspaces.create');
+        }
+
+        $this->authorize('update', $post);
+
+        $result = UnpublishPost::execute($post);
+
+        if ($result['unpublished'] === []) {
+            session()->flash('flash.banner', __('posts.actions.unpublish_unsupported'));
+            session()->flash('flash.bannerStyle', 'danger');
+
+            return back();
+        }
+
+        if ($result['failed'] !== [] || $result['unsupported'] !== []) {
+            session()->flash('flash.banner', __('posts.flash.unpublished_partial'));
+            session()->flash('flash.bannerStyle', 'warning');
+
+            return back();
+        }
+
+        session()->flash('flash.banner', __('posts.flash.unpublished'));
+        session()->flash('flash.bannerStyle', 'success');
+
+        return back();
     }
 
     public function duplicate(Request $request, Post $post): RedirectResponse

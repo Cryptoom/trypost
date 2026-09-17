@@ -32,6 +32,8 @@ return [
         'duplicate' => 'Dupliquer',
         'copy_id' => 'Copier l\'ID',
         'copied' => 'ID copié dans le presse-papiers',
+        'unpublish' => 'Dépublier',
+        'unpublish_unsupported' => 'Cette publication ne peut pas être dépubliée automatiquement. Supprimez-la manuellement sur la ou les plateformes où elle a été publiée.',
     ],
 
     'form' => [
@@ -438,6 +440,13 @@ return [
             'cancel' => 'Annuler',
         ],
 
+        'unpublish_modal' => [
+            'title' => 'Dépublier cette publication ?',
+            'description' => 'Cette action supprime la publication de toutes les plateformes prenant en charge la suppression automatique et la remet en brouillon.',
+            'action' => 'Dépublier',
+            'cancel' => 'Annuler',
+        ],
+
         'sync_enable' => [
             'title' => 'Activer la synchronisation ?',
             'description' => 'Toutes les plateformes partageront le même contenu. Toutes les modifications personnalisées apportées à des plateformes individuelles seront remplacées par le contenu actuel.',
@@ -578,8 +587,10 @@ return [
         'scheduled' => 'Publication programmée avec succès !',
         'deleted' => 'Publication supprimée avec succès !',
         'duplicated' => 'Publication dupliquée en brouillon.',
+        'unpublished' => 'Publication dépubliée avec succès !',
+        'unpublished_partial' => 'Publication partiellement dépubliée : certaines plateformes ne prennent pas en charge la suppression automatique ou la demande a échoué. Supprimez-les manuellement si nécessaire.',
         'cannot_edit_finalized' => 'Cette publication a déjà été traitée et ne peut pas être republiée. Dupliquez-la pour réessayer.',
-        'cannot_delete_published' => 'Les publications publiées ne peuvent pas être supprimées.',
+        'cannot_delete_while_publishing' => 'Cette publication est en cours de publication et ne peut pas encore être supprimée.',
         'connect_first' => 'Connectez au moins un réseau social avant de créer une publication.',
     ],
 

@@ -32,6 +32,8 @@ return [
         'duplicate' => 'Dupliceren',
         'copy_id' => 'ID kopiëren',
         'copied' => 'ID gekopieerd naar klembord',
+        'unpublish' => 'Intrekken',
+        'unpublish_unsupported' => 'Deze post kan niet automatisch worden ingetrokken. Verwijder deze handmatig op het platform (de platforms) waarop hij is gepubliceerd.',
     ],
 
     'form' => [
@@ -438,6 +440,13 @@ return [
             'cancel' => 'Annuleren',
         ],
 
+        'unpublish_modal' => [
+            'title' => 'Post intrekken?',
+            'description' => 'Hierdoor wordt de post verwijderd van elk platform dat automatische verwijdering ondersteunt en teruggezet naar concept.',
+            'action' => 'Intrekken',
+            'cancel' => 'Annuleren',
+        ],
+
         'sync_enable' => [
             'title' => 'Synchronisatie inschakelen?',
             'description' => 'Alle platforms delen dezelfde inhoud. Aangepaste bewerkingen aan afzonderlijke platforms worden vervangen door de huidige inhoud.',
@@ -578,8 +587,10 @@ return [
         'scheduled' => 'Post succesvol ingepland!',
         'deleted' => 'Post succesvol verwijderd!',
         'duplicated' => 'Post gedupliceerd als concept.',
+        'unpublished' => 'Post succesvol ingetrokken!',
+        'unpublished_partial' => 'Post gedeeltelijk ingetrokken: sommige platforms ondersteunen geen automatische verwijdering, of het verzoek is mislukt. Verwijder deze indien nodig handmatig.',
         'cannot_edit_finalized' => 'Deze post is al verwerkt en kan niet opnieuw worden gepubliceerd. Dupliceer hem om het opnieuw te proberen.',
-        'cannot_delete_published' => 'Gepubliceerde posts kunnen niet worden verwijderd.',
+        'cannot_delete_while_publishing' => 'Deze post wordt op dit moment gepubliceerd en kan nog niet worden verwijderd.',
         'connect_first' => 'Koppel ten minste één social netwerk voordat je een post aanmaakt.',
     ],
 

@@ -1,10 +1,18 @@
 <script setup lang="ts">
 import { Head, InfiniteScroll, Link, router } from '@inertiajs/vue3';
-import { IconCopy, IconCopyPlus, IconDots, IconFileText, IconSearch, IconTrash } from '@tabler/icons-vue';
+import { IconCopy, IconCopyPlus, IconDots, IconEyeOff, IconFileText, IconSearch, IconTrash } from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
 import { computed, ref, watch } from 'vue';
 
-import { create as createPost, destroy as destroyPost, duplicate as duplicatePost, edit as editPost, index as postsIndex, show as showPost } from '@/actions/App/Http/Controllers/App/PostController';
+import {
+    create as createPost,
+    destroy as destroyPost,
+    duplicate as duplicatePost,
+    edit as editPost,
+    index as postsIndex,
+    show as showPost,
+    unpublish as unpublishPost,
+} from '@/actions/App/Http/Controllers/App/PostController';
 import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.vue';
 import EmptyState from '@/components/EmptyState.vue';
 import LabelBadge from '@/components/labels/LabelBadge.vue';
@@ -140,9 +148,37 @@ const getPostPreview = (post: Post): string =>
     post.content?.trim() || trans('calendar.no_content');
 
 const EDITABLE_STATUSES: readonly string[] = [PostStatus.Draft, PostStatus.Scheduled];
-const DELETABLE_STATUSES: readonly string[] = [PostStatus.Draft, PostStatus.Scheduled, PostStatus.Failed];
+// Published/PartiallyPublished are deletable too: DeletePost runs a
+// best-effort UnpublishPost first (removes the remote copies where the
+// platform supports it), then always deletes the local post regardless of
+// the remote outcome. Only Publishing (an in-flight publish job) is blocked
+// server-side, see PostStatusRules::DELETE_BLOCKED_STATUSES.
+const DELETABLE_STATUSES: readonly string[] = [
+    PostStatus.Draft,
+    PostStatus.Scheduled,
+    PostStatus.Failed,
+    PostStatus.Published,
+    PostStatus.PartiallyPublished,
+];
+const UNPUBLISHABLE_STATUSES: readonly string[] = [PostStatus.Published, PostStatus.PartiallyPublished];
+// Platforms whose publisher never gains a delete() method (see
+// UnpublishPost::resolveDeletePublisher and CLAUDE.md): TikTok has no
+// delete/unpublish endpoint at all, and Instagram's direct-login variant
+// (not InstagramFacebook) only supports delete for Facebook-linked accounts.
+// Mirrors accounts.instagram_connect.standalone_delete_notice.
+const UNPUBLISH_UNSUPPORTED_PLATFORMS: readonly string[] = ['tiktok', 'instagram'];
 const canEdit = (post: Post): boolean => EDITABLE_STATUSES.includes(post.status);
 const canDelete = (post: Post): boolean => DELETABLE_STATUSES.includes(post.status);
+const canUnpublish = (post: Post): boolean => UNPUBLISHABLE_STATUSES.includes(post.status);
+// True once every enabled platform on the post is one that can never be
+// unpublished automatically, i.e. the action would be a guaranteed no-op.
+// A post mixing e.g. LinkedIn and TikTok keeps the action enabled; the
+// backend still skips the unsupported rows and reports a partial outcome.
+const unpublishUnsupported = (post: Post): boolean => {
+    const enabled = getEnabledPlatforms(post);
+
+    return enabled.length === 0 || enabled.every((pp) => UNPUBLISH_UNSUPPORTED_PLATFORMS.includes(pp.platform));
+};
 
 const { canCreatePost } = useWorkspaceRole();
 
@@ -150,11 +186,18 @@ const postUrl = (post: Post): string =>
     canEdit(post) ? editPost.url(post.id) : showPost.url(post.id);
 
 const deleteModal = ref<InstanceType<typeof ConfirmDeleteModal> | null>(null);
+const unpublishModal = ref<InstanceType<typeof ConfirmDeleteModal> | null>(null);
 
 const handleDelete = (post: Post) => {
     deleteModal.value?.open({
         url: destroyPost.url(post.id),
         confirmText: trans('common.confirm_modal.delete_keyword'),
+    });
+};
+
+const handleUnpublish = (post: Post) => {
+    unpublishModal.value?.open({
+        url: unpublishPost.url(post.id),
     });
 };
 
@@ -226,6 +269,7 @@ useWorkspaceEcho(
                                 v-for="post in posts.data"
                                 :key="post.id"
                                 class="cursor-pointer"
+                                :data-testid="`post-row-${post.id}`"
                                 @click="router.visit(postUrl(post))"
                             >
                                 <TableCell class="max-w-md py-3">
@@ -295,6 +339,7 @@ useWorkspaceEcho(
                                                 variant="outline"
                                                 size="icon"
                                                 class="size-8"
+                                                :data-testid="`post-actions-${post.id}`"
                                                 @click.stop
                                             >
                                                 <IconDots class="size-4" />
@@ -309,10 +354,40 @@ useWorkspaceEcho(
                                                 <IconCopy class="size-4" />
                                                 {{ $t('posts.actions.copy_id') }}
                                             </DropdownMenuItem>
-                                            <template v-if="canCreatePost && canDelete(post)">
+                                            <template v-if="canCreatePost && (canUnpublish(post) || canDelete(post))">
                                                 <DropdownMenuSeparator />
+                                                <template v-if="canUnpublish(post)">
+                                                    <TooltipProvider v-if="unpublishUnsupported(post)" :delay-duration="200">
+                                                        <Tooltip>
+                                                            <TooltipTrigger as-child>
+                                                                <span class="block">
+                                                                    <DropdownMenuItem
+                                                                        disabled
+                                                                        :data-testid="`post-unpublish-${post.id}`"
+                                                                    >
+                                                                        <IconEyeOff class="size-4" />
+                                                                        {{ $t('posts.actions.unpublish') }}
+                                                                    </DropdownMenuItem>
+                                                                </span>
+                                                            </TooltipTrigger>
+                                                            <TooltipContent>
+                                                                <p class="max-w-64 text-xs">{{ $t('posts.actions.unpublish_unsupported') }}</p>
+                                                            </TooltipContent>
+                                                        </Tooltip>
+                                                    </TooltipProvider>
+                                                    <DropdownMenuItem
+                                                        v-else
+                                                        :data-testid="`post-unpublish-${post.id}`"
+                                                        @click="handleUnpublish(post)"
+                                                    >
+                                                        <IconEyeOff class="size-4" />
+                                                        {{ $t('posts.actions.unpublish') }}
+                                                    </DropdownMenuItem>
+                                                </template>
                                                 <DropdownMenuItem
+                                                    v-if="canDelete(post)"
                                                     variant="destructive"
+                                                    :data-testid="`post-delete-${post.id}`"
                                                     @click="handleDelete(post)"
                                                 >
                                                     <IconTrash class="size-4" />
@@ -336,10 +411,21 @@ useWorkspaceEcho(
 
     <ConfirmDeleteModal
         ref="deleteModal"
+        testid="post-delete-modal"
         :title="$t('posts.edit.delete_modal.title')"
         :description="$t('posts.edit.delete_modal.description')"
         :action="$t('posts.edit.delete_modal.action')"
         :cancel="$t('posts.edit.delete_modal.cancel')"
+    />
+
+    <ConfirmDeleteModal
+        ref="unpublishModal"
+        method="post"
+        testid="post-unpublish-modal"
+        :title="$t('posts.edit.unpublish_modal.title')"
+        :description="$t('posts.edit.unpublish_modal.description')"
+        :action="$t('posts.edit.unpublish_modal.action')"
+        :cancel="$t('posts.edit.unpublish_modal.cancel')"
     />
 
 </template>

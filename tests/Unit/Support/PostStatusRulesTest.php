@@ -26,17 +26,21 @@ test('allows editing for non terminal statuses', function (PostStatus $status) {
     PostStatus::Scheduled,
 ]);
 
-test('blocks deletion for published statuses', function (PostStatus $status) {
+test('blocks deletion only while the post is actively publishing', function (PostStatus $status) {
     $post = Post::factory()->make(['status' => $status]);
 
     expect(PostStatusRules::blocksDeletion($post))->toBeTrue();
 })->with([
     PostStatus::Publishing,
-    PostStatus::Published,
-    PostStatus::PartiallyPublished,
 ]);
 
-test('allows deletion for draft, scheduled and failed statuses', function (PostStatus $status) {
+/**
+ * Published and PartiallyPublished used to be blocked here too, back when
+ * deletion had no way to remove the already-published copies first (see
+ * PostStatusRules::DELETE_BLOCKED_STATUSES). DeletePost now runs
+ * UnpublishPost as a best-effort first step, so both are deletable.
+ */
+test('allows deletion for draft, scheduled, failed, published and partially published statuses', function (PostStatus $status) {
     $post = Post::factory()->make(['status' => $status]);
 
     expect(PostStatusRules::blocksDeletion($post))->toBeFalse();
@@ -44,6 +48,8 @@ test('allows deletion for draft, scheduled and failed statuses', function (PostS
     PostStatus::Draft,
     PostStatus::Scheduled,
     PostStatus::Failed,
+    PostStatus::Published,
+    PostStatus::PartiallyPublished,
 ]);
 
 test('requires explicit schedule when status is scheduled and post has no usable schedule', function (?string $scheduledAt, bool $expected) {

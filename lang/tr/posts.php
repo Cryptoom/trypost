@@ -34,6 +34,8 @@ return [
         'duplicate' => 'Çoğalt',
         'copy_id' => 'Kimliği kopyala',
         'copied' => 'Kimlik panoya kopyalandı',
+        'unpublish' => 'Yayından kaldır',
+        'unpublish_unsupported' => 'Bu gönderi otomatik olarak yayından kaldırılamıyor. Yayınlandığı platform(lar)da manuel olarak kaldırın.',
     ],
 
     'form' => [
@@ -440,6 +442,13 @@ return [
             'cancel' => 'İptal',
         ],
 
+        'unpublish_modal' => [
+            'title' => 'Gönderi yayından kaldırılsın mı?',
+            'description' => 'Bu işlem, gönderiyi otomatik kaldırmayı destekleyen tüm platformlardan kaldırır ve taslağa geri döndürür.',
+            'action' => 'Yayından kaldır',
+            'cancel' => 'İptal',
+        ],
+
         'sync_enable' => [
             'title' => 'Senkronizasyon etkinleştirilsin mi?',
             'description' => 'Tüm platformlar aynı içeriği paylaşacak. Tek tek platformlara yapılan özel düzenlemeler mevcut içerikle değiştirilecek.',
@@ -580,8 +589,10 @@ return [
         'scheduled' => 'Gönderi başarıyla zamanlandı!',
         'deleted' => 'Gönderi başarıyla silindi!',
         'duplicated' => 'Gönderi taslak olarak çoğaltıldı.',
+        'unpublished' => 'Gönderi başarıyla yayından kaldırıldı!',
+        'unpublished_partial' => 'Gönderi kısmen yayından kaldırıldı: bazı platformlar otomatik kaldırmayı desteklemiyor veya istek başarısız oldu. Gerekirse bunları manuel olarak kaldırın.',
         'cannot_edit_finalized' => 'Bu gönderi zaten işlendi ve yeniden yayınlanamaz. Yeniden denemek için çoğaltın.',
-        'cannot_delete_published' => 'Yayınlanmış gönderiler silinemez.',
+        'cannot_delete_while_publishing' => 'Bu gönderi şu anda yayınlanıyor ve henüz silinemez.',
         'connect_first' => 'Gönderi oluşturmadan önce en az bir sosyal ağ bağlayın.',
     ],
 

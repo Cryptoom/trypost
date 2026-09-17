@@ -32,6 +32,8 @@ return [
         'duplicate' => 'Duplica',
         'copy_id' => 'Copia ID',
         'copied' => 'ID copiato negli appunti',
+        'unpublish' => 'Annulla pubblicazione',
+        'unpublish_unsupported' => 'Impossibile annullare automaticamente la pubblicazione di questo post. Rimuovilo manualmente dalla piattaforma o dalle piattaforme su cui è stato pubblicato.',
     ],
 
     'form' => [
@@ -438,6 +440,13 @@ return [
             'cancel' => 'Annulla',
         ],
 
+        'unpublish_modal' => [
+            'title' => 'Annullare la pubblicazione del post?',
+            'description' => 'Questa azione rimuove il post da tutte le piattaforme che supportano la rimozione automatica e lo riporta a bozza.',
+            'action' => 'Annulla pubblicazione',
+            'cancel' => 'Annulla',
+        ],
+
         'sync_enable' => [
             'title' => 'Abilitare la sincronizzazione?',
             'description' => 'Tutte le piattaforme condivideranno lo stesso contenuto. Eventuali modifiche personalizzate apportate alle singole piattaforme saranno sostituite con il contenuto attuale.',
@@ -578,8 +587,10 @@ return [
         'scheduled' => 'Post programmato con successo!',
         'deleted' => 'Post eliminato con successo!',
         'duplicated' => 'Post duplicato come bozza.',
+        'unpublished' => 'Pubblicazione del post annullata con successo!',
+        'unpublished_partial' => 'Pubblicazione del post annullata parzialmente: alcune piattaforme non supportano la rimozione automatica o la richiesta non è riuscita. Rimuovile manualmente se necessario.',
         'cannot_edit_finalized' => 'Questo post è già stato elaborato e non può essere ripubblicato. Duplicalo per riprovare.',
-        'cannot_delete_published' => 'I post pubblicati non possono essere eliminati.',
+        'cannot_delete_while_publishing' => 'Questo post è attualmente in fase di pubblicazione e non può ancora essere eliminato.',
         'connect_first' => 'Collega almeno una rete social prima di creare un post.',
     ],
 
