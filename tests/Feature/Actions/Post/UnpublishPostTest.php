@@ -20,15 +20,16 @@ beforeEach(function () {
 
 /**
  * A published row on a platform whose publisher has no delete() method
- * (every publisher today) resolves to `unsupported`, not `failed`.
+ * (TikTok, which has no delete/unpublish endpoint at all, see CLAUDE.md)
+ * resolves to `unsupported`, not `failed`.
  */
 test('a published platform without a delete-capable publisher lands in unsupported', function () {
     $post = Post::factory()->published()->create([
         'workspace_id' => $this->workspace->id,
         'user_id' => $this->user->id,
     ]);
-    $account = SocialAccount::factory()->linkedin()->create(['workspace_id' => $this->workspace->id]);
-    $postPlatform = PostPlatform::factory()->linkedin()->published()->create([
+    $account = SocialAccount::factory()->tiktok()->create(['workspace_id' => $this->workspace->id]);
+    $postPlatform = PostPlatform::factory()->tiktok()->published()->create([
         'post_id' => $post->id,
         'social_account_id' => $account->id,
     ]);
@@ -94,22 +95,22 @@ test('postPlatformIds narrows the candidates to the given subset', function () {
         'workspace_id' => $this->workspace->id,
         'user_id' => $this->user->id,
     ]);
-    $linkedinAccount = SocialAccount::factory()->linkedin()->create(['workspace_id' => $this->workspace->id]);
+    $tiktokAccount = SocialAccount::factory()->tiktok()->create(['workspace_id' => $this->workspace->id]);
     $xAccount = SocialAccount::factory()->x()->create(['workspace_id' => $this->workspace->id]);
 
-    $linkedinRow = PostPlatform::factory()->linkedin()->published()->create([
+    $tiktokRow = PostPlatform::factory()->tiktok()->published()->create([
         'post_id' => $post->id,
-        'social_account_id' => $linkedinAccount->id,
+        'social_account_id' => $tiktokAccount->id,
     ]);
     PostPlatform::factory()->x()->published()->create([
         'post_id' => $post->id,
         'social_account_id' => $xAccount->id,
     ]);
 
-    $result = UnpublishPost::execute($post, [$linkedinRow->id]);
+    $result = UnpublishPost::execute($post, [$tiktokRow->id]);
 
     expect($result['unsupported'])->toHaveCount(1)
-        ->and($result['unsupported'][0]->id)->toBe($linkedinRow->id);
+        ->and($result['unsupported'][0]->id)->toBe($tiktokRow->id);
 });
 
 /**
@@ -171,15 +172,15 @@ test('the post becomes PartiallyPublished when only some candidates unpublish', 
         'user_id' => $this->user->id,
     ]);
     $facebookAccount = SocialAccount::factory()->facebook()->create(['workspace_id' => $this->workspace->id]);
-    $linkedinAccount = SocialAccount::factory()->linkedin()->create(['workspace_id' => $this->workspace->id]);
+    $tiktokAccount = SocialAccount::factory()->tiktok()->create(['workspace_id' => $this->workspace->id]);
 
     PostPlatform::factory()->facebook()->published()->create([
         'post_id' => $post->id,
         'social_account_id' => $facebookAccount->id,
     ]);
-    PostPlatform::factory()->linkedin()->published()->create([
+    PostPlatform::factory()->tiktok()->published()->create([
         'post_id' => $post->id,
-        'social_account_id' => $linkedinAccount->id,
+        'social_account_id' => $tiktokAccount->id,
     ]);
 
     $result = UnpublishPost::execute($post);
@@ -204,15 +205,15 @@ test('a delete() failure is collected without touching the row, and does not blo
         'user_id' => $this->user->id,
     ]);
     $facebookAccount = SocialAccount::factory()->facebook()->create(['workspace_id' => $this->workspace->id]);
-    $linkedinAccount = SocialAccount::factory()->linkedin()->create(['workspace_id' => $this->workspace->id]);
+    $tiktokAccount = SocialAccount::factory()->tiktok()->create(['workspace_id' => $this->workspace->id]);
 
     $facebookRow = PostPlatform::factory()->facebook()->published()->create([
         'post_id' => $post->id,
         'social_account_id' => $facebookAccount->id,
     ]);
-    PostPlatform::factory()->linkedin()->published()->create([
+    PostPlatform::factory()->tiktok()->published()->create([
         'post_id' => $post->id,
-        'social_account_id' => $linkedinAccount->id,
+        'social_account_id' => $tiktokAccount->id,
     ]);
 
     $result = UnpublishPost::execute($post);
