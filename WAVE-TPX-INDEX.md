@@ -41,7 +41,6 @@ Status-Symbole: ✓ done · 🚀 deployed · ⏳ in_progress · ❓ waiting · �
 
 | Chip | Paket | Status | Started | Worktree/Branch |
 |---|---|---|---|---|
-| TPX-11 | B2a · Facebook/Instagram delete() | ⏳ in_progress | 2026-09-17 | claude/tpx-11-b2a-facebook-instagram-delete |
 | TPX-16 | B4 · Vue-UI + Web-Route | ⏳ in_progress | 2026-09-17 | claude/tpx-16-b4-web-ui |
 
 Alle 5 laufen parallel, disjunkte Dateien laut Konflikt-Matrix. TPX-11 (B2a) ist der einzige der
@@ -60,6 +59,21 @@ unbeaufsichtigt ueber einen bereits scharfen Produktions-Pfad laeuft.
 **B2b (Threads) GESTRICHEN 17.09.2026 (Olli, explizit)**: "B2b (Threads) bleibt geparkt, machen
 wir derzeit nicht, nutzt keiner." Nicht mehr nur "geparkt bis Meta-App-Review", sondern bewusst
 ausserhalb dieser Welle. Kein Chip dafuer, kein Olli-Gate mehr offen dafuer.
+
+**TPX-11 (B2a, Facebook/Instagram) fertig**: PR [#20](https://github.com/Cryptoom/trypost/pull/20).
+`FacebookPublisher::delete()` generisches Graph-Node-Delete (funktioniert fuer Feed-Komposit-ID
+und bare Video-ID ohne Content-Type-Verzweigung). `InstagramPublisher::delete()` loescht die
+gespeicherte (bei Carousels: Parent-)Media-ID. Instagram/InstagramFacebook-Unterscheidung geloest:
+`UnpublishPost::resolveDeletePublisher()` faengt `Platform::Instagram` (direkter Login) explizit
+VOR dem `method_exists()`-Check ab, liefert immer unsupported (analog TikTok). Neues
+`Platform::requiredDeleteScopes()` + Scope-Gate in `UnpublishPost::execute()`, fehlender Scope
+endet als `failed` mit Reconnect-Hinweis statt rohem API-Fehler, `instagram_manage_contents` zum
+Connect-Flow ergaenzt (fehlte laut B0). B1-Pflicht-Nacharbeit (`published_at`-Bug) gefixt PLUS
+eigener Fund: `LazyLoadingViolationException` beim Scope-Check (eager-loading `socialAccount`
+nachgezogen). 122 neue Tests + 2145-Test-Sweep gruen (isolierter Wegwerf-Container Port 5555
+wegen Schema-Drift im geteilten Testcontainer durch parallele Chips). Zwei offene B0-Olli-Gates
+(Facebook-Warnung, Instagram-Doku-Widerspruch) explizit im PR-Body als Merge-Blocker bis zum
+Live-Smoke-Test benannt. Review-Runde noch offen.
 
 **TPX-14 (B2d, YouTube) fertig**: PR [#18](https://github.com/Cryptoom/trypost/pull/18),
 `YouTubePublisher::delete()`, `videos.delete` mit bare Video-ID, `videoNotFound` (404) als
