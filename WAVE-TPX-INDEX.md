@@ -341,9 +341,10 @@ darin). Reconnect-Versuch ueber die UI (Connections -> Instagram -> Connect anot
 Facebook Pages) von Olli selbst durchgefuehrt: Meta liefert bei diesem Scope live
 `Invalid Scopes: instagram_manage_contents. This message is only shown to developers.` Der
 Permission-Name selbst existiert real in Metas Katalog, ist fuer DIESE App aber noch nicht auf
-Advanced Access freigegeben (Meta App Review noetig). Instagram-Test-Post bleibt bis zur
-manuellen Loeschung durch Olli live (Instagram-Interface direkt, kein TryPost-Automatismus
-moeglich solange der Scope fehlt).
+Advanced Access freigegeben (Meta App Review noetig). **Instagram-Test-Post manuell von Olli
+direkt auf Instagram geloescht** (kein TryPost-Automatismus moeglich solange der Scope fehlt),
+per Permalink-Check verifiziert ("Diese Seite ist leider nicht verfuegbar ... die Seite wurde
+entfernt").
 
 **YouTube: NICHT live getestet.** Ein echtes Kurzvideo-Upload war fuer den Umfang dieser Session
 nicht verhaeltnismaessig, `YouTubePublisher::delete()` bleibt ueber die bestehende 12/12-Test-Suite
