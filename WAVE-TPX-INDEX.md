@@ -166,7 +166,7 @@ gemergt wird.
 | Chip | Paket | Status | Dependencies | Branch/PR | Plan/Real |
 |---|---|---|---|---|---|
 | TPX-12 | B2b · Threads delete() | ❌ GESTRICHEN 17.09.2026 (Olli: "machen wir derzeit nicht, nutzt keiner"), kein Chip mehr vorgesehen | - | - | - |
-| TPX-17 | U1 · Upstream-PR-Vorbereitung | 🔄 pending | Welle B gemergt + deployed ✓ | - | - |
+| TPX-17 | U1 · Upstream-PR-Vorbereitung | ❌ GESTRICHEN 17.09.2026 (Olli: "nein wir wollen nicht helfen!") | - | - | Kein Issue-Kommentar, kein PR-Angebot an trypostit/trypost#228. Separater `publishStory()`-Fix (echter Bug, kein Feature-Beitrag) bleibt unberuehrt: [trypostit/trypost#360](https://github.com/trypostit/trypost/pull/360) |
 
 ## Completed
 
@@ -253,7 +253,7 @@ gemergt wird.
 | Facebook "nur ausgewaehlte Entwickler"-Warnung (B0) | offen, vor B2a | Wortlaut auf der offiziellen Page-Post-Delete-Doku: "Only select developers can perform this operation using the API." Unklar ob Boilerplate oder echte Einschraenkung, Smoke-Test vor B2a-Aufwand klaert es |
 | Instagram Delete gilt nur fuer Facebook-Login-Accounts (B0) | GEKLAERT 17.09.2026 | Olli-Entscheid: sauberer Unsupported-Pfad fuer `Platform::Instagram` (direct login) analog TikTok, `Platform::InstagramFacebook` bekommt echtes delete(). Siehe Plan OLLI-ENTSCHEIDE Runde 4 Punkt 9. Betrifft B2a/B3 |
 | B4-Produktfrage | offen | Delete-von-Published im Web-UI freischalten oder nur Unpublish? Vor B4 fragen |
-| U1-Freigabe | offen | Issue-Kommentar + PR-Text sieht Olli vor dem Absenden |
+| U1-Freigabe | GESTRICHEN 17.09.2026 | Olli explizit: "nein wir wollen nicht helfen!" Kein Upstream-Beitrag |
 | Separater Upstream-PR fuer publishStory()-Fix (a30d83c2) | offen | Sofort machbar, unabhaengig von U1, Olli-OK vor Absenden |
 | Upstream-PR #287 Ueberschneidung mit Feature A | zu pruefen in A0 | `gh pr view 287 --repo trypostit/trypost` |
 | AGPL-Copyleft-Frage | AUSDRUECKLICH NICHT TEIL DIESER WELLE | Olli-Korrektur, nicht erwaehnen |
