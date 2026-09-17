@@ -136,6 +136,11 @@ return [
                 'landscape' => '横版（16:9）',
                 'original' => '原始比例',
             ],
+            'story_music' => [
+                'label' => '背景音乐（可选）',
+                'placeholder' => '描述氛围，例如欢快的原声吉他',
+                'hint' => '仅在照片转换为带有AI生成背景音乐的视频时使用。',
+            ],
         ],
         'linkedin' => [
             'settings' => 'LinkedIn 设置',

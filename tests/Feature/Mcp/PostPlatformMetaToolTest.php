@@ -72,6 +72,24 @@ test('create post persists LinkedIn document_title meta', function () {
     expect(PostPlatform::where('social_account_id', $linkedin->id)->sole()->meta['document_title'])->toBe('Q2 Report');
 });
 
+test('create post persists Facebook story_music_description meta', function () {
+    $facebook = SocialAccount::factory()->facebook()->create(['workspace_id' => $this->workspace->id]);
+
+    $response = TryPostServer::actingAs($this->user)
+        ->tool(CreatePostTool::class, [
+            'content' => 'Check out our story',
+            'platforms' => [[
+                'social_account_id' => $facebook->id,
+                'content_type' => ContentType::FacebookStory->value,
+                'meta' => ['story_music_description' => 'Upbeat acoustic guitar'],
+            ]],
+        ]);
+
+    $response->assertOk();
+
+    expect(PostPlatform::where('social_account_id', $facebook->id)->sole()->meta['story_music_description'])->toBe('Upbeat acoustic guitar');
+});
+
 test('update post merges per-platform meta', function () {
     $post = Post::factory()->create([
         'workspace_id' => $this->workspace->id,

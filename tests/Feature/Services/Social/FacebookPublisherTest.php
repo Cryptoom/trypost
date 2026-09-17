@@ -12,6 +12,7 @@ use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Services\Media\ImageToVideoConverter;
+use App\Services\Media\StoryMusicGenerator;
 use App\Services\Social\FacebookPublisher;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
@@ -314,7 +315,10 @@ test('facebook publisher fails reel publish with typed exception when media down
 });
 
 test('facebook publisher auto-converts a photo story to a held-frame video', function () {
-    $this->postPlatform->update(['content_type' => ContentType::FacebookStory]);
+    $this->postPlatform->update([
+        'content_type' => ContentType::FacebookStory,
+        'meta' => ['story_music_description' => 'upbeat'],
+    ]);
 
     $this->post->update([
         'media' => [
@@ -332,13 +336,18 @@ test('facebook publisher auto-converts a photo story to a held-frame video', fun
     file_put_contents($convertedVideoPath, 'fake-converted-mp4-bytes');
 
     // The publisher downloads the photo to its own tempnam() path, which we
-    // cannot predict, so match on the duration arg only. No audio is passed:
-    // without AI music generation this photo-to-video conversion is always
-    // a held-frame video with a silent audio track.
+    // cannot predict, so match on the duration/description args only.
+    $mockMusicGenerator = Mockery::mock(StoryMusicGenerator::class);
+    $mockMusicGenerator->shouldReceive('generate')
+        ->once()
+        ->withArgs(fn (string $imagePath, int $duration, ?string $userDescription) => $duration === 15 && $userDescription === 'upbeat')
+        ->andReturn(null);
+    app()->instance(StoryMusicGenerator::class, $mockMusicGenerator);
+
     $mockConverter = Mockery::mock(ImageToVideoConverter::class);
     $mockConverter->shouldReceive('convert')
         ->once()
-        ->withArgs(fn (string $imagePath, int $duration) => $duration === 15)
+        ->withArgs(fn (string $imagePath, int $duration, ?string $audioPath) => $duration === 15 && $audioPath === null)
         ->andReturn($convertedVideoPath);
     app()->instance(ImageToVideoConverter::class, $mockConverter);
 

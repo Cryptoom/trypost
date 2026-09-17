@@ -136,6 +136,11 @@ return [
                 'landscape' => 'Poziomy (16:9)',
                 'original' => 'Oryginalny',
             ],
+            'story_music' => [
+                'label' => 'Muzyka w tle (opcjonalnie)',
+                'placeholder' => 'Opisz klimat, np. energiczna gitara akustyczna',
+                'hint' => 'Uzywane tylko wtedy, gdy zdjecie jest konwertowane na wideo z muzyka w tle wygenerowana przez AI.',
+            ],
         ],
         'linkedin' => [
             'settings' => 'Ustawienia LinkedIn',

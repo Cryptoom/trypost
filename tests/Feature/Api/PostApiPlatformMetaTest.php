@@ -70,6 +70,23 @@ it('persists the LinkedIn document_title meta on store', function () {
     expect(PostPlatform::where('social_account_id', $linkedin->id)->sole()->meta['document_title'])->toBe('Q2 Report');
 });
 
+it('persists the Facebook story_music_description meta on store', function () {
+    $facebook = SocialAccount::factory()->facebook()->create(['workspace_id' => $this->workspace->id]);
+
+    $this->withHeaders($this->headers)
+        ->postJson(route('api.posts.store'), [
+            'content' => 'Check out our story',
+            'platforms' => [[
+                'social_account_id' => $facebook->id,
+                'content_type' => ContentType::FacebookStory->value,
+                'meta' => ['story_music_description' => 'Upbeat acoustic guitar'],
+            ]],
+        ])
+        ->assertCreated();
+
+    expect(PostPlatform::where('social_account_id', $facebook->id)->sole()->meta['story_music_description'])->toBe('Upbeat acoustic guitar');
+});
+
 it('publishes a LinkedIn document post that has a PDF', function () {
     Queue::fake();
 

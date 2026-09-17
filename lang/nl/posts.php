@@ -136,6 +136,11 @@ return [
                 'landscape' => 'Liggend (16:9)',
                 'original' => 'Origineel',
             ],
+            'story_music' => [
+                'label' => 'Achtergrondmuziek (optioneel)',
+                'placeholder' => 'Beschrijf de sfeer, bijv. vrolijke akoestische gitaar',
+                'hint' => 'Wordt alleen gebruikt wanneer een foto wordt omgezet in video met door AI gegenereerde achtergrondmuziek.',
+            ],
         ],
         'linkedin' => [
             'settings' => 'LinkedIn-instellingen',

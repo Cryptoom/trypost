@@ -205,6 +205,10 @@ return [
             // photo instead, it is auto-converted into a held-frame MP4 of
             // this duration (see App\Services\Media\ImageToVideoConverter).
             'story_photo_duration_seconds' => (int) env('FACEBOOK_STORY_PHOTO_DURATION_SECONDS', 15),
+            // Best-effort AI-generated background music (via Gemini/Lyria)
+            // for a photo-to-video Story conversion above. Off by default,
+            // real per-song cost. See App\Services\Media\StoryMusicGenerator.
+            'story_ai_music_enabled' => (bool) env('FACEBOOK_STORY_AI_MUSIC_ENABLED', false),
         ],
         'instagram' => [
             'enabled' => env('INSTAGRAM_ENABLED', true),

@@ -11,6 +11,7 @@ use App\Exceptions\Social\FacebookPublishException;
 use App\Exceptions\Social\SocialPublishException;
 use App\Models\PostPlatform;
 use App\Services\Media\ImageToVideoConverter;
+use App\Services\Media\StoryMusicGenerator;
 use App\Services\Social\Concerns\CropsImageForAspectRatio;
 use App\Services\Social\Concerns\HasSocialHttpClient;
 use Illuminate\Http\Client\PendingRequest;
@@ -53,10 +54,11 @@ class FacebookPublisher
         $media = $postPlatform->scopedMediaItems();
         $contentType = $postPlatform->content_type;
         $aspectRatio = data_get($postPlatform->meta, 'aspect_ratio');
+        $musicDescription = data_get($postPlatform->meta, 'story_music_description');
 
         return match ($contentType) {
             ContentType::FacebookReel => $this->publishReel($pageId, $accessToken, $content, $media->first()),
-            ContentType::FacebookStory => $this->publishStory($pageId, $accessToken, $media->first()),
+            ContentType::FacebookStory => $this->publishStory($pageId, $accessToken, $media->first(), $musicDescription),
             ContentType::FacebookPost => $this->publishPost($pageId, $accessToken, $content, $media, $aspectRatio),
             default => throw new FacebookPublishException(
                 userMessage: "Unsupported Facebook content type: {$contentType?->value}",
@@ -399,11 +401,11 @@ class FacebookPublisher
 
     /**
      * Facebook Stories require a video file. When a user attaches a photo
-     * instead, it is auto-converted into a held-frame MP4 (see
-     * convertImageToStoryVideo()) before this method's normal video
-     * transfer/finish flow runs unchanged.
+     * instead, it is auto-converted into a held-frame MP4 (with best-effort
+     * AI background music, see convertImageToStoryVideo()) before this
+     * method's normal video transfer/finish flow runs unchanged.
      */
-    private function publishStory(string $pageId, string $accessToken, $media): array
+    private function publishStory(string $pageId, string $accessToken, $media, ?string $musicDescription = null): array
     {
         if (! $media->isVideo() && ! $media->isImage()) {
             throw new FacebookPublishException(
@@ -446,7 +448,7 @@ class FacebookPublisher
         // actual video).
         [$tempFile, $mimeType] = $media->isVideo()
             ? $this->downloadStoryVideo($media)
-            : $this->convertImageToStoryVideo($media);
+            : $this->convertImageToStoryVideo($media, $musicDescription);
 
         try {
             $fileSize = filesize($tempFile);
@@ -525,14 +527,17 @@ class FacebookPublisher
 
     /**
      * Facebook Stories require a video file, but a user may only supply a
-     * photo. Downloads the photo, then renders a held-frame MP4 with a
-     * silent audio track (App\Services\Media\ImageToVideoConverter).
+     * photo. Downloads the photo, best-effort generates an AI background
+     * track (App\Services\Media\StoryMusicGenerator, falls back to null
+     * on any failure so this never blocks the publish), then renders a
+     * held-frame MP4 (App\Services\Media\ImageToVideoConverter).
      *
      * @return array{0: string, 1: string} [local file path, mime type]
      */
-    private function convertImageToStoryVideo($media): array
+    private function convertImageToStoryVideo($media, ?string $musicDescription): array
     {
         $imagePath = tempnam(sys_get_temp_dir(), 'fb_story_img_');
+        $audioPath = null;
 
         try {
             $download = Http::withOptions(['sink' => $imagePath])
@@ -550,8 +555,10 @@ class FacebookPublisher
 
             $durationSeconds = (int) config('trypost.platforms.facebook.story_photo_duration_seconds');
 
+            $audioPath = app(StoryMusicGenerator::class)->generate($imagePath, $durationSeconds, $musicDescription);
+
             try {
-                $videoPath = app(ImageToVideoConverter::class)->convert($imagePath, $durationSeconds);
+                $videoPath = app(ImageToVideoConverter::class)->convert($imagePath, $durationSeconds, $audioPath);
             } catch (RuntimeException $e) {
                 throw new FacebookPublishException(
                     userMessage: 'Could not convert the story photo to video.',
@@ -563,8 +570,10 @@ class FacebookPublisher
 
             return [$videoPath, 'video/mp4'];
         } finally {
-            if (file_exists($imagePath) && ! unlink($imagePath)) {
-                Log::warning('Facebook story temp file cleanup failed', ['path' => $imagePath]);
+            foreach ([$imagePath, $audioPath] as $path) {
+                if ($path !== null && file_exists($path) && ! unlink($path)) {
+                    Log::warning('Facebook story temp file cleanup failed', ['path' => $path]);
+                }
             }
         }
     }

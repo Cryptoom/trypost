@@ -136,6 +136,11 @@ return [
                 'landscape' => 'Horizontal (16:9)',
                 'original' => 'Original',
             ],
+            'story_music' => [
+                'label' => 'Musica de fondo (opcional)',
+                'placeholder' => 'Describe el ambiente, p. ej. guitarra acustica alegre',
+                'hint' => 'Solo se usa cuando una foto se convierte en video con musica de fondo generada por IA.',
+            ],
         ],
         'linkedin' => [
             'settings' => 'Configuración de LinkedIn',

@@ -4,6 +4,7 @@ import { computed, ref } from 'vue';
 
 import MediaRulesWarning from '@/components/posts/editor/MediaRulesWarning.vue';
 import { Avatar } from '@/components/ui/avatar';
+import { Textarea } from '@/components/ui/textarea';
 import { getPlatformLogo } from '@/composables/usePlatformLogo';
 import { ContentType } from '@/types/content-type';
 import type { MediaItem } from '@/types/media';
@@ -53,6 +54,7 @@ const aspectRatios = [
 ];
 
 const isFeed = computed(() => props.contentType === ContentType.FacebookPost);
+const isStory = computed(() => props.contentType === ContentType.FacebookStory);
 const selectedAspectRatio = computed(() => props.meta.aspect_ratio ?? 'original');
 
 const pickVariant = (value: string) => {
@@ -64,6 +66,16 @@ const pickAspectRatio = (value: string) => {
     if (props.disabled) return;
     emit('update:meta', { ...props.meta, aspect_ratio: value });
 };
+
+// A photo attached to a Story is auto-converted to video server-side (see
+// FacebookPublisher::publishStory()); this optionally steers the AI-generated
+// background music used for that conversion.
+const storyMusicDescription = computed({
+    get: () => (props.meta.story_music_description as string | undefined) || '',
+    set: (value: string) => {
+        emit('update:meta', { ...props.meta, story_music_description: value.trim() === '' ? null : value });
+    },
+});
 </script>
 
 <template>
@@ -137,6 +149,18 @@ const pickAspectRatio = (value: string) => {
                         {{ $t(ratio.labelKey) }}
                     </button>
                 </div>
+            </div>
+
+            <div v-if="isStory" class="space-y-2">
+                <p class="text-[11px] font-black uppercase tracking-widest text-foreground/60">{{ $t('posts.form.facebook.story_music.label') }}</p>
+                <Textarea
+                    v-model="storyMusicDescription"
+                    :placeholder="$t('posts.form.facebook.story_music.placeholder')"
+                    :disabled="disabled"
+                    rows="2"
+                    data-testid="facebook-story-music-description"
+                />
+                <p class="text-xs text-foreground/60">{{ $t('posts.form.facebook.story_music.hint') }}</p>
             </div>
 
             <MediaRulesWarning :content-type="contentType" :media="media" :platform="Platform.Facebook" />
