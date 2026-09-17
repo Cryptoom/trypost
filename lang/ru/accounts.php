@@ -115,6 +115,7 @@ return [
         'description' => 'Выберите способ подключения аккаунта Instagram',
         'standalone_title' => 'Instagram Login',
         'standalone_description' => 'Войдите с профессиональным аккаунтом Instagram',
+        'standalone_delete_notice' => 'Публикации, опубликованные таким способом, впоследствии нельзя будет удалить или отменить публикацию.',
         'facebook_title' => 'Страницы Facebook',
         'facebook_description' => 'Подключите аккаунт Instagram, связанный со страницей Facebook',
     ],

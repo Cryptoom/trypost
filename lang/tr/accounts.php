@@ -117,6 +117,7 @@ return [
         'description' => 'Instagram hesabınızı nasıl bağlamak istediğinizi seçin',
         'standalone_title' => 'Instagram Login',
         'standalone_description' => 'Profesyonel Instagram hesabınızla oturum açın',
+        'standalone_delete_notice' => 'Bu şekilde paylaşılan gönderiler daha sonra silinemez veya yayından kaldırılamaz.',
         'facebook_title' => 'Facebook Sayfaları',
         'facebook_description' => 'Bir Facebook Sayfasına bağlı Instagram hesabı bağlayın',
     ],

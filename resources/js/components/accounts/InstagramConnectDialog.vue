@@ -89,6 +89,14 @@ const showsFacebook = () => props.methods.includes(Platform.InstagramFacebook);
                                 )
                             }}</span
                         >
+                        <span
+                            class="mt-1 block text-[11px] font-medium text-amber-700 dark:text-amber-400"
+                            >{{
+                                $t(
+                                    'accounts.instagram_connect.standalone_delete_notice',
+                                )
+                            }}</span
+                        >
                     </span>
                 </Button>
 

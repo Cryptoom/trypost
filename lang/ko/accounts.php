@@ -115,6 +115,7 @@ return [
         'description' => 'Instagram 계정을 연결할 방법을 선택하세요',
         'standalone_title' => 'Instagram Login',
         'standalone_description' => 'Instagram 프로페셔널 계정으로 로그인하세요',
+        'standalone_delete_notice' => '이 방식으로 게시된 게시물은 나중에 삭제하거나 게시 취소할 수 없습니다.',
         'facebook_title' => 'Facebook 페이지',
         'facebook_description' => 'Facebook 페이지에 연결된 Instagram 계정을 연결하세요',
     ],

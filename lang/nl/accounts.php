@@ -115,6 +115,7 @@ return [
         'description' => 'Kies hoe je je Instagram-account wilt koppelen',
         'standalone_title' => 'Instagram Login',
         'standalone_description' => 'Log in met je professionele Instagram-account',
+        'standalone_delete_notice' => 'Berichten die op deze manier zijn gepubliceerd, kun je later niet verwijderen of ongedaan maken.',
         'facebook_title' => 'Facebook-pagina\'s',
         'facebook_description' => 'Koppel een Instagram-account dat gekoppeld is aan een Facebook-pagina',
     ],

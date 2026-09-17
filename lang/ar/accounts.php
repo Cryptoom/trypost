@@ -115,6 +115,7 @@ return [
         'description' => 'اختر طريقة ربط حساب Instagram',
         'standalone_title' => 'Instagram Login',
         'standalone_description' => 'سجّل الدخول بحساب Instagram الاحترافي',
+        'standalone_delete_notice' => 'لا يمكن حذف المنشورات التي تُنشر بهذه الطريقة أو إلغاء نشرها لاحقًا.',
         'facebook_title' => 'صفحات Facebook',
         'facebook_description' => 'اربط حساب Instagram مرتبطًا بصفحة Facebook',
     ],
