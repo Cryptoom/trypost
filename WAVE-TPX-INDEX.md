@@ -39,7 +39,18 @@ Status-Symbole: ✓ done · 🚀 deployed · ⏳ in_progress · ❓ waiting · �
 
 ## Active Chips
 
-(keine gerade · Deploy auf web02 laeuft, siehe Deploy-Status)
+| Chip | Paket | Status | Started | Worktree/Branch |
+|---|---|---|---|---|
+| TPX-11 | B2a · Facebook/Instagram delete() | ⏳ in_progress | 2026-09-17 | claude/tpx-11-b2a-facebook-instagram-delete |
+| TPX-13 | B2c · LinkedIn delete() | ⏳ in_progress | 2026-09-17 | claude/tpx-13-b2c-linkedin-delete |
+| TPX-14 | B2d · YouTube delete() | ⏳ in_progress | 2026-09-17 | claude/tpx-14-b2d-youtube-delete |
+| TPX-15 | B3 · MCP UnpublishPostTool | ⏳ in_progress | 2026-09-17 | claude/tpx-15-b3-mcp-unpublish-tool |
+| TPX-16 | B4 · Vue-UI + Web-Route | ⏳ in_progress | 2026-09-17 | claude/tpx-16-b4-web-ui |
+
+Alle 5 laufen parallel, disjunkte Dateien laut Konflikt-Matrix. TPX-11 (B2a) ist der einzige der
+`UnpublishPost.php` anfasst (Pflicht-Fix aus dem B1-Review, `published_at`-Bug), die anderen vier
+ruehren diese Datei nicht an. B2b (Threads) bleibt geparkt. Kein Merge von B2a/B2c/B2d ohne
+vorherigen Live-Smoke-Test (Plan-Pflicht), B3/B4 warten auf Review + Olli-Buttons-Test.
 
 ## Pending (Startreihenfolge)
 
