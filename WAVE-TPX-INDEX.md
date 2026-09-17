@@ -49,6 +49,14 @@ Alle 5 laufen parallel, disjunkte Dateien laut Konflikt-Matrix. TPX-11 (B2a) ist
 ruehren diese Datei nicht an. Kein Merge von B2a/B2c/B2d ohne vorherigen Live-Smoke-Test
 (Plan-Pflicht), B3/B4 warten auf Review + Olli-Buttons-Test.
 
+**WICHTIG (B2d-Review-Fund, gilt fuer B2a/B2c/B2d gleichermassen)**: `UnpublishPost.php`s
+Dispatch (`method_exists($publisher, 'delete')`) ist automatisch. Der MERGE eines B2x-PRs
+selbst, nicht erst ein spaeterer Schritt, aktiviert sofort einen bestehenden Live-Pfad
+(Web-UI-Delete, REST-API-Delete, MCP-`DeletePostTool`/`UnpublishPostTool`), ueber den ab dem
+Merge-Zeitpunkt echte Plattform-Inhalte geloescht werden koennen. Live-Smoke-Test VOR Merge ist
+darum keine Formalitaet, sondern verhindert dass der allererste echte Delete-Versuch
+unbeaufsichtigt ueber einen bereits scharfen Produktions-Pfad laeuft.
+
 **B2b (Threads) GESTRICHEN 17.09.2026 (Olli, explizit)**: "B2b (Threads) bleibt geparkt, machen
 wir derzeit nicht, nutzt keiner." Nicht mehr nur "geparkt bis Meta-App-Review", sondern bewusst
 ausserhalb dieser Welle. Kein Chip dafuer, kein Olli-Gate mehr offen dafuer.
@@ -60,7 +68,15 @@ idempotenter Erfolg behandelt (gegen offizielle Doku verifiziert), Scope bereits
 eigenen Guzzle-Transport NICHT ab, alle 8 bestehenden Tests haben das nie wirklich erreicht.
 Chip hat eine minimale, produktionsneutrale Testbarkeits-Naht ergaenzt (`createGoogleClient()`
 nutzt einen optional gebundenen `GuzzleHttp\ClientInterface`), 12/12 Tests jetzt echt end-to-end.
-Review-Runde noch offen.
+**Review-Runde 1 PASS**, zwei nicht-blockierende Wichtig-Punkte (kein `catch(\Throwable)` in
+`delete()` anders als `publishShort()`, dadurch kein Server-Log bei unerwarteten Netzwerkfehlern;
+Docblock behauptet faelschlich "teuerste Data-API-Operation" fuer die 50 Quota-Units, obwohl
+`videos.insert` in derselben Datei 1600 kostet). **Wichtiger Fund des Reviewers, gilt fuer JEDEN
+B2a/c/d-Merge**: `UnpublishPost::resolveDeletePublisher()` erkennt `delete()` automatisch per
+`method_exists()`. Der Merge selbst aktiviert damit sofort einen bestehenden Live-Pfad (Web/API/
+MCP-Delete-Endpoints), nicht nur eine bisher ungenutzte Methode, echte YouTube-Videos koennen ab
+dem Merge-Zeitpunkt geloescht werden. Macht den Live-Smoke-Test-VOR-Merge (Plan-Pflicht) noch
+wichtiger als ohnehin schon. Runde 2 noch offen, kein Merge bis Smoke-Test.
 
 **TPX-15 (B3) gemergt**: siehe Completed-Tabelle.
 
