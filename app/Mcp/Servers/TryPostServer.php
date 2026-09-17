@@ -25,6 +25,7 @@ use App\Mcp\Tools\Post\ListPostsTool;
 use App\Mcp\Tools\Post\PreviewPostTool;
 use App\Mcp\Tools\Post\PublishPostTool;
 use App\Mcp\Tools\Post\RequestMediaUploadTool;
+use App\Mcp\Tools\Post\UnpublishPostTool;
 use App\Mcp\Tools\Post\UpdatePostTool;
 use App\Mcp\Tools\Repurpose\ActivateRepurposeTool;
 use App\Mcp\Tools\Repurpose\CreateRepurposeTool;
@@ -79,6 +80,7 @@ class TryPostServer extends Server
         PublishPostTool::class,
         PreviewPostTool::class,
         DeletePostTool::class,
+        UnpublishPostTool::class,
         AttachMediaFromUrlTool::class,
         RequestMediaUploadTool::class,
         AttachMediaFromUploadTool::class,
