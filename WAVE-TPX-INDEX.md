@@ -100,3 +100,13 @@ Status-Symbole: ✓ done · 🚀 deployed · ⏳ in_progress · ❓ waiting · �
 Kein Deploy in dieser Welle bisher. Letzter bekannter Live-Stand: Commit `a30d83c2`
 (Facebook-Story-Fix, 16.09.2026, laut vorherigem Chip deployed, hier nicht erneut verifiziert
 bis zum ersten TPX-Deploy).
+
+**Deploy-Freigabe 17.09.2026 (Olli, explizit im Chat)**: "darfst wenn es sauber ist selbst
+mergen und commit und push und deploy machen, dadurch schaltest du testmodus frei der auf dem
+oliver workspace testen kann mit pruefung ob gepostet und deletbar". Hebt den generellen
+Deploy-Gate-Stopp (siehe Olli-Touchpoints unten) fuer DIESEN konkreten Moment auf: TPXB-01
+(PR #14) und B1 (PR #16) nach sauberer Review-Runde selbst mergen, dann main auf web02
+deployen (etabliertes Muster: `git pull --ff-only`, `docker compose up -d --build app`,
+Health-Check), danach Live-Smoke-Test auf dem Oliver-Albrecht-Workspace (eigener, nicht
+Kunden-Account): posten und pruefen ob loeschbar. Gilt NICHT als generelle Dauerfreigabe fuer
+jeden kuenftigen Deploy dieser Welle, sondern als konkrete Freigabe fuer diesen Schritt.
