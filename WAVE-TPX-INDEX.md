@@ -73,7 +73,9 @@ eigener Fund: `LazyLoadingViolationException` beim Scope-Check (eager-loading `s
 nachgezogen). 122 neue Tests + 2145-Test-Sweep gruen (isolierter Wegwerf-Container Port 5555
 wegen Schema-Drift im geteilten Testcontainer durch parallele Chips). Zwei offene B0-Olli-Gates
 (Facebook-Warnung, Instagram-Doku-Widerspruch) explizit im PR-Body als Merge-Blocker bis zum
-Live-Smoke-Test benannt. Review-Runde noch offen.
+Live-Smoke-Test benannt. **Review-Runde 1 PASS, keine Funde.** Kritischster Punkt (Instagram-
+Direct-Login darf nie loeschbar sein) per aktivem Spy-Test bewiesen (`calls === 0`), nicht nur
+Kommentar. Runde 2 noch offen, kein Merge bis Live-Smoke-Test.
 
 **TPX-14 (B2d, YouTube) fertig**: PR [#18](https://github.com/Cryptoom/trypost/pull/18),
 `YouTubePublisher::delete()`, `videos.delete` mit bare Video-ID, `videoNotFound` (404) als
