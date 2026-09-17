@@ -30,9 +30,21 @@
 > lokalen main per Fast-Forward auf origin/main synchronisiert (war 12 Commits hinterher),
 > Plan + Nachtgate erneut gelesen. **Welle A jetzt komplett gemergt** (A4 #13, A5 #12), inkl.
 > eines echten Merge-Konflikts zwischen A4 und A5 in `UpdatePost.php` (unabhaengig doppelt
-> gebaute `media_ids`-Sync-Logik), manuell aufgeloest und breit re-getestet. Naechster Schritt
-> laut Plan: B0 (Nachweis-Paket, kein Code). Pausiert hier fuer Olli-Ruecksprache statt
-> automatisch weiterzulaufen, da Welle-A-Ende ein sinnvoller Checkpoint ist.
+> gebaute `media_ids`-Sync-Logik), manuell aufgeloest und breit re-getestet.
+> **Welle B jetzt ebenfalls komplett gemergt UND deployed** (B2a #20, B2c #17, B2d #18, B4 #21,
+> in dieser Reihenfolge, siehe Merge-Reihenfolge-Warnung oben). Post-Merge-Sweep zeigte zunaechst
+> 126 Fehlschlaege, beide Ursachen gefunden und behoben (Commit `b484af8b`, siehe Completed-
+> Tabelle): (1) 124 davon waren eine Umgebungsluecke dieser lokalen Testinstanz, fehlende
+> Passport-OAuth-Keys (`storage/oauth-*.key`, gitignored, `passport:keys --force` behebt es),
+> KEINE echte Regression. (2) 2 echte Fehlschlaege in `UnpublishPostToolTest.php`: die Fixtures
+> nutzten LinkedIn als Beispiel-Plattform fuer "unsupported", das stimmte als B3 gebaut wurde
+> (0 Publisher hatten delete()), ist aber nach B2c falsch (LinkedIn hat jetzt echtes delete()
+> und versucht einen echten API-Call statt "unsupported" zu liefern). Fix: beide Tests auf
+> TikTok umgestellt (bleibt genuin unsupported, kein delete/unpublish-Endpoint), analog zum
+> bereits etablierten Muster im Action-Level-Test. Zusaetzlicher, unabhaengiger Fund beim
+> Voll-Sweep (kein Post-Filter): `MediaPostPlatform`-Model fehlte im Morph-Map
+> (`AppServiceProvider::configureMorphMap()`), ergaenzt. Voller Sweep danach 4655 passed, 2
+> skipped, 0 failed. Deploy auf web02 durchgefuehrt und verifiziert, siehe Deploy-Status.
 
 Status-Symbole: ✓ done · 🚀 deployed · ⏳ in_progress · ❓ waiting · 🔄 pending · ⛔ blocked ·
 ❌ failed · 🔍 review · 📝 discovered
@@ -41,7 +53,7 @@ Status-Symbole: ✓ done · 🚀 deployed · ⏳ in_progress · ❓ waiting · �
 
 | Chip | Paket | Status | Started | Worktree/Branch |
 |---|---|---|---|---|
-(keine gerade · alle 5 B2a/c/d/B3/B4-Chips fertig, siehe unten)
+(keine · Welle B komplett gemergt und deployed, siehe Completed-Tabelle und Deploy-Status)
 
 Alle 5 laufen parallel, disjunkte Dateien laut Konflikt-Matrix. TPX-11 (B2a) ist der einzige der
 `UnpublishPost.php` anfasst (Pflicht-Fix aus dem B1-Review, `published_at`-Bug), die anderen vier
@@ -153,17 +165,18 @@ gemergt wird.
 
 | Chip | Paket | Status | Dependencies | Branch/PR | Plan/Real |
 |---|---|---|---|---|---|
-| TPX-11 | B2a · Facebook/Instagram delete() | 🔄 pending, 2 offene Olli-Gates (Facebook "select developers"-Warnung, Instagram POST/DELETE-Doku-Widerspruch, beide per Smoke-Test klaerbar) | B0, B1 ✓, A3 | - | - |
 | TPX-12 | B2b · Threads delete() | ❌ GESTRICHEN 17.09.2026 (Olli: "machen wir derzeit nicht, nutzt keiner"), kein Chip mehr vorgesehen | - | - | - |
-| TPX-13 | B2c · LinkedIn delete() | 🔄 pending | B0, B1, A3 | - | - |
-| TPX-14 | B2d · YouTube delete() | 🔄 pending | B0, B1, A3, YouTube-Scope-Gate | - | - |
-| TPX-16 | B4 · Vue-UI + Web-Route | ⏳ in_progress (siehe Active Chips) | B1 ✓ | - | - |
-| TPX-17 | U1 · Upstream-PR-Vorbereitung | 🔄 pending | Welle B gemergt + deployed | - | - |
+| TPX-17 | U1 · Upstream-PR-Vorbereitung | 🔄 pending | Welle B gemergt + deployed ✓ | - | - |
 
 ## Completed
 
 | Chip | Paket | PR | Merge-Commit | Notiz |
 |---|---|---|---|---|
+| - | Post-Merge-Fix (Morph-Map + stale Test-Fixtures) | kein PR, direkt auf main (Olli-Freigabe) | `b484af8b` | `MediaPostPlatform` fehlte im Morph-Map, ergaenzt. `UnpublishPostToolTest.php` nutzte LinkedIn als "unsupported"-Beispiel, seit B2c falsch (LinkedIn hat jetzt delete()), auf TikTok umgestellt. Voller Sweep danach 4655 passed/2 skipped/0 failed |
+| TPX-16 | B4 · Vue-UI + Web-Route | [#21](https://github.com/Cryptoom/trypost/pull/21) | `ccb75401` | Siehe volle Notiz oben (Active-Chips-Sektion vor dem Merge). Gemergt in der Reihenfolge B2a→B2c→B2d→B4 wie vom Reviewer empfohlen, damit der Unpublish-Button in `Index.vue` nie eine Faehigkeit vorspiegelt die das Backend noch nicht hat |
+| TPX-14 | B2d · YouTube delete() | [#18](https://github.com/Cryptoom/trypost/pull/18) | `a70f0b45` | Siehe volle Notiz oben. `YouTubePublisher::delete()`, `videoNotFound` idempotent, Testbarkeits-Naht fuer Googles Guzzle-Transport |
+| TPX-13 | B2c · LinkedIn delete() | [#17](https://github.com/Cryptoom/trypost/pull/17) | `faa4cb31` | Siehe volle Notiz oben. `AbstractLinkedInPublisher::delete()`, deckt Profile- und Page-Unterklasse ab |
+| TPX-11 | B2a · Facebook/Instagram delete() | [#20](https://github.com/Cryptoom/trypost/pull/20) | `27420c66` | Siehe volle Notiz oben. `FacebookPublisher::delete()` + `InstagramPublisher::delete()`, `Platform::Instagram` (direct login) explizit unsupported gehalten, per Spy-Test bewiesen |
 | TPX-15 | B3 · MCP UnpublishPostTool | [#19](https://github.com/Cryptoom/trypost/pull/19) | `335fab77` | Neues `UnpublishPostTool.php`, `post_id` isoliert vorab validiert (A4/TPXB-01-Muster), `post_platform_ids`-IDOR-Schutz per `Rule::exists(...)->where('post_id', ...)` mit Test bestaetigt, Autorisierung ueber `update`. `unsupported_platforms` explizit in der Antwort. 9/9 Tests gruen, Review PASS ohne Funde. Keine Live-API-Abhaengigkeit (ruft nur B1s bereits unsupported Dispatch auf), darum 1 Review-Runde ausreichend (Plan-Vorgabe), autonom gemergt |
 | TPX-10 | B1 · UnpublishPost + DeletePost | [#16](https://github.com/Cryptoom/trypost/pull/16) | `e81bc05c` | Neue `UnpublishPost.php`, `Post::markAsUnpublished()`, `PostPlatform::markAsUnpublished()`, `DeletePost::execute()` ruft Unpublish jetzt als ersten Schritt (best-effort). Bewusste Design-Abweichung vom Plan: `method_exists($publisher, 'delete')` statt hartem `match`, damit B2a-d ihre `delete()`-Methoden ergaenzen koennen ohne `UnpublishPost.php` nochmal anzufassen. TikTok-Negativtest auf beiden Ebenen (Unpublish + Delete). Review PASS mit 2 "Wichtig"-Funden (siehe Pflicht-Nacharbeit-Hinweis oben), aktuell folgenlos da Erfolgspfad noch dead code (0 Publisher haben delete()). 36 neue Tests, 1015/1015 breiter Post-Sweep gruen (nach migrate:fresh, erster Lauf zeigte Schema-Drift im geteilten Test-Container, Infra-Rauschen). Olli hat den Nachtmodus-Gate-Stopp fuer diesen Merge explizit aufgehoben, autonom gemergt |
 | TPXB-01 | UpdatePostTool post_id-Validierungsreihenfolge | [#14](https://github.com/Cryptoom/trypost/pull/14) | `07ca0469` | Vom Olli-gestarteten Backlog-Chip (task_fe146be6) gebaut, identisches Fix-Muster wie A4 (`60627d58`), diesmal auf `UpdatePostTool.php`. Review verifizierte per Revert-Test, dass die 2 neuen Regressionstests den Bug wirklich fangen (malformed post_id wirft ohne Fix eine echte QueryException). 308/308 Mcp-Tests gruen. Olli hat den Nachtmodus-Gate-Stopp fuer diesen Merge explizit aufgehoben ("darfst wenn es sauber ist selbst mergen"), autonom gemergt |
@@ -244,9 +257,27 @@ Freigabe fuer diesen Schritt.
 `docker compose up -d --build app`, Migration `2026_09_17_120000_create_media_post_platform_table`
 lief automatisch beim Container-Start (Batch 4, per `migrate:status` + `\dt` in Postgres
 verifiziert). Health-Check: Container `trypost` healthy, `https://social.madevisible.io/login`
-HTTP 200, `php artisan --version` bestaetigt Laravel 13.24.0 hochgefahren. Live-Smoke-Test
-(posten + Loeschbarkeit pruefen auf dem Oliver-Albrecht-Workspace) noch NICHT durchgefuehrt,
-das MCP-Tool `trypost-playcraft` ist an den PlayCraft-Workspace gebunden, nicht an Oliver
-Albrecht, braucht einen anderen Zugriffsweg (Chrome-MCP mit Ollis eingeloggter Session oder
-eine eigene API-Key/MCP-Bindung fuer diesen Workspace). Mit Olli abzustimmen bevor real auf
-seinen verbundenen Facebook/Instagram-Accounts gepostet wird.
+HTTP 200, `php artisan --version` bestaetigt Laravel 13.24.0 hochgefahren.
+
+**Zweiter Deploy (Welle B) DURCHGEFUEHRT 17.09.2026**: alle 4 verbleibenden B2a/c/d/B4-PRs in
+der empfohlenen Reihenfolge B2a→B2c→B2d→B4 gemergt (`27420c66`, `faa4cb31`, `a70f0b45`,
+`ccb75401`), danach voller lokaler Pest-Sweep VOR Deploy gefahren (Pflicht, nie blind deployen).
+Sweep zeigte 126 Fehlschlaege, beide Ursachen gefunden und auf main gefixt (`b484af8b`, siehe
+Completed-Tabelle): 124 Umgebungsluecke (fehlende Passport-Keys in dieser lokalen Testinstanz,
+keine echte Regression), 2 echte stale Test-Fixtures (`UnpublishPostToolTest.php` nutzte
+LinkedIn als "unsupported"-Beispiel, seit B2c falsch) plus ein unabhaengiger Morph-Map-Fund
+(`MediaPostPlatform` fehlte). Voller Sweep danach 4655 passed, 2 skipped, 0 failed. `git pull
+--ff-only` auf web02 (`77927af` → `b484af8b`, keine Migration im Delta), `docker compose up -d
+--build app`. Health-Check: Container `trypost` healthy, `https://social.madevisible.io/login`
+HTTP 200, `php artisan --version` bestaetigt Laravel 13.24.0, Server-`git rev-parse HEAD`
+bestaetigt `b484af8b` deployed.
+
+**Live-Smoke-Test (posten + Loeschbarkeit pruefen auf dem Oliver-Albrecht-Workspace) noch NICHT
+durchgefuehrt.** Das MCP-Tool `trypost-playcraft` ist an den PlayCraft-Workspace gebunden, nicht
+an Oliver Albrecht, braucht einen anderen Zugriffsweg (Chrome-MCP mit Ollis eingeloggter Session
+oder eine eigene API-Key/MCP-Bindung fuer diesen Workspace, siehe `TRYPOST_OLIVER_WORKSPACE_API_KEY`
+in `~/.claude/.env`). Der Delete/Unpublish-Pfad ist damit fuer Facebook/Instagram(Facebook)/
+LinkedIn/YouTube jetzt LIVE und aktiv nutzbar (siehe Merge-Reihenfolge-Warnung oben), aber noch
+NICHT ueber echte UI-Buttons verifiziert, wie von Olli explizit gefordert ("testen erst wenn
+fertig und dann via buttons pruefen nicht nur via code"). Naechster Schritt: mit Olli abstimmen,
+dann Buttons-Test auf dem Oliver-Albrecht-Workspace.
