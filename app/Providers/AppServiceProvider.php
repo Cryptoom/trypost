@@ -10,6 +10,7 @@ use App\Models\Account;
 use App\Models\AiUsageLog;
 use App\Models\Invite;
 use App\Models\Media;
+use App\Models\MediaPostPlatform;
 use App\Models\Notification;
 use App\Models\NotificationPreference;
 use App\Models\Plan;
@@ -99,6 +100,7 @@ class AppServiceProvider extends ServiceProvider
             'aiUsageLog' => AiUsageLog::class,
             'invite' => Invite::class,
             'media' => Media::class,
+            'mediaPostPlatform' => MediaPostPlatform::class,
             'notification' => Notification::class,
             'notificationPreference' => NotificationPreference::class,
             'plan' => Plan::class,

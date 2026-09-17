@@ -20,19 +20,18 @@ beforeEach(function () {
     $this->workspace->members()->attach($this->user->id, ['role' => Role::Member->value]);
     $this->user->update(['current_workspace_id' => $this->workspace->id]);
 
-    $this->socialAccount = SocialAccount::factory()->create([
+    $this->socialAccount = SocialAccount::factory()->tiktok()->create([
         'workspace_id' => $this->workspace->id,
-        'platform' => Platform::LinkedIn,
     ]);
 });
 
-test('reports the platform as unsupported, since no publisher implements delete today, and leaves the post untouched', function () {
+test('reports the platform as unsupported, since TikTok has no delete/unpublish endpoint, and leaves the post untouched', function () {
     $post = Post::factory()->create([
         'workspace_id' => $this->workspace->id,
         'user_id' => $this->user->id,
         'status' => PostStatus::Published,
     ]);
-    $platform = PostPlatform::factory()->published()->create([
+    $platform = PostPlatform::factory()->tiktok()->published()->create([
         'post_id' => $post->id,
         'social_account_id' => $this->socialAccount->id,
     ]);
@@ -46,7 +45,7 @@ test('reports the platform as unsupported, since no publisher implements delete 
             'unpublished' => [],
             'failed' => [],
             'unsupported_platforms' => [
-                ['post_platform_id' => $platform->id, 'platform' => Platform::LinkedIn->value],
+                ['post_platform_id' => $platform->id, 'platform' => Platform::TikTok->value],
             ],
         ]);
 
@@ -83,7 +82,7 @@ test('post_platform_ids narrows the attempt to the given platforms only', functi
         'user_id' => $this->user->id,
         'status' => PostStatus::Published,
     ]);
-    $target = PostPlatform::factory()->published()->create([
+    $target = PostPlatform::factory()->tiktok()->published()->create([
         'post_id' => $post->id,
         'social_account_id' => $this->socialAccount->id,
     ]);
@@ -108,7 +107,7 @@ test('post_platform_ids narrows the attempt to the given platforms only', functi
             'unpublished' => [],
             'failed' => [],
             'unsupported_platforms' => [
-                ['post_platform_id' => $target->id, 'platform' => Platform::LinkedIn->value],
+                ['post_platform_id' => $target->id, 'platform' => Platform::TikTok->value],
             ],
         ]);
 
