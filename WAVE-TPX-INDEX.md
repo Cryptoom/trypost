@@ -59,11 +59,7 @@ Status-Symbole: ✓ done · 🚀 deployed · ⏳ in_progress · ❓ waiting · �
 
 ## Discovered Backlog
 
-- **TPXB-01 (spawn_task-Chip, task_fe146be6, noch nicht gestartet)**: `UpdatePostTool.php` hat
-  denselben Bug wie die drei A4-Attach-Tools vor ihrem Fix (`post_id`-Lookup VOR der Validierung,
-  malformed/Array-`post_id` kann Exception statt sauberer 422 ausloesen). Verifiziert: NICHT
-  Teil der A4-PR-Aenderung, vorbestehend (mind. seit A2-Merge #11). Bewusst nicht in A4
-  mitgefixt (Scope-Disziplin), eigener Backlog-Chip mit eigenem PR vorgemerkt.
+- **TPXB-01 (spawn_task-Chip, task_fe146be6, von Olli in eigener Session gestartet, PR [#14](https://github.com/Cryptoom/trypost/pull/14) offen)**: identischer Fix wie in A4 (`post_id`-Validierung vor `Post::find()`-Lookup), diesmal auf `UpdatePostTool.php` angewendet. 2 neue Regressionstests, voller `tests/Feature/Mcp/`-Lauf gruen (308/308), Pint sauber. Laeuft laut eigenem Briefing bewusst NICHT unter dem Nachtmodus-Gate, kein autonomer Merge vorgesehen, Review-Runde + Olli-Freigabe noch offen.
 - **Harness-Anomalie 2026-09-17**: ein unbenannter, nicht von der Orchestrator-Session
   gespawnter Sub-Agent (`a257737900c631e41`) meldete sich, behauptete als "tpx-05-a2" invoked
   worden zu sein, sass aber tatsaechlich im Worktree von `tpx-08-a5` (`agent-a7cb97531e7f4b99a`,
