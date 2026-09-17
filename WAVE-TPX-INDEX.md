@@ -72,8 +72,12 @@ fehlende `REVERB_*`/`VITE_REVERB_*`-Env-Vars liessen JEDE Posts-Seite beim Vue-`
 abbrechen (kein console.error), brach auch den bereits gemergten `MediaAssignmentGridTest`
 (unberuehrt vom Chip), bestaetigt als reine Infra-Luecke, nicht Regression. Gefixt in `.env`/
 `.env.testing`. Browser-Test `PostUnpublishTest.php` (2 Szenarien) gruen, LocalizationParityTest
-18/18, breiter Post-Sweep gruen (bekannte Container-Flakiness isoliert nachgewiesen). Review-Runde
-noch offen (Code + Design, UI-Aenderung).
+18/18, breiter Post-Sweep gruen (bekannte Container-Flakiness isoliert nachgewiesen).
+**Design-Review PASS**: Unpublish nutzt bewusst `default`-Variant (nicht `destructive`, weil
+reversibel), konsistent zu Delete. Disabled-State visuell erkennbar (`data-[disabled]:opacity-50`),
+Tooltip-Ton konsistent zu B1b. 16/16 Locales stichprobenartig gegengelesen, idiomatisch nicht
+maschinell kopiert. Kein Browser-Screenshot moeglich (PHP-Alias-Falle in dieser Review-Session),
+Urteil auf Code-/Tailwind-Analyse gestuetzt. Code-Review noch offen.
 
 **TPX-11 (B2a, Facebook/Instagram) fertig**: PR [#20](https://github.com/Cryptoom/trypost/pull/20).
 `FacebookPublisher::delete()` generisches Graph-Node-Delete (funktioniert fuer Feed-Komposit-ID
