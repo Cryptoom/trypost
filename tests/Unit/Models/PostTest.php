@@ -97,6 +97,18 @@ test('post can be marked as failed', function () {
     expect($post->fresh()->status)->toBe(PostStatus::Failed);
 });
 
+test('post can be marked as unpublished', function () {
+    $post = Post::factory()->published()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+    ]);
+
+    $post->markAsUnpublished();
+
+    expect($post->fresh()->status)->toBe(PostStatus::Draft);
+    expect($post->fresh()->published_at)->toBeNull();
+});
+
 test('post scope scheduled returns only scheduled posts', function () {
     Post::factory()->draft()->create([
         'workspace_id' => $this->workspace->id,

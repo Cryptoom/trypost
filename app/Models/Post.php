@@ -141,6 +141,18 @@ class Post extends Model
     }
 
     /**
+     * Reverts a published post back to draft after every published platform
+     * was successfully unpublished (see App\Actions\Post\UnpublishPost).
+     */
+    public function markAsUnpublished(): void
+    {
+        $this->update([
+            'status' => PostStatus::Draft,
+            'published_at' => null,
+        ]);
+    }
+
+    /**
      * MediaTypes accepted by this post — the intersection of what every
      * enabled platform allows. With no platform enabled, accept anything.
      *

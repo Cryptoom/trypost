@@ -159,3 +159,25 @@ test('markAsFailed clears stale platform_post_id and platform_url', function () 
         ->and($this->postPlatform->platform_post_id)->toBeNull()
         ->and($this->postPlatform->platform_url)->toBeNull();
 });
+
+test('markAsUnpublished resets the row back to its pre-publish state', function () {
+    $this->postPlatform->update([
+        'status' => Status::Published,
+        'platform_post_id' => 'old_post_id',
+        'platform_url' => 'https://www.facebook.com/old_post_id',
+        'published_at' => now(),
+        'error_message' => 'stale error',
+        'error_context' => ['platform_error_code' => 500],
+    ]);
+
+    $this->postPlatform->markAsUnpublished();
+
+    $this->postPlatform->refresh();
+
+    expect($this->postPlatform->status)->toBe(Status::Pending)
+        ->and($this->postPlatform->platform_post_id)->toBeNull()
+        ->and($this->postPlatform->platform_url)->toBeNull()
+        ->and($this->postPlatform->published_at)->toBeNull()
+        ->and($this->postPlatform->error_message)->toBeNull()
+        ->and($this->postPlatform->error_context)->toBeNull();
+});

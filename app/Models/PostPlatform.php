@@ -206,4 +206,21 @@ class PostPlatform extends Model
             'platform_url' => null,
         ]);
     }
+
+    /**
+     * Reverts a published row back to its pre-publish state after the remote
+     * post was successfully deleted (see App\Actions\Post\UnpublishPost).
+     * `Pending` is the same status a freshly created row starts in.
+     */
+    public function markAsUnpublished(): void
+    {
+        $this->update([
+            'status' => Status::Pending,
+            'platform_post_id' => null,
+            'platform_url' => null,
+            'published_at' => null,
+            'error_message' => null,
+            'error_context' => null,
+        ]);
+    }
 }
