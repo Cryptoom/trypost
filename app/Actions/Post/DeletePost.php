@@ -14,6 +14,12 @@ class DeletePost
         $postId = $post->id;
         $workspaceId = $post->workspace_id;
 
+        // Best-effort: UnpublishPost never lets an individual platform
+        // failure escape (see its per-row try/catch), so a bad connection
+        // or an unsupported platform (e.g. TikTok) never blocks the local
+        // delete below.
+        UnpublishPost::execute($post);
+
         $post->delete();
 
         PostDeleted::dispatch($postId, $workspaceId);
