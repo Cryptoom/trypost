@@ -42,15 +42,27 @@ Status-Symbole: ✓ done · 🚀 deployed · ⏳ in_progress · ❓ waiting · �
 | Chip | Paket | Status | Started | Worktree/Branch |
 |---|---|---|---|---|
 | TPX-11 | B2a · Facebook/Instagram delete() | ⏳ in_progress | 2026-09-17 | claude/tpx-11-b2a-facebook-instagram-delete |
-| TPX-13 | B2c · LinkedIn delete() | ⏳ in_progress | 2026-09-17 | claude/tpx-13-b2c-linkedin-delete |
 | TPX-14 | B2d · YouTube delete() | ⏳ in_progress | 2026-09-17 | claude/tpx-14-b2d-youtube-delete |
 | TPX-15 | B3 · MCP UnpublishPostTool | ⏳ in_progress | 2026-09-17 | claude/tpx-15-b3-mcp-unpublish-tool |
 | TPX-16 | B4 · Vue-UI + Web-Route | ⏳ in_progress | 2026-09-17 | claude/tpx-16-b4-web-ui |
 
 Alle 5 laufen parallel, disjunkte Dateien laut Konflikt-Matrix. TPX-11 (B2a) ist der einzige der
 `UnpublishPost.php` anfasst (Pflicht-Fix aus dem B1-Review, `published_at`-Bug), die anderen vier
-ruehren diese Datei nicht an. B2b (Threads) bleibt geparkt. Kein Merge von B2a/B2c/B2d ohne
-vorherigen Live-Smoke-Test (Plan-Pflicht), B3/B4 warten auf Review + Olli-Buttons-Test.
+ruehren diese Datei nicht an. Kein Merge von B2a/B2c/B2d ohne vorherigen Live-Smoke-Test
+(Plan-Pflicht), B3/B4 warten auf Review + Olli-Buttons-Test.
+
+**B2b (Threads) GESTRICHEN 17.09.2026 (Olli, explizit)**: "B2b (Threads) bleibt geparkt, machen
+wir derzeit nicht, nutzt keiner." Nicht mehr nur "geparkt bis Meta-App-Review", sondern bewusst
+ausserhalb dieser Welle. Kein Chip dafuer, kein Olli-Gate mehr offen dafuer.
+
+**TPX-13 (B2c, LinkedIn) fertig**: PR [#17](https://github.com/Cryptoom/trypost/pull/17),
+`AbstractLinkedInPublisher::delete()`, deckt beide Unterklassen ab, Idempotenz (204 bei
+Wiederholung) korrekt behandelt. 60/60 + 44/44 Sanity-Tests gruen. **Kollisions-Warnung vom
+Chip selbst**: `tests/Feature/Actions/Post/UnpublishPostTest.php` wurde angefasst (4 Szenarien
+nutzten LinkedIn als Beispiel fuer "kein delete-faehiger Publisher", jetzt auf TikTok
+umgestellt, da LinkedIn echtes delete() hat). B2a (TPX-11) aendert dieselbe Testdatei fuer seine
+eigenen Instagram/Facebook-Szenarien, mit echtem Merge-Konflikt-Risiko dort zu rechnen (analog
+A4/A5s `UpdatePost.php`-Konflikt), beim Mergen beider PRs beachten.
 
 ## Pending (Startreihenfolge)
 
@@ -66,7 +78,7 @@ gemergt wird.
 | Chip | Paket | Status | Dependencies | Branch/PR | Plan/Real |
 |---|---|---|---|---|---|
 | TPX-11 | B2a · Facebook/Instagram delete() | 🔄 pending, 2 offene Olli-Gates (Facebook "select developers"-Warnung, Instagram POST/DELETE-Doku-Widerspruch, beide per Smoke-Test klaerbar) | B0, B1 ✓, A3 | - | - |
-| TPX-12 | B2b · Threads delete() | ⛔ geparkt (Plan-Vorgabe: B0 hat threads_delete-Permission NICHT bestaetigen koennen, Olli-Login noetig). Zusaetzlich Host-Diskrepanz gefunden, siehe Olli-Gates | B0, B1, A3, Threads-Gate | - | - |
+| TPX-12 | B2b · Threads delete() | ❌ GESTRICHEN 17.09.2026 (Olli: "machen wir derzeit nicht, nutzt keiner"), kein Chip mehr vorgesehen | - | - | - |
 | TPX-13 | B2c · LinkedIn delete() | 🔄 pending | B0, B1, A3 | - | - |
 | TPX-14 | B2d · YouTube delete() | 🔄 pending | B0, B1, A3, YouTube-Scope-Gate | - | - |
 | TPX-15 | B3 · MCP UnpublishPostTool | 🔄 pending | B1 | - | - |
