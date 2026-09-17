@@ -344,6 +344,11 @@ return [
         'drop_zone_subtitle' => '파일을 끌어다 놓거나 클릭하여 찾아보기',
         'add' => '추가',
         'publish_to' => '게시 대상',
+        'media_assignment' => [
+            'label' => '이 채널의 미디어',
+            'included' => '이 채널에 포함됨',
+            'excluded' => '이 채널에서 제외됨',
+        ],
         'organize' => '정리',
         'signatures' => '서명',
         'view_on_platform' => '플랫폼에서 보기',

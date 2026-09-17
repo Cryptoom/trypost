@@ -344,6 +344,11 @@ return [
         'drop_zone_subtitle' => 'Glissez-déposez des fichiers ou cliquez pour parcourir',
         'add' => 'Ajouter',
         'publish_to' => 'Publier sur',
+        'media_assignment' => [
+            'label' => 'Contenu pour ce canal',
+            'included' => 'Inclus pour ce canal',
+            'excluded' => 'Exclu de ce canal',
+        ],
         'organize' => 'Organiser',
         'signatures' => 'Signatures',
         'view_on_platform' => 'Voir sur la plateforme',

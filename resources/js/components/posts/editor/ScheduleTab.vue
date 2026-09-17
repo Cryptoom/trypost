@@ -77,6 +77,7 @@ const props = defineProps<{
     platformConfigs: Record<string, PlatformConfig>;
     platformMeta: Record<string, Record<string, any>>;
     platformContentTypes: Record<string, string>;
+    platformMediaIds: Record<string, string[]>;
     platformIssues?: Record<string, PlatformIssue>;
     tiktokCreatorInfos?: Record<string, TikTokCreatorInfo> | null;
     pinterestBoards?: Record<string, PinterestBoardsPayload> | null;
@@ -88,6 +89,7 @@ const emit = defineEmits<{
     toggleLabel: [labelId: string];
     'update:platformMeta': [platformId: string, meta: Record<string, any>];
     'update:platformContentType': [platformId: string, contentType: string];
+    'update:platformMediaIds': [platformId: string, mediaIds: string[]];
 }>();
 
 const getPublishConfig = (pp: PostPlatform): Record<string, any> | null =>
@@ -145,6 +147,7 @@ const channels = computed<Channel[]>(() =>
         socialAccount: pp.social_account,
         contentType: props.platformContentTypes[pp.id] ?? pp.content_type ?? '',
         meta: props.platformMeta[pp.id] ?? {},
+        mediaIds: props.platformMediaIds[pp.id] ?? [],
         issue: props.platformIssues?.[pp.id]?.message ?? null,
         issueDocsUrl: props.platformIssues?.[pp.id]?.docsUrl ?? null,
         status: pp.status,
@@ -172,6 +175,7 @@ const channels = computed<Channel[]>(() =>
                 @toggle="(id: string) => emit('togglePlatform', id)"
                 @update:content-type="(id: string, value: string) => emit('update:platformContentType', id, value)"
                 @update:meta="(id: string, value: Record<string, any>) => emit('update:platformMeta', id, value)"
+                @update:media-ids="(id: string, ids: string[]) => emit('update:platformMediaIds', id, ids)"
             >
                 <div v-if="postPlatforms.some(pp => pp.status !== PostPlatformStatus.Pending)">
                     <p class="mb-2 text-[11px] font-black uppercase tracking-widest text-foreground/60">

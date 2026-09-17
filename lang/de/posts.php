@@ -346,6 +346,11 @@ return [
         'drop_zone_subtitle' => 'Dateien ziehen & ablegen oder zum Durchsuchen klicken',
         'add' => 'Hinzufügen',
         'publish_to' => 'Veröffentlichen auf',
+        'media_assignment' => [
+            'label' => 'Medien für diesen Kanal',
+            'included' => 'Enthalten für diesen Kanal',
+            'excluded' => 'Ausgeschlossen von diesem Kanal',
+        ],
         'organize' => 'Organisieren',
         'signatures' => 'Signaturen',
         'view_on_platform' => 'Auf der Plattform ansehen',

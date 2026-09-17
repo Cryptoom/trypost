@@ -9,6 +9,7 @@ use App\Enums\PostPlatform\Status;
 use App\Enums\SocialAccount\Platform;
 use App\Enums\UserWorkspace\Role;
 use App\Jobs\PublishPost;
+use App\Models\Media;
 use App\Models\Post;
 use App\Models\PostPlatform;
 use App\Models\SocialAccount;
@@ -372,6 +373,40 @@ test('edit exposes null scheduled_at for an unscheduled draft', function () {
             ->component('posts/Edit')
             ->where('post.scheduled_at', null)
         );
+});
+
+test('edit exposes media_ids for each platform, scoped or not', function () {
+    $post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+        'status' => PostStatus::Draft,
+    ]);
+
+    $asset = Media::factory()->assets()->create([
+        'mediable_type' => (new Workspace)->getMorphClass(),
+        'mediable_id' => $this->workspace->id,
+    ]);
+
+    $scopedPlatform = PostPlatform::factory()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $this->socialAccount->id,
+    ]);
+    $scopedPlatform->media()->sync([$asset->id]);
+
+    $secondAccount = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id]);
+    $unscopedPlatform = PostPlatform::factory()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $secondAccount->id,
+    ]);
+
+    $response = $this->actingAs($this->user)
+        ->get(route('app.posts.edit', $post))
+        ->assertOk();
+
+    $platforms = collect($response->original->getData()['page']['props']['post']['post_platforms']);
+
+    expect($platforms->firstWhere('id', $scopedPlatform->id)['media_ids'])->toBe([$asset->id])
+        ->and($platforms->firstWhere('id', $unscopedPlatform->id)['media_ids'])->toBe([]);
 });
 
 test('edit post returns 404 for post from different workspace', function () {

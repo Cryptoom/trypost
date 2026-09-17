@@ -346,6 +346,11 @@ return [
         'drop_zone_subtitle' => 'Dosyaları sürükleyip bırakın veya göz atmak için tıklayın',
         'add' => 'Ekle',
         'publish_to' => 'Şuraya yayınla',
+        'media_assignment' => [
+            'label' => 'Bu kanal için medya',
+            'included' => 'Bu kanala dahil',
+            'excluded' => 'Bu kanaldan hariç',
+        ],
         'organize' => 'Düzenle',
         'signatures' => 'İmzalar',
         'view_on_platform' => 'Platformda görüntüle',

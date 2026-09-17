@@ -344,6 +344,11 @@ return [
         'drop_zone_subtitle' => '拖放文件或点击浏览',
         'add' => '添加',
         'publish_to' => '发布到',
+        'media_assignment' => [
+            'label' => '此频道的媒体',
+            'included' => '已包含在此频道',
+            'excluded' => '已从此频道排除',
+        ],
         'organize' => '整理',
         'signatures' => '签名',
         'view_on_platform' => '在平台上查看',

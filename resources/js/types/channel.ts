@@ -31,6 +31,8 @@ export interface Channel {
     socialAccount: ChannelAccount | null;
     contentType: string;
     meta: Record<string, any>;
+    /** Media item ids scoped to this channel. Empty means "applies to every post media item". */
+    mediaIds: string[];
     issue?: string | null;
     issueDocsUrl?: string | null;
     status?: string | null;

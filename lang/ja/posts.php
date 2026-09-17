@@ -344,6 +344,11 @@ return [
         'drop_zone_subtitle' => 'ファイルをドラッグ＆ドロップするか、クリックして参照',
         'add' => '追加',
         'publish_to' => '公開先',
+        'media_assignment' => [
+            'label' => 'このチャンネルのメディア',
+            'included' => 'このチャンネルに含まれています',
+            'excluded' => 'このチャンネルから除外されています',
+        ],
         'organize' => '整理',
         'signatures' => '署名',
         'view_on_platform' => 'プラットフォームで表示',

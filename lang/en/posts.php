@@ -344,6 +344,11 @@ return [
         'drop_zone_subtitle' => 'Drag & drop files or click to browse',
         'add' => 'Add',
         'publish_to' => 'Publish to',
+        'media_assignment' => [
+            'label' => 'Media for this channel',
+            'included' => 'Included for this channel',
+            'excluded' => 'Excluded from this channel',
+        ],
         'organize' => 'Organize',
         'signatures' => 'Signatures',
         'view_on_platform' => 'View on platform',

@@ -344,6 +344,11 @@ return [
         'drop_zone_subtitle' => 'Przeciągnij i upuść pliki lub kliknij, aby przeglądać',
         'add' => 'Dodaj',
         'publish_to' => 'Publikuj na',
+        'media_assignment' => [
+            'label' => 'Media dla tego kanału',
+            'included' => 'Uwzględnione dla tego kanału',
+            'excluded' => 'Wykluczone z tego kanału',
+        ],
         'organize' => 'Organizuj',
         'signatures' => 'Sygnatury',
         'view_on_platform' => 'Zobacz na platformie',
