@@ -24,8 +24,8 @@ Status-Symbole: ✓ done · 🚀 deployed · ⏳ in_progress · ❓ waiting · �
 
 | Chip | Paket | Status | Started | Worktree/Branch |
 |---|---|---|---|---|
-| TPX-07 | A4 · MCP-Tool-Parameter | 🔍 Review-Runde 1 laeuft (code-reviewer) | 2026-09-17 | claude/tpx-07-a4-mcp |
-| TPX-08 | A5 · Vue-UI | 🔍 Review-Runde 2 laeuft (code+design, prueft Fix `ad169c54`) | 2026-09-17 | claude/tpx-08-a5-vue-ui |
+| TPX-07 | A4 · MCP-Tool-Parameter | 🔍 Runde 1 PASS mit Fund (post_id-Validierungsreihenfolge), Fix gepusht (`60627d58`), Runde 2 noch offen | 2026-09-17 | claude/tpx-07-a4-mcp |
+| TPX-08 | A5 · Vue-UI | 🔍 Design-Runde 2 PASS, Code-Runde 2 NEEDS-WORK (fehlender Test), Test-Fix laeuft | 2026-09-17 | claude/tpx-08-a5-vue-ui |
 
 ## Pending (Startreihenfolge)
 
@@ -56,6 +56,11 @@ Status-Symbole: ✓ done · 🚀 deployed · ⏳ in_progress · ❓ waiting · �
 
 ## Discovered Backlog
 
+- **TPXB-01 (spawn_task-Chip, task_fe146be6, noch nicht gestartet)**: `UpdatePostTool.php` hat
+  denselben Bug wie die drei A4-Attach-Tools vor ihrem Fix (`post_id`-Lookup VOR der Validierung,
+  malformed/Array-`post_id` kann Exception statt sauberer 422 ausloesen). Verifiziert: NICHT
+  Teil der A4-PR-Aenderung, vorbestehend (mind. seit A2-Merge #11). Bewusst nicht in A4
+  mitgefixt (Scope-Disziplin), eigener Backlog-Chip mit eigenem PR vorgemerkt.
 - **Harness-Anomalie 2026-09-17**: ein unbenannter, nicht von der Orchestrator-Session
   gespawnter Sub-Agent (`a257737900c631e41`) meldete sich, behauptete als "tpx-05-a2" invoked
   worden zu sein, sass aber tatsaechlich im Worktree von `tpx-08-a5` (`agent-a7cb97531e7f4b99a`,
