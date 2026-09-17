@@ -41,7 +41,7 @@ Status-Symbole: ✓ done · 🚀 deployed · ⏳ in_progress · ❓ waiting · �
 
 | Chip | Paket | Status | Started | Worktree/Branch |
 |---|---|---|---|---|
-| TPX-16 | B4 · Vue-UI + Web-Route | ⏳ in_progress | 2026-09-17 | claude/tpx-16-b4-web-ui |
+(keine gerade · alle 5 B2a/c/d/B3/B4-Chips fertig, siehe unten)
 
 Alle 5 laufen parallel, disjunkte Dateien laut Konflikt-Matrix. TPX-11 (B2a) ist der einzige der
 `UnpublishPost.php` anfasst (Pflicht-Fix aus dem B1-Review, `published_at`-Bug), die anderen vier
@@ -59,6 +59,21 @@ unbeaufsichtigt ueber einen bereits scharfen Produktions-Pfad laeuft.
 **B2b (Threads) GESTRICHEN 17.09.2026 (Olli, explizit)**: "B2b (Threads) bleibt geparkt, machen
 wir derzeit nicht, nutzt keiner." Nicht mehr nur "geparkt bis Meta-App-Review", sondern bewusst
 ausserhalb dieser Welle. Kein Chip dafuer, kein Olli-Gate mehr offen dafuer.
+
+**TPX-16 (B4, Web-UI) fertig**: PR [#21](https://github.com/Cryptoom/trypost/pull/21).
+`POST /posts/{post}/unpublish` + `PostController::unpublish()` (3 Outcome-Flashes success/
+partial/unsupported), neue Unpublish-Aktion in `Index.vue` neben Delete, `ConfirmDeleteModal`
+um `testid`-Prop erweitert (2 Instanzen pro Seite). `DELETE_BLOCKED_STATUSES` auf `[Publishing]`
+reduziert (Published/PartiallyPublished entsperrt, deckt sich mit dem API-`destroy()`-Verhalten).
+Mixed-Platform-Loesung: Unpublish-Aktion nur disabled wenn ALLE Plattformen unsupported sind
+(TikTok, Instagram-direct-login), bei gemischten Posts bleibt sie aktiv, Partial-Outcome per
+Flash. Pro-Plattform-Unpublish (`Edit.vue`) bewusst als Folge-Arbeit ausgeklammert. **Nebenfund**:
+fehlende `REVERB_*`/`VITE_REVERB_*`-Env-Vars liessen JEDE Posts-Seite beim Vue-`setup()` lautlos
+abbrechen (kein console.error), brach auch den bereits gemergten `MediaAssignmentGridTest`
+(unberuehrt vom Chip), bestaetigt als reine Infra-Luecke, nicht Regression. Gefixt in `.env`/
+`.env.testing`. Browser-Test `PostUnpublishTest.php` (2 Szenarien) gruen, LocalizationParityTest
+18/18, breiter Post-Sweep gruen (bekannte Container-Flakiness isoliert nachgewiesen). Review-Runde
+noch offen (Code + Design, UI-Aenderung).
 
 **TPX-11 (B2a, Facebook/Instagram) fertig**: PR [#20](https://github.com/Cryptoom/trypost/pull/20).
 `FacebookPublisher::delete()` generisches Graph-Node-Delete (funktioniert fuer Feed-Komposit-ID
