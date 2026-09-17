@@ -384,7 +384,9 @@ Meta die Loeschung mit den aktuell gewaehrten Scopes (`instagram_basic`,
 Recherche war korrekt, `instagram_manage_contents` (oder eine aequivalente, noch nicht
 freigegebene Permission) ist wirklich erforderlich. Zweiter Testpost ebenfalls manuell von
 Olli auf Instagram geloescht (derselbe Weg wie beim ersten, TryPost kann ihn strukturell
-nicht selbst entfernen).
+nicht selbst entfernen), per Permalink-Check bestaetigt ("Diese Seite ist leider nicht
+verfuegbar ... die Seite wurde entfernt"). Beide Instagram-Test-Posts damit vollstaendig
+aufgeraeumt.
 
 **Fazit zur Frage "ist alles bewiesen und sauber, Scopes sauber beantragt?"**: Facebook und
 LinkedIn sind vollstaendig bewiesen (End-to-End live), sauber weil sie bereits vorhandene,
