@@ -16,6 +16,7 @@ use Google\Service\YouTube\Video;
 use Google\Service\YouTube\VideoSnippet;
 use Google\Service\YouTube\VideoStatus;
 use Google_Http_MediaFileUpload;
+use GuzzleHttp\ClientInterface as GuzzleClientInterface;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -58,11 +59,47 @@ class YouTubePublisher
         return $this->publishShort($postPlatform, $firstMedia, $account, $content);
     }
 
+    /**
+     * Deletes the video from YouTube. Quota cost: 50 units per call (see
+     * https://developers.google.com/youtube/v3/docs/videos/delete), the
+     * heaviest single write operation in the Data API v3.
+     *
+     * A video that no longer exists on YouTube (manually removed in
+     * YouTube Studio, or already deleted by a previous, since-failed
+     * attempt) is treated as success rather than an error: the goal of
+     * this call is "make sure it's gone", and it already is.
+     */
+    public function delete(PostPlatform $postPlatform): void
+    {
+        $account = $postPlatform->socialAccount;
+
+        if ($account->needsProactiveTokenRefresh()) {
+            app(ConnectionVerifier::class)->refreshToken($account);
+        }
+
+        $client = $this->createGoogleClient($account);
+        $youtube = new YouTube($client);
+
+        try {
+            $youtube->videos->delete($postPlatform->platform_post_id);
+        } catch (Exception $e) {
+            if (data_get($e->getErrors(), '0.reason') === 'videoNotFound') {
+                return;
+            }
+
+            $this->handleGoogleError($e);
+        }
+    }
+
     private function createGoogleClient(SocialAccount $account): GoogleClient
     {
         $client = new GoogleClient;
         $client->setClientId(config('services.google.client_id'));
         $client->setClientSecret(config('services.google.client_secret'));
+
+        if (app()->bound(GuzzleClientInterface::class)) {
+            $client->setHttpClient(app(GuzzleClientInterface::class));
+        }
 
         $remainingSeconds = $account->token_expires_at
             ? max(0, (int) now()->diffInSeconds($account->token_expires_at, false))

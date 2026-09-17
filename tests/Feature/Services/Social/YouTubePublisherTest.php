@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
+use App\Exceptions\Social\YouTubePublishException;
 use App\Exceptions\TokenExpiredException;
 use App\Models\Post;
 use App\Models\PostPlatform;
@@ -11,6 +12,11 @@ use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Services\Social\YouTubePublisher;
+use GuzzleHttp\Client as GuzzleClient;
+use GuzzleHttp\ClientInterface as GuzzleClientInterface;
+use GuzzleHttp\Handler\MockHandler;
+use GuzzleHttp\HandlerStack;
+use GuzzleHttp\Psr7\Response as GuzzleResponse;
 use Illuminate\Support\Facades\Http;
 
 beforeEach(function () {
@@ -219,4 +225,93 @@ test('youtube publisher counts an accented title in characters, not bytes', func
     expect(mb_strlen($accented))->toBe(90)
         ->and(strlen($accented))->toBeGreaterThan(92)
         ->and($method->invoke($publisher, $accented))->toBe($accented.' #Shorts');
+});
+
+/**
+ * YouTubePublisher::delete() talks to the YouTube Data API v3 through
+ * google/apiclient's own Guzzle transport, not the Http facade, so
+ * Http::fake() cannot see it (confirmed: none of the tests above that
+ * reach Google's API actually exercise it, they all fail earlier in the
+ * flow instead). YouTubePublisher::createGoogleClient() honours a bound
+ * GuzzleHttp\ClientInterface for exactly this reason: bind a
+ * MockHandler-backed client here so the Google Client's real,
+ * OAuth-wrapped transport ends up using it.
+ */
+function bindGoogleHttpClient(GuzzleResponse ...$responses): MockHandler
+{
+    $mock = new MockHandler([...$responses]);
+
+    app()->instance(GuzzleClientInterface::class, new GuzzleClient([
+        'handler' => HandlerStack::create($mock),
+    ]));
+
+    return $mock;
+}
+
+describe('delete', function () {
+    beforeEach(function () {
+        // The base factory leaves platform_post_id null (only ->published()
+        // sets it); delete() requires it, so give this row an id of its own
+        // without touching the shared beforeEach the publish tests rely on.
+        $this->postPlatform->update(['platform_post_id' => 'yt_delete_test_video_id']);
+    });
+
+    test('youtube publisher deletes the video', function () {
+        $mock = bindGoogleHttpClient(new GuzzleResponse(204));
+
+        $this->publisher->delete($this->postPlatform);
+
+        $request = $mock->getLastRequest();
+
+        expect($request)->not->toBeNull()
+            ->and($request->getMethod())->toBe('DELETE')
+            ->and($request->getUri()->getPath())->toContain('/youtube/v3/videos')
+            ->and($request->getUri()->getQuery())->toContain('id='.$this->postPlatform->platform_post_id);
+    });
+
+    test('youtube publisher treats an already-deleted video as success', function () {
+        bindGoogleHttpClient(new GuzzleResponse(404, [], json_encode([
+            'error' => [
+                'errors' => [
+                    ['reason' => 'videoNotFound', 'message' => 'The video that you are trying to delete cannot be found.'],
+                ],
+            ],
+        ])));
+
+        expect(fn () => $this->publisher->delete($this->postPlatform))->not->toThrow(Exception::class);
+    });
+
+    test('youtube publisher throws when delete is forbidden', function () {
+        bindGoogleHttpClient(new GuzzleResponse(403, [], json_encode([
+            'error' => [
+                'errors' => [
+                    ['reason' => 'forbidden', 'message' => 'The request might not be properly authorized.'],
+                ],
+            ],
+        ])));
+
+        expect(fn () => $this->publisher->delete($this->postPlatform))
+            ->toThrow(YouTubePublishException::class, "You don't have permission to upload to this channel.");
+    });
+
+    test('youtube publisher refreshes token before deleting when expired', function () {
+        $this->socialAccount->update(['token_expires_at' => now()->subHour()]);
+
+        Http::fake([
+            'https://oauth2.googleapis.com/token' => Http::response([
+                'access_token' => 'new-access-token',
+                'refresh_token' => 'new-refresh-token',
+                'expires_in' => 3600,
+            ], 200),
+        ]);
+
+        bindGoogleHttpClient(new GuzzleResponse(204));
+
+        $this->publisher->delete($this->postPlatform);
+
+        Http::assertSent(fn ($request) => str_contains($request->url(), 'oauth2.googleapis.com/token'));
+
+        $this->socialAccount->refresh();
+        expect($this->socialAccount->access_token)->toBe('new-access-token');
+    });
 });
