@@ -194,6 +194,16 @@ gemergt wird.
 ## Discovered Backlog
 
 - **TPXB-01**: siehe Completed-Tabelle, PR #14 gemergt (Olli hat den Nachtmodus-Gate-Stopp fuer diesen konkreten Merge explizit aufgehoben).
+- **Bug, live bestaetigt 17.09.2026 (Live-Smoke-Test)**: `PostController::unpublish()` zeigt bei
+  einem Doppel-Klick auf "Unpublish" (2. Klick nach bereits erfolgreichem 1. Klick, 0 verbleibende
+  Kandidaten-Rows) die irrefuehrende Meldung "This post can't be unpublished automatically. Remove
+  it manually on the platform(s) it was published to.", obwohl der Post laengst korrekt entfernt
+  wurde. Ursache: `if ($result['unpublished'] === [])` behandelt "nichts mehr zu tun" identisch zu
+  "wirklich unsupported". Deckt sich mit dem bereits im B4-Review dokumentierten Nicht-Blocker
+  ("`unpublish()` mapped `failed`-only faelschlich auf die `unsupported`-Meldung"), jetzt zusaetzlich
+  fuer den Fall einer leeren Kandidatenliste bestaetigt. Fix-Vorschlag: `unsupported`- und
+  `failed`-Faelle sowie "nichts zu tun" als drei separate Flash-Zweige fuehren, nicht ueber
+  `unpublished === []` zusammenfassen. Kein Datenverlust, rein irrefuehrende UI-Meldung.
 - **Facebook-Story Foto-zu-Video-Auto-Konvertierung (Olli-Wunsch 17.09.2026, ueber Peer-Session
   playcraft-toys-bf relayed)**: `FacebookPublisher::publishStory()` lehnt reine Fotos hart ab
   (`'Facebook Stories require a video file.'`). PlayCraft umgeht das aktuell extern
@@ -272,12 +282,39 @@ LinkedIn als "unsupported"-Beispiel, seit B2c falsch) plus ein unabhaengiger Mor
 HTTP 200, `php artisan --version` bestaetigt Laravel 13.24.0, Server-`git rev-parse HEAD`
 bestaetigt `b484af8b` deployed.
 
-**Live-Smoke-Test (posten + Loeschbarkeit pruefen auf dem Oliver-Albrecht-Workspace) noch NICHT
-durchgefuehrt.** Das MCP-Tool `trypost-playcraft` ist an den PlayCraft-Workspace gebunden, nicht
-an Oliver Albrecht, braucht einen anderen Zugriffsweg (Chrome-MCP mit Ollis eingeloggter Session
-oder eine eigene API-Key/MCP-Bindung fuer diesen Workspace, siehe `TRYPOST_OLIVER_WORKSPACE_API_KEY`
-in `~/.claude/.env`). Der Delete/Unpublish-Pfad ist damit fuer Facebook/Instagram(Facebook)/
-LinkedIn/YouTube jetzt LIVE und aktiv nutzbar (siehe Merge-Reihenfolge-Warnung oben), aber noch
-NICHT ueber echte UI-Buttons verifiziert, wie von Olli explizit gefordert ("testen erst wenn
-fertig und dann via buttons pruefen nicht nur via code"). Naechster Schritt: mit Olli abstimmen,
-dann Buttons-Test auf dem Oliver-Albrecht-Workspace.
+**Live-Smoke-Test DURCHGEFUEHRT 17.09.2026 (Facebook, echte UI-Buttons, Oliver-Albrecht-Workspace).**
+Chrome-MCP war in dieser Session nicht erreichbar, Safari-MCP (`mcp__safari__*`, Ollis echte
+eingeloggte Session) als gleichwertige Alternative genutzt. Workspace ueber den echten
+Workspace-Switcher (UI-Klick) auf "Oliver Albrecht" gewechselt (5 verbundene Accounts:
+Facebook, Instagram-via-Facebook, LinkedIn, TikTok, YouTube Shorts, exakt die Welle-B-Plattformen
+plus TikTok als Negativ-Kontrolle). Test-Post erstellt ("TEST POST: TPX Welle B Live-Smoke-Test"),
+nur Facebook aktiviert (Instagram-Feed verlangt zwingend Media, reiner Text-Post scheitert an der
+`requires_media`-Validierung, daher fuer diesen Lauf ausgeklammert), Olli-Freigabe per
+AskUserQuestion vor dem echten Publish eingeholt. **Klick auf "Post now"** (echter UI-Button):
+Post ging echt live auf Facebook (`oliveralbrecht.official`, `pfbid02pZijAr7...`), per direktem
+Tab-Titel-Check verifiziert. **Klick auf "Unpublish"** im Post-Dropdown (echter UI-Button, ueber
+den Bestaetigungs-Dialog "Unpublish post?"): Post-Status lokal zurueck auf Draft, und der
+Facebook-Permalink zeigt seitdem "Dieser Inhalt ist momentan nicht verfuegbar ... es kann auch
+sein, dass der Content inzwischen geloescht wurde", also echte Loeschung auf der Plattform
+bestaetigt. **`FacebookPublisher::delete()` (B2a) ist damit End-to-End ueber echte UI-Buttons auf
+Produktion verifiziert.**
+
+Ein Nebenbefund bestaetigt live einen bereits im B4-Review dokumentierten Nicht-Blocker: der erste
+Klick auf den "Unpublish"-Bestaetigungsbutton meldete einen `safari-helper timeout` auf Tool-Seite,
+das Request kam aber serverseitig durch (Post wurde real unpublished). Ein zweiter Klick (weil der
+Dialog laut Snapshot noch offen schien) traf denselben Endpoint auf einem bereits unpublishten Post
+(0 Kandidaten-Rows mehr), was laut `PostController::unpublish()`s bekannter Logik
+(`$result['unpublished'] === []` -> immer die "unsupported"-Flash-Meldung, unabhaengig vom echten
+Grund) faelschlich "This post can't be unpublished automatically" anzeigte, obwohl der erste Klick
+laengst erfolgreich war. Kein neuer Bug, bestaetigt nur den bereits bekannten B4-Nicht-Blocker
+("unpublish() mapped `failed`-only faelschlich auf die `unsupported`-Meldung") jetzt auch fuer den
+Fall "leere Kandidatenliste durch Doppel-Klick" TOTAL. Verifikation lief ueber die tatsaechliche
+DB/API-Antwort und den Facebook-Permalink, nicht ueber die (irrefuehrende) Toast-Meldung. Test-Post
+danach vollstaendig aufgeraeumt (aus Drafts geloescht, "delete"-Bestaetigung ueber echten UI-Dialog).
+
+Instagram/LinkedIn/YouTube nicht separat live getestet (Instagram braucht ein echtes Media-Item,
+LinkedIn/YouTube wurden bewusst nicht mit-getestet um die Live-Buttons-Verifikation auf einen
+minimalen, kontrollierten Eingriff zu beschraenken). Deren `delete()`-Implementierungen sind durch
+die bestehende Unit-/Feature-Test-Suite (122+ Tests B2a, 60+/44+ B2c, 12/12 B2d, alle mit echten
+`Http::fake()`-Response-Fixtures) abgedeckt, nur nicht durch einen echten Live-Klick in dieser
+Session. Bei Bedarf als Folge-Schritt nachholbar.
