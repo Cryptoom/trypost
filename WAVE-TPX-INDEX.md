@@ -42,8 +42,6 @@ Status-Symbole: ✓ done · 🚀 deployed · ⏳ in_progress · ❓ waiting · �
 | Chip | Paket | Status | Started | Worktree/Branch |
 |---|---|---|---|---|
 | TPX-11 | B2a · Facebook/Instagram delete() | ⏳ in_progress | 2026-09-17 | claude/tpx-11-b2a-facebook-instagram-delete |
-| TPX-14 | B2d · YouTube delete() | ⏳ in_progress | 2026-09-17 | claude/tpx-14-b2d-youtube-delete |
-| TPX-15 | B3 · MCP UnpublishPostTool | ⏳ in_progress | 2026-09-17 | claude/tpx-15-b3-mcp-unpublish-tool |
 | TPX-16 | B4 · Vue-UI + Web-Route | ⏳ in_progress | 2026-09-17 | claude/tpx-16-b4-web-ui |
 
 Alle 5 laufen parallel, disjunkte Dateien laut Konflikt-Matrix. TPX-11 (B2a) ist der einzige der
@@ -54,6 +52,19 @@ ruehren diese Datei nicht an. Kein Merge von B2a/B2c/B2d ohne vorherigen Live-Sm
 **B2b (Threads) GESTRICHEN 17.09.2026 (Olli, explizit)**: "B2b (Threads) bleibt geparkt, machen
 wir derzeit nicht, nutzt keiner." Nicht mehr nur "geparkt bis Meta-App-Review", sondern bewusst
 ausserhalb dieser Welle. Kein Chip dafuer, kein Olli-Gate mehr offen dafuer.
+
+**TPX-14 (B2d, YouTube) fertig**: PR [#18](https://github.com/Cryptoom/trypost/pull/18),
+`YouTubePublisher::delete()`, `videos.delete` mit bare Video-ID, `videoNotFound` (404) als
+idempotenter Erfolg behandelt (gegen offizielle Doku verifiziert), Scope bereits ausreichend
+(kein Connect-Flow-Fix noetig). Echter Testbarkeits-Fund: `Http::fake()` faengt Googles
+eigenen Guzzle-Transport NICHT ab, alle 8 bestehenden Tests haben das nie wirklich erreicht.
+Chip hat eine minimale, produktionsneutrale Testbarkeits-Naht ergaenzt (`createGoogleClient()`
+nutzt einen optional gebundenen `GuzzleHttp\ClientInterface`), 12/12 Tests jetzt echt end-to-end.
+Review-Runde noch offen.
+
+**TPX-15 (B3, MCP-Tool) fertig**: PR [#19](https://github.com/Cryptoom/trypost/pull/19), neues
+`UnpublishPostTool.php`, `post_id` isoliert vorab validiert (A4/TPXB-01-Muster), `unsupported_platforms`
+explizit in der Antwort. 9/9 Tests gruen. Review-Runde noch offen.
 
 **TPX-13 (B2c, LinkedIn) fertig**: PR [#17](https://github.com/Cryptoom/trypost/pull/17),
 `AbstractLinkedInPublisher::delete()`, deckt beide Unterklassen ab, Idempotenz (204 bei
