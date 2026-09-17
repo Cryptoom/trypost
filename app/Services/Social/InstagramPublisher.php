@@ -86,6 +86,35 @@ class InstagramPublisher
         };
     }
 
+    /**
+     * Deletes a previously published Instagram media object. Only called for
+     * `InstagramFacebook` accounts (see App\Actions\Post\UnpublishPost::
+     * resolveDeletePublisher(), which routes the direct-login `Instagram`
+     * platform to `unsupported` before this can ever run). For carousels,
+     * platform_post_id holds the PARENT container id set in
+     * publishCarousel()/finishCarousel() above, not a child, so deleting it
+     * removes the whole carousel in one call.
+     */
+    public function delete(PostPlatform $postPlatform): void
+    {
+        $account = $postPlatform->socialAccount;
+        $baseUrl = $account->platform->instagramGraphBaseUrl();
+        $accessToken = $account->access_token;
+        $mediaId = $postPlatform->platform_post_id;
+
+        $response = $this->socialHttp()->delete("{$baseUrl}/{$mediaId}", [
+            'access_token' => $accessToken,
+        ]);
+
+        if ($response->failed()) {
+            Log::error('Instagram delete failed', [
+                'status' => $response->status(),
+                'body' => $this->redactResponseBody($response->body()),
+            ]);
+            $this->handleApiError($response);
+        }
+    }
+
     private function publishFeed(string $instagramId, string $accessToken, ?string $content, $media, ?string $aspectRatio): array
     {
         if ($media->count() > 1) {

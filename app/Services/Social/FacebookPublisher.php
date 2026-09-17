@@ -63,6 +63,35 @@ class FacebookPublisher
         };
     }
 
+    /**
+     * Deletes a previously published Facebook object (feed post, single or
+     * multi image post, video, reel, or story). Graph API deletes any node
+     * the same way, `DELETE /{node-id}`, so the id stored in
+     * platform_post_id is the deletion target as-is, whether it is a feed
+     * post's composite `{page-id}_{post-id}` form (see publishTextPost(),
+     * publishSingleImagePost(), publishMultiImagePost() above) or a bare
+     * video id (publishVideoPost(), publishReel(), publishStory() above).
+     * No per-content-type branching needed, the stored id already IS the
+     * node to delete.
+     */
+    public function delete(PostPlatform $postPlatform): void
+    {
+        $accessToken = $postPlatform->socialAccount->access_token;
+        $platformPostId = $postPlatform->platform_post_id;
+
+        $response = $this->facebookHttp()->delete("{$this->baseUrl}/{$platformPostId}", [
+            'access_token' => $accessToken,
+        ]);
+
+        if ($response->failed()) {
+            Log::error('Facebook delete failed', [
+                'status' => $response->status(),
+                'body' => $this->redactResponseBody($response->body()),
+            ]);
+            $this->handleApiError($response);
+        }
+    }
+
     private function publishPost(string $pageId, string $accessToken, ?string $content, $media, ?string $aspectRatio): array
     {
         // Text only post

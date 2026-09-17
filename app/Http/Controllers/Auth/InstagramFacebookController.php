@@ -49,6 +49,9 @@ class InstagramFacebookController extends MetaController
         'instagram_basic',
         'instagram_content_publish',
         'instagram_manage_insights',
+        // Required to delete/unpublish a post via InstagramPublisher::delete()
+        // (see App\Enums\SocialAccount\Platform::requiredDeleteScopes()).
+        'instagram_manage_contents',
     ];
 
     public function connect(Request $request): Response

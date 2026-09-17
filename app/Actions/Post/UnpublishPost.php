@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Actions\Post;
 
+use App\Enums\Post\Status as PostStatus;
 use App\Enums\SocialAccount\Platform as SocialPlatform;
 use App\Models\Post;
 use App\Models\PostPlatform;
@@ -41,7 +42,12 @@ class UnpublishPost
      */
     public static function execute(Post $post, ?array $postPlatformIds = null): array
     {
-        $query = $post->postPlatforms()->whereNotNull('platform_post_id');
+        // Eager-loaded: missingDeleteScopes() and every real delete()
+        // implementation (Facebook, Instagram) read $postPlatform->
+        // socialAccount. Rows queried here are never "recently created", so
+        // without this a lazy load throws LazyLoadingViolationException in
+        // local/testing (Model::preventLazyLoading(), AppServiceProvider).
+        $query = $post->postPlatforms()->with('socialAccount')->whereNotNull('platform_post_id');
 
         if ($postPlatformIds !== null) {
             $query->whereIn('id', $postPlatformIds);
@@ -58,6 +64,17 @@ class UnpublishPost
 
             if ($publisher === null) {
                 $unsupported[] = $postPlatform;
+
+                continue;
+            }
+
+            $missingScopes = self::missingDeleteScopes($postPlatform);
+
+            if ($missingScopes !== []) {
+                $failed[] = [
+                    'post_platform' => $postPlatform,
+                    'message' => 'Missing permissions: '.implode(', ', $missingScopes).'. Please reconnect your account.',
+                ];
 
                 continue;
             }
@@ -83,14 +100,40 @@ class UnpublishPost
     /**
      * A platform's delete capability is opt-in. As soon as its publisher
      * gains a delete() method, it is picked up here automatically, with no
-     * further change needed to this dispatch. Today no publisher has one,
-     * so every platform currently resolves to null (unsupported).
+     * further change needed to this dispatch.
+     *
+     * `Platform::Instagram` (direct login) is a deliberate, permanent
+     * exception: it shares InstagramPublisher with `InstagramFacebook`, so
+     * once that class gains delete(), method_exists() alone would wrongly
+     * unlock it for BOTH account types. Meta's delete API only works for
+     * Instagram accounts connected via a Facebook Page, so this is checked
+     * BEFORE method_exists() and always resolves to null (unsupported),
+     * same as TikTok (see CLAUDE.md / OLLI-ENTSCHEIDE Runde 4 Punkt 9).
      */
     private static function resolveDeletePublisher(SocialPlatform $platform): ?object
     {
+        if ($platform === SocialPlatform::Instagram) {
+            return null;
+        }
+
         $publisher = self::getPublisher($platform);
 
         return method_exists($publisher, 'delete') ? $publisher : null;
+    }
+
+    /**
+     * Scopes the connected account is missing for this platform's delete
+     * endpoint. A non-empty result means the row is treated as `failed` with
+     * a clear reconnect message instead of a raw API permission error.
+     *
+     * @return array<int, string>
+     */
+    private static function missingDeleteScopes(PostPlatform $postPlatform): array
+    {
+        return array_values(array_diff(
+            $postPlatform->platform->requiredDeleteScopes(),
+            $postPlatform->socialAccount->scopes ?? [],
+        ));
     }
 
     /**
@@ -121,8 +164,13 @@ class UnpublishPost
      * the candidate rows that were actually processed. Three cases:
      *
      * 1. Every candidate unpublished: back to Draft (markAsUnpublished).
-     * 2. Some, but not all, unpublished: PartiallyPublished (at least one
-     *    candidate is still Published, either failed or unsupported).
+     * 2. Some, but not all, unpublished: PartiallyPublished. Sets `status`
+     *    directly instead of calling Post::markAsPartiallyPublished(),
+     *    which stamps `published_at = now()`. That is correct when a
+     *    platform finishes publishing, but wrong here: at least one
+     *    platform is still live from its ORIGINAL publish, and an
+     *    unpublish action must not touch that timestamp (see CLAUDE.md /
+     *    B1-review Pflicht-Nacharbeit).
      * 3. None unpublished (all failed and/or unsupported, e.g. a
      *    TikTok-only post): no status change, the post stays exactly as
      *    it was.
@@ -139,6 +187,6 @@ class UnpublishPost
             return;
         }
 
-        $post->markAsPartiallyPublished();
+        $post->update(['status' => PostStatus::PartiallyPublished]);
     }
 }
