@@ -11,6 +11,7 @@ use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Services\Media\ImageToVideoConverter;
 use App\Services\Social\FacebookPublisher;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
@@ -312,7 +313,7 @@ test('facebook publisher fails reel publish with typed exception when media down
         );
 });
 
-test('facebook publisher rejects image story', function () {
+test('facebook publisher auto-converts a photo story to a held-frame video', function () {
     $this->postPlatform->update(['content_type' => ContentType::FacebookStory]);
 
     $this->post->update([
@@ -327,8 +328,66 @@ test('facebook publisher rejects image story', function () {
         ],
     ]);
 
+    $convertedVideoPath = tempnam(sys_get_temp_dir(), 'fb_story_converted_');
+    file_put_contents($convertedVideoPath, 'fake-converted-mp4-bytes');
+
+    // The publisher downloads the photo to its own tempnam() path, which we
+    // cannot predict, so match on the duration arg only. No audio is passed:
+    // without AI music generation this photo-to-video conversion is always
+    // a held-frame video with a silent audio track.
+    $mockConverter = Mockery::mock(ImageToVideoConverter::class);
+    $mockConverter->shouldReceive('convert')
+        ->once()
+        ->withArgs(fn (string $imagePath, int $duration) => $duration === 15)
+        ->andReturn($convertedVideoPath);
+    app()->instance(ImageToVideoConverter::class, $mockConverter);
+
+    Http::fake([
+        '*/page_123/video_stories' => Http::sequence()
+            ->push([
+                'video_id' => 'story_video_123',
+                'upload_url' => 'https://rupload.facebook.com/video-upload/v25.0/story_video_123',
+            ], 200)
+            ->push(['success' => true, 'post_id' => 'photo_story_post_123'], 200),
+        '*example.com/media/*' => Http::response('fake-image-binary-content', 200),
+        '*rupload.facebook.com/*' => Http::response(['success' => true], 200),
+    ]);
+
+    $result = $this->publisher->publish($this->postPlatform);
+
+    expect($result['id'])->toBe('photo_story_post_123');
+    expect($result['url'])->toBe('https://www.facebook.com/stories/page_123/photo_story_post_123');
+
+    Http::assertSent(function ($request) {
+        if (! str_contains($request->url(), 'rupload.facebook.com')) {
+            return false;
+        }
+
+        return ($request->header('Offset')[0] ?? null) === '0'
+            && ($request->header('file_size')[0] ?? null) === (string) strlen('fake-converted-mp4-bytes')
+            && str_starts_with($request->header('Authorization')[0] ?? '', 'OAuth ');
+    });
+
+    expect(file_exists($convertedVideoPath))->toBeFalse();
+});
+
+test('facebook publisher rejects a story with a document file', function () {
+    $this->postPlatform->update(['content_type' => ContentType::FacebookStory]);
+
+    $this->post->update([
+        'media' => [
+            [
+                'id' => 'test-media-story-doc',
+                'path' => 'media/2026-01/story.pdf',
+                'url' => 'https://example.com/media/2026-01/story.pdf',
+                'mime_type' => 'application/pdf',
+                'original_filename' => 'story.pdf',
+            ],
+        ],
+    ]);
+
     expect(fn () => $this->publisher->publish($this->postPlatform))
-        ->toThrow(FacebookPublishException::class, 'Facebook Stories require a video file.');
+        ->toThrow(FacebookPublishException::class, 'Facebook Stories require a photo or video file.');
 });
 
 test('facebook publisher can publish video story', function () {

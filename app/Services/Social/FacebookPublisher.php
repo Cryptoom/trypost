@@ -10,12 +10,14 @@ use App\Exceptions\Social\ErrorCategory;
 use App\Exceptions\Social\FacebookPublishException;
 use App\Exceptions\Social\SocialPublishException;
 use App\Models\PostPlatform;
+use App\Services\Media\ImageToVideoConverter;
 use App\Services\Social\Concerns\CropsImageForAspectRatio;
 use App\Services\Social\Concerns\HasSocialHttpClient;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use RuntimeException;
 
 class FacebookPublisher
 {
@@ -395,11 +397,17 @@ class FacebookPublisher
         ];
     }
 
+    /**
+     * Facebook Stories require a video file. When a user attaches a photo
+     * instead, it is auto-converted into a held-frame MP4 (see
+     * convertImageToStoryVideo()) before this method's normal video
+     * transfer/finish flow runs unchanged.
+     */
     private function publishStory(string $pageId, string $accessToken, $media): array
     {
-        if (! $media->isVideo()) {
+        if (! $media->isVideo() && ! $media->isImage()) {
             throw new FacebookPublishException(
-                userMessage: 'Facebook Stories require a video file.',
+                userMessage: 'Facebook Stories require a photo or video file.',
                 category: ErrorCategory::MediaFormat,
             );
         }
@@ -428,29 +436,19 @@ class FacebookPublisher
 
         // Same rupload flow as publishReel() (this file, above): the
         // documented file_url-header shortcut against upload_url is
-        // unreliable in practice, so download our hosted media and POST raw
-        // bytes with the Offset/file_size headers rupload requires. The
+        // unreliable in practice, so we always end up with a LOCAL video
+        // file (downloaded, or converted from a photo below) and POST its
+        // raw bytes with the Offset/file_size headers rupload requires. The
         // previous implementation posted the media URL as a body field
         // called video_file_chunk to /{video_id} on the regular Graph host,
         // which is not the transfer step this API expects (Graph API error
         // 6000, "Problem with file", on every story regardless of the
         // actual video).
-        $tempFile = tempnam(sys_get_temp_dir(), 'fb_story_');
+        [$tempFile, $mimeType] = $media->isVideo()
+            ? $this->downloadStoryVideo($media)
+            : $this->convertImageToStoryVideo($media);
 
         try {
-            $download = Http::withOptions(['sink' => $tempFile])
-                ->timeout(600)
-                ->get($media->url);
-
-            if ($download->failed()) {
-                throw new FacebookPublishException(
-                    userMessage: 'Could not download media for Facebook story.',
-                    category: ErrorCategory::ServerError,
-                    platformErrorCode: (string) $download->status(),
-                    rawResponse: null,
-                );
-            }
-
             $fileSize = filesize($tempFile);
             $stream = fopen($tempFile, 'rb');
 
@@ -461,7 +459,7 @@ class FacebookPublisher
                     'file_size' => (string) $fileSize,
                 ])
                     ->timeout(600)
-                    ->withBody($stream, $media->mime_type ?? 'video/mp4')
+                    ->withBody($stream, $mimeType)
                     ->post($uploadUrl);
             } finally {
                 if (is_resource($stream)) {
@@ -474,7 +472,7 @@ class FacebookPublisher
                 $this->handleApiError($uploadResponse);
             }
         } finally {
-            if (! unlink($tempFile)) {
+            if (file_exists($tempFile) && ! unlink($tempFile)) {
                 Log::warning('Facebook story temp file cleanup failed', ['path' => $tempFile]);
             }
         }
@@ -495,6 +493,80 @@ class FacebookPublisher
             'id' => $storyId,
             'url' => "https://www.facebook.com/stories/{$pageId}/{$storyId}",
         ];
+    }
+
+    /**
+     * Downloads a Story's hosted video into a local temp file for the
+     * rupload transfer above.
+     *
+     * @return array{0: string, 1: string} [local file path, mime type]
+     */
+    private function downloadStoryVideo($media): array
+    {
+        $tempFile = tempnam(sys_get_temp_dir(), 'fb_story_');
+
+        $download = Http::withOptions(['sink' => $tempFile])
+            ->timeout(600)
+            ->get($media->url);
+
+        if ($download->failed()) {
+            @unlink($tempFile);
+
+            throw new FacebookPublishException(
+                userMessage: 'Could not download media for Facebook story.',
+                category: ErrorCategory::ServerError,
+                platformErrorCode: (string) $download->status(),
+                rawResponse: null,
+            );
+        }
+
+        return [$tempFile, $media->mime_type ?? 'video/mp4'];
+    }
+
+    /**
+     * Facebook Stories require a video file, but a user may only supply a
+     * photo. Downloads the photo, then renders a held-frame MP4 with a
+     * silent audio track (App\Services\Media\ImageToVideoConverter).
+     *
+     * @return array{0: string, 1: string} [local file path, mime type]
+     */
+    private function convertImageToStoryVideo($media): array
+    {
+        $imagePath = tempnam(sys_get_temp_dir(), 'fb_story_img_');
+
+        try {
+            $download = Http::withOptions(['sink' => $imagePath])
+                ->timeout(600)
+                ->get($media->url);
+
+            if ($download->failed()) {
+                throw new FacebookPublishException(
+                    userMessage: 'Could not download media for Facebook story.',
+                    category: ErrorCategory::ServerError,
+                    platformErrorCode: (string) $download->status(),
+                    rawResponse: null,
+                );
+            }
+
+            $durationSeconds = (int) config('trypost.platforms.facebook.story_photo_duration_seconds');
+
+            try {
+                $videoPath = app(ImageToVideoConverter::class)->convert($imagePath, $durationSeconds);
+            } catch (RuntimeException $e) {
+                throw new FacebookPublishException(
+                    userMessage: 'Could not convert the story photo to video.',
+                    category: ErrorCategory::ServerError,
+                    platformErrorCode: null,
+                    rawResponse: $e->getMessage(),
+                );
+            }
+
+            return [$videoPath, 'video/mp4'];
+        } finally {
+            if (file_exists($imagePath) && ! unlink($imagePath)) {
+                Log::warning('Facebook story temp file cleanup failed', ['path' => $imagePath]);
+            }
+        }
     }
 
     private function handleApiError(Response $response): never
