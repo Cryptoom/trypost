@@ -11,6 +11,11 @@
 > gruenen Review-Runden, echte Olli-Gates (YouTube-Scope, Threads-Review, B4-Produktfrage, U1,
 > Deploy, Live-Smoke-Tests B2a-d) bleiben harte Stopps. Kette laeuft bis zum naechsten echten
 > Gate durch, auch ueber Welle-A-Ende hinaus.
+> Handoff 2026-09-17: TPX-00 (urspruengliche Orchestrator-Session) offenbar nach Usage-Limit
+> idle. Diese Session (trypost-fork-46) hat die Orchestrierung auf Olli-Anweisung uebernommen,
+> lokalen main per Fast-Forward auf origin/main synchronisiert (war 12 Commits hinterher),
+> Plan + Nachtgate erneut gelesen. Uebernommen Stand: A4 (PR #13) noch ohne Review-Runde, A5
+> (PR #12) Fix fuer beide Runde-1-Findings ist gepusht (`ad169c54`), noch ohne Runde-2-Review.
 
 Status-Symbole: ✓ done · 🚀 deployed · ⏳ in_progress · ❓ waiting · 🔄 pending · ⛔ blocked ·
 ❌ failed · 🔍 review · 📝 discovered
@@ -19,8 +24,8 @@ Status-Symbole: ✓ done · 🚀 deployed · ⏳ in_progress · ❓ waiting · �
 
 | Chip | Paket | Status | Started | Worktree/Branch |
 |---|---|---|---|---|
-| TPX-07 | A4 · MCP-Tool-Parameter | ⏳ in_progress | 2026-09-17 | claude/tpx-07-a4-mcp |
-| TPX-08 | A5 · Vue-UI | 🔍 review-Fix (2 echte Findings, PR #12 nicht gemergt) | 2026-09-17 | claude/tpx-08-a5-vue-ui |
+| TPX-07 | A4 · MCP-Tool-Parameter | 🔍 Review-Runde 1 laeuft (code-reviewer) | 2026-09-17 | claude/tpx-07-a4-mcp |
+| TPX-08 | A5 · Vue-UI | 🔍 Review-Runde 2 laeuft (code+design, prueft Fix `ad169c54`) | 2026-09-17 | claude/tpx-08-a5-vue-ui |
 
 ## Pending (Startreihenfolge)
 
