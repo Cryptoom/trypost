@@ -194,6 +194,16 @@ gemergt wird.
 ## Discovered Backlog
 
 - **TPXB-01**: siehe Completed-Tabelle, PR #14 gemergt (Olli hat den Nachtmodus-Gate-Stopp fuer diesen konkreten Merge explizit aufgehoben).
+- **Haertungs-Luecke, live gefunden 17.09.2026 (adversarialer Scope-Re-Check)**: `Platform::
+  requiredDeleteScopes()` hat KEINEN Eintrag fuer YouTube (`default => []`), obwohl
+  `videos.delete` real die Scope `youtube.force-ssl` verlangt. Oliver Albrechts Account hat sie
+  (Server-Check bestaetigt), also aktuell kein Live-Problem, aber ein Account ohne diese Scope
+  (z.B. verbunden bevor `force-ssl` zum Connect-Flow hinzugefuegt wurde, analog zum
+  Instagram-Fall) wuerde NICHT die freundliche "Missing permissions, bitte neu verbinden"
+  Meldung bekommen, sondern eine rohe Google-API-Fehlermeldung durchgereicht. Fix-Vorschlag:
+  `self::YouTube => ['https://www.googleapis.com/auth/youtube.force-ssl']` ergaenzen, analog zu
+  Facebook/Instagram. Kein Blocker fuer den aktuellen Live-Betrieb, aber ein sauberer,
+  risikoarmer Folge-PR.
 - **Bug, live bestaetigt 17.09.2026 (Live-Smoke-Test)**: `PostController::unpublish()` zeigt bei
   einem Doppel-Klick auf "Unpublish" (2. Klick nach bereits erfolgreichem 1. Klick, 0 verbleibende
   Kandidaten-Rows) die irrefuehrende Meldung "This post can't be unpublished automatically. Remove
@@ -345,6 +355,44 @@ Advanced Access freigegeben (Meta App Review noetig). **Instagram-Test-Post manu
 direkt auf Instagram geloescht** (kein TryPost-Automatismus moeglich solange der Scope fehlt),
 per Permalink-Check verifiziert ("Diese Seite ist leider nicht verfuegbar ... die Seite wurde
 entfernt").
+
+**Adversarialer Nachtest 17.09.2026 (auf Olli-Nachfrage "Scopes sauber beantragt?"): den
+kompletten Scope-Wiring-Pfad fuer ALLE Plattformen nochmal geprueft, nicht nur Instagram.**
+Facebook: `requiredDeleteScopes()` verlangt `pages_manage_posts`, dieselbe Scope wie
+`requiredPublishScopes()`, laengst vor dieser Welle gewaehrt (Server-Check bestaetigt),
+erklaert warum der Facebook-Live-Test ohne jede Reibung durchlief. LinkedIn: kein
+Delete-Scope-Gate im Code (`default => []`), LinkedIn-Delete nutzt real dieselbe
+`w_member_social`-Berechtigung wie Publish, ebenfalls laengst vorhanden, erklaert den
+reibungslosen LinkedIn-Live-Test. YouTube: ebenfalls kein Delete-Scope-Gate im Code, ABER
+Server-Check bestaetigt dass der Account `youtube.force-ssl` (die von Google fuer
+`videos.delete` tatsaechlich verlangte Scope) bereits besitzt, waere also technisch nutzbar,
+nur nicht live geklickt. Erkannte Haertungs-Luecke (kein Blocker fuer diesen Account, aber
+architektonisch ungeschuetzt): ohne ein `requiredDeleteScopes()`-Eintrag fuer YouTube wuerde
+ein Account OHNE `force-ssl` nicht die freundliche "Missing permissions, bitte neu verbinden"
+Meldung bekommen, sondern einen rohen Google-API-Fehler, siehe Discovered-Backlog unten.
+
+**Instagram-Scope-Blocker zusaetzlich DOPPELT verifiziert, nicht nur als OAuth-Rejection
+angenommen.** Zweiter Instagram-Testpost erstellt (API, `01a0b0ec-b97c-...`, echtes Testbild),
+live publiziert (`instagram.com/p/DdZp40ClCgH/`). Danach die echte Meta Graph-API `DELETE`
+**direkt per `Http::delete()` in `tinker`** aufgerufen, mit dem Account's aktuellem, echtem
+Access-Token, UNTER UMGEHUNG von TryPosts eigenem `missingDeleteScopes()`-Gate. Ergebnis: Meta
+selbst lehnt den Aufruf ab, `HTTP 400`, `{"error":{"message":"(#10) Insufficient permissions to
+access this data","code":10,"type":"OAuthException"}}`. **Das widerlegt die Hypothese, der
+Code-Gate koennte ueberfluessig streng sein**: selbst OHNE TryPosts eigenen Scope-Check haette
+Meta die Loeschung mit den aktuell gewaehrten Scopes (`instagram_basic`,
+`instagram_content_publish`, `instagram_manage_insights`) verweigert. B0s urspruengliche
+Recherche war korrekt, `instagram_manage_contents` (oder eine aequivalente, noch nicht
+freigegebene Permission) ist wirklich erforderlich. Zweiter Testpost ebenfalls manuell von
+Olli auf Instagram geloescht (derselbe Weg wie beim ersten, TryPost kann ihn strukturell
+nicht selbst entfernen).
+
+**Fazit zur Frage "ist alles bewiesen und sauber, Scopes sauber beantragt?"**: Facebook und
+LinkedIn sind vollstaendig bewiesen (End-to-End live), sauber weil sie bereits vorhandene,
+laengst genehmigte Scopes wiederverwenden, kein Nacharbeit noetig. YouTube ist scope-seitig
+sauber fuer den getesteten Account (force-ssl vorhanden), aber nicht live geklickt und hat
+eine kleine architektonische Haertungs-Luecke (siehe Backlog). Instagram ist NICHT sauber:
+der Delete-Scope ist doppelt verifiziert real blockiert (OAuth-Rejection UND direkter
+API-Call), das ist ein echter, externer Blocker (Meta App Review), kein Code-Fix moeglich.
 
 **YouTube: NICHT live getestet.** Ein echtes Kurzvideo-Upload war fuer den Umfang dieser Session
 nicht verhaeltnismaessig, `YouTubePublisher::delete()` bleibt ueber die bestehende 12/12-Test-Suite
