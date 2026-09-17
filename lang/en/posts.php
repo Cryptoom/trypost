@@ -32,6 +32,8 @@ return [
         'duplicate' => 'Duplicate',
         'copy_id' => 'Copy ID',
         'copied' => 'ID copied to clipboard',
+        'unpublish' => 'Unpublish',
+        'unpublish_unsupported' => 'This post can\'t be unpublished automatically. Remove it manually on the platform(s) it was published to.',
     ],
 
     'form' => [
@@ -438,6 +440,13 @@ return [
             'cancel' => 'Cancel',
         ],
 
+        'unpublish_modal' => [
+            'title' => 'Unpublish post?',
+            'description' => 'This removes the post from every platform that supports automatic removal, and moves it back to Draft.',
+            'action' => 'Unpublish',
+            'cancel' => 'Cancel',
+        ],
+
         'sync_enable' => [
             'title' => 'Enable sync?',
             'description' => 'All platforms will share the same content. Any custom edits made to individual platforms will be replaced with the current content.',
@@ -578,8 +587,10 @@ return [
         'scheduled' => 'Post scheduled successfully!',
         'deleted' => 'Post deleted successfully!',
         'duplicated' => 'Post duplicated as a draft.',
+        'unpublished' => 'Post unpublished successfully!',
+        'unpublished_partial' => 'Post partially unpublished: some platforms don\'t support automatic removal or the request failed. Remove those manually if needed.',
         'cannot_edit_finalized' => 'This post has already been processed and cannot be re-published. Duplicate it to try again.',
-        'cannot_delete_published' => 'Published posts cannot be deleted.',
+        'cannot_delete_while_publishing' => 'This post is currently publishing and can\'t be deleted yet.',
         'connect_first' => 'Connect at least one social network before creating a post.',
     ],
 

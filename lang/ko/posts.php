@@ -32,6 +32,8 @@ return [
         'duplicate' => '복제',
         'copy_id' => 'ID 복사',
         'copied' => 'ID가 클립보드에 복사되었습니다',
+        'unpublish' => '게시 취소',
+        'unpublish_unsupported' => '이 게시물은 자동으로 게시를 취소할 수 없습니다. 게시된 플랫폼에서 직접 삭제하세요.',
     ],
 
     'form' => [
@@ -438,6 +440,13 @@ return [
             'cancel' => '취소',
         ],
 
+        'unpublish_modal' => [
+            'title' => '이 게시물의 게시를 취소하시겠습니까?',
+            'description' => '자동 삭제를 지원하는 모든 플랫폼에서 게시물을 삭제하고 초안으로 되돌립니다.',
+            'action' => '게시 취소',
+            'cancel' => '취소',
+        ],
+
         'sync_enable' => [
             'title' => '동기화를 활성화하시겠어요?',
             'description' => '모든 플랫폼이 동일한 콘텐츠를 공유합니다. 개별 플랫폼에 적용한 맞춤 편집은 현재 콘텐츠로 대체됩니다.',
@@ -578,8 +587,10 @@ return [
         'scheduled' => '게시물이 성공적으로 예약되었습니다!',
         'deleted' => '게시물이 성공적으로 삭제되었습니다!',
         'duplicated' => '게시물이 초안으로 복제되었습니다.',
+        'unpublished' => '게시물 게시가 취소되었습니다!',
+        'unpublished_partial' => '게시물이 일부만 게시 취소되었습니다. 일부 플랫폼은 자동 삭제를 지원하지 않거나 요청이 실패했습니다. 필요한 경우 직접 삭제하세요.',
         'cannot_edit_finalized' => '이 게시물은 이미 처리되어 다시 게시할 수 없습니다. 다시 시도하려면 복제하세요.',
-        'cannot_delete_published' => '게시된 게시물은 삭제할 수 없습니다.',
+        'cannot_delete_while_publishing' => '이 게시물은 현재 게시 중이라 아직 삭제할 수 없습니다.',
         'connect_first' => '게시물을 만들기 전에 소셜 네트워크를 하나 이상 연결하세요.',
     ],
 

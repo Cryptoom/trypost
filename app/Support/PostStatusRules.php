@@ -29,14 +29,18 @@ class PostStatusRules
     ];
 
     /**
-     * Statuses where the post can no longer be deleted.
+     * Statuses where the post can no longer be deleted. Published and
+     * PartiallyPublished used to be blocked here too, back when deletion had
+     * no way to remove the already-published copies first. Since
+     * App\Actions\Post\DeletePost now runs UnpublishPost as a best-effort
+     * first step (see its docblock), those two are safe to delete through
+     * the web UI as well. This list only protects a post that is actively
+     * being published right now (a live publish job racing the delete).
      *
      * @var array<int, PostStatus>
      */
     private const DELETE_BLOCKED_STATUSES = [
         PostStatus::Publishing,
-        PostStatus::Published,
-        PostStatus::PartiallyPublished,
     ];
 
     public static function blocksEditing(Post $post): bool

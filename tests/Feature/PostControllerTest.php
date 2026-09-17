@@ -16,6 +16,7 @@ use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Models\WorkspaceLabel;
+use App\Services\Social\FacebookPublisher;
 use App\Support\LinkTlds;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Bus;
@@ -930,6 +931,114 @@ test('destroy post returns 404 for post from different workspace', function () {
     $response->assertNotFound();
 });
 
+// Unpublish tests
+test('unpublish post requires authentication', function () {
+    $post = Post::factory()->published()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+    ]);
+
+    $response = $this->post(route('app.posts.unpublish', $post));
+
+    $response->assertRedirect(route('login'));
+});
+
+test('unpublish post returns 404 for post from different workspace', function () {
+    $otherWorkspace = Workspace::factory()->create();
+    $post = Post::factory()->published()->create([
+        'workspace_id' => $otherWorkspace->id,
+        'user_id' => $this->user->id,
+    ]);
+
+    $response = $this->actingAs($this->user)->post(route('app.posts.unpublish', $post));
+
+    $response->assertNotFound();
+});
+
+test('unpublish is denied for a member without the create-post role', function () {
+    $viewer = User::factory()->create(['account_id' => $this->workspace->account_id]);
+    $this->workspace->members()->attach($viewer->id, ['role' => Role::Viewer->value]);
+    $viewer->update(['current_workspace_id' => $this->workspace->id]);
+
+    $post = Post::factory()->published()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+    ]);
+
+    $response = $this->actingAs($viewer)->post(route('app.posts.unpublish', $post));
+
+    $response->assertForbidden();
+});
+
+test('unpublish removes the post from every delete-capable platform and resets it to draft', function () {
+    app()->instance(FacebookPublisher::class, new class extends FacebookPublisher
+    {
+        public function delete(PostPlatform $postPlatform): void {}
+    });
+
+    $post = Post::factory()->published()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+    ]);
+    $account = SocialAccount::factory()->facebook()->create(['workspace_id' => $this->workspace->id]);
+    PostPlatform::factory()->facebook()->published()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $account->id,
+    ]);
+
+    $response = $this->actingAs($this->user)->post(route('app.posts.unpublish', $post));
+
+    $response->assertRedirect();
+    $response->assertSessionHas('flash.bannerStyle', 'success');
+    expect($post->fresh()->status)->toBe(PostStatus::Draft);
+});
+
+test('unpublish reports an unsupported outcome and leaves a tiktok-only post untouched', function () {
+    $post = Post::factory()->published()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+    ]);
+    $account = SocialAccount::factory()->tiktok()->create(['workspace_id' => $this->workspace->id]);
+    PostPlatform::factory()->tiktok()->published()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $account->id,
+    ]);
+
+    $response = $this->actingAs($this->user)->post(route('app.posts.unpublish', $post));
+
+    $response->assertRedirect();
+    $response->assertSessionHas('flash.bannerStyle', 'danger');
+    expect($post->fresh()->status)->toBe(PostStatus::Published);
+});
+
+test('unpublish reports a partial outcome when only some platforms unpublish', function () {
+    app()->instance(FacebookPublisher::class, new class extends FacebookPublisher
+    {
+        public function delete(PostPlatform $postPlatform): void {}
+    });
+
+    $post = Post::factory()->published()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+    ]);
+    $facebookAccount = SocialAccount::factory()->facebook()->create(['workspace_id' => $this->workspace->id]);
+    $tiktokAccount = SocialAccount::factory()->tiktok()->create(['workspace_id' => $this->workspace->id]);
+    PostPlatform::factory()->facebook()->published()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $facebookAccount->id,
+    ]);
+    PostPlatform::factory()->tiktok()->published()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $tiktokAccount->id,
+    ]);
+
+    $response = $this->actingAs($this->user)->post(route('app.posts.unpublish', $post));
+
+    $response->assertRedirect();
+    $response->assertSessionHas('flash.bannerStyle', 'warning');
+    expect($post->fresh()->status)->toBe(PostStatus::PartiallyPublished);
+});
+
 // Label tests
 test('edit post includes workspace labels', function () {
     $post = Post::factory()->create([
@@ -1212,21 +1321,42 @@ test('failed posts render show without redirecting to edit', function () {
         ->assertOk();
 });
 
-test('destroy blocks published posts', function () {
-    foreach ([PostStatus::Publishing, PostStatus::Published, PostStatus::PartiallyPublished] as $status) {
-        $post = Post::factory()->create([
-            'workspace_id' => $this->workspace->id,
-            'user_id' => $this->user->id,
-            'status' => $status,
-        ]);
+test('destroy blocks a post that is actively publishing', function () {
+    $post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+        'status' => PostStatus::Publishing,
+    ]);
 
-        $this->actingAs($this->user)
-            ->delete(route('app.posts.destroy', $post))
-            ->assertRedirect();
+    $this->actingAs($this->user)
+        ->delete(route('app.posts.destroy', $post))
+        ->assertRedirect();
 
-        expect(Post::find($post->id))->not->toBeNull();
-    }
+    expect(Post::find($post->id))->not->toBeNull();
 });
+
+/**
+ * Published and PartiallyPublished used to be blocked here too (see
+ * PostStatusRules::DELETE_BLOCKED_STATUSES docblock). DeletePost now runs
+ * UnpublishPost as a best-effort first step, so the web UI allows deleting
+ * them like the API destroy() endpoint already did.
+ */
+test('destroy allows published and partially published posts', function (PostStatus $status) {
+    $post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+        'status' => $status,
+    ]);
+
+    $this->actingAs($this->user)
+        ->delete(route('app.posts.destroy', $post))
+        ->assertRedirect(route('app.posts.index'));
+
+    expect(Post::find($post->id))->toBeNull();
+})->with([
+    PostStatus::Published,
+    PostStatus::PartiallyPublished,
+]);
 
 test('show page returns 404 for post in another workspace', function () {
     $otherWorkspace = Workspace::factory()->create();

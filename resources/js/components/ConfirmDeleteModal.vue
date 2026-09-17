@@ -47,6 +47,16 @@ const props = defineProps({
         type: String,
         default: 'delete',
     },
+
+    // Optional root for `data-testid="<testid>-action"` / `-cancel` on the two
+    // footer buttons. Left unset, the buttons carry no test id, so existing
+    // call sites are unaffected. Set it when a browser test needs to target
+    // one specific instance of this modal on a page that renders more than
+    // one (e.g. posts/Index.vue's delete and unpublish confirmations).
+    testid: {
+        type: String,
+        default: undefined,
+    },
 });
 
 const emit = defineEmits(['deleted', 'closed']);
@@ -182,12 +192,14 @@ defineExpose({
                 <Button
                     variant="destructive"
                     :disabled="processing || !isConfirmed"
+                    :data-testid="testid ? `${testid}-action` : undefined"
                     @click="remove"
                 >
                     {{ action }}
                 </Button>
                 <Button
                     variant="outline"
+                    :data-testid="testid ? `${testid}-cancel` : undefined"
                     @click="close"
                 >
                     {{ cancel }}

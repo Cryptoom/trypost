@@ -32,6 +32,8 @@ return [
         'duplicate' => 'Duplikuj',
         'copy_id' => 'Kopiuj identyfikator',
         'copied' => 'Skopiowano identyfikator do schowka',
+        'unpublish' => 'Cofnij publikację',
+        'unpublish_unsupported' => 'Nie można automatycznie cofnąć publikacji tego posta. Usuń go ręcznie na platformie (platformach), na której został opublikowany.',
     ],
 
     'form' => [
@@ -438,6 +440,13 @@ return [
             'cancel' => 'Anuluj',
         ],
 
+        'unpublish_modal' => [
+            'title' => 'Cofnąć publikację tego posta?',
+            'description' => 'Spowoduje to usunięcie posta ze wszystkich platform obsługujących automatyczne usuwanie i przywrócenie go do szkiców.',
+            'action' => 'Cofnij publikację',
+            'cancel' => 'Anuluj',
+        ],
+
         'sync_enable' => [
             'title' => 'Włączyć synchronizację?',
             'description' => 'Wszystkie platformy będą współdzielić tę samą treść. Wszelkie niestandardowe zmiany wprowadzone na poszczególnych platformach zostaną zastąpione bieżącą treścią.',
@@ -578,8 +587,10 @@ return [
         'scheduled' => 'Post został pomyślnie zaplanowany!',
         'deleted' => 'Post został pomyślnie usunięty!',
         'duplicated' => 'Post zduplikowano jako szkic.',
+        'unpublished' => 'Publikacja posta została pomyślnie cofnięta!',
+        'unpublished_partial' => 'Publikacja posta została cofnięta częściowo: niektóre platformy nie obsługują automatycznego usuwania lub żądanie się nie powiodło. W razie potrzeby usuń je ręcznie.',
         'cannot_edit_finalized' => 'Ten post został już przetworzony i nie można go ponownie opublikować. Zduplikuj go, aby spróbować ponownie.',
-        'cannot_delete_published' => 'Opublikowanych postów nie można usunąć.',
+        'cannot_delete_while_publishing' => 'Ten post jest obecnie publikowany i nie można go jeszcze usunąć.',
         'connect_first' => 'Połącz co najmniej jedną sieć społecznościową przed utworzeniem posta.',
     ],
 
