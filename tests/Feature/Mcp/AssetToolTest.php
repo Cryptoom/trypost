@@ -323,6 +323,38 @@ test('rejects cross-workspace assets and posts without mutating the post', funct
     expect($this->post->fresh()->media)->toHaveCount(0);
 });
 
+test('rejects a malformed post_id with a clean validation error instead of throwing', function () {
+    $asset = Media::factory()->assets()->create([
+        'mediable_type' => (new Workspace)->getMorphClass(),
+        'mediable_id' => $this->workspace->id,
+    ]);
+
+    TryPostServer::actingAs($this->user)
+        ->tool(AttachExistingAssetTool::class, [
+            'post_id' => 'not-a-uuid',
+            'asset_id' => $asset->id,
+        ])
+        ->assertHasErrors();
+
+    expect($this->post->fresh()->media)->toHaveCount(0);
+});
+
+test('rejects a non-scalar post_id with a clean validation error instead of throwing', function () {
+    $asset = Media::factory()->assets()->create([
+        'mediable_type' => (new Workspace)->getMorphClass(),
+        'mediable_id' => $this->workspace->id,
+    ]);
+
+    TryPostServer::actingAs($this->user)
+        ->tool(AttachExistingAssetTool::class, [
+            'post_id' => [$this->post->id],
+            'asset_id' => $asset->id,
+        ])
+        ->assertHasErrors();
+
+    expect($this->post->fresh()->media)->toHaveCount(0);
+});
+
 test('rejects posts in non-editable states', function (PostStatus $status) {
     $this->post->update(['status' => $status]);
     $asset = Media::factory()->assets()->create([

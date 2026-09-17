@@ -181,6 +181,28 @@ test('post 404 from another workspace', function () {
     $response->assertHasErrors(['Post not found.']);
 });
 
+test('rejects a malformed post_id with a clean validation error instead of throwing', function () {
+    $response = TryPostServer::actingAs($this->user)
+        ->tool(AttachMediaFromUrlTool::class, [
+            'post_id' => 'not-a-uuid',
+            'urls' => [['url' => 'https://example.com/photo.jpg']],
+        ]);
+
+    $response->assertHasErrors();
+    expect($this->post->fresh()->media)->toHaveCount(0);
+});
+
+test('rejects a non-scalar post_id with a clean validation error instead of throwing', function () {
+    $response = TryPostServer::actingAs($this->user)
+        ->tool(AttachMediaFromUrlTool::class, [
+            'post_id' => [$this->post->id],
+            'urls' => [['url' => 'https://example.com/photo.jpg']],
+        ]);
+
+    $response->assertHasErrors();
+    expect($this->post->fresh()->media)->toHaveCount(0);
+});
+
 test('rejects urls with non-http(s) schemes', function () {
     $response = TryPostServer::actingAs($this->user)
         ->tool(AttachMediaFromUrlTool::class, [

@@ -138,6 +138,28 @@ test('rejects a post from another workspace', function () {
     $response->assertHasErrors();
 });
 
+test('rejects a malformed post_id with a clean validation error instead of throwing', function () {
+    $response = TryPostServer::actingAs($this->user)
+        ->tool(AttachMediaFromUploadTool::class, [
+            'post_id' => 'not-a-uuid',
+            'upload_token' => $this->token,
+        ]);
+
+    $response->assertHasErrors();
+    expect($this->post->fresh()->media)->toHaveCount(0);
+});
+
+test('rejects a non-scalar post_id with a clean validation error instead of throwing', function () {
+    $response = TryPostServer::actingAs($this->user)
+        ->tool(AttachMediaFromUploadTool::class, [
+            'post_id' => [$this->post->id],
+            'upload_token' => $this->token,
+        ]);
+
+    $response->assertHasErrors();
+    expect($this->post->fresh()->media)->toHaveCount(0);
+});
+
 test('post_platform_ids scopes the uploaded media to that platform via the pivot', function () {
     $account = SocialAccount::factory()->create([
         'workspace_id' => $this->workspace->id,

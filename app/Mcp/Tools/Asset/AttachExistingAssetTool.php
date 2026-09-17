@@ -26,8 +26,15 @@ class AttachExistingAssetTool extends Tool
 
     public function handle(Request $request): Response|ResponseFactory
     {
+        // post_id is validated in isolation first, before Post::find() sees
+        // it: a non-uuid could otherwise throw at the DB driver, and an
+        // array would make find() return a Collection instead of Post|null,
+        // which PostPlatformMediaScope::rules(Post $post) below cannot
+        // accept. Same pattern as DeletePostTool/PublishPostTool.
+        $postIdValidated = $request->validate(['post_id' => ['required', 'uuid']]);
+
         $post = Post::where('workspace_id', $request->user()?->current_workspace_id)
-            ->find(data_get($request->all(), 'post_id'));
+            ->find(data_get($postIdValidated, 'post_id'));
 
         if (! $post) {
             return Response::error('Post not found.');
