@@ -62,9 +62,7 @@ Chip hat eine minimale, produktionsneutrale Testbarkeits-Naht ergaenzt (`createG
 nutzt einen optional gebundenen `GuzzleHttp\ClientInterface`), 12/12 Tests jetzt echt end-to-end.
 Review-Runde noch offen.
 
-**TPX-15 (B3, MCP-Tool) fertig**: PR [#19](https://github.com/Cryptoom/trypost/pull/19), neues
-`UnpublishPostTool.php`, `post_id` isoliert vorab validiert (A4/TPXB-01-Muster), `unsupported_platforms`
-explizit in der Antwort. 9/9 Tests gruen. Review-Runde noch offen.
+**TPX-15 (B3) gemergt**: siehe Completed-Tabelle.
 
 **TPX-13 (B2c, LinkedIn) fertig**: PR [#17](https://github.com/Cryptoom/trypost/pull/17),
 `AbstractLinkedInPublisher::delete()`, deckt beide Unterklassen ab, Idempotenz (204 bei
@@ -92,14 +90,14 @@ gemergt wird.
 | TPX-12 | B2b · Threads delete() | ❌ GESTRICHEN 17.09.2026 (Olli: "machen wir derzeit nicht, nutzt keiner"), kein Chip mehr vorgesehen | - | - | - |
 | TPX-13 | B2c · LinkedIn delete() | 🔄 pending | B0, B1, A3 | - | - |
 | TPX-14 | B2d · YouTube delete() | 🔄 pending | B0, B1, A3, YouTube-Scope-Gate | - | - |
-| TPX-15 | B3 · MCP UnpublishPostTool | 🔄 pending | B1 | - | - |
-| TPX-16 | B4 · Vue-UI + Web-Route | 🔄 pending | B1, B4-Produktfrage | - | - |
+| TPX-16 | B4 · Vue-UI + Web-Route | ⏳ in_progress (siehe Active Chips) | B1 ✓ | - | - |
 | TPX-17 | U1 · Upstream-PR-Vorbereitung | 🔄 pending | Welle B gemergt + deployed | - | - |
 
 ## Completed
 
 | Chip | Paket | PR | Merge-Commit | Notiz |
 |---|---|---|---|---|
+| TPX-15 | B3 · MCP UnpublishPostTool | [#19](https://github.com/Cryptoom/trypost/pull/19) | `335fab77` | Neues `UnpublishPostTool.php`, `post_id` isoliert vorab validiert (A4/TPXB-01-Muster), `post_platform_ids`-IDOR-Schutz per `Rule::exists(...)->where('post_id', ...)` mit Test bestaetigt, Autorisierung ueber `update`. `unsupported_platforms` explizit in der Antwort. 9/9 Tests gruen, Review PASS ohne Funde. Keine Live-API-Abhaengigkeit (ruft nur B1s bereits unsupported Dispatch auf), darum 1 Review-Runde ausreichend (Plan-Vorgabe), autonom gemergt |
 | TPX-10 | B1 · UnpublishPost + DeletePost | [#16](https://github.com/Cryptoom/trypost/pull/16) | `e81bc05c` | Neue `UnpublishPost.php`, `Post::markAsUnpublished()`, `PostPlatform::markAsUnpublished()`, `DeletePost::execute()` ruft Unpublish jetzt als ersten Schritt (best-effort). Bewusste Design-Abweichung vom Plan: `method_exists($publisher, 'delete')` statt hartem `match`, damit B2a-d ihre `delete()`-Methoden ergaenzen koennen ohne `UnpublishPost.php` nochmal anzufassen. TikTok-Negativtest auf beiden Ebenen (Unpublish + Delete). Review PASS mit 2 "Wichtig"-Funden (siehe Pflicht-Nacharbeit-Hinweis oben), aktuell folgenlos da Erfolgspfad noch dead code (0 Publisher haben delete()). 36 neue Tests, 1015/1015 breiter Post-Sweep gruen (nach migrate:fresh, erster Lauf zeigte Schema-Drift im geteilten Test-Container, Infra-Rauschen). Olli hat den Nachtmodus-Gate-Stopp fuer diesen Merge explizit aufgehoben, autonom gemergt |
 | TPXB-01 | UpdatePostTool post_id-Validierungsreihenfolge | [#14](https://github.com/Cryptoom/trypost/pull/14) | `07ca0469` | Vom Olli-gestarteten Backlog-Chip (task_fe146be6) gebaut, identisches Fix-Muster wie A4 (`60627d58`), diesmal auf `UpdatePostTool.php`. Review verifizierte per Revert-Test, dass die 2 neuen Regressionstests den Bug wirklich fangen (malformed post_id wirft ohne Fix eine echte QueryException). 308/308 Mcp-Tests gruen. Olli hat den Nachtmodus-Gate-Stopp fuer diesen Merge explizit aufgehoben ("darfst wenn es sauber ist selbst mergen"), autonom gemergt |
 | TPX-B1b | B1b · Instagram-Connect-Modal-Hinweis | [#15](https://github.com/Cryptoom/trypost/pull/15) | `468484b9` | NEU, Olli-Anlass 17.09.2026. Amber-Hinweis unter dem direkten Instagram-Login-Button, 16 Locales uebersetzt. Chip behauptete faelschlich "kein PHP 8.4+ auf der Maschine" (Zsh-Alias-Falle, `unalias php` + fehlende `.env` nie geloest), Orchestrator hat LocalizationParityTest (18/18) + `npm run build` selbst nachgeholt und gruen bekommen. Design-Review PASS (Amber-Konvention exakt getroffen, 16/16 Locales verifiziert, Uebersetzungen stichprobenartig gegengelesen). Autonom gemergt |
