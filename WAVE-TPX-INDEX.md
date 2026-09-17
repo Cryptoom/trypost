@@ -11,6 +11,20 @@
 > gruenen Review-Runden, echte Olli-Gates (YouTube-Scope, Threads-Review, B4-Produktfrage, U1,
 > Deploy, Live-Smoke-Tests B2a-d) bleiben harte Stopps. Kette laeuft bis zum naechsten echten
 > Gate durch, auch ueber Welle-A-Ende hinaus.
+> Olli-Freigabe 17.09.2026 (weitergehend): "für Oliver legst du zweiten MCP an selbst und
+> prüfst ohne [zu fragen], darfst weitermachen und alles fertigbauen, testen erst wenn fertig
+> und dann via buttons prüfen nicht nur via code". Konsequenz: Welle B (B2a, B2c, B2d, B3, B4)
+> wird jetzt am Stueck gebaut + code-reviewed, OHNE zwischendurch nachzufragen. Live-Smoke-Tests
+> und der finale Merge von B2a/c/d bleiben aber an die Bedingung "erst wenn fertig, dann ueber
+> echte Buttons in der UI pruefen" gebunden, nicht per Code/API allein. B2b (Threads) bleibt
+> geparkt (echte externe Blockade: Meta-App-Review-Status, nicht per Code pruefbar). Fuer
+> Zwischentests: Personal-API-Key fuer den Workspace "Oliver Albrecht" per `artisan tinker`
+> erstellt (`CreateApiKey`-Action, identisch zum MCP-Tool-Pfad), lokal in `~/.claude/.env` als
+> `TRYPOST_OLIVER_WORKSPACE_API_KEY` hinterlegt, NICHT committed. Das ist ein Personal-Access-
+> Token fuer die REST-API, KEIN vollwertiger Claude-MCP-Connector: ein echter MCP-Connector
+> braeuchte den OAuth-Consent-Flow (`Mcp::oauthRoutes()`), der einen einmaligen Klick von Olli
+> in seiner eingeloggten Browser-Session braucht (Chrome-MCP war in dieser Session nicht
+> erreichbar, "Claude in Chrome" Extension nicht verbunden). Bei Bedarf spaeter nachholen.
 > Handoff 2026-09-17: TPX-00 (urspruengliche Orchestrator-Session) offenbar nach Usage-Limit
 > idle. Diese Session (trypost-fork-46) hat die Orchestrierung auf Olli-Anweisung uebernommen,
 > lokalen main per Fast-Forward auf origin/main synchronisiert (war 12 Commits hinterher),
