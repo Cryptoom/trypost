@@ -105,6 +105,16 @@ gemergt wird.
 ## Discovered Backlog
 
 - **TPXB-01**: siehe Completed-Tabelle, PR #14 gemergt (Olli hat den Nachtmodus-Gate-Stopp fuer diesen konkreten Merge explizit aufgehoben).
+- **Facebook-Story Foto-zu-Video-Auto-Konvertierung (Olli-Wunsch 17.09.2026, ueber Peer-Session
+  playcraft-toys-bf relayed)**: `FacebookPublisher::publishStory()` lehnt reine Fotos hart ab
+  (`'Facebook Stories require a video file.'`). PlayCraft umgeht das aktuell extern
+  (`bin/image-to-story-video.sh`, ffmpeg, Standbild + stille AAC-Spur, 15s, Format das
+  Facebooks `video_stories`-Endpoint akzeptiert). Wunsch: TryPost macht das serverseitig
+  automatisch (erkennt `content_type=facebook_story` + Bild-Media, konvertiert intern nach
+  demselben Muster), macht den externen Workaround fuer jeden Kunden mit reinen Foto-Assets
+  ueberfluessig. Kein Zeitdruck, explizit als Backlog fuer eine SPAETERE Welle vorgemerkt, NICHT
+  Teil von Feature A/B dieser Welle (Media-pro-Plattform bzw. Delete/Unpublish, kein
+  Medien-Transkodierungs-Bezug).
 - **Harness-Anomalie 2026-09-17**: ein unbenannter, nicht von der Orchestrator-Session
   gespawnter Sub-Agent (`a257737900c631e41`) meldete sich, behauptete als "tpx-05-a2" invoked
   worden zu sein, sass aber tatsaechlich im Worktree von `tpx-08-a5` (`agent-a7cb97531e7f4b99a`,
