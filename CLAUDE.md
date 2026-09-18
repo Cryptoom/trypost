@@ -660,6 +660,7 @@ Browser tests live in `tests/Browser` and run on `pestphp/pest-plugin-browser` d
     - Threads API: https://developers.facebook.com/docs/threads — reuses the Graph API error format; no separate Threads-specific error code table exists. Delete posts (needs the separate `threads_delete` permission, 100 deletes/day/account): https://developers.facebook.com/docs/threads/posts/delete-posts/
     - Our `App\Services\Social\Meta\GraphError` (used by `ConnectionVerifier`'s verify/refresh calls) has the full rationale and code table in its class docblock — check there before changing transient-vs-confirmed-rejection classification.
     - `Facebook`/`InstagramFacebook` `SocialAccount`s use a Facebook Page access token (BUC-limited); `Instagram` (direct login) and `Threads` use a user access token (Platform Rate Limit-limited). This affects which rate-limit codes apply to which platform.
+    - **Facebook Stories cannot be deleted via the Graph API at all** — `DELETE /{video-id}` is rejected with `(#100) Unsupported delete request`, even though the identical call works for Reels and Feed posts on the same account (verified live 2026-09-18; matches an independent report at github.com/restfb/restfb/issues/1469). This is a genuine, permanent Meta platform limitation, not a bug on our end. `ContentType::FacebookStory->supportsDelete()` is `false`, and `UnpublishPost::execute()` routes it to the `unsupported` bucket before ever calling a publisher, same treatment as TikTok.
 - **X (Twitter)**: API v2 — https://docs.x.com/x-api ; Post management (create/delete) — https://docs.x.com/x-api/posts/manage-tweets/introduction
 - **LinkedIn**: Posts API (create/update/delete, member + organization) — https://learn.microsoft.com/en-us/linkedin/marketing/community-management/shares/posts-api (replaces the deprecated `ugcPosts` API)
 - **Mastodon**: Statuses API — https://docs.joinmastodon.org/methods/statuses/
@@ -697,6 +698,27 @@ Standing constraints:
 - NEVER add `Co-Authored-By` lines to commit messages.
 - NEVER commit, push, or open PRs unless explicitly asked by the user.
 - Always create a new branch for feature work before making changes.
+
+## Production Deploy (web02)
+
+The production Docker Compose file lives at `/opt/trypost/compose.yml` (image `trypost:local`,
+builds `context: ./src`, `target: production`), NOT at `/opt/trypost/src/compose.yaml`. The
+`src/` checkout carries its own, separate compose file for local dev (image `trypost-app:dev`).
+
+Running `docker compose up -d --build app` from `/opt/trypost/src` targets the wrong compose
+file entirely: it builds the dev image and starts fresh containers (`src-app-1`, `src-pgsql-1`,
+`src-redis-1`) that can collide with the real production services on shared default ports
+(Redis 6379, confirmed live 2026-09-18).
+
+Correct deploy sequence:
+
+```bash
+ssh root@web02.mylandingpage.ai "cd /opt/trypost/src && git pull --ff-only origin main"
+ssh root@web02.mylandingpage.ai "cd /opt/trypost && docker compose up -d --build app"
+```
+
+Always verify after: `docker ps --filter 'name=trypost'` should show exactly `trypost` /
+`trypost-pgsql` / `trypost-redis`, all healthy — not a `src-*`-prefixed set.
 
 ## Repurpose account health
 
