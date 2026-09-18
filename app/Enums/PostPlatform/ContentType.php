@@ -256,7 +256,7 @@ enum ContentType: string
     {
         $bytes = match ($this) {
             self::InstagramFeed, self::InstagramStory => self::bytesFromMb(8),
-            self::FacebookPost => self::bytesFromMb(4),
+            self::FacebookPost, self::FacebookStory => self::bytesFromMb(4),
             self::LinkedInPost, self::LinkedInPagePost => self::bytesFromMb(5),
             self::PinterestPin, self::PinterestCarousel => self::bytesFromMb(20),
             self::XPost => self::bytesFromMb(5),
@@ -497,7 +497,9 @@ enum ContentType: string
     {
         return match ($this) {
             self::InstagramReel => false,
-            self::FacebookReel, self::FacebookStory => false,
+            // A Story photo is auto-converted to a held-frame video server-side,
+            // see FacebookPublisher::publishStory(). Reels have no such path.
+            self::FacebookReel => false,
             self::TikTokVideo => false,
             self::TikTokPhoto => true,
             self::YouTubeShort => false,
