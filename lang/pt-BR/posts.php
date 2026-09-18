@@ -137,9 +137,9 @@ return [
                 'original' => 'Original',
             ],
             'story_music' => [
-                'label' => 'Musica de fundo (opcional)',
-                'placeholder' => 'Descreva o clima, ex.: violao animado',
-                'hint' => 'Usado apenas quando uma foto e convertida em video com musica de fundo gerada por IA.',
+                'label' => 'Música de fundo (opcional)',
+                'placeholder' => 'Descreva o clima, ex.: violão animado',
+                'hint' => 'Usado apenas quando uma foto é convertida em vídeo com música de fundo gerada por IA.',
             ],
         ],
         'linkedin' => [

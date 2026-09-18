@@ -63,6 +63,7 @@ class HandleInertiaRequests extends Middleware
             'locale' => app()->getLocale(),
             'languages' => Locale::options(),
             'aiEnabled' => filled(config('ai.providers.'.config('ai.default').'.key')),
+            'facebookStoryAiMusicEnabled' => (bool) config('trypost.platforms.facebook.story_ai_music_enabled'),
             'selfHosted' => $isSelfHosted,
             'googleAuthEnabled' => SocialAuthProvider::Google->isEnabled(),
             'githubAuthEnabled' => SocialAuthProvider::GitHub->isEnabled(),

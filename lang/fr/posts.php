@@ -138,8 +138,8 @@ return [
             ],
             'story_music' => [
                 'label' => 'Musique de fond (facultatif)',
-                'placeholder' => 'Decrivez l\'ambiance, par ex. guitare acoustique entrainante',
-                'hint' => 'Utilisee uniquement lorsqu\'une photo est convertie en video avec une musique de fond generee par IA.',
+                'placeholder' => 'Décrivez l\'ambiance, par ex. guitare acoustique entraînante',
+                'hint' => 'Utilisée uniquement lorsqu\'une photo est convertie en vidéo avec une musique de fond générée par IA.',
             ],
         ],
         'linkedin' => [

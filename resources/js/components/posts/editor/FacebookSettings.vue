@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { usePage } from '@inertiajs/vue3';
 import { IconChevronDown, IconChevronUp } from '@tabler/icons-vue';
 import { computed, ref } from 'vue';
 
@@ -67,9 +68,16 @@ const pickAspectRatio = (value: string) => {
     emit('update:meta', { ...props.meta, aspect_ratio: value });
 };
 
+const page = usePage<{ facebookStoryAiMusicEnabled: boolean }>();
+const storyAiMusicEnabled = computed(() => Boolean(page.props.facebookStoryAiMusicEnabled));
+
 // A photo attached to a Story is auto-converted to video server-side (see
 // FacebookPublisher::publishStory()); this optionally steers the AI-generated
-// background music used for that conversion.
+// background music used for that conversion. The field itself is a no-op
+// server-side while `facebookStoryAiMusicEnabled` is off (see
+// StoryMusicGenerator::isEnabled()), so it stays hidden until the operator
+// turns the feature on, rather than accepting input that would silently be
+// discarded.
 const storyMusicDescription = computed({
     get: () => (props.meta.story_music_description as string | undefined) || '',
     set: (value: string) => {
@@ -151,7 +159,7 @@ const storyMusicDescription = computed({
                 </div>
             </div>
 
-            <div v-if="isStory" class="space-y-2">
+            <div v-if="isStory && storyAiMusicEnabled" class="space-y-2">
                 <p class="text-[11px] font-black uppercase tracking-widest text-foreground/60">{{ $t('posts.form.facebook.story_music.label') }}</p>
                 <Textarea
                     v-model="storyMusicDescription"
@@ -160,7 +168,7 @@ const storyMusicDescription = computed({
                     rows="2"
                     data-testid="facebook-story-music-description"
                 />
-                <p class="text-xs text-foreground/60">{{ $t('posts.form.facebook.story_music.hint') }}</p>
+                <p class="text-xs font-medium text-foreground/60">{{ $t('posts.form.facebook.story_music.hint') }}</p>
             </div>
 
             <MediaRulesWarning :content-type="contentType" :media="media" :platform="Platform.Facebook" />

@@ -139,9 +139,9 @@ return [
                 'original' => 'Orijinal',
             ],
             'story_music' => [
-                'label' => 'Arka plan muzigi (istege bagli)',
-                'placeholder' => 'Havayi tarif edin, orn. nese verici akustik gitar',
-                'hint' => 'Yalnizca bir fotograf, yapay zeka tarafindan olusturulan arka plan muzigiyle videoya donusturuldugunde kullanilir.',
+                'label' => 'Arka plan müziği (isteğe bağlı)',
+                'placeholder' => 'Havayı tarif edin, örn. neşe verici akustik gitar',
+                'hint' => 'Yalnızca bir fotoğraf, yapay zeka tarafından oluşturulan arka plan müziğiyle videoya dönüştürüldüğünde kullanılır.',
             ],
         ],
         'linkedin' => [
