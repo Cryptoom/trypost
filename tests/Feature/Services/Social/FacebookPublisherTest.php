@@ -365,9 +365,6 @@ test('facebook publisher can publish video story', function () {
     expect($result['id'])->toBe('video_story_post_123');
     expect($result['url'])->toBe('https://www.facebook.com/stories/page_123/video_story_post_123');
 
-    // Same transfer-phase contract as the reel test: raw bytes to
-    // upload_url (rupload host) with OAuth + Offset + file_size headers,
-    // not a URL string posted as a video_file_chunk body field.
     Http::assertSent(function ($request) {
         if (! str_contains($request->url(), 'rupload.facebook.com')) {
             return false;

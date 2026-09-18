@@ -397,15 +397,6 @@ class FacebookPublisher
             );
         }
 
-        // Same rupload flow as publishReel() (this file, above): the
-        // documented file_url-header shortcut against upload_url is
-        // unreliable in practice, so download our hosted media and POST raw
-        // bytes with the Offset/file_size headers rupload requires. The
-        // previous implementation posted the media URL as a body field
-        // called video_file_chunk to /{video_id} on the regular Graph host,
-        // which is not the transfer step this API expects (Graph API error
-        // 6000, "Problem with file", on every story regardless of the
-        // actual video).
         $tempFile = tempnam(sys_get_temp_dir(), 'fb_story_');
 
         try {
