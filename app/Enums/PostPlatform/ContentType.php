@@ -509,6 +509,25 @@ enum ContentType: string
     }
 
     /**
+     * Whether a delete()/unpublish call can succeed for this content type at
+     * all, independent of whether the platform's publisher otherwise
+     * implements delete(). Facebook Stories are the one confirmed case:
+     * Meta's Graph API rejects `DELETE /{video-id}` on a story with
+     * "Unsupported delete request", even though the identical call works
+     * for Reels and Feed posts (verified live 18.09.2026; see also
+     * github.com/restfb/restfb/issues/1469 for an independent report of the
+     * same error). Checked in UnpublishPost::execute() before resolving a
+     * delete publisher, alongside its own Instagram-direct-login exception.
+     */
+    public function supportsDelete(): bool
+    {
+        return match ($this) {
+            self::FacebookStory => false,
+            default => true,
+        };
+    }
+
+    /**
      * Whether this content type can carry a PDF document (the swipeable LinkedIn
      * document/carousel). LinkedIn infers the document format from a PDF being
      * attached; the document is always the only attachment (see the media rule).

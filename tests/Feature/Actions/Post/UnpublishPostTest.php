@@ -47,6 +47,40 @@ test('a published platform without a delete-capable publisher lands in unsupport
 });
 
 /**
+ * Facebook Stories cannot be deleted via the Graph API at all (Meta rejects
+ * `DELETE /{video-id}` with "Unsupported delete request", verified live
+ * 18.09.2026), even though FacebookPublisher::delete() works fine for Feed
+ * and Reel content on the SAME platform/account. This must resolve to
+ * `unsupported`, not `failed`, without ever calling delete().
+ */
+test('a published Facebook Story lands in unsupported, without calling delete()', function () {
+    $post = Post::factory()->published()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+    ]);
+    $account = SocialAccount::factory()->facebook()->create(['workspace_id' => $this->workspace->id]);
+    $postPlatform = PostPlatform::factory()->facebookStory()->published()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $account->id,
+    ]);
+
+    $spy = Mockery::spy(FacebookPublisher::class);
+    app()->instance(FacebookPublisher::class, $spy);
+
+    $result = UnpublishPost::execute($post);
+
+    expect($result['unpublished'])->toBe([])
+        ->and($result['failed'])->toBe([])
+        ->and($result['unsupported'])->toHaveCount(1)
+        ->and($result['unsupported'][0]->id)->toBe($postPlatform->id);
+
+    $spy->shouldNotHaveReceived('delete');
+
+    expect($postPlatform->fresh()->status)->toBe(PostPlatformStatus::Published)
+        ->and($postPlatform->fresh()->platform_post_id)->not->toBeNull();
+});
+
+/**
  * The negative test the plan asks for: a post that only has a TikTok
  * platform (TikTok has no delete/unpublish endpoint at all). Unpublish
  * must not error, and the post's status must stay exactly as it was.

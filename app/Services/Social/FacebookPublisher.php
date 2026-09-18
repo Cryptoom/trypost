@@ -69,14 +69,19 @@ class FacebookPublisher
 
     /**
      * Deletes a previously published Facebook object (feed post, single or
-     * multi image post, video, reel, or story). Graph API deletes any node
-     * the same way, `DELETE /{node-id}`, so the id stored in
-     * platform_post_id is the deletion target as-is, whether it is a feed
-     * post's composite `{page-id}_{post-id}` form (see publishTextPost(),
+     * multi image post, or reel). Graph API deletes any node the same way,
+     * `DELETE /{node-id}`, so the id stored in platform_post_id is the
+     * deletion target as-is, whether it is a feed post's composite
+     * `{page-id}_{post-id}` form (see publishTextPost(),
      * publishSingleImagePost(), publishMultiImagePost() above) or a bare
-     * video id (publishVideoPost(), publishReel(), publishStory() above).
-     * No per-content-type branching needed, the stored id already IS the
-     * node to delete.
+     * video id (publishVideoPost(), publishReel() above). No per-content-type
+     * branching needed here, the stored id already IS the node to delete.
+     *
+     * Stories are the one confirmed exception: this method is never called
+     * for them, `ContentType::FacebookStory->supportsDelete()` is false and
+     * UnpublishPost routes them to `unsupported` before reaching a
+     * publisher at all. Meta's Graph API rejects DELETE on a story's video
+     * id with "Unsupported delete request" (verified live 18.09.2026).
      */
     public function delete(PostPlatform $postPlatform): void
     {

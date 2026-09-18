@@ -60,6 +60,12 @@ class UnpublishPost
         $unsupported = [];
 
         foreach ($rows as $postPlatform) {
+            if (! $postPlatform->content_type->supportsDelete()) {
+                $unsupported[] = $postPlatform;
+
+                continue;
+            }
+
             $publisher = self::resolveDeletePublisher($postPlatform->platform);
 
             if ($publisher === null) {
