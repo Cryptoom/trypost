@@ -55,6 +55,8 @@ class StoryMusicGenerator
             $audioBase64 = $this->generateMusic($moodDescription, $durationSeconds);
 
             if ($audioBase64 === null) {
+                Log::warning('Story AI music generation returned no audio, falling back to silent audio');
+
                 return null;
             }
 

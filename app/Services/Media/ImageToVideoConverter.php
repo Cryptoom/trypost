@@ -42,6 +42,13 @@ class ImageToVideoConverter
         try {
             $process->mustRun();
         } catch (ProcessFailedException $e) {
+            // ffmpeg runs with -y and may have written a partial file
+            // before failing; it's never returned on this path, so clean
+            // it up rather than leaking it into the temp dir.
+            if (is_file($outputPath)) {
+                @unlink($outputPath);
+            }
+
             throw new RuntimeException("ffmpeg failed to convert image to video: {$e->getMessage()}", previous: $e);
         }
 
