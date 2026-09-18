@@ -400,3 +400,54 @@ API-Call), das ist ein echter, externer Blocker (Meta App Review), kein Code-Fix
 nicht verhaeltnismaessig, `YouTubePublisher::delete()` bleibt ueber die bestehende 12/12-Test-Suite
 (inkl. der B2d-Testbarkeits-Naht fuer Googles Guzzle-Transport) abgedeckt, aber ohne echten
 Live-Klick. Bei Bedarf als eigener Folge-Schritt nachholbar.
+
+## Neues Feature 18.09.2026: Facebook-Story Foto-zu-Video + optionale KI-Musik (PR #22)
+
+Ausserhalb der urspruenglichen Goal-Etappen, auf Ollis Wunsch nach Welle A/B autonom gebaut
+(Nacht-Gate-Runde 2, "Beides sofort autonom, volles Feature"). Von einem Hintergrund-Agenten
+implementiert, per Agent-Review-Runde 1+2 (verschiedene Modelle) geprueft, dann per echtem
+Live-Smoke-Test auf Production verifiziert, wie bei der gesamten Welle Pflicht.
+
+**Kern-Feature**: `FacebookPublisher::publishStory()` akzeptiert jetzt Fotos, konvertiert sie
+serverseitig per ffmpeg zu einem Standbild-Video (`ImageToVideoConverter`, `docker/Dockerfile`
+bekam `ffmpeg` neu). Vorher war ein reines Foto fuer Facebook Stories hart abgelehnt.
+
+**Optionales Add-on**: `StoryMusicGenerator` (Gemini Vision + Lyria, komplett best-effort,
+faellt bei JEDEM Fehler still auf stille Audiospur zurueck), per `story_music_description`
+Meta-Feld (zentral in `PostPlatformMetaRules`, alle drei Entry-Points), standardmaessig AUS
+(`FACEBOOK_STORY_AI_MUSIC_ENABLED=false`, echte Kosten $0.08/Song).
+
+**Zwei echte Bugs erst beim Live-Test gefunden, nicht von den Code-Reviews** (Beleg fuer die
+Buttons-Pflicht dieser ganzen Welle):
+1. `ContentType::supportsImage()` liess FacebookStory weiter auf `false` stehen (Alt-Regel von
+   vor diesem PR), der "Post now"-Button war client-seitig komplett blockiert, kein Request
+   feuerte je. Fix: `supportsImage() => true` fuer FacebookStory (Reel bleibt `false`), zwei
+   Alt-Tests die die alte Regel pinnten aktualisiert.
+2. **Facebook Stories lassen sich grundsaetzlich NICHT per Graph-API loeschen.** Meta lehnt
+   `DELETE /{video-id}` fuer Stories mit "Unsupported delete request" ab, obwohl derselbe Call
+   fuer Reels/Feed-Posts funktioniert (unabhaengig bestaetigt: identischer Fehler in
+   `github.com/restfb/restfb/issues/1469`, offenes, ungeloestes Issue). Fix:
+   `ContentType::supportsDelete()` neu (nur FacebookStory = false), `UnpublishPost::execute()`
+   routet Stories jetzt in den bestehenden `unsupported`-Bucket (wie TikTok) statt einen rohen
+   Graph-API-Fehler als `failed` zu zeigen.
+
+**Live-Smoke-Test bestanden**: echter Facebook-Story-Post aus einem reinen JPEG-Foto ueber die
+echte UI published, Story real auf Facebook sichtbar
+(`facebook.com/stories/1050803071750445/1093500393652407`). Unpublish-Versuch danach ueber den
+echten Button bestaetigt Fix #2: kein Fehler mehr im Log, Post bleibt korrekt "published"
+(nichts wurde tatsaechlich entfernt, by design, kein Bug). Test-Story bleibt bis zum
+natuerlichen 24h-Ablauf sichtbar (klar als Test markiert).
+
+**Deploy**: 3 Commits nacheinander deployed (`acafa322` PR #22 selbst, `457a7b2e` Fix #1,
+`96b194af` Fix #2), jedes Mal `git pull --ff-only` auf `/opt/trypost/src` + `docker compose up
+-d --build app` unter `/opt/trypost` (NICHT `/opt/trypost/src`, siehe Olli-Touchpoints-Vorfall
+unten), Health-Check jedes Mal gruen. Merge und Deploy liefen fuer dieses Feature autonom
+(Nacht-Gate-Runde 2, Deploy-Stopp explizit fuer dieses eine Feature aufgehoben).
+
+**Vorfall waehrend des ersten Deploys**: `docker compose up -d --build app` aus
+`/opt/trypost/src` (statt `/opt/trypost`) traf das REPO-eigene `compose.yaml` (Dev-Setup) statt
+das Produktions-Compose, erzeugte kurzzeitig fremde Container (`src-app-1` etc.) und kollidierte
+mit dem laufenden Produktions-Redis auf Port 6379. Sofort per `docker compose down` in
+`/opt/trypost/src` aufgeraeumt, kein Datenverlust, kein Effekt auf `trypost`/`trypost-pgsql`/
+`trypost-redis`. Der korrekte Produktions-Pfad ist immer `/opt/trypost` (compose.yml dort baut
+`context: ./src`).
