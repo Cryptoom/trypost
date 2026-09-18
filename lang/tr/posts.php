@@ -138,6 +138,11 @@ return [
                 'landscape' => 'Yatay (16:9)',
                 'original' => 'Orijinal',
             ],
+            'story_music' => [
+                'label' => 'Arka plan müziği (isteğe bağlı)',
+                'placeholder' => 'Havayı tarif edin, örn. neşe verici akustik gitar',
+                'hint' => 'Yalnızca bir fotoğraf, yapay zeka tarafından oluşturulan arka plan müziğiyle videoya dönüştürüldüğünde kullanılır.',
+            ],
         ],
         'linkedin' => [
             'settings' => 'LinkedIn Ayarları',

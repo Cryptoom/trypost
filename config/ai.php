@@ -129,6 +129,8 @@ return [
                 'audio' => ['default' => env('GEMINI_AUDIO_MODEL')],
                 'transcription' => ['default' => env('GEMINI_TRANSCRIPTION_MODEL')],
                 'embeddings' => ['default' => env('GEMINI_EMBEDDINGS_MODEL')],
+                // Text-to-music (Lyria), used only by App\Services\Media\StoryMusicGenerator.
+                'music' => ['default' => env('GEMINI_MUSIC_MODEL', 'lyria-3-pro-preview')],
             ],
         ],
 

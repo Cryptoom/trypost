@@ -136,6 +136,11 @@ return [
                 'landscape' => '가로 (16:9)',
                 'original' => '원본',
             ],
+            'story_music' => [
+                'label' => '배경 음악(선택 사항)',
+                'placeholder' => '분위기를 설명하세요. 예: 경쾌한 어쿠스틱 기타',
+                'hint' => '사진이 AI가 생성한 배경 음악과 함께 동영상으로 변환될 때만 사용됩니다.',
+            ],
         ],
         'linkedin' => [
             'settings' => 'LinkedIn 설정',

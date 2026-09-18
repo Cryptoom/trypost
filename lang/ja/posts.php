@@ -136,6 +136,11 @@ return [
                 'landscape' => '横長 (16:9)',
                 'original' => 'オリジナル',
             ],
+            'story_music' => [
+                'label' => '背景音楽（任意）',
+                'placeholder' => '雰囲気を説明してください。例：明るいアコースティックギター',
+                'hint' => '写真がAI生成の背景音楽付きの動画に変換される場合のみ使用されます。',
+            ],
         ],
         'linkedin' => [
             'settings' => 'LinkedIn 設定',

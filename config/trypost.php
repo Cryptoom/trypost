@@ -201,6 +201,14 @@ return [
         'facebook' => [
             'enabled' => env('FACEBOOK_ENABLED', true),
             'graph_api' => env('FACEBOOK_GRAPH_API', 'https://graph.facebook.com/v25.0'),
+            // A Facebook Story requires a video file. When a user attaches a
+            // photo instead, it is auto-converted into a held-frame MP4 of
+            // this duration (see App\Services\Media\ImageToVideoConverter).
+            'story_photo_duration_seconds' => (int) env('FACEBOOK_STORY_PHOTO_DURATION_SECONDS', 15),
+            // Best-effort AI-generated background music (via Gemini/Lyria)
+            // for a photo-to-video Story conversion above. Off by default,
+            // real per-song cost. See App\Services\Media\StoryMusicGenerator.
+            'story_ai_music_enabled' => (bool) env('FACEBOOK_STORY_AI_MUSIC_ENABLED', false),
         ],
         'instagram' => [
             'enabled' => env('INSTAGRAM_ENABLED', true),

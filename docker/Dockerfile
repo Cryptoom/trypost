@@ -24,6 +24,7 @@ RUN apk add --no-cache \
         unzip \
         shadow \
         tzdata \
+        ffmpeg \
         postgresql-client \
         postgresql-dev \
         mysql-client \

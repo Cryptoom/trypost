@@ -136,6 +136,11 @@ return [
                 'landscape' => 'Paysage (16:9)',
                 'original' => 'Original',
             ],
+            'story_music' => [
+                'label' => 'Musique de fond (facultatif)',
+                'placeholder' => 'Décrivez l\'ambiance, par ex. guitare acoustique entraînante',
+                'hint' => 'Utilisée uniquement lorsqu\'une photo est convertie en vidéo avec une musique de fond générée par IA.',
+            ],
         ],
         'linkedin' => [
             'settings' => 'Paramètres LinkedIn',

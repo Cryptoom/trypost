@@ -138,6 +138,11 @@ return [
                 'landscape' => 'Querformat (16:9)',
                 'original' => 'Original',
             ],
+            'story_music' => [
+                'label' => 'Hintergrundmusik (optional)',
+                'placeholder' => 'Beschreibe die Stimmung, z. B. beschwingte Akustikgitarre',
+                'hint' => 'Wird nur verwendet, wenn ein Foto mit KI-generierter Hintergrundmusik in ein Video umgewandelt wird.',
+            ],
         ],
         'linkedin' => [
             'settings' => 'LinkedIn-Einstellungen',

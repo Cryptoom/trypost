@@ -45,6 +45,12 @@ class PostPlatformMetaRules
             // Instagram / Facebook
             'platforms.*.meta.aspect_ratio' => ['sometimes', 'nullable', 'string', Rule::enum(AspectRatio::class)],
 
+            // Facebook Story: optional description of the desired AI-generated
+            // background music when a photo is auto-converted to video. See
+            // App\Services\Social\FacebookPublisher::publishStory() and
+            // App\Services\Media\StoryMusicGenerator.
+            'platforms.*.meta.story_music_description' => ['sometimes', 'nullable', 'string', 'max:500'],
+
             // LinkedIn — title shown on a document (PDF carousel) post
             'platforms.*.meta.document_title' => ['sometimes', 'nullable', 'string', 'max:300'],
 

@@ -136,6 +136,11 @@ return [
                 'landscape' => 'Landscape (16:9)',
                 'original' => 'Original',
             ],
+            'story_music' => [
+                'label' => 'Background music (optional)',
+                'placeholder' => 'Describe the vibe, e.g. upbeat acoustic guitar',
+                'hint' => 'Used only when a photo is converted to video with AI-generated background music.',
+            ],
         ],
         'linkedin' => [
             'settings' => 'LinkedIn Settings',
