@@ -248,7 +248,7 @@ gemergt wird.
 | Gate | Status | Notiz |
 |---|---|---|
 | YouTube-Scope-Gate (nach B0) | VOLLSTAENDIG GEKLAERT 17.09.2026 | `youtube.force-ssl` wird bereits im AKTUELLEN Connect-Flow angefordert. DB-Check (read-only `SELECT` auf web02) bestaetigt: 2/2 bestehende YouTube-Accounts haben die Scope bereits. Kein Bestandsaccount ohne sie, kein Live-Risiko |
-| Threads-App-Review (nach B0) | offen, B2b geparkt | `threads_delete`-Scope fehlt im Code (muss ergaenzt werden), App-Review-Freigabestatus im Meta Dashboard nicht per Code pruefbar, Olli-Login noetig |
+| Threads-App-Review (nach B0) | HINFAELLIG, B2b gestrichen | B2b (Threads-Delete) wurde von Olli explizit gestrichen ("machen wir derzeit nicht, nutzt keiner"), damit ist dieser Gate-Punkt obsolet, kein Code-Task mehr |
 | Threads-Host-Diskrepanz | GEKLAERT 17.09.2026 | Echter Testcall (unauthentifiziert) gegen `/v1.0/me`, `/oauth/access_token`, `/refresh_access_token` auf BEIDEN Hosts: `graph.threads.net` und `graph.threads.com` liefern identische Antworten von derselben IP. Beide Domains sind live und funktional gleichwertig, kein Bug, kein Fix noetig, Code bleibt unveraendert |
 | Facebook "nur ausgewaehlte Entwickler"-Warnung (B0) | GEKLAERT | B2a laengst gemergt+deployed, Facebook-Delete (Feed/Reel) mehrfach live per Button getestet und bestaetigt (17./18.09.2026), die Doku-Warnung war Boilerplate ohne reale Einschraenkung fuer diesen Account |
 | Instagram Delete gilt nur fuer Facebook-Login-Accounts (B0) | GEKLAERT 17.09.2026 | Olli-Entscheid: sauberer Unsupported-Pfad fuer `Platform::Instagram` (direct login) analog TikTok, `Platform::InstagramFacebook` bekommt echtes delete(). Siehe Plan OLLI-ENTSCHEIDE Runde 4 Punkt 9. Betrifft B2a/B3 |
