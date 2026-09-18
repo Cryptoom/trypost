@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Social;
 
+use App\Dto\MediaItem;
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
 use App\Exceptions\Social\ErrorCategory;
@@ -53,8 +54,8 @@ class FacebookPublisher
         $aspectRatio = data_get($postPlatform->meta, 'aspect_ratio');
 
         return match ($contentType) {
-            ContentType::FacebookReel => $this->publishReel($pageId, $accessToken, $content, $media->first()),
-            ContentType::FacebookStory => $this->publishStory($pageId, $accessToken, $media->first()),
+            ContentType::FacebookReel => $this->publishReel($pageId, $accessToken, $content, $this->requireVideo($media->first(), 'Reels')),
+            ContentType::FacebookStory => $this->publishStory($pageId, $accessToken, $this->requireVideo($media->first(), 'Stories')),
             ContentType::FacebookPost => $this->publishPost($pageId, $accessToken, $content, $media, $aspectRatio),
             default => throw new FacebookPublishException(
                 userMessage: "Unsupported Facebook content type: {$contentType?->value}",
@@ -265,100 +266,16 @@ class FacebookPublisher
         ];
     }
 
-    private function publishReel(string $pageId, string $accessToken, ?string $content, $media): array
+    private function publishReel(string $pageId, string $accessToken, ?string $content, MediaItem $media): array
     {
-        // Phase 1 (start) — graph endpoint returns video_id + upload_url.
-        $startResponse = $this->facebookHttp()->post("{$this->baseUrl}/{$pageId}/video_reels", [
-            'upload_phase' => 'start',
-            'access_token' => $accessToken,
-        ]);
-
-        if ($startResponse->failed()) {
-            $this->handleApiError($startResponse);
-        }
-
-        $startData = $startResponse->json();
-        $videoId = data_get($startData, 'video_id');
-        $uploadUrl = data_get($startData, 'upload_url');
-
-        if (! $videoId || ! $uploadUrl) {
-            throw new FacebookPublishException(
-                userMessage: 'Facebook did not return upload_url for reel start.',
-                category: ErrorCategory::ServerError,
-                platformErrorCode: null,
-                rawResponse: $startResponse->body(),
-            );
-        }
-
-        // Phase 2 (transfer, local-file flow) — download our hosted
-        // media then POST raw bytes to upload_url with the Offset and
-        // file_size headers Facebook requires (the docs describe a
-        // hosted-file shortcut with `file_url` in the body, but rupload
-        // rejects it with "Header Offset not convertable to unsigned
-        // long" — the headers are required either way).
-        $tempFile = tempnam(sys_get_temp_dir(), 'fb_reel_');
-
-        try {
-            $download = Http::withOptions(['sink' => $tempFile])
-                ->timeout(600)
-                ->get($media->url);
-
-            if ($download->failed()) {
-                throw new FacebookPublishException(
-                    userMessage: 'Could not download media for Facebook reel.',
-                    category: ErrorCategory::ServerError,
-                    platformErrorCode: (string) $download->status(),
-                    rawResponse: null,
-                );
-            }
-
-            $fileSize = filesize($tempFile);
-            $stream = fopen($tempFile, 'rb');
-
-            try {
-                $uploadResponse = Http::withHeaders([
-                    'Authorization' => "OAuth {$accessToken}",
-                    'Offset' => '0',
-                    'file_size' => (string) $fileSize,
-                ])
-                    ->timeout(600)
-                    ->withBody($stream, $media->mime_type ?? 'video/mp4')
-                    ->post($uploadUrl);
-            } finally {
-                if (is_resource($stream)) {
-                    fclose($stream);
-                }
-            }
-
-            if ($uploadResponse->failed()) {
-                $this->handleApiError($uploadResponse);
-            }
-        } finally {
-            if (! unlink($tempFile)) {
-                Log::warning('Facebook reel temp file cleanup failed', ['path' => $tempFile]);
-            }
-        }
-
-        // Phase 3 (finish) — publish the reel.
-        $finishPayload = [
-            'upload_phase' => 'finish',
-            'video_id' => $videoId,
-            'video_state' => 'PUBLISHED',
-            'access_token' => $accessToken,
-        ];
+        $finishPayload = ['video_state' => 'PUBLISHED'];
 
         if ($content !== null && $content !== '') {
             $finishPayload['description'] = $content;
         }
 
-        $finishResponse = $this->facebookHttp()->post("{$this->baseUrl}/{$pageId}/video_reels", $finishPayload);
-
-        if ($finishResponse->failed()) {
-            $this->handleApiError($finishResponse);
-        }
-
-        $finishData = $finishResponse->json();
-        $reelId = $finishData['id'] ?? $videoId;
+        [$videoId, $finishData] = $this->publishResumableVideo($pageId, $accessToken, 'video_reels', $media, $finishPayload);
+        $reelId = data_get($finishData, 'id', $videoId);
 
         return [
             'id' => $reelId,
@@ -366,16 +283,44 @@ class FacebookPublisher
         ];
     }
 
-    private function publishStory(string $pageId, string $accessToken, $media): array
+    private function publishStory(string $pageId, string $accessToken, MediaItem $media): array
     {
-        if (! $media->isVideo()) {
+        [$videoId, $finishData] = $this->publishResumableVideo($pageId, $accessToken, 'video_stories', $media);
+        $storyId = data_get($finishData, 'post_id', $videoId);
+
+        return [
+            'id' => $storyId,
+            'url' => "https://www.facebook.com/stories/{$pageId}/{$storyId}",
+        ];
+    }
+
+    private function requireVideo(?MediaItem $media, string $format): MediaItem
+    {
+        if ($media === null || ! $media->isVideo()) {
             throw new FacebookPublishException(
-                userMessage: 'Facebook Stories require a video file.',
+                userMessage: "Facebook {$format} require a video file.",
                 category: ErrorCategory::MediaFormat,
             );
         }
 
-        $startResponse = $this->facebookHttp()->post("{$this->baseUrl}/{$pageId}/video_stories", [
+        return $media;
+    }
+
+    /**
+     * Meta's resumable video flow shared by Reels and Stories: `start` on the
+     * Graph edge hands back a rupload `upload_url`, the bytes go there, and
+     * `finish` on the same edge publishes. Transferring through the Graph edge
+     * instead of the `upload_url` leaves the session empty and `finish` fails
+     * with error 6000.
+     *
+     * @param  array<string, string>  $finishPayload
+     * @return array{0: string, 1: array<string, mixed>}
+     */
+    private function publishResumableVideo(string $pageId, string $accessToken, string $edge, MediaItem $media, array $finishPayload = []): array
+    {
+        $endpoint = "{$this->baseUrl}/{$pageId}/{$edge}";
+
+        $startResponse = $this->facebookHttp()->post($endpoint, [
             'upload_phase' => 'start',
             'access_token' => $accessToken,
         ]);
@@ -388,16 +333,42 @@ class FacebookPublisher
         $videoId = data_get($startData, 'video_id');
         $uploadUrl = data_get($startData, 'upload_url');
 
-        if (! $videoId || ! $uploadUrl) {
+        if (! filled($videoId) || ! is_string($uploadUrl) || ! filled($uploadUrl)) {
             throw new FacebookPublishException(
-                userMessage: 'Facebook did not return upload_url for story start.',
+                userMessage: 'Facebook did not start the video upload. Please try again.',
                 category: ErrorCategory::ServerError,
-                platformErrorCode: null,
                 rawResponse: $startResponse->body(),
             );
         }
 
-        $tempFile = tempnam(sys_get_temp_dir(), 'fb_story_');
+        $this->uploadVideoToRupload($uploadUrl, $accessToken, $media);
+
+        $finishResponse = $this->facebookHttp()->post($endpoint, [
+            'upload_phase' => 'finish',
+            'video_id' => $videoId,
+            'access_token' => $accessToken,
+            ...$finishPayload,
+        ]);
+
+        if ($finishResponse->failed()) {
+            $this->handleApiError($finishResponse);
+        }
+
+        return [(string) $videoId, $finishResponse->json() ?? []];
+    }
+
+    private function uploadVideoToRupload(string $uploadUrl, string $accessToken, MediaItem $media): void
+    {
+        $this->assertRuploadUrl($uploadUrl);
+
+        $tempFile = tempnam(sys_get_temp_dir(), 'fb_rupload_');
+
+        if ($tempFile === false) {
+            throw new FacebookPublishException(
+                userMessage: 'Could not prepare the Facebook video for upload.',
+                category: ErrorCategory::ServerError,
+            );
+        }
 
         try {
             $download = Http::withOptions(['sink' => $tempFile])
@@ -406,15 +377,29 @@ class FacebookPublisher
 
             if ($download->failed()) {
                 throw new FacebookPublishException(
-                    userMessage: 'Could not download media for Facebook story.',
+                    userMessage: 'Could not download media for Facebook.',
                     category: ErrorCategory::ServerError,
                     platformErrorCode: (string) $download->status(),
-                    rawResponse: null,
                 );
             }
 
             $fileSize = filesize($tempFile);
+
+            if ($fileSize === false || $fileSize < 1) {
+                throw new FacebookPublishException(
+                    userMessage: 'The downloaded Facebook video is empty.',
+                    category: ErrorCategory::MediaFormat,
+                );
+            }
+
             $stream = fopen($tempFile, 'rb');
+
+            if ($stream === false) {
+                throw new FacebookPublishException(
+                    userMessage: 'Could not prepare the Facebook video for upload.',
+                    category: ErrorCategory::ServerError,
+                );
+            }
 
             try {
                 $uploadResponse = Http::withHeaders([
@@ -432,31 +417,40 @@ class FacebookPublisher
             }
 
             if ($uploadResponse->failed()) {
-                Log::error('Facebook video story transfer failed', ['body' => $this->redactResponseBody($uploadResponse->body())]);
+                Log::error('Facebook rupload transfer failed', [
+                    'body' => $this->redactResponseBody($uploadResponse->body()),
+                ]);
                 $this->handleApiError($uploadResponse);
             }
+
+            if (data_get($uploadResponse->json(), 'success') !== true) {
+                throw new FacebookPublishException(
+                    userMessage: 'Facebook did not accept the video upload. Please try again.',
+                    category: ErrorCategory::ServerError,
+                    rawResponse: $uploadResponse->body(),
+                );
+            }
         } finally {
-            if (! unlink($tempFile)) {
-                Log::warning('Facebook story temp file cleanup failed', ['path' => $tempFile]);
+            if (file_exists($tempFile) && ! unlink($tempFile)) {
+                Log::warning('Facebook rupload temp file cleanup failed', ['path' => $tempFile]);
             }
         }
+    }
 
-        $finishResponse = $this->facebookHttp()->post("{$this->baseUrl}/{$pageId}/video_stories", [
-            'upload_phase' => 'finish',
-            'video_id' => $videoId,
-            'access_token' => $accessToken,
-        ]);
+    private function assertRuploadUrl(string $uploadUrl): void
+    {
+        $parts = parse_url($uploadUrl);
+        $scheme = data_get($parts, 'scheme');
+        $host = data_get($parts, 'host');
+        $allowedHost = config('trypost.platforms.facebook.rupload_host');
 
-        if ($finishResponse->failed()) {
-            $this->handleApiError($finishResponse);
+        if ($scheme !== 'https' || $host !== $allowedHost) {
+            throw new FacebookPublishException(
+                userMessage: 'Facebook returned an invalid upload URL.',
+                category: ErrorCategory::ServerError,
+                rawResponse: $uploadUrl,
+            );
         }
-
-        $storyId = $finishResponse->json()['post_id'] ?? $videoId;
-
-        return [
-            'id' => $storyId,
-            'url' => "https://www.facebook.com/stories/{$pageId}/{$storyId}",
-        ];
     }
 
     private function handleApiError(Response $response): never
