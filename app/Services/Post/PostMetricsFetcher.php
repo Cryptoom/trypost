@@ -16,6 +16,7 @@ use App\Services\Social\MastodonAnalytics;
 use App\Services\Social\PinterestAnalytics;
 use App\Services\Social\Telegram\TelegramAnalytics;
 use App\Services\Social\ThreadsAnalytics;
+use App\Services\Social\TikTokAnalytics;
 use App\Services\Social\XAnalytics;
 use App\Services\Social\YouTubeAnalytics;
 use Illuminate\Support\Collection;
@@ -43,14 +44,18 @@ class PostMetricsFetcher
         return $post->postPlatforms
             ->where('enabled', true)
             ->values()
-            ->map(fn (PostPlatform $pp) => [
-                'post_platform_id' => $pp->id,
-                'platform' => $pp->platform->value,
-                'status' => $pp->status->value,
-                'platform_post_id' => $pp->platform_post_id,
-                'platform_url' => $pp->platform_url,
-                'metrics' => $this->forPlatform($pp),
-            ]);
+            ->map(function (PostPlatform $pp): array {
+                $metrics = $this->forPlatform($pp);
+
+                return [
+                    'post_platform_id' => $pp->id,
+                    'platform' => $pp->platform->value,
+                    'status' => $pp->status->value,
+                    'platform_post_id' => $pp->platform_post_id,
+                    'platform_url' => $pp->platform_url,
+                    'metrics' => $metrics,
+                ];
+            });
     }
 
     /**
@@ -74,6 +79,7 @@ class PostMetricsFetcher
             Platform::LinkedInPage => app(LinkedInPageAnalytics::class)->fetchPostMetrics($postPlatform),
             Platform::YouTube => app(YouTubeAnalytics::class)->fetchPostMetrics($postPlatform),
             Platform::Pinterest => app(PinterestAnalytics::class)->fetchPostMetrics($postPlatform),
+            Platform::TikTok => app(TikTokAnalytics::class)->fetchPostMetrics($postPlatform),
             default => ['unsupported' => true, 'reason' => 'platform_not_supported'],
         });
     }
