@@ -28,6 +28,16 @@ class PostMediaRules
     public const ALT_TEXT_MAX_LENGTH = 2000;
 
     /**
+     * Workspace media collections a post may reference by id: uploaded/library
+     * assets, and slides or images the AI pipeline generated for this workspace
+     * (PostImagePipeline, RegeneratePostMediaImage). Other collections such as
+     * `logo` or `avatar` are not post media and stay rejected.
+     *
+     * @var array<int, string>
+     */
+    public const POST_MEDIA_COLLECTIONS = ['assets', 'ai-generated'];
+
+    /**
      * @param  bool  $hosted  true (web): items must already be hosted (id + path
      *                        required); false (API): a bare external `url` is
      *                        accepted (and downloaded).
@@ -121,7 +131,7 @@ class PostMediaRules
             $exists = Media::query()
                 ->where('mediable_type', Relation::getMorphAlias(Workspace::class))
                 ->where('mediable_id', $workspace->id)
-                ->where('collection', 'assets')
+                ->whereIn('collection', self::POST_MEDIA_COLLECTIONS)
                 ->whereKey($id)
                 ->exists();
 
