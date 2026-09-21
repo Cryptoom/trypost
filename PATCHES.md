@@ -260,3 +260,41 @@ jetzt, nicht erst bei diesem Feature. Vor dem Umsetzen dieses Plans mit Olli kla
 Bedarf (mehrere Kunden mit unterschiedlichen Plattform-Formaten im selben Post), nicht nur fuer
 den PlayCraft-Einzelfall. Fuer den akuten Fall bleibt der pragmatische Workaround (zwei getrennte
 Posts, einer pro Medien-Kombination) die schnellere Loesung, bis diese Welle ansteht.
+
+## Upstream-Merge 2026-09-21 (4 Commits, Merge-Commit `3eb0a82a`)
+
+Neue Upstream-Commits: LinkedIn-Personal-/Page-Post-Metriken (#364), TikTok-Post-Metriken (#363),
+Instagram-Analytics-Fix (views statt retired plays/impressions, #362), Facebook-Video-Stories-
+Upload-Fix ueber rupload mit file_url (#361).
+
+**4 echte Konflikte**, alle geloest:
+
+- `app/Mcp/Tools/Post/UpdatePostTool.php`: beide Seiten aenderten dieselbe `meta`-Feld-Beschreibung
+  (wir: neues `media_ids`-Feld, Upstream: erweiterte `privacy_level`-Enum-Werte fuer TikTok).
+  Beides kombiniert.
+- `app/Services/Social/FacebookPublisher.php` + `tests/Feature/Services/Social/FacebookPublisherTest.php`:
+  **bewusst UNSERE Version behalten (`git checkout --ours`), Upstreams Refactor NICHT uebernommen.**
+  Upstream hat #361 als kompletten Klassen-Umbau geloest (neuer `postToGraph`-Helper quer durch
+  alle publish*-Methoden, neuer asynchroner "hosted file"-Upload-Flow fuer Reels/Stories via
+  `uploadVideo`/`startVideoUpload`/`uploadVideoFromUrl`/`waitForVideoUpload`, `requireVideo()`
+  lehnt Fotos fuer Stories explizit ab). Unser Fork loest denselben zugrunde liegenden Bug
+  (kaputter `video_file_chunk`-Transfer-Schritt) bereits SEIT LAENGEREM selbst, live verifiziert
+  am 18.09.2026 (siehe Doc-Comment in `delete()`), UND hat ein Feature, das Upstream fehlt: Story-
+  Foto-zu-Video-Konvertierung mit optionaler KI-Musik (`convertImageToStoryVideo`,
+  `story_photo_duration_seconds`/`story_ai_music_enabled` in `config/trypost.php`). Ein Uebernehmen
+  von Upstreams Version haette dieses Feature ersatzlos gestrichen. `postToGraph` kommt in unserem
+  Code an keiner Stelle vor (0 Treffer), unsere Implementierung ist eine komplett unabhaengige
+  Parallel-Loesung. Entscheidung: eigenes Update von Upstreams asynchronem Hosted-File-Ansatz auf
+  Upstreams Refactor ist ein SEPARATES, bewusstes Vorhaben (naechster Schritt: pruefen ob Upstreams
+  Ansatz zuverlaessiger ist als unser synchroner Rupload-Stream und ob sich beide Faehigkeiten
+  vereinen lassen), nicht Teil dieses Merges.
+- `config/trypost.php`: `story_photo_duration_seconds`/`story_ai_music_enabled` (unser Feature)
+  UND Upstreams `rupload_host`-Key (aktuell ungenutzt, forward-kompatibel) behalten.
+
+**Verifikation:** PHP-Syntax-Check aller 4 konfliktbehafteten Dateien sauber (`php -l`). Patch 1
+(`UpdateWorkspaceTool`) und Patch 2 (Brand-Token-Hex-Werte) nach dem Merge per grep unveraendert
+bestaetigt. **Volle Testsuite konnte lokal NICHT laufen**: `brianium/paratest` (Dev-Dependency)
+verlangt PHP ~8.4.0, dieser Mac hat maximal PHP 8.3.x verfuegbar (Herd Lite 8.3.12, MAMP 8.3.30).
+War schon VOR diesem Merge so (identisch in `composer.lock` von `HEAD~1`), keine Regression durch
+den Merge. Der Docker-Container (`docker/Dockerfile`, `FROM php:${PHP_VERSION}-fpm-alpine`) hat
+vermutlich PHP 8.4, Tests dort noch nicht gelaufen. Deploy auf web02 braucht separate Freigabe.
