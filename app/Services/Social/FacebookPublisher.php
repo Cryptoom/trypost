@@ -328,6 +328,8 @@ class FacebookPublisher
             );
         }
 
+        $this->assertRuploadUrl($uploadUrl);
+
         // Phase 2 (transfer, local-file flow) — download our hosted
         // media then POST raw bytes to upload_url with the Offset and
         // file_size headers Facebook requires (the docs describe a
@@ -405,6 +407,27 @@ class FacebookPublisher
     }
 
     /**
+     * The `upload_url` Facebook returns from the start phase must point at
+     * Facebook's own rupload host before we send it the OAuth token. Without
+     * this check a compromised/spoofed Graph response could redirect the
+     * token to a third party. Backported from upstream trypostit/trypost
+     * PR #361 (assertRuploadUrl), see PATCHES.md "Upstream-Merge 2026-09-21".
+     */
+    private function assertRuploadUrl(string $uploadUrl): void
+    {
+        $parts = parse_url($uploadUrl);
+        $allowedHost = config('trypost.platforms.facebook.rupload_host');
+
+        if (data_get($parts, 'scheme') !== 'https' || data_get($parts, 'host') !== $allowedHost) {
+            throw new FacebookPublishException(
+                userMessage: 'Facebook returned an invalid upload URL.',
+                category: ErrorCategory::ServerError,
+                rawResponse: $uploadUrl,
+            );
+        }
+    }
+
+    /**
      * Facebook Stories require a video file. When a user attaches a photo
      * instead, it is auto-converted into a held-frame MP4 (with best-effort
      * AI background music, see convertImageToStoryVideo()) before this
@@ -440,6 +463,8 @@ class FacebookPublisher
                 rawResponse: $startResponse->body(),
             );
         }
+
+        $this->assertRuploadUrl($uploadUrl);
 
         // Same rupload flow as publishReel() (this file, above): the
         // documented file_url-header shortcut against upload_url is

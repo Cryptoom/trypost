@@ -305,3 +305,18 @@ Lokale Testsuite lief nachtraeglich vollstaendig durch (PHP 8.4 via `brew instal
 lokale Test-DB via `docker compose -f compose.test.yml up -d`): **4738 passed, 2 skipped, 0
 failed** (594s). Bestaetigt den Merge-Commit `3eb0a82a` und den Doku-Commit `672f1f87` als
 sauber, keine Regression.
+
+## Nachtrag 2026-09-21: `assertRuploadUrl()` aus Upstream #361 backported
+
+Empfehlung aus dem Facebook-Story-Upload-Vergleich (siehe Vault
+`30-Snippets/trypost-facebook-story-upload-vergleich-2026-09-21.md`) umgesetzt: Upstreams
+Host-Validierung des `upload_url`-Werts (`rupload.facebook.com`, https-only) uebernommen und in
+`publishReel()`/`publishStory()` nach dem Start-Response-Parsing aufgerufen, VOR dem Transfer,
+der den OAuth-Token an `upload_url` schickt. Schuetzt gegen einen manipulierten/umgeleiteten
+`upload_url`-Wert in der Graph-API-Antwort. Der eigentliche Transfer-Mechanismus (synchroner
+Binary-Stream-Upload) bleibt unangetastet, nur die neue Host-Pruefung ist neu.
+
+Koeder-Test ergaenzt (`rejects a reel upload_url that does not point at the rupload host`):
+simuliert eine Start-Response mit `upload_url` auf `attacker.example.com`, prueft dass die
+Exception geworfen UND dass NIE ein Request an den fremden Host geht (`Http::assertNotSent`).
+Volle Testsuite danach: 4739 passed (0 failed), inkl. dieses neuen Tests.
