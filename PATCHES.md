@@ -298,3 +298,10 @@ verlangt PHP ~8.4.0, dieser Mac hat maximal PHP 8.3.x verfuegbar (Herd Lite 8.3.
 War schon VOR diesem Merge so (identisch in `composer.lock` von `HEAD~1`), keine Regression durch
 den Merge. Der Docker-Container (`docker/Dockerfile`, `FROM php:${PHP_VERSION}-fpm-alpine`) hat
 vermutlich PHP 8.4, Tests dort noch nicht gelaufen. Deploy auf web02 braucht separate Freigabe.
+
+## Nachtrag 2026-09-21: volle Testsuite verifiziert
+
+Lokale Testsuite lief nachtraeglich vollstaendig durch (PHP 8.4 via `brew install php@8.4`,
+lokale Test-DB via `docker compose -f compose.test.yml up -d`): **4738 passed, 2 skipped, 0
+failed** (594s). Bestaetigt den Merge-Commit `3eb0a82a` und den Doku-Commit `672f1f87` als
+sauber, keine Regression.
