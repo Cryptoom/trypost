@@ -131,11 +131,9 @@ class ConnectionVerifier
      * TokenRefreshClient classifies on HTTP status alone, so a 200 carrying no
      * token would otherwise overwrite a credential that still works.
      *
-     * @param  array<string, mixed>|null  $data
-     *
      * @throws PlatformUnavailableException
      */
-    private function rotatedTokenFrom(?array $data, string $key, string $current): string
+    private function rotatedTokenFrom(mixed $data, string $key, string $current): string
     {
         $token = data_get($data, $key);
 
@@ -144,7 +142,7 @@ class ConnectionVerifier
         return blank($token) ? $current : (string) $token;
     }
 
-    private function tokenFrom(?array $data, Platform $platform, string $key = 'access_token'): string
+    private function tokenFrom(mixed $data, Platform $platform, string $key = 'access_token'): string
     {
         $token = data_get($data, $key);
 

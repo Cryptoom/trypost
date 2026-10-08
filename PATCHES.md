@@ -520,6 +520,12 @@ Jeder andere Fehlercode bleibt vorübergehend, die Meldung nennt jetzt den Code
 
 - **Datei**: `app/Services/Social/ConnectionVerifier.php` (`refreshTikTokToken()`,
   `throwIfDeadTikTokRefresh()`, Konstante `TIKTOK_DEAD_REFRESH_ERRORS`).
+- **Nicht-invalid_grant-4xx** (inkl. invalid_client, Nicht-JSON, verschachteltes error-Objekt) sind
+  jetzt vorübergehend statt `token_expired`.
+- **Race-Schutz**: `RefreshSocialToken` setzt das Konto nach invalid_grant erst auf `token_expired`,
+  wenn auch das Access-Token abgelehnt wird (`accessTokenStillWorks`, Schutz bei Single-Use-Refresh-Tokens).
+- **tokenFrom/rotatedTokenFrom** nehmen `mixed` wie Upstream #390 (Nightwatch-Produktionsfehler):
+  ein Skalar als Erfolgs-Body wirft `PlatformUnavailableException` statt `TypeError`.
 - **Merge-Hinweis**: beim nächsten Upstream-Merge entfällt der Patch, wenn #390 vollständig
-  übernommen wird (Code ist dort wortgleich).
+  übernommen wird (Code ist dort wortgleich, auch `tokenFrom`).
 - **Tests**: `ConnectionVerifierTest` und `RefreshSocialTokenTest` (Abschnitte "TTR-02").

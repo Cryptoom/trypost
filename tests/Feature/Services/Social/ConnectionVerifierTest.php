@@ -1231,8 +1231,23 @@ test('tiktok refresh throws TokenExpiredException on invalid_grant with HTTP 400
 
     $account = SocialAccount::factory()->tiktok()->create();
 
+    try {
+        (new ConnectionVerifier)->refreshToken($account);
+        $this->fail('Expected TokenExpiredException');
+    } catch (TokenExpiredException $e) {
+        expect($e->platformErrorCode)->toBe('invalid_grant');
+    }
+});
+
+test('tiktok refresh with a non-array success body is transient, not a TypeError', function () {
+    Http::fake([
+        config('trypost.platforms.tiktok.api').'/oauth/token/' => Http::response('"oops"', 200, ['Content-Type' => 'application/json']),
+    ]);
+
+    $account = SocialAccount::factory()->tiktok()->create();
+
     expect(fn () => (new ConnectionVerifier)->refreshToken($account))
-        ->toThrow(TokenExpiredException::class);
+        ->toThrow(PlatformUnavailableException::class);
 });
 
 test('tiktok refresh treats any other error body as transient and names the code', function () {
