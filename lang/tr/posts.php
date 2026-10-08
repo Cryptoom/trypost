@@ -248,6 +248,8 @@ return [
             'errors' => [
                 'start_failed' => 'Oluşturma başlatılamadı.',
                 'generation_failed' => 'AI oluşturma başarısız oldu.',
+                'timeout' => 'AI yanıt vermekte çok gecikti. Lütfen tekrar dene.',
+                'empty' => 'AI hiç metin döndürmedi. Lütfen tekrar dene.',
             ],
         ],
         'review' => [

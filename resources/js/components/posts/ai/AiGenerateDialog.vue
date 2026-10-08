@@ -95,6 +95,7 @@ const retry = () => {
 };
 
 const canApply = computed(() => status.value === 'completed' && previewText.value.trim().length > 0);
+// PATCH:aig-01 retry is offered after a failed or empty stream, not only after success.
 const canRetry = computed(() => status.value === 'completed' || status.value === 'failed');
 
 watch(open, () => {

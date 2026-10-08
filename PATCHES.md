@@ -390,7 +390,9 @@ simuliert eine Start-Response mit `upload_url` auf `attacker.example.com`, pruef
 Exception geworfen UND dass NIE ein Request an den fremden Host geht (`Http::assertNotSent`).
 Volle Testsuite danach: 4739 passed (0 failed), inkl. dieses neuen Tests.
 
-## 2026-10-08 AIG-01: "Generate with AI" zeigt keine Vorschau
+### Patch 6 · ai-generate-preview  (AIG-01 + AIG-02, 08.10.2026)
+
+"Generate with AI" zeigt keine Vorschau
 
 Symptom (live, social.madevisible.io): Job `StreamPostContent` laeuft durch und Tokens werden
 verbucht, der Dialog bleibt aber bei "..." und endet bei "Try again". Broadcasting selbst ist
@@ -409,3 +411,26 @@ Fix: `PostContentStreamer` uebergibt `plain_text`, das Template verlangt dann nu
 `PostContentGenerator` und die Bild-Templates bleiben unveraendert. Marker `PATCH:aig-01` in
 `generator.blade.php`, `PostContentStreamer.php`, `AiGenerateDialog.vue`.
 Test: `tests/Feature/Ai/PostContentStreamerTest.php` (vorher rot).
+
+AIG-02 (Fehlerpfad, gleicher PR): laravel/ai broadcastet ein Provider-Fehlerevent unter dem
+Fehlercode (`unknown_error`, `overloaded_error`, `stream_failed` ...), nicht unter `error`; der
+Dialog hoerte nur auf `.error`. Eine Exception im Job (HTTP 4xx/5xx, Timeout, fehlender Key)
+sendete gar nichts. Jetzt sendet `StreamPostContent` ein festes Event `error` (Anonymous Event,
+`Broadcast::on(...)->as('error')`, ohne Provider-Text) bei Error-Event im Stream, im `catch` und in
+`failed()`. Am Stream-Ende loggt der Job `PostContentGenerator stream ended` nur mit Laengen
+(`delta_count`, `char_count`, `starts_with_fence`, `starts_with_brace`, `generation_id`), nie mit
+Inhalt. Frontend: `useAiStream` faellt nach 60 s ohne Delta (`AI_STREAM_IDLE_TIMEOUT_MS`) auf
+`failed`, ein erfolgreich beendeter leerer Stream wird `failed` (`posts.ai.generate.errors.empty`,
+`.timeout`, alle 16 Locales), Retry ist bei `failed` sichtbar.
+
+- **Marker**: `PATCH:aig-01`.
+- **Dateien**: `app/Ai/Agents/PostContentStreamer.php`, `resources/views/prompts/post_content/generator.blade.php`,
+  `app/Jobs/Ai/StreamPostContent.php`, `resources/js/composables/echo/useAiStream.ts`,
+  `resources/js/components/posts/ai/AiGenerateDialog.vue`, `lang/*/posts.php` (`posts.ai.generate.errors.timeout|empty`).
+- **Prüf-Grep nach jedem Upstream-Merge**: `grep -rl 'PATCH:aig-01' app resources` muss 5 Dateien liefern,
+  danach `vendor/bin/pest tests/Feature/Ai --filter=aig02`.
+- **Bruchbedingung**: Upstream aendert `PostContentStreamer`, `StreamPostContent` oder `useAiStream`
+  und der Merge laeuft konfliktfrei durch: Marker einzeln gegenpruefen.
+- **Tests**: `tests/Feature/Ai/PostContentStreamerTest.php` (vorher rot), `tests/Feature/Ai/StreamPostContentJobTest.php` (Namen mit `aig02 `, Filter `--filter=aig02`).
+- **Live-Beweis nach Deploy**: Log `PostContentGenerator stream ended` pruefen (beginnt der Text mit ``` oder {?).
+- **Stand**: nicht deployed (Olli-Gate).
