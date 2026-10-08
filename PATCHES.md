@@ -321,8 +321,6 @@ bestehende `unpublish_unsupported`-Flash bleibt. Delete des Posts ist unberuehrt
   schlaegt auch auf `origin/main` fehl (Modal-Flow, unabhaengig von diesem Patch).
 - **Stand**: nicht deployed (Olli-Gate).
 
-||||||| parent of a6ffbb89 (fix(tiktok): use the official commercial content disclosure label)
-
 ### Patch 8 · tiktok-disclosure-label  (TTL-01, 08.10.2026)
 
 Fuer das TikTok-Direct-Post-Audit steht auf den Content Sharing Guidelines
