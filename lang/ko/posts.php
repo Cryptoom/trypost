@@ -34,6 +34,7 @@ return [
         'copied' => 'ID가 클립보드에 복사되었습니다',
         'unpublish' => '게시 취소',
         'unpublish_unsupported' => '이 게시물은 자동으로 게시를 취소할 수 없습니다. 게시된 플랫폼에서 직접 삭제하세요.',
+        'unpublish_unsupported_story' => 'Facebook 스토리는 Facebook 앱에서만 삭제할 수 있습니다(Meta는 API를 통한 삭제를 허용하지 않습니다). 24시간 후 자동으로 사라집니다.',
     ],
 
     'form' => [

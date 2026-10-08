@@ -34,6 +34,7 @@ return [
         'copied' => 'ID copié dans le presse-papiers',
         'unpublish' => 'Dépublier',
         'unpublish_unsupported' => 'Cette publication ne peut pas être dépubliée automatiquement. Supprimez-la manuellement sur la ou les plateformes où elle a été publiée.',
+        'unpublish_unsupported_story' => 'Les stories Facebook ne peuvent être supprimées que dans l\'application Facebook (Meta ne le permet pas via l\'API). Elles expirent après 24 heures.',
     ],
 
     'form' => [

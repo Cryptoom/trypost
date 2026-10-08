@@ -34,6 +34,7 @@ return [
         'copied' => 'ID copiado para a área de transferência',
         'unpublish' => 'Despublicar',
         'unpublish_unsupported' => 'Este post não pode ser despublicado automaticamente. Remova-o manualmente na(s) plataforma(s) em que foi publicado.',
+        'unpublish_unsupported_story' => 'Stories do Facebook só podem ser excluídos no app do Facebook (a Meta não permite isso pela API). Eles expiram após 24 horas.',
     ],
 
     'form' => [

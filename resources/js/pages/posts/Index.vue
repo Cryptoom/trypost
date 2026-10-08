@@ -79,6 +79,9 @@ interface Post {
     published_at: string | null;
     post_platforms: PostPlatform[];
     labels: Label[];
+    // PATCH:unp-01 (server-computed, see Post::unpublishAvailability())
+    can_unpublish: boolean;
+    unpublish_blocked_reason: 'facebook_story' | 'unsupported' | null;
 }
 
 interface ScrollPosts {
@@ -161,24 +164,17 @@ const DELETABLE_STATUSES: readonly string[] = [
     PostStatus.PartiallyPublished,
 ];
 const UNPUBLISHABLE_STATUSES: readonly string[] = [PostStatus.Published, PostStatus.PartiallyPublished];
-// Platforms whose publisher never gains a delete() method (see
-// UnpublishPost::resolveDeletePublisher and CLAUDE.md): TikTok has no
-// delete/unpublish endpoint at all, and Instagram's direct-login variant
-// (not InstagramFacebook) only supports delete for Facebook-linked accounts.
-// Mirrors accounts.instagram_connect.standalone_delete_notice.
-const UNPUBLISH_UNSUPPORTED_PLATFORMS: readonly string[] = ['tiktok', 'instagram'];
 const canEdit = (post: Post): boolean => EDITABLE_STATUSES.includes(post.status);
 const canDelete = (post: Post): boolean => DELETABLE_STATUSES.includes(post.status);
 const canUnpublish = (post: Post): boolean => UNPUBLISHABLE_STATUSES.includes(post.status);
-// True once every enabled platform on the post is one that can never be
-// unpublished automatically, i.e. the action would be a guaranteed no-op.
-// A post mixing e.g. LinkedIn and TikTok keeps the action enabled; the
-// backend still skips the unsupported rows and reports a partial outcome.
-const unpublishUnsupported = (post: Post): boolean => {
-    const enabled = getEnabledPlatforms(post);
-
-    return enabled.length === 0 || enabled.every((pp) => UNPUBLISH_UNSUPPORTED_PLATFORMS.includes(pp.platform));
-};
+// PATCH:unp-01. The server decides whether any published platform of the post
+// can be removed through its API (Post::unpublishAvailability()), so this page
+// never duplicates the platform/content-type rules. A mixed post stays active;
+// the backend still skips the unsupported rows and reports a partial outcome.
+const unpublishHint = (post: Post): string =>
+    post.unpublish_blocked_reason === 'facebook_story'
+        ? trans('posts.actions.unpublish_unsupported_story')
+        : trans('posts.actions.unpublish_unsupported');
 
 const { canCreatePost } = useWorkspaceRole();
 
@@ -357,24 +353,23 @@ useWorkspaceEcho(
                                             <template v-if="canCreatePost && (canUnpublish(post) || canDelete(post))">
                                                 <DropdownMenuSeparator />
                                                 <template v-if="canUnpublish(post)">
-                                                    <TooltipProvider v-if="unpublishUnsupported(post)" :delay-duration="200">
-                                                        <Tooltip>
-                                                            <TooltipTrigger as-child>
-                                                                <span class="block">
-                                                                    <DropdownMenuItem
-                                                                        disabled
-                                                                        :data-testid="`post-unpublish-${post.id}`"
-                                                                    >
-                                                                        <IconEyeOff class="size-4" />
-                                                                        {{ $t('posts.actions.unpublish') }}
-                                                                    </DropdownMenuItem>
-                                                                </span>
-                                                            </TooltipTrigger>
-                                                            <TooltipContent>
-                                                                <p class="max-w-64 text-xs">{{ $t('posts.actions.unpublish_unsupported') }}</p>
-                                                            </TooltipContent>
-                                                        </Tooltip>
-                                                    </TooltipProvider>
+                                                    <template v-if="!post.can_unpublish">
+                                                        <DropdownMenuItem
+                                                            disabled
+                                                            :aria-describedby="`post-unpublish-hint-${post.id}`"
+                                                            :data-testid="`post-unpublish-${post.id}`"
+                                                        >
+                                                            <IconEyeOff class="size-4" />
+                                                            {{ $t('posts.actions.unpublish') }}
+                                                        </DropdownMenuItem>
+                                                        <p
+                                                            :id="`post-unpublish-hint-${post.id}`"
+                                                            :data-testid="`post-unpublish-hint-${post.id}`"
+                                                            class="text-muted-foreground max-w-64 px-2 pb-1.5 text-xs"
+                                                        >
+                                                            {{ unpublishHint(post) }}
+                                                        </p>
+                                                    </template>
                                                     <DropdownMenuItem
                                                         v-else
                                                         :data-testid="`post-unpublish-${post.id}`"

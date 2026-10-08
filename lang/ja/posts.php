@@ -34,6 +34,7 @@ return [
         'copied' => 'ID をクリップボードにコピーしました',
         'unpublish' => '非公開にする',
         'unpublish_unsupported' => 'この投稿は自動的に非公開にできません。公開先のプラットフォームで手動削除してください。',
+        'unpublish_unsupported_story' => 'Facebookストーリーズは、Facebookアプリからのみ削除できます(MetaはAPI経由での削除を許可していません)。24時間後に自動的に終了します。',
     ],
 
     'form' => [

@@ -280,6 +280,45 @@ erfolgreich beendeter leerer Stream wird `failed` (Texte `posts.ai.generate.erro
 - **Live-Beweis nach Deploy**: Log `PostContentGenerator stream ended` pruefen (beginnt der Text mit ``` oder {?).
 - **Stand**: nicht deployed (Olli-Gate).
 
+### Patch 7 · unpublish-stories  (UNP-01, 08.10.2026)
+
+Unpublish fuer Facebook-Stories ausgrauen
+
+Ausloeser: Facebook-Stories lassen sich per Meta-API nicht loeschen
+(`ContentType::FacebookStory->supportsDelete()` ist false, `UnpublishPost` legt sie in `unsupported`),
+trotzdem bot die Published-Seite die Aktion an und der Nutzer hielt die Story fuer entfernt. Die
+Seite prueft vorher nur eine hartkodierte Plattformliste (`tiktok`, `instagram`) im Frontend, das
+kannte weder Story noch Content-Type.
+
+Fix: eine einzige Wahrheit auf dem Server. `UnpublishPost::deletePublisherFor(PostPlatform)` buendelt
+`supportsDelete()`, die Instagram-Direct-Login-Ausnahme und `method_exists(..., 'delete')`;
+`UnpublishPost::execute()` nutzt sie (Verhalten und Buckets unveraendert),
+`PostPlatform::canBeUnpublished()` delegiert dorthin. `Post::unpublishAvailability()` liefert aus den
+veroeffentlichten Zeilen (`platform_post_id` gesetzt) `can_unpublish` und
+`unpublish_blocked_reason` (`facebook_story` wenn alle veroeffentlichten Zeilen Stories sind,
+sonst `unsupported`). `PostController::index` haengt beides an jeden Post der Liste. `posts/Index.vue`
+liest nur noch diese Flags: bei `can_unpublish=false` ist der Menueeintrag `disabled` (Radix setzt
+`aria-disabled`/`data-disabled`) und ein sichtbarer Hinweistext (kein Tooltip, tastaturfaehig,
+`aria-describedby`) erklaert warum. Gemischte Posts (z.B. Story plus Reel) bleiben aktiv, das
+bestehende `unpublish_unsupported`-Flash bleibt. Delete des Posts ist unberuehrt. Neuer Text
+`posts.actions.unpublish_unsupported_story` in allen 16 Locales.
+
+- **Marker**: `PATCH:unp-01`.
+- **Dateien**: `app/Actions/Post/UnpublishPost.php`, `app/Models/PostPlatform.php`, `app/Models/Post.php`,
+  `app/Http/Controllers/App/PostController.php`, `resources/js/pages/posts/Index.vue`, `lang/*/posts.php`
+  (`posts.actions.unpublish_unsupported_story`).
+- **Pruef-Grep nach jedem Upstream-Merge**: `grep -rl 'PATCH:unp-01' app resources` muss 5 Dateien
+  liefern, danach `vendor/bin/pest --filter=unp01`.
+- **Bruchbedingung**: Upstream aendert `UnpublishPost::execute()`, `PostController::index` oder die
+  Aktionsleiste in `posts/Index.vue` und der Merge laeuft konfliktfrei durch: Marker einzeln
+  gegenpruefen. Besonders: bringt Upstream wieder eine Plattformliste im Frontend oder prueft
+  `supportsDelete()` direkt in `execute()`, driften Anzeige und Aktion auseinander.
+- **Tests**: `tests/Feature/Actions/Post/UnpublishAvailabilityTest.php` und
+  `tests/Browser/PostUnpublishTest.php` (Namen mit `unp01 `, Filter `--filter=unp01`).
+- **Bekannt**: der Browser-Test `unpublishing a post removes it from a delete-capable platform ...`
+  schlaegt auch auf `origin/main` fehl (Modal-Flow, unabhaengig von diesem Patch).
+- **Stand**: nicht deployed (Olli-Gate).
+
 ## Geprueft und NICHT gepatcht: is_aigc-Composer-Toggle (25.08.2026)
 
 Der urspruenglich fuer diesen Fork geplante Patch (TikTok-`is_aigc`-Toggle im Post-Composer,

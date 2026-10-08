@@ -34,6 +34,7 @@ return [
         'copied' => 'Skopiowano identyfikator do schowka',
         'unpublish' => 'Cofnij publikację',
         'unpublish_unsupported' => 'Nie można automatycznie cofnąć publikacji tego posta. Usuń go ręcznie na platformie (platformach), na której został opublikowany.',
+        'unpublish_unsupported_story' => 'Relacje na Facebooku można usunąć tylko w aplikacji Facebook (Meta nie pozwala na to przez API). Wygasają po 24 godzinach.',
     ],
 
     'form' => [

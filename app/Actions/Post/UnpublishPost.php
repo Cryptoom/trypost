@@ -60,13 +60,7 @@ class UnpublishPost
         $unsupported = [];
 
         foreach ($rows as $postPlatform) {
-            if (! $postPlatform->content_type->supportsDelete()) {
-                $unsupported[] = $postPlatform;
-
-                continue;
-            }
-
-            $publisher = self::resolveDeletePublisher($postPlatform->platform);
+            $publisher = self::deletePublisherFor($postPlatform);
 
             if ($publisher === null) {
                 $unsupported[] = $postPlatform;
@@ -101,6 +95,22 @@ class UnpublishPost
             'failed' => $failed,
             'unsupported' => $unsupported,
         ];
+    }
+
+    /**
+     * The single source of truth for "can this row be removed through the
+     * platform's API": null means no. Used by execute() AND by
+     * PostPlatform::canBeUnpublished() (which drives the greyed-out
+     * Unpublish action), so the two can never drift apart.
+     * PATCH:unp-01
+     */
+    public static function deletePublisherFor(PostPlatform $postPlatform): ?object
+    {
+        if (! $postPlatform->content_type->supportsDelete()) {
+            return null;
+        }
+
+        return self::resolveDeletePublisher($postPlatform->platform);
     }
 
     /**

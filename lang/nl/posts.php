@@ -34,6 +34,7 @@ return [
         'copied' => 'ID gekopieerd naar klembord',
         'unpublish' => 'Intrekken',
         'unpublish_unsupported' => 'Deze post kan niet automatisch worden ingetrokken. Verwijder deze handmatig op het platform (de platforms) waarop hij is gepubliceerd.',
+        'unpublish_unsupported_story' => 'Facebook-stories kunnen alleen in de Facebook-app worden verwijderd (Meta staat dit niet toe via de API). Ze verlopen na 24 uur.',
     ],
 
     'form' => [

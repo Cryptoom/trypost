@@ -36,6 +36,7 @@ return [
         'copied' => 'Kimlik panoya kopyalandı',
         'unpublish' => 'Yayından kaldır',
         'unpublish_unsupported' => 'Bu gönderi otomatik olarak yayından kaldırılamıyor. Yayınlandığı platform(lar)da manuel olarak kaldırın.',
+        'unpublish_unsupported_story' => 'Facebook Hikâyeleri yalnızca Facebook uygulamasında silinebilir (Meta buna API üzerinden izin vermez). 24 saat sonra kendiliğinden sona erer.',
     ],
 
     'form' => [

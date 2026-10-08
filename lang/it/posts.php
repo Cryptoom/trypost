@@ -34,6 +34,7 @@ return [
         'copied' => 'ID copiato negli appunti',
         'unpublish' => 'Annulla pubblicazione',
         'unpublish_unsupported' => 'Impossibile annullare automaticamente la pubblicazione di questo post. Rimuovilo manualmente dalla piattaforma o dalle piattaforme su cui è stato pubblicato.',
+        'unpublish_unsupported_story' => 'Le storie di Facebook possono essere eliminate solo nell\'app di Facebook (Meta non lo consente tramite API). Scadono dopo 24 ore.',
     ],
 
     'form' => [

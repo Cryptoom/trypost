@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Actions\Post\UnpublishPost;
 use App\Dto\MediaItem;
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\PostPlatform\Status;
@@ -222,5 +223,15 @@ class PostPlatform extends Model
             'error_message' => null,
             'error_context' => null,
         ]);
+    }
+
+    /**
+     * Whether the platform's API can remove this row's published copy. False
+     * for Facebook Stories, TikTok and direct-login Instagram, see
+     * UnpublishPost::deletePublisherFor(). PATCH:unp-01
+     */
+    public function canBeUnpublished(): bool
+    {
+        return UnpublishPost::deletePublisherFor($this) !== null;
     }
 }

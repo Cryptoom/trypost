@@ -34,6 +34,7 @@ return [
         'copied' => 'ID copied to clipboard',
         'unpublish' => 'Unpublish',
         'unpublish_unsupported' => 'This post can\'t be unpublished automatically. Remove it manually on the platform(s) it was published to.',
+        'unpublish_unsupported_story' => 'Facebook Stories can only be deleted in the Facebook app (Meta does not allow it through the API). They expire after 24 hours.',
     ],
 
     'form' => [

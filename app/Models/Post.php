@@ -8,6 +8,7 @@ use App\Dto\MediaItem;
 use App\Enums\Media\Type;
 use App\Enums\Post\CreatedVia;
 use App\Enums\Post\Status as PostStatus;
+use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
 use App\Observers\PostObserver;
 use Database\Factories\PostFactory;
@@ -207,5 +208,31 @@ class Post extends Model
             ]);
             $this->setRawAttributes($fresh->getAttributes(), true);
         });
+    }
+
+    /**
+     * Whether Unpublish can do anything for this post: true when at least one
+     * published row (platform_post_id set) can be removed through its
+     * platform's API. When it cannot, the reason is `facebook_story` if every
+     * published row is a Facebook Story, otherwise `unsupported`. Reads the
+     * already-loaded postPlatforms relation. PATCH:unp-01
+     *
+     * @return array{can_unpublish: bool, unpublish_blocked_reason: string|null}
+     */
+    public function unpublishAvailability(): array
+    {
+        $published = $this->postPlatforms->filter(fn (PostPlatform $postPlatform) => $postPlatform->platform_post_id !== null);
+
+        if ($published->contains(fn (PostPlatform $postPlatform) => $postPlatform->canBeUnpublished())) {
+            return ['can_unpublish' => true, 'unpublish_blocked_reason' => null];
+        }
+
+        $onlyStories = $published->isNotEmpty()
+            && $published->every(fn (PostPlatform $postPlatform) => $postPlatform->content_type === ContentType::FacebookStory);
+
+        return [
+            'can_unpublish' => false,
+            'unpublish_blocked_reason' => $onlyStories ? 'facebook_story' : 'unsupported',
+        ];
     }
 }
