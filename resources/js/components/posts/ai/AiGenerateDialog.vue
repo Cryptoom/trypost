@@ -84,7 +84,7 @@ const startGeneration = async () => {
 const previewText = computed(() => text.value);
 
 const apply = () => {
-    emit('apply', previewText.value);
+    emit('apply', previewText.value.trim());
     open.value = false;
 };
 

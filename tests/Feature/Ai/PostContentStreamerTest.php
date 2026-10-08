@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Ai\Agents\PostContentGenerator;
 use App\Ai\Agents\PostContentStreamer;
 use App\Models\Workspace;
 
@@ -18,4 +19,13 @@ test('streamer instructions ask for plain post text, not a JSON object', functio
         ->not->toContain('JSON object')
         ->not->toContain('image_keywords')
         ->toContain('Output only the post text');
+});
+
+test('structured generator keeps the JSON output contract', function () {
+    $instructions = (new PostContentGenerator(workspace: Workspace::factory()->create()))->instructions();
+
+    expect($instructions)
+        ->toContain('JSON object')
+        ->toContain('image_keywords')
+        ->not->toContain('Output only the post text');
 });
