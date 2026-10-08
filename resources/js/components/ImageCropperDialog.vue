@@ -1,4 +1,5 @@
 <script setup lang="ts">
+// PATCH:story-photo-fit: optional `aspect`, `emitRectOnly` and `initialRect` props; defaults keep the square avatar crop unchanged.
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
 
 import { Button } from '@/components/ui/button';
@@ -15,10 +16,13 @@ import {
     containScale,
     type Corner,
     defaultSelection,
+    fromNormalizedRect,
+    type NormalizedRect,
     resizeSelection,
     resolveOutputFileName,
     resolveOutputMime,
     type SourceRect,
+    toNormalizedRect,
 } from '@/lib/imageCrop';
 
 type Props = {
@@ -27,17 +31,28 @@ type Props = {
     fileName?: string;
     mimeType?: string;
     outputSize?: number;
+    aspect?: number;
+    emitRectOnly?: boolean;
+    initialRect?: NormalizedRect | null;
+    title?: string;
+    description?: string;
 };
 
 const props = withDefaults(defineProps<Props>(), {
     fileName: 'image.png',
     mimeType: 'image/png',
     outputSize: 512,
+    aspect: 1,
+    emitRectOnly: false,
+    initialRect: null,
+    title: undefined,
+    description: undefined,
 });
 
 const emit = defineEmits<{
     (e: 'update:open', value: boolean): void;
     (e: 'cropped', file: File): void;
+    (e: 'rect', rect: NormalizedRect): void;
 }>();
 
 const viewportEl = ref<HTMLElement | null>(null);
@@ -60,7 +75,7 @@ const ready = computed(() => viewportSize.value > 0 && natural.value.width > 0);
 
 const scale = computed(() => containScale(natural.value.width, natural.value.height, viewportSize.value));
 
-const minSourceSize = computed(() => Math.min(natural.value.width, natural.value.height) * MIN_SELECTION_RATIO);
+const minSourceSize = computed(() => Math.min(natural.value.width, natural.value.height * props.aspect) * MIN_SELECTION_RATIO);
 
 const imageDisplay = computed(() => {
     const width = natural.value.width * scale.value;
@@ -98,7 +113,15 @@ const maybeInitialize = () => {
         return;
     }
 
-    selection.value = defaultSelection(natural.value.width, natural.value.height);
+    selection.value = props.initialRect
+        ? clampSelection(
+              fromNormalizedRect(props.initialRect, natural.value.width, natural.value.height),
+              natural.value.width,
+              natural.value.height,
+              minSourceSize.value,
+              props.aspect,
+          )
+        : defaultSelection(natural.value.width, natural.value.height, props.aspect);
     initialized.value = true;
 };
 
@@ -187,6 +210,7 @@ const onPointerMove = (event: PointerEvent) => {
             natural.value.width,
             natural.value.height,
             minSourceSize.value,
+            props.aspect,
         );
 
         return;
@@ -201,6 +225,7 @@ const onPointerMove = (event: PointerEvent) => {
         natural.value.width,
         natural.value.height,
         minSourceSize.value,
+        props.aspect,
     );
 };
 
@@ -220,6 +245,13 @@ const save = () => {
     const img = imageEl.value;
 
     if (!img || !ready.value) {
+        return;
+    }
+
+    if (props.emitRectOnly) {
+        emit('rect', toNormalizedRect(selection.value, natural.value.width, natural.value.height));
+        close();
+
         return;
     }
 
@@ -298,8 +330,8 @@ onBeforeUnmount(() => resizeObserver?.disconnect());
     <Dialog :open="open" @update:open="emit('update:open', $event)">
         <DialogContent class="sm:max-w-lg">
             <DialogHeader>
-                <DialogTitle>{{ $t('common.photo_upload.crop_title') }}</DialogTitle>
-                <DialogDescription>{{ $t('common.photo_upload.crop_description') }}</DialogDescription>
+                <DialogTitle>{{ title ?? $t('common.photo_upload.crop_title') }}</DialogTitle>
+                <DialogDescription>{{ description ?? $t('common.photo_upload.crop_description') }}</DialogDescription>
             </DialogHeader>
 
             <div
