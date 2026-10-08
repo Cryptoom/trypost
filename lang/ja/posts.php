@@ -246,6 +246,8 @@ return [
             'errors' => [
                 'start_failed' => '生成を開始できませんでした。',
                 'generation_failed' => 'AI生成に失敗しました。',
+                'timeout' => 'AIの応答に時間がかかりすぎました。もう一度お試しください。',
+                'empty' => 'AIがテキストを返しませんでした。もう一度お試しください。',
             ],
         ],
         'review' => [

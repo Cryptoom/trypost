@@ -38,6 +38,8 @@ class PostContentStreamer implements Agent
             'current_content' => $this->currentContent,
             'format' => GeneratorFormat::Single->value,
             'slide_count' => 1,
+            // PATCH:aig-01 plain text, the dialog previews the raw stream
+            'plain_text' => true,
         ])->render();
     }
 }

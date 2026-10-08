@@ -246,6 +246,8 @@ return [
             'errors' => [
                 'start_failed' => '无法开始生成。',
                 'generation_failed' => 'AI 生成失败。',
+                'timeout' => 'AI 响应时间过长，请重试。',
+                'empty' => 'AI 没有返回任何文本，请重试。',
             ],
         ],
         'review' => [

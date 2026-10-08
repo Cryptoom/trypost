@@ -246,6 +246,8 @@ return [
             'errors' => [
                 'start_failed' => 'Nie udało się rozpocząć generowania.',
                 'generation_failed' => 'Generowanie przez AI nie powiodło się.',
+                'timeout' => 'AI zbyt długo nie odpowiadało. Spróbuj ponownie.',
+                'empty' => 'AI nie zwróciło żadnego tekstu. Spróbuj ponownie.',
             ],
         ],
         'review' => [

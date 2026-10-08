@@ -248,6 +248,8 @@ return [
             'errors' => [
                 'start_failed' => 'Generierung konnte nicht gestartet werden.',
                 'generation_failed' => 'KI-Generierung fehlgeschlagen.',
+                'timeout' => 'Die KI hat zu lange nicht geantwortet. Bitte versuche es erneut.',
+                'empty' => 'Die KI hat keinen Text geliefert. Bitte versuche es erneut.',
             ],
         ],
         'review' => [

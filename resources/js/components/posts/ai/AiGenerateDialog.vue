@@ -27,7 +27,7 @@ const page = usePage();
 const prompt = ref('');
 const dispatching = ref(false);
 const promptError = ref<string | undefined>(undefined);
-const { text, status, errorMessage, subscribe, unsubscribe, reset } = useAiStream();
+const { text, status, errorMessage, subscribe, start, unsubscribe, reset } = useAiStream();
 
 const httpGenerate = useHttp<{ prompt: string; current_content: string | null; generation_id: string }>({
     prompt: '',
@@ -70,6 +70,9 @@ const startGeneration = async () => {
             promptError.value = httpGenerate.errors.prompt ?? trans('posts.ai.generate.errors.start_failed');
             return;
         }
+
+        // PATCH:aig-01 The silence deadline only starts once the job is queued.
+        start();
     } catch {
         unsubscribe();
         status.value = 'failed';
@@ -79,24 +82,12 @@ const startGeneration = async () => {
     }
 };
 
-// The streamer agent shares the structured-output prompt template with
-// PostContentGenerator, so what comes through the stream is a JSON object
-// like {"content": "...", "image_title": "...", ...}. We only want the
-// content field — and only once the JSON is complete (mid-stream the parse
-// fails and we show nothing, avoiding the typewriter-of-JSON effect).
-const previewText = computed(() => {
-    if (! text.value) return '';
-    try {
-        const parsed = JSON.parse(text.value);
-        if (parsed && typeof parsed.content === 'string') return parsed.content;
-    } catch {
-        // Mid-stream the JSON is incomplete — leave preview empty.
-    }
-    return '';
-});
+// PATCH:aig-01 The streamer asks the model for plain post text (see
+// PostContentStreamer), so the accumulated stream is the preview as-is.
+const previewText = computed(() => text.value);
 
 const apply = () => {
-    emit('apply', previewText.value);
+    emit('apply', previewText.value.trim());
     open.value = false;
 };
 
@@ -107,6 +98,7 @@ const retry = () => {
 };
 
 const canApply = computed(() => status.value === 'completed' && previewText.value.trim().length > 0);
+// PATCH:aig-01 retry is offered after a failed or empty stream, not only after success.
 const canRetry = computed(() => status.value === 'completed' || status.value === 'failed');
 
 watch(open, () => {

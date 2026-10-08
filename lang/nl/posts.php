@@ -246,6 +246,8 @@ return [
             'errors' => [
                 'start_failed' => 'Kan generatie niet starten.',
                 'generation_failed' => 'AI-generatie mislukt.',
+                'timeout' => 'De AI deed er te lang over om te antwoorden. Probeer het opnieuw.',
+                'empty' => 'De AI gaf geen tekst terug. Probeer het opnieuw.',
             ],
         ],
         'review' => [

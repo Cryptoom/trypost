@@ -86,6 +86,9 @@ A single, specific next action the reader can do right now. Not "follow for more
 
 **Caption:**
 The `caption` should tease the carousel's promise and reinforce the swipe — not summarize. Make the reader curious about what's inside the slides, then encourage swiping.
+@elseif(!empty($plain_text))
+{{-- PATCH:aig-01 --}}
+Output only the post text in {{ $content_language ?? 'en' }}: no preamble, no quotation marks, no markdown code fences, no JSON. This text is shown to the user as it streams and is published as-is.
 @else
 Output format: a JSON object with:
 - `content`: the full post caption in {{ $content_language ?? 'en' }} (no preamble, no quotation marks). This is what gets published.
