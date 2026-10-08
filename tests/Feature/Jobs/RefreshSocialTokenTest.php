@@ -777,6 +777,31 @@ test('tiktok refresh answered 200 with invalid_grant expires the account and not
     Queue::assertPushed(SendNotification::class);
 });
 
+test('tiktok invalid_grant keeps the account connected when the access token still works', function () {
+    Queue::fake();
+
+    $tiktok = SocialAccount::factory()->tiktok()->create([
+        'workspace_id' => $this->workspace->id,
+        'status' => Status::Connected,
+        'token_expires_at' => now()->addHour(),
+    ]);
+
+    Http::fake([
+        config('trypost.platforms.tiktok.api').'/oauth/token/' => Http::response([
+            'error' => 'invalid_grant',
+            'error_description' => 'Refresh token is invalid or expired.',
+        ], 200),
+        config('trypost.platforms.tiktok.api').'/user/info/*' => Http::response(['data' => ['user' => ['open_id' => 'x']]], 200),
+    ]);
+
+    (new RefreshSocialToken($tiktok))->handle(app(ConnectionVerifier::class));
+
+    expect($tiktok->fresh()->status)->toBe(Status::Connected)
+        ->and($tiktok->fresh()->last_verified_at)->not->toBeNull();
+
+    Queue::assertNotPushed(SendNotification::class);
+});
+
 test('tiktok refresh answered 200 with a non-terminal error stays connected', function () {
     Queue::fake();
 
