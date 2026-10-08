@@ -691,4 +691,41 @@ return [
             ],
         ],
     ],
+
+    // PATCH:story-photo-fit
+    'story_fit' => [
+        'label' => 'Format zdjęcia w relacji',
+        'modes' => [
+            'center' => [
+                'label' => 'Środek',
+                'description' => 'Przycina środek zdjęcia do 9:16.',
+            ],
+            'smart' => [
+                'label' => 'Inteligentny',
+                'description' => 'AI wybiera najlepsze kadrowanie 9:16. Jeśli się nie uda, użyty zostanie środek.',
+            ],
+            'manual' => [
+                'label' => 'Ręczny',
+                'description' => 'Sam wybierasz kadr 9:16.',
+            ],
+            'fit' => [
+                'label' => 'Dopasuj',
+                'description' => 'Pokazuje całe zdjęcie na rozmytym tle.',
+            ],
+        ],
+        'pick_crop' => 'Wybierz kadr',
+        'change_crop' => 'Zmień kadr',
+        'crop_saved' => 'Kadr zapisany.',
+        'crop_missing' => 'Nie wybrano jeszcze kadru. Do tego czasu używany jest środek.',
+        'crop_title' => 'Wybierz kadr relacji',
+        'crop_description' => 'Przesuń ramkę, aby wybrać część zdjęcia widoczną w relacji 9:16.',
+        'hints' => [
+            'center' => 'Zdjęcie zostanie przycięte do 9:16 wokół środka.',
+            'smart' => 'AI wybiera najlepsze kadrowanie 9:16 zdjęcia. Jeśli się nie uda, użyty zostanie środek.',
+            'manual' => 'Zdjęcie zostanie przycięte do wybranego przez Ciebie obszaru 9:16.',
+            'manual_missing' => 'Nie wybrano jeszcze kadru. Zdjęcie jest przycinane wokół środka, dopóki go nie wybierzesz.',
+            'fit' => 'Całe zdjęcie jest pokazane w 9:16 na rozmytym tle.',
+        ],
+        'video_aspect' => 'Wideo w relacji musi mieć format 9:16, to ma :current.',
+    ],
 ];

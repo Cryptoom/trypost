@@ -693,4 +693,41 @@ return [
             ],
         ],
     ],
+
+    // PATCH:story-photo-fit
+    'story_fit' => [
+        'label' => 'Format des Story-Fotos',
+        'modes' => [
+            'center' => [
+                'label' => 'Mittig',
+                'description' => 'Schneidet die Mitte des Fotos auf 9:16 zu.',
+            ],
+            'smart' => [
+                'label' => 'Smart',
+                'description' => 'Die KI wählt den besten 9:16-Ausschnitt. Klappt das nicht, wird mittig zugeschnitten.',
+            ],
+            'manual' => [
+                'label' => 'Manuell',
+                'description' => 'Du wählst den 9:16-Ausschnitt selbst.',
+            ],
+            'fit' => [
+                'label' => 'Einpassen',
+                'description' => 'Zeigt das ganze Foto auf unscharfem Hintergrund.',
+            ],
+        ],
+        'pick_crop' => 'Ausschnitt wählen',
+        'change_crop' => 'Ausschnitt ändern',
+        'crop_saved' => 'Ausschnitt gespeichert.',
+        'crop_missing' => 'Noch kein Ausschnitt gewählt. Bis dahin wird mittig zugeschnitten.',
+        'crop_title' => 'Story-Ausschnitt wählen',
+        'crop_description' => 'Verschiebe den Rahmen, um den Teil des Fotos zu wählen, der in der 9:16-Story zu sehen ist.',
+        'hints' => [
+            'center' => 'Das Foto wird mittig auf 9:16 zugeschnitten.',
+            'smart' => 'Die KI wählt den besten 9:16-Ausschnitt des Fotos. Klappt das nicht, wird mittig zugeschnitten.',
+            'manual' => 'Das Foto wird auf den von dir gewählten 9:16-Ausschnitt zugeschnitten.',
+            'manual_missing' => 'Noch kein Ausschnitt gewählt. Das Foto wird mittig zugeschnitten, bis du einen wählst.',
+            'fit' => 'Das ganze Foto wird in 9:16 auf unscharfem Hintergrund gezeigt.',
+        ],
+        'video_aspect' => 'Ein Story-Video muss im Format 9:16 sein, dieses hat aktuell :current.',
+    ],
 ];

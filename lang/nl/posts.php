@@ -691,4 +691,41 @@ return [
             ],
         ],
     ],
+
+    // PATCH:story-photo-fit
+    'story_fit' => [
+        'label' => 'Formaat van de storyfoto',
+        'modes' => [
+            'center' => [
+                'label' => 'Gecentreerd',
+                'description' => 'Snijdt het midden van de foto bij naar 9:16.',
+            ],
+            'smart' => [
+                'label' => 'Slim',
+                'description' => 'De AI kiest de beste 9:16-uitsnede. Lukt dat niet, dan wordt het midden gebruikt.',
+            ],
+            'manual' => [
+                'label' => 'Handmatig',
+                'description' => 'Je kiest zelf de 9:16-uitsnede.',
+            ],
+            'fit' => [
+                'label' => 'Passend',
+                'description' => 'Toont de hele foto op een wazige achtergrond.',
+            ],
+        ],
+        'pick_crop' => 'Uitsnede kiezen',
+        'change_crop' => 'Uitsnede wijzigen',
+        'crop_saved' => 'Uitsnede opgeslagen.',
+        'crop_missing' => 'Nog geen uitsnede gekozen. Tot dan wordt het midden gebruikt.',
+        'crop_title' => 'Story-uitsnede kiezen',
+        'crop_description' => 'Verplaats het kader om het deel van de foto te kiezen dat in de 9:16-story wordt getoond.',
+        'hints' => [
+            'center' => 'De foto wordt rond het midden bijgesneden naar 9:16.',
+            'smart' => 'De AI kiest de beste 9:16-uitsnede van de foto. Lukt dat niet, dan wordt het midden gebruikt.',
+            'manual' => 'De foto wordt bijgesneden naar het 9:16-gebied dat je hebt gekozen.',
+            'manual_missing' => 'Nog geen uitsnede gekozen. De foto wordt rond het midden bijgesneden tot je er een kiest.',
+            'fit' => 'De hele foto wordt in 9:16 getoond op een wazige achtergrond.',
+        ],
+        'video_aspect' => 'Een storyvideo moet 9:16 zijn, deze is :current.',
+    ],
 ];
