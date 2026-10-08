@@ -83,6 +83,7 @@ return [
             'stitch' => 'Stitch',
             'is_aigc' => 'Video made with AI',
             'disclose' => 'Disclose video content',
+            'disclose_description' => 'Indicate whether this content promotes yourself, a brand, product or service.',
             'disclose_hint' => 'Turn on to disclose that this video promotes goods or services in exchange for something of value. Your video could promote yourself, a third party, or both.',
             'promotional_organic_title' => 'Your photo/video will be labeled as "Promotional content".',
             'promotional_paid_title' => 'Your photo/video will be labeled as "Paid partnership".',

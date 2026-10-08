@@ -83,6 +83,7 @@ return [
             'stitch' => '스티치',
             'is_aigc' => 'AI로 제작한 동영상',
             'disclose' => '동영상 콘텐츠 공개',
+            'disclose_description' => '이 콘텐츠가 본인, 브랜드, 제품 또는 서비스를 홍보하는지 표시하세요.',
             'disclose_hint' => '이 동영상이 대가를 받고 상품이나 서비스를 홍보함을 공개하려면 켜세요. 동영상은 본인, 서드파티 또는 둘 다를 홍보할 수 있습니다.',
             'promotional_organic_title' => '사진/동영상에 "홍보 콘텐츠" 라벨이 표시됩니다.',
             'promotional_paid_title' => '사진/동영상에 "유료 파트너십" 라벨이 표시됩니다.',

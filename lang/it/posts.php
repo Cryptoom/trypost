@@ -83,6 +83,7 @@ return [
             'stitch' => 'Stitch',
             'is_aigc' => 'Video creato con l\'IA',
             'disclose' => 'Dichiara il contenuto del video',
+            'disclose_description' => 'Indica se questo contenuto promuove te stesso, un marchio, un prodotto o un servizio.',
             'disclose_hint' => 'Attiva per dichiarare che questo video promuove beni o servizi in cambio di qualcosa di valore. Il tuo video può promuovere te stesso, terze parti o entrambi.',
             'promotional_organic_title' => 'La tua foto/video sarà etichettata come "Contenuto promozionale".',
             'promotional_paid_title' => 'La tua foto/video sarà etichettata come "Partnership retribuita".',
