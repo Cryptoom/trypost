@@ -356,6 +356,9 @@ test('an orphaned repurpose is never dispatched for polling', function () {
 });
 
 test('polling the same video twice queues it only once', function () {
+    // The media fixture carries a fixed timestamp, so pin the clock to keep it after activation.
+    $this->travelTo('2026-09-30 12:00:00');
+
     Bus::fake();
     fakeInstagramMedia([mediaRow('m1')]);
 
