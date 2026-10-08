@@ -1200,3 +1200,75 @@ test('mastodon verify throws TokenExpiredException on a bare 403 from verify_cre
 
     Http::assertSentCount(1);
 });
+
+// TTR-02: TikTok refresh error bodies.
+test('tiktok refresh throws TokenExpiredException on invalid_grant with HTTP 200', function () {
+    Http::fake([
+        config('trypost.platforms.tiktok.api').'/oauth/token/' => Http::response([
+            'error' => 'invalid_grant',
+            'error_description' => 'Refresh token is invalid or expired.',
+        ], 200),
+    ]);
+
+    $account = SocialAccount::factory()->tiktok()->create();
+
+    try {
+        (new ConnectionVerifier)->refreshToken($account);
+        $this->fail('Expected TokenExpiredException');
+    } catch (TokenExpiredException $e) {
+        expect($e->getMessage())->toBe('Refresh token is invalid or expired.')
+            ->and($e->platformErrorCode)->toBe('invalid_grant');
+    }
+});
+
+test('tiktok refresh throws TokenExpiredException on invalid_grant with HTTP 400', function () {
+    Http::fake([
+        config('trypost.platforms.tiktok.api').'/oauth/token/' => Http::response([
+            'error' => 'invalid_grant',
+            'error_description' => 'Refresh token is invalid or expired.',
+        ], 400),
+    ]);
+
+    $account = SocialAccount::factory()->tiktok()->create();
+
+    expect(fn () => (new ConnectionVerifier)->refreshToken($account))
+        ->toThrow(TokenExpiredException::class);
+});
+
+test('tiktok refresh treats any other error body as transient and names the code', function () {
+    Http::fake([
+        config('trypost.platforms.tiktok.api').'/oauth/token/' => Http::response([
+            'error' => 'invalid_request',
+            'error_description' => 'Something temporary.',
+        ], 200),
+    ]);
+
+    $account = SocialAccount::factory()->tiktok()->create();
+
+    expect(fn () => (new ConnectionVerifier)->refreshToken($account))
+        ->toThrow(PlatformUnavailableException::class, 'TikTok refresh returned invalid_request: Something temporary.');
+});
+
+test('tiktok refresh treats a non-terminal 4xx error as transient', function () {
+    Http::fake([
+        config('trypost.platforms.tiktok.api').'/oauth/token/' => Http::response(['error' => 'invalid_request'], 400),
+    ]);
+
+    $account = SocialAccount::factory()->tiktok()->create();
+
+    expect(fn () => (new ConnectionVerifier)->refreshToken($account))
+        ->toThrow(PlatformUnavailableException::class);
+});
+
+test('tiktok refresh keeps the old tokens when the error body is not a string code', function () {
+    Http::fake([
+        config('trypost.platforms.tiktok.api').'/oauth/token/' => Http::response(['error' => ['x' => 1]], 200),
+    ]);
+
+    $account = SocialAccount::factory()->tiktok()->create(['access_token' => 'keep_me']);
+
+    expect(fn () => (new ConnectionVerifier)->refreshToken($account))
+        ->toThrow(PlatformUnavailableException::class, 'unrecognized error');
+
+    expect($account->fresh()->access_token)->toBe('keep_me');
+});

@@ -27,6 +27,17 @@ use Illuminate\Support\Facades\Http;
 class ConnectionVerifier
 {
     /**
+     * TikTok OAuth errors that mean the refresh token itself is dead and the
+     * user must reconnect: only invalid_grant ("invalid, expired, revoked")
+     * is documented that way. Every other error is ours or temporary.
+     *
+     * @see https://developers.tiktok.com/doc/oauth-error-handling
+     *
+     * @var list<string>
+     */
+    private const array TIKTOK_DEAD_REFRESH_ERRORS = ['invalid_grant'];
+
+    /**
      * Read and connect timeouts for a token refresh. Stated explicitly, even
      * though they match the client's defaults, so a change to those cannot
      * silently break the lock invariant below. Generous on purpose: giving up
@@ -370,15 +381,34 @@ class ConnectionVerifier
             throw new TokenExpiredException('No refresh token available for TikTok account');
         }
 
-        $response = TokenRefreshClient::for(Platform::TikTok)->send(fn () => $this->refreshHttp()->asForm()
-            ->post(config('trypost.platforms.tiktok.api').'/oauth/token/', [
-                'grant_type' => 'refresh_token',
-                'refresh_token' => $account->refresh_token,
-                'client_key' => config('services.tiktok.client_id'),
-                'client_secret' => config('services.tiktok.client_secret'),
-            ]));
+        $response = TokenRefreshClient::for(Platform::TikTok)->send(
+            fn () => $this->refreshHttp()->asForm()
+                ->post(config('trypost.platforms.tiktok.api').'/oauth/token/', [
+                    'grant_type' => 'refresh_token',
+                    'refresh_token' => $account->refresh_token,
+                    'client_key' => config('services.tiktok.client_id'),
+                    'client_secret' => config('services.tiktok.client_secret'),
+                ]),
+            function (mixed $body): bool {
+                self::throwIfDeadTikTokRefresh($body);
+
+                return false;
+            },
+        );
 
         $data = $response->json();
+
+        // TikTok reports a rejected refresh as an error body, often with HTTP 200.
+        self::throwIfDeadTikTokRefresh($data);
+
+        $error = data_get($data, 'error');
+
+        if (filled($error)) {
+            $code = is_string($error) ? $error : 'unrecognized error';
+            $description = self::tikTokErrorDescription($data);
+
+            throw new PlatformUnavailableException(trim("TikTok refresh returned {$code}: {$description}", ': '));
+        }
 
         $account->update([
             'access_token' => $this->tokenFrom($data, $account->platform),
@@ -387,6 +417,33 @@ class ConnectionVerifier
         ]);
 
         $account->refresh();
+    }
+
+    /**
+     * A dead refresh token expires the account with TikTok's error code,
+     * whether TikTok answered it with a 200 or a 4xx.
+     *
+     * @throws TokenExpiredException
+     */
+    private static function throwIfDeadTikTokRefresh(mixed $body): void
+    {
+        $error = is_array($body) ? data_get($body, 'error') : null;
+
+        if (! in_array($error, self::TIKTOK_DEAD_REFRESH_ERRORS, true)) {
+            return;
+        }
+
+        throw new TokenExpiredException(
+            self::tikTokErrorDescription($body) ?? $error,
+            platformErrorCode: $error,
+        );
+    }
+
+    private static function tikTokErrorDescription(mixed $body): ?string
+    {
+        $description = data_get($body, 'error_description');
+
+        return is_string($description) && $description !== '' ? $description : null;
     }
 
     private function refreshPinterestToken(SocialAccount $account): void
