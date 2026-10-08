@@ -6,6 +6,7 @@ use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
 use App\Exceptions\Social\FacebookPublishException;
 use App\Exceptions\TokenExpiredException;
+use App\Models\Media;
 use App\Models\Post;
 use App\Models\PostPlatform;
 use App\Models\SocialAccount;
@@ -17,6 +18,7 @@ use App\Services\Media\StoryMusicGenerator;
 use App\Services\Social\FacebookPublisher;
 use Illuminate\Http\Client\Factory;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Intervention\Image\Drivers\Gd\Driver;
 use Intervention\Image\ImageManager;
@@ -1196,18 +1198,26 @@ function tps01FacebookStoryTwoTone(): string
  *
  * @return array{width: int, height: int, left_red: int, right_blue: int, middle_blue: int, middle_red: int, converted_exists_after: bool}
  */
-function tps01PublishFacebookPhotoStory(object $test, ?array $meta): array
+/**
+ * @param  array<int, string>|null  $photoIds  ids of the photos on the post, in order (default: one photo)
+ * @param  array<int, string>|null  $selectedIds  per-platform selection pivot (null: no selection made)
+ */
+function tps01PublishFacebookPhotoStory(object $test, ?array $meta, ?array $photoIds = null, ?array $selectedIds = null): array
 {
     $test->postPlatform->update(['content_type' => ContentType::FacebookStory, 'meta' => $meta]);
     $test->post->update([
-        'media' => [[
-            'id' => 'test-media-story',
-            'path' => 'media/2026-01/story.jpg',
+        'media' => array_map(fn (string $id) => [
+            'id' => $id,
+            'path' => "media/2026-01/{$id}.jpg",
             'url' => 'https://example.com/media/2026-01/story.jpg',
             'mime_type' => 'image/jpeg',
             'original_filename' => 'story.jpg',
-        ]],
+        ], $photoIds ?? ['test-media-story']),
     ]);
+
+    if ($selectedIds !== null) {
+        $test->postPlatform->media()->sync($selectedIds);
+    }
 
     $convertedVideoPath = tempnam(sys_get_temp_dir(), 'fb_story_converted_');
     file_put_contents($convertedVideoPath, 'fake-converted-mp4-bytes');
@@ -1310,9 +1320,49 @@ test('tps01 facebook story manual crop applies only to the photo it was drawn on
             ->and($seen['right_blue'])->toBeGreaterThan(150);
     }
 
-    expect(StoryImageFitter::boundCrop(['story_crop' => $rect, 'story_crop_media_id' => 'a'], 'a'))->toBe($rect)
-        ->and(StoryImageFitter::boundCrop(['story_crop' => $rect, 'story_crop_media_id' => 'a'], 'b'))->toBeNull()
-        ->and(StoryImageFitter::boundCrop(['story_crop' => $rect], 'a'))->toBeNull()
-        ->and(StoryImageFitter::boundCrop(['story_crop' => $rect, 'story_crop_media_id' => 'a'], null))->toBeNull()
-        ->and(StoryImageFitter::boundCrop(null, 'a'))->toBeNull();
+    $platform = fn (?array $meta) => PostPlatform::make(['meta' => $meta, 'content_type' => ContentType::FacebookStory]);
+
+    expect(StoryImageFitter::boundCrop($platform(['story_crop' => $rect, 'story_crop_media_id' => 'a']), 'a'))->toBe($rect)
+        ->and(StoryImageFitter::boundCrop($platform(['story_crop' => $rect, 'story_crop_media_id' => 'a']), 'b'))->toBeNull()
+        ->and(StoryImageFitter::boundCrop($platform(['story_crop' => $rect]), 'a'))->toBeNull()
+        ->and(StoryImageFitter::boundCrop($platform(['story_crop' => $rect, 'story_crop_media_id' => 'a']), null))->toBeNull()
+        ->and(StoryImageFitter::boundCrop($platform(null), 'a'))->toBeNull();
+});
+
+test('tps01 facebook story log notes an unbound crop only for manual story posts', function () {
+    $rect = ['x' => 0.6, 'y' => 0, 'w' => 0.31640625, 'h' => 1];
+
+    Log::spy();
+    StoryImageFitter::boundCrop(PostPlatform::make(['content_type' => ContentType::FacebookPost, 'meta' => ['story_fit' => 'manual', 'story_crop' => $rect]]), 'a');
+    StoryImageFitter::boundCrop(PostPlatform::make(['content_type' => ContentType::FacebookStory, 'meta' => ['story_fit' => 'center']]), 'a');
+    Log::shouldNotHaveReceived('info');
+
+    $platform = PostPlatform::make(['content_type' => ContentType::FacebookStory, 'meta' => ['story_fit' => 'manual', 'story_crop' => $rect, 'story_crop_media_id' => 'b']]);
+    StoryImageFitter::boundCrop($platform, 'a');
+    Log::shouldHaveReceived('info')->once()->withArgs(fn (string $message, array $context) => $context['first_media_id'] === 'a' && $context['bound_media_id'] === 'b');
+});
+
+test('tps01 facebook story first photo is the first of the platform selection', function () {
+    $photos = collect(range(1, 2))->map(fn () => Media::factory()->assets()->create([
+        'mediable_type' => (new Workspace)->getMorphClass(),
+        'mediable_id' => $this->workspace->id,
+    ])->id)->all();
+    [$photo1, $photo2] = $photos;
+    $rect = ['x' => 0.6, 'y' => 0, 'w' => 0.31640625, 'h' => 1];
+    $meta = fn (string $boundTo) => ['story_fit' => 'manual', 'story_crop' => $rect, 'story_crop_media_id' => $boundTo];
+
+    // Only photo 2 is assigned: a frame bound to photo 2 applies (blue half), one bound to photo 1 means center.
+    $applied = tps01PublishFacebookPhotoStory($this, $meta($photo2), $photos, [$photo2]);
+    $centered = tps01PublishFacebookPhotoStory($this, $meta($photo1), $photos, [$photo2]);
+
+    expect($applied['middle_blue'])->toBeGreaterThan(150)
+        ->and($applied['middle_red'])->toBeLessThan(100)
+        ->and($centered['left_red'])->toBeGreaterThan(150)
+        ->and($centered['right_blue'])->toBeGreaterThan(150);
+
+    // Selecting the bound photo again (photo 1 first) brings the frame back.
+    $again = tps01PublishFacebookPhotoStory($this, $meta($photo1), $photos, [$photo1, $photo2]);
+
+    expect($again['middle_blue'])->toBeGreaterThan(150)
+        ->and($again['middle_red'])->toBeLessThan(100);
 });

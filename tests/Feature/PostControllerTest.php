@@ -1685,6 +1685,31 @@ test('update post accepts valid instagram aspect_ratio meta', function () {
     expect(data_get($postPlatform->meta, 'aspect_ratio'))->toBe('4:5');
 });
 
+test('tps01 meta rules story crop web update needs the photo id and accepts both or neither', function () {
+    $account = SocialAccount::factory()->facebook()->create(['workspace_id' => $this->workspace->id]);
+    $post = Post::factory()->create(['workspace_id' => $this->workspace->id, 'user_id' => $this->user->id, 'status' => PostStatus::Draft]);
+    $postPlatform = PostPlatform::factory()->facebookStory()->create(['post_id' => $post->id, 'social_account_id' => $account->id]);
+    $crop = ['x' => 0.1, 'y' => 0, 'w' => 0.3164, 'h' => 1];
+
+    $update = fn (array $meta) => $this->actingAs($this->user)->put(route('app.posts.update', $post), [
+        'status' => 'draft',
+        'platforms' => [['id' => $postPlatform->id, 'content_type' => ContentType::FacebookStory->value, 'meta' => $meta]],
+    ]);
+
+    // A frame without the photo it was drawn on, or with an empty id, is rejected on save with a readable message.
+    foreach ([['story_fit' => 'manual', 'story_crop' => $crop], ['story_fit' => 'manual', 'story_crop' => $crop, 'story_crop_media_id' => null]] as $meta) {
+        $update($meta)->assertSessionHasErrors('platforms.0.meta.story_crop_media_id');
+    }
+
+    expect(session('errors')->first('platforms.0.meta.story_crop_media_id'))->toContain('story_crop_media_id');
+
+    // Both fields together, or both cleared together (what the editor sends), are fine.
+    $update(['story_fit' => 'manual', 'story_crop' => $crop, 'story_crop_media_id' => 'photo-1'])
+        ->assertSessionDoesntHaveErrors();
+    $update(['story_fit' => 'fit', 'story_crop' => null, 'story_crop_media_id' => null])
+        ->assertSessionDoesntHaveErrors();
+});
+
 test('scheduling without content_type per platform fails', function () {
     $youtubeAccount = SocialAccount::factory()->create([
         'workspace_id' => $this->workspace->id,

@@ -88,30 +88,24 @@ function waitForStoryFit(mixed $page, string $testId, string $condition = 'el.ge
 }
 
 /**
- * Remember how many autosave PUTs the page has completed so far. The editor autosaves 1.5 s after the
- * last change, so the test must wait for the real response instead of a fixed delay.
+ * Polls the server state itself (the edit page's own Inertia payload, so no fixed delay and no guess
+ * about which autosave finished) until `$predicate` holds. Variables in scope: `post`, `pp` (the
+ * channel row) and `meta`. Fails hard after about 20 s instead of returning quietly.
  */
-function markStoryFitSaves(mixed $page): void
+function waitForStoryFitServerState(mixed $page, string $predicate, string $what): void
 {
-    $page->script(<<<'JS'
-        window.__storyFitSaves = () => performance.getEntriesByType('resource')
-            .filter((e) => e.initiatorType === 'xmlhttprequest' && /\/posts\/[0-9a-f-]{36}$/.test(new URL(e.name).pathname)).length;
-        window.__storyFitBase = window.__storyFitSaves();
-    JS);
-}
-
-/** Polls from the page until a save finished after the last mark, then moves the mark. */
-function waitForStoryFitSave(mixed $page): void
-{
-    $page->script(<<<'JS'
+    $page->script(<<<JS
         (async () => {
             for (let i = 0; i < 200; i++) {
-                if (window.__storyFitSaves() > window.__storyFitBase) {
-                    window.__storyFitBase = window.__storyFitSaves();
-                    return;
-                }
-                await new Promise((r) => setTimeout(r, 50));
+                const html = await (await fetch(location.href, { credentials: 'same-origin', cache: 'no-store' })).text();
+                const payload = new DOMParser().parseFromString(html, 'text/html').querySelector('script[data-page]');
+                const post = JSON.parse(payload.textContent).props.post;
+                const pp = post.post_platforms[0];
+                const meta = pp.meta ?? {};
+                if ({$predicate}) return true;
+                await new Promise((r) => setTimeout(r, 100));
             }
+            throw new Error('Timed out waiting for server state: {$what}');
         })();
     JS);
 }
@@ -138,14 +132,13 @@ test('story photo shows the fit modes, a saved manual crop survives a reload', f
         ->assertMissing('@media-rules-warning')
         ->assertPresent('@story-fit-hint');
 
-    markStoryFitSaves($page);
     $page->click('@story-fit-mode-manual');
     waitForStoryFit($page, 'story-fit-pick-crop');
     $page->click('@story-fit-pick-crop');
     waitForStoryFit($page, 'crop-save', '!el.disabled');
     $page->click('@crop-save');
     waitForStoryFit($page, 'story-fit-crop-status', "el.textContent.includes('Crop saved')");
-    waitForStoryFitSave($page);
+    waitForStoryFitServerState($page, "meta.story_fit === 'manual' && meta.story_crop && meta.story_crop_media_id", 'manual crop saved');
 
     $meta = $postPlatform->refresh()->meta;
     expect($meta['story_fit'])->toBe('manual')
@@ -172,10 +165,9 @@ test('changing the first story photo no longer counts the crop as saved', functi
     $page->assertSeeIn('@story-fit-crop-status', 'Crop saved');
 
     // Deselect the first photo: the channel now publishes the second one first.
-    markStoryFitSaves($page);
     $page->click("@media-assignment-{$firstPhotoId}");
     waitForStoryFit($page, 'story-fit-crop-status', "el.textContent.includes('No crop chosen')");
-    waitForStoryFitSave($page);
+    waitForStoryFitServerState($page, '(pp.media_ids ?? []).length === 1 && !pp.media_ids.includes("'.$firstPhotoId.'")', 'second photo only');
 
     $page->assertSeeIn('@story-fit-crop-status', 'No crop chosen');
 
@@ -191,6 +183,8 @@ test('deselecting the channel, replacing the first photo and selecting it again 
         'story_fit' => 'manual',
         'story_crop' => ['x' => 0.1, 'y' => 0.0, 'w' => 0.5625, 'h' => 1.0],
     ], photos: 2, bindCropToFirstPhoto: true);
+    $firstPhotoId = data_get($postPlatform->post->media, '0.id');
+    $secondPhotoId = data_get($postPlatform->post->media, '1.id');
 
     $page = visit(route('app.posts.edit', $postPlatform->post));
     waitForStoryFit($page, "channel-{$postPlatform->id}");
@@ -205,8 +199,14 @@ test('deselecting the channel, replacing the first photo and selecting it again 
     waitForStoryFit($page, "channel-{$postPlatform->id}", "el.getAttribute('aria-pressed') === 'true'");
     openStoryFitPanel($page);
 
-    $page->assertSeeIn('@story-fit-crop-status', 'No crop chosen')
-        ->assertNoJavaScriptErrors();
+    $page->assertSeeIn('@story-fit-crop-status', 'No crop chosen');
+    waitForStoryFitServerState($page, "post.media[0].id === '{$secondPhotoId}' && pp.enabled === true", 'first photo replaced, channel selected again');
+
+    // The stored frame still points at the removed photo: it is never silently rebound to the new first one.
+    expect($postPlatform->refresh()->meta['story_crop_media_id'])->toBe($firstPhotoId)
+        ->and(data_get($postPlatform->post->refresh()->media, '0.id'))->toBe($secondPhotoId);
+
+    $page->assertNoJavaScriptErrors();
 });
 
 test('switching from manual to fit drops the saved crop and its photo binding', function () {
@@ -218,9 +218,8 @@ test('switching from manual to fit drops the saved crop and its photo binding', 
     $page = visit(route('app.posts.edit', $postPlatform->post));
     openStoryFitPanel($page);
 
-    markStoryFitSaves($page);
     $page->click('@story-fit-mode-fit');
-    waitForStoryFitSave($page);
+    waitForStoryFitServerState($page, "meta.story_fit === 'fit' && !('story_crop' in meta) && !('story_crop_media_id' in meta)", 'crop fields dropped');
 
     $meta = $postPlatform->refresh()->meta;
     expect($meta['story_fit'])->toBe('fit')

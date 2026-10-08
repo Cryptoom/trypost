@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Media;
 
+use App\Models\PostPlatform;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
@@ -36,28 +37,32 @@ class StoryImageFitter
      * frame is stored with `story_crop_media_id`, and a different (or unknown) first photo means the
      * frame was drawn on another image. Returns null then (center crop), never an error.
      *
-     * @param  mixed  $meta  the platform's meta array
      * @return array<string, mixed>|null
      */
-    public static function boundCrop(mixed $meta, ?string $firstMediaId): ?array
+    public static function boundCrop(PostPlatform $postPlatform, ?string $firstMediaId): ?array
     {
-        $rect = data_get($meta, 'story_crop');
+        $rect = data_get($postPlatform->meta, 'story_crop');
 
         if (! is_array($rect)) {
             return null;
         }
 
-        $boundId = data_get($meta, 'story_crop_media_id');
+        $boundId = data_get($postPlatform->meta, 'story_crop_media_id');
 
-        if ($firstMediaId === null || ! is_string($boundId) || $boundId !== $firstMediaId) {
-            Log::info('Story crop ignored, it is not bound to the first photo', [
-                'reason' => is_string($boundId) ? 'media_mismatch' : 'media_id_missing',
-            ]);
-
-            return null;
+        if ($firstMediaId !== null && is_string($boundId) && $boundId === $firstMediaId) {
+            return $rect;
         }
 
-        return $rect;
+        // Only story posts in manual mode are worth a log line; this runs for every Facebook post.
+        if ($postPlatform->content_type?->autoFitsImage() && data_get($postPlatform->meta, 'story_fit') === 'manual') {
+            Log::info('Story crop ignored, it is not bound to the first photo', [
+                'post_platform_id' => $postPlatform->id,
+                'first_media_id' => $firstMediaId,
+                'bound_media_id' => $boundId,
+            ]);
+        }
+
+        return null;
     }
 
     /**
