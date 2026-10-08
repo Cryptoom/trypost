@@ -325,24 +325,24 @@ bestehende `unpublish_unsupported`-Flash bleibt. Delete des Posts ist unberuehrt
 
 ### Patch 8 · tiktok-disclosure-label  (TTL-01, 08.10.2026)
 
-Fuer das TikTok-Direct-Post-Audit verlangen die Content Sharing Guidelines
-(developers.tiktok.com/doc/content-sharing-guidelines, abgerufen 08.10.2026) fuer den Schalter der
-Werbekennzeichnung den Wortlaut "Indicate whether this content promotes yourself, a brand, product
-or service." (die Seite haengt dort "with this feature turned off by default" als Vorgabe an, das
-ist kein Labeltext, der Schalter ist ohnehin standardmaessig aus). Das Label hiess upstream
-"Disclose video content". Nur Text, kein Verhalten: `lang/*/posts.php`, Key
-`posts.form.tiktok.disclose`, in allen 16 Locales sinngemaess uebersetzt. Der Hinweistext darunter
-(`disclose_hint`) bleibt unveraendert.
+Fuer das TikTok-Direct-Post-Audit steht auf den Content Sharing Guidelines
+(developers.tiktok.com/docs/en/content-sharing-guidelines, abgerufen 08.10.2026) unter der
+Ueberschrift "Content Disclosure Setting" der Satz "Indicate whether this content promotes yourself,
+a brand, product or service, with this feature turned off by default." Das ist die BESCHREIBUNG der
+Einstellung, kein vorgeschriebener Schalter-Text. Darum bleibt das Checkbox-Label
+`posts.form.tiktok.disclose` auf dem Upstream-Wert ("Disclose video content"), und der Satz (ohne
+den Nachsatz, der Schalter ist ohnehin standardmaessig aus) erscheint als eigener Absatz
+(`data-testid="tiktok-disclose-description"`) direkt unter dem Label, ueber `disclose_hint`.
+Neuer Key `posts.form.tiktok.disclose_description` in allen 16 Locales, direkt vor `disclose_hint`.
 
 - **Marker**: `PATCH:tiktok-disclosure-label` (Kommentar in `TikTokSettings.vue`, Testdatei).
-- **Dateien**: `lang/*/posts.php` (`posts.form.tiktok.disclose`), `resources/js/components/posts/editor/TikTokSettings.vue` (nur Kommentar).
-- **Pruef-Grep nach jedem Upstream-Merge**: `grep -n "'disclose' =>" lang/en/posts.php` muss den
-  Satz "Indicate whether this content promotes yourself" zeigen, danach
-  `vendor/bin/pest tests/Unit/TikTokDisclosureLabelTest.php`.
-- **Bruchbedingung**: nach Upstream-Merge Label wieder pruefen (Upstream aendert `lang/*/posts.php`
-  oder `TikTokSettings.vue`), ausserdem vor jeder neuen TikTok-Audit-Einreichung gegen die aktuelle
-  Guidelines-Seite abgleichen.
-- **Tests**: `tests/Unit/TikTokDisclosureLabelTest.php` (Namen mit `ttl01 `).
+- **Dateien**: `lang/*/posts.php` (neuer Key `disclose_description`), `resources/js/components/posts/editor/TikTokSettings.vue` (zusaetzlicher Absatz).
+- **Pruef-Grep nach jedem Upstream-Merge**: `grep -c "'disclose_description' =>" lang/*/posts.php` muss
+  in allen 16 Dateien 1 liefern, `grep -c "tiktok-disclose-description" resources/js/components/posts/editor/TikTokSettings.vue`
+  muss 1 liefern, danach `vendor/bin/pest tests/Unit/TikTokDisclosureLabelTest.php`.
+- **Bruchbedingung**: Upstream aendert `lang/*/posts.php` oder `TikTokSettings.vue` (Absatz faellt weg),
+  ausserdem vor jeder neuen TikTok-Audit-Einreichung gegen die aktuelle Guidelines-Seite abgleichen.
+- **Tests**: `tests/Unit/TikTokDisclosureLabelTest.php` (Namen mit `ttl01 `, exakter Wortlaut je Locale).
 - **Stand**: nicht deployed (Olli-Gate).
 
 ## Geprueft und NICHT gepatcht: is_aigc-Composer-Toggle (25.08.2026)

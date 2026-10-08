@@ -344,12 +344,13 @@ watch(
                 {{ $t('posts.form.tiktok.is_aigc') }}
             </label>
 
-            <!-- PATCH:tiktok-disclosure-label Parent toggle: keep the official TikTok wording (content sharing guidelines) -->
+            <!-- PATCH:tiktok-disclosure-label Parent toggle keeps its upstream label; the TikTok guideline sentence is shown as its description -->
             <div class="space-y-3">
                 <label class="flex items-center gap-2 text-sm font-medium">
                     <Checkbox v-model="discloseOpen" :disabled="props.disabled" />
                     {{ $t('posts.form.tiktok.disclose') }}
                 </label>
+                <p class="ml-6 text-xs font-medium text-foreground/60" data-testid="tiktok-disclose-description">{{ $t("posts.form.tiktok.disclose_description") }}</p>
                 <p class="ml-6 text-xs font-medium text-foreground/60">{{ $t("posts.form.tiktok.disclose_hint") }}</p>
 
                 <!-- Promotional Content warning (shown once a sub-toggle is picked) -->
