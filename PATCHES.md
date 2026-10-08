@@ -205,12 +205,13 @@ vorher: unbeschnittenes Querformat-Video). `Platform::Instagram` und `Platform::
     für Facebook und Instagram. `story_crop` wirkt also nur zusammen mit passender `story_crop_media_id`; API und MCP
     müssen beide Felder senden (die MCP-Tool-Beschreibung sagt es). Editor: `resources/js/lib/imageCrop.ts`
     (`boundStoryCrop`) zeigt "Ausschnitt gespeichert" nur bei passender ID.
-  - **Validierung**: `story_crop` ohne `story_crop_media_id` wird beim Speichern abgelehnt (Web, API, MCP), beide
-    gemeinsam oder beide `null` sind erlaubt. Es wird bewusst nicht gegen die Post-Medien geprüft, sonst käme der
-    Editor nach dem Löschen eines Fotos nicht mehr durch.
+  - **Validierung**: `story_crop_media_id` ist optional (`sometimes|nullable|string|max:64`), `story_crop` ohne ID wird beim
+    Speichern NICHT abgelehnt. Grund: der Editor schickt das gespeicherte Meta bei jedem Autosave zurück, eine Pflichtregel
+    würde Posts mit Rahmen ohne ID sperren (unsichtbarer 422, Änderungen gehen verloren). Ohne passende ID wird beim
+    Veröffentlichen still mittig zugeschnitten (`boundCrop`, Log `media_id_missing` bzw. Abweichung).
   - **Bestandsdaten**: bereits gespeicherte `manual`-Posts ohne `story_crop_media_id` (aus der Zeit zwischen PR #25
-    und diesem PR, beides vor dem Deploy noch nicht live) werden nach dem Deploy mittig zugeschnitten, es gibt keine
-    Migration. API- und MCP-Clients müssen beide Felder senden.
+    und diesem PR, beides vor dem Deploy noch nicht live) werden beim Veröffentlichen mittig zugeschnitten und lassen sich
+    weiter speichern, es gibt keine Migration. API- und MCP-Clients sollten beide Felder senden, sonst wirkt der Rahmen nicht.
 - **Verhaltensänderungen** (bewusst, Olli-Entscheid 08.10.2026):
   - (a) Instagram-Story-Fotos ohne `story_fit` werden jetzt mittig auf 9:16 zugeschnitten, statt als ganzes Foto
     auf Unschärfe-Hintergrund zu erscheinen (Standard bleibt `center`, kein Rückbau auf `fit`). Deshalb Deploy

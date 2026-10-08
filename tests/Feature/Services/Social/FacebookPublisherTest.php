@@ -1335,6 +1335,8 @@ test('tps01 facebook story log notes an unbound crop only for manual story posts
     Log::spy();
     StoryImageFitter::boundCrop(PostPlatform::make(['content_type' => ContentType::FacebookPost, 'meta' => ['story_fit' => 'manual', 'story_crop' => $rect]]), 'a');
     StoryImageFitter::boundCrop(PostPlatform::make(['content_type' => ContentType::FacebookStory, 'meta' => ['story_fit' => 'center']]), 'a');
+    // A leftover frame on a story that is no longer manual is not worth a log line either.
+    StoryImageFitter::boundCrop(PostPlatform::make(['content_type' => ContentType::FacebookStory, 'meta' => ['story_fit' => 'fit', 'story_crop' => $rect, 'story_crop_media_id' => 'b']]), 'a');
     Log::shouldNotHaveReceived('info');
 
     $platform = PostPlatform::make(['content_type' => ContentType::FacebookStory, 'meta' => ['story_fit' => 'manual', 'story_crop' => $rect, 'story_crop_media_id' => 'b']]);

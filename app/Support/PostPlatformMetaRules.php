@@ -9,9 +9,6 @@ use App\Enums\SocialAccount\Platform;
 use App\Enums\TikTok\PrivacyLevel;
 use App\Models\Post;
 use Closure;
-use Illuminate\Contracts\Validation\DataAwareRule;
-use Illuminate\Contracts\Validation\ValidationRule;
-use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Validation\Validator;
@@ -64,32 +61,10 @@ class PostPlatformMetaRules
             }],
             // The photo `story_crop` was drawn on. The frame only applies while it is still the first
             // photo this platform publishes (StoryImageFitter::boundCrop).
-            // Required whenever a frame is sent, so API and MCP clients get the error on save instead of a
-            // silent center crop at publish time. Deliberately not checked against the post's media: the editor
-            // must still be able to save after a photo was removed.
-            'platforms.*.meta.story_crop_media_id' => ['nullable', 'string', 'max:64', new class implements DataAwareRule, ValidationRule
-            {
-                public bool $implicit = true;
-
-                /** @var array<string, mixed> */
-                private array $data = [];
-
-                public function setData(array $data): static
-                {
-                    $this->data = $data;
-
-                    return $this;
-                }
-
-                public function validate(string $attribute, mixed $value, Closure $fail): void
-                {
-                    $cropAttribute = Str::beforeLast($attribute, '.').'.story_crop';
-
-                    if (is_array(data_get($this->data, $cropAttribute)) && blank($value)) {
-                        $fail('Send story_crop_media_id together with story_crop: the id of the photo the crop was drawn on.');
-                    }
-                }
-            }],
+            // Deliberately NOT required with `story_crop`: the editor sends the stored meta back on every
+            // autosave, so a hard requirement would lock out posts that carry a frame without an id. Without a
+            // matching id the frame is simply ignored at publish time (StoryImageFitter::boundCrop).
+            'platforms.*.meta.story_crop_media_id' => ['sometimes', 'nullable', 'string', 'max:64'],
             'platforms.*.meta.story_crop.x' => ['numeric', 'between:0,1'],
             'platforms.*.meta.story_crop.y' => ['numeric', 'between:0,1'],
             'platforms.*.meta.story_crop.w' => ['numeric', 'gt:0', 'max:1'],

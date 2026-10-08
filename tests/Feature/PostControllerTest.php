@@ -1685,29 +1685,32 @@ test('update post accepts valid instagram aspect_ratio meta', function () {
     expect(data_get($postPlatform->meta, 'aspect_ratio'))->toBe('4:5');
 });
 
-test('tps01 meta rules story crop web update needs the photo id and accepts both or neither', function () {
+test('tps01 meta rules story crop web update accepts a frame without photo id and keeps saving', function () {
     $account = SocialAccount::factory()->facebook()->create(['workspace_id' => $this->workspace->id]);
-    $post = Post::factory()->create(['workspace_id' => $this->workspace->id, 'user_id' => $this->user->id, 'status' => PostStatus::Draft]);
-    $postPlatform = PostPlatform::factory()->facebookStory()->create(['post_id' => $post->id, 'social_account_id' => $account->id]);
     $crop = ['x' => 0.1, 'y' => 0, 'w' => 0.3164, 'h' => 1];
-
-    $update = fn (array $meta) => $this->actingAs($this->user)->put(route('app.posts.update', $post), [
-        'status' => 'draft',
-        'platforms' => [['id' => $postPlatform->id, 'content_type' => ContentType::FacebookStory->value, 'meta' => $meta]],
+    $post = Post::factory()->create(['workspace_id' => $this->workspace->id, 'user_id' => $this->user->id, 'status' => PostStatus::Draft, 'content' => 'before']);
+    // Older data: a frame stored without the id of its photo.
+    $postPlatform = PostPlatform::factory()->facebookStory()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $account->id,
+        'meta' => ['story_fit' => 'manual', 'story_crop' => $crop],
     ]);
 
-    // A frame without the photo it was drawn on, or with an empty id, is rejected on save with a readable message.
-    foreach ([['story_fit' => 'manual', 'story_crop' => $crop], ['story_fit' => 'manual', 'story_crop' => $crop, 'story_crop_media_id' => null]] as $meta) {
-        $update($meta)->assertSessionHasErrors('platforms.0.meta.story_crop_media_id');
-    }
+    // The editor sends the stored meta back on every autosave: it must not be rejected.
+    $this->actingAs($this->user)->put(route('app.posts.update', $post), [
+        'status' => 'draft',
+        'content' => 'after',
+        'platforms' => [['id' => $postPlatform->id, 'content_type' => ContentType::FacebookStory->value, 'meta' => ['story_fit' => 'manual', 'story_crop' => $crop]]],
+    ])->assertSessionDoesntHaveErrors();
 
-    expect(session('errors')->first('platforms.0.meta.story_crop_media_id'))->toContain('story_crop_media_id');
+    expect($post->refresh()->content)->toBe('after')
+        ->and($postPlatform->refresh()->meta['story_crop'])->toBe($crop);
 
-    // Both fields together, or both cleared together (what the editor sends), are fine.
-    $update(['story_fit' => 'manual', 'story_crop' => $crop, 'story_crop_media_id' => 'photo-1'])
-        ->assertSessionDoesntHaveErrors();
-    $update(['story_fit' => 'fit', 'story_crop' => null, 'story_crop_media_id' => null])
-        ->assertSessionDoesntHaveErrors();
+    // A frame sent with an explicit null id is accepted too (it is ignored at publish time, centered).
+    $this->actingAs($this->user)->put(route('app.posts.update', $post), [
+        'status' => 'draft',
+        'platforms' => [['id' => $postPlatform->id, 'content_type' => ContentType::FacebookStory->value, 'meta' => ['story_fit' => 'manual', 'story_crop' => $crop, 'story_crop_media_id' => null]]],
+    ])->assertSessionDoesntHaveErrors();
 });
 
 test('scheduling without content_type per platform fails', function () {
