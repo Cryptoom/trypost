@@ -304,6 +304,8 @@ bestehende `unpublish_unsupported`-Flash bleibt. Delete des Posts ist unberuehrt
 `posts.actions.unpublish_unsupported_story` in allen 16 Locales.
 
 - **Marker**: `PATCH:unp-01`.
+- **Scope**: die Verfuegbarkeit zaehlt ALLE veroeffentlichten Zeilen (auch deaktivierte, eine Zusatzabfrage
+  pro Seite), weil `UnpublishPost::execute()` sie ebenfalls entfernt.
 - **Dateien**: `app/Actions/Post/UnpublishPost.php`, `app/Models/PostPlatform.php`, `app/Models/Post.php`,
   `app/Http/Controllers/App/PostController.php`, `resources/js/pages/posts/Index.vue`, `lang/*/posts.php`
   (`posts.actions.unpublish_unsupported_story`).
