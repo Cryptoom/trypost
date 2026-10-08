@@ -173,9 +173,10 @@ Foto auf Unschärfe-Hintergrund). Facebook rendert danach wie bisher das Story-V
 aber aus dem fertigen 1080 x 1920 Bild. Upstream löst Foto-Stories seit #374 anders (`photo_stories`
 ohne Musik), ein Merge würde unseren Musik-Weg brechen, darum dieser schmale eigene Patch.
 
-Schadensklasse kundendaten: PlayCraft veröffentlicht über dieselbe Instanz. Ein Story-Post ohne
-`story_fit` verhält sich wie bisher, nur mittig auf 9:16. Feed-Posts, Reels und Videos sind
-unverändert. `Platform::Instagram` und `Platform::InstagramFacebook` nutzen dieselbe
+Schadensklasse kundendaten: PlayCraft veröffentlicht über dieselbe Instanz. Feed-Posts, Reels und
+Videos sind unverändert. Story-Fotos ohne `story_fit` werden jetzt mittig auf 9:16 zugeschnitten
+(Instagram vorher: ganzes Foto auf Unschärfe-Hintergrund, siehe Verhaltensänderungen (a); Facebook
+vorher: unbeschnittenes Querformat-Video). `Platform::Instagram` und `Platform::InstagramFacebook` nutzen dieselbe
 `InstagramPublisher`-Instanz, das Fitting gilt für beide Wege gleich.
 
 - **Marker**: `PATCH:story-photo-fit` als Kommentar an jeder Berührungsstelle.
@@ -203,8 +204,9 @@ unverändert. `Platform::Instagram` und `Platform::InstagramFacebook` nutzen die
 - **Bruchbedingung**: Upstream ändert `FacebookPublisher::convertImageToStoryVideo`, `InstagramPublisher::publishStory`
   oder `ContentType::autoFitsImage()` und der Merge läuft konfliktfrei durch. Dann Marker einzeln
   gegenprüfen, nicht auf einen Merge-Konflikt verlassen.
-- **Tests**: alle Tests tragen das Präfix `tps01_` (Fitter, Suggester, `cropToRect`, Facebook- und
-  Instagram-Story, Meta-Regeln in API und MCP, Scale/Pad, `autoFitsImage`).
+- **Tests**: alle Pest-Namen beginnen mit `tps01 ` (Leerzeichen, Filter `--filter=tps01`; nur die Tempfile-Präfixe
+  haben Unterstriche). Abgedeckt: Fitter, Suggester, `cropToRect`, Facebook- und Instagram-Story,
+  Meta-Regeln in API und MCP, Scale/Pad, `autoFitsImage`, Tempfile-Aufräumen.
 - **Server**: das Produktions-Image hat nur GD (kein Imagick), die GD-Pfade sind getestet. Der
   Gemini-Key kommt aus `services.gemini.api_key`, ohne Key bleibt `smart` bei `center`.
 - **Stand**: noch nicht deployed (Editor-Teil E1 folgt, Deploy ist ein eigenes Olli-Gate).

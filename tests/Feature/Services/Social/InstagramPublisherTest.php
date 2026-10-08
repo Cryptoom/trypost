@@ -14,6 +14,7 @@ use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Services\Media\MediaOptimizer;
+use App\Services\Media\StoryImageFitter;
 use App\Services\Social\InstagramPublisher;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Factory;
@@ -2221,15 +2222,6 @@ test('tps01 instagram story mode fits the story photo according to story_fit', f
         ->and($fit->colorAt(980, 960)->blue()->value())->toBeGreaterThan(150);
 });
 
-function tps01InstagramStoryTempLeftovers(): array
-{
-    return array_merge(
-        glob(sys_get_temp_dir().'/story_in_*') ?: [],
-        glob(sys_get_temp_dir().'/media_cover_*') ?: [],
-        glob(sys_get_temp_dir().'/media_rect_*') ?: [],
-    );
-}
-
 function tps01InstagramStoryHostingFailsLeavesNothing(object $test, ?array $meta): void
 {
     $test->postPlatform->update(['content_type' => ContentType::InstagramStory, 'meta' => $meta]);
@@ -2243,15 +2235,32 @@ function tps01InstagramStoryHostingFailsLeavesNothing(object $test, ?array $meta
         ]],
     ]);
 
-    Http::fake(['https://example.com/media/story.jpg' => Http::response(fakeJpegBytes(1600, 900), 200)]);
+    // A fitter that hands out a file this test owns, so the check never looks at the shared temp dir
+    // (other tests create story_in_* / media_cover_* files in parallel runs).
+    $fake = new class extends StoryImageFitter
+    {
+        public ?string $producedPath = null;
 
-    $before = tps01InstagramStoryTempLeftovers();
+        public function __construct() {}
+
+        public function fit(string $imagePath, mixed $mode, mixed $rect = null): string
+        {
+            $this->producedPath = tempnam(sys_get_temp_dir(), 'tps01_fitter_out_');
+            file_put_contents($this->producedPath, 'fitted-bytes');
+
+            return $this->producedPath;
+        }
+    };
+    app()->instance(StoryImageFitter::class, $fake);
+
+    Http::fake(['https://example.com/media/story.jpg' => Http::response(fakeJpegBytes(1600, 900), 200)]);
 
     Storage::shouldReceive('put')->once()->andThrow(new RuntimeException('disk full'));
 
     expect(fn () => $test->publisher->publish($test->postPlatform->fresh()))->toThrow(RuntimeException::class);
 
-    expect(array_values(array_diff(tps01InstagramStoryTempLeftovers(), $before)))->toBe([]);
+    expect($fake->producedPath)->not->toBeNull()
+        ->and(file_exists($fake->producedPath))->toBeFalse();
 }
 
 test('tps01 instagram story without story_fit leaves no temp files when hosting fails', function () {
