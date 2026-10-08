@@ -41,6 +41,13 @@ const sizeParams = (cap: number, size: number): Record<string, string> => {
 export const isStoryPhoto = (contentType: string, media: MediaItem[]): boolean =>
     getMediaRulesForContentType(contentType).autoFitsImage === true && media.length > 0 && isImage(media[0]);
 
+/**
+ * PATCH:story-photo-fit: the media a platform publishes, in the post's media order, narrowed by
+ * its selection (an empty selection means every item). Mirrors PostPlatform::scopedMediaItems().
+ */
+export const scopedMedia = (media: MediaItem[], mediaIds: string[] = []): MediaItem[] =>
+    mediaIds.length === 0 ? media : media.filter((item) => mediaIds.includes(item.id));
+
 const formatAspect = (ratio: number): string => ratio.toFixed(2);
 
 const warning = (key: string, params: Record<string, string> = {}): MediaValidationWarning => ({ key, params });

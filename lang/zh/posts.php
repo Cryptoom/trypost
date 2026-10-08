@@ -702,7 +702,7 @@ return [
             ],
             'smart' => [
                 'label' => '智能',
-                'description' => 'AI 选择最佳的 9:16 裁剪区域。如果失败，则使用居中裁剪。',
+                'description' => 'AI 选择最佳的 9:16 裁剪区域。如果失败，则使用居中裁剪。为此，照片会被发送到 Google Gemini。',
             ],
             'manual' => [
                 'label' => '手动',

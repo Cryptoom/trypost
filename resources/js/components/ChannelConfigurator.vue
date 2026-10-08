@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // PATCH:story-photo-fit: passes the per-platform media selection to the Facebook and Instagram settings.
 import { IconAlertCircle, IconCircleCheck, IconExternalLink } from '@tabler/icons-vue';
-import { computed } from 'vue';
+import { computed, watch } from 'vue';
 
 import DiscordSettings from '@/components/posts/editor/DiscordSettings.vue';
 import FacebookSettings from '@/components/posts/editor/FacebookSettings.vue';
@@ -13,6 +13,7 @@ import TikTokSettings from '@/components/posts/editor/TikTokSettings.vue';
 import { Avatar } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { scopedMedia } from '@/composables/useMedia';
 import { getPlatformLabel, getPlatformLogo } from '@/composables/usePlatformLogo';
 import type { Channel } from '@/types/channel';
 import type { MediaItem } from '@/types/media';
@@ -48,6 +49,24 @@ const settingsProps = (channel: Channel) => ({
     meta: channel.meta,
     disabled: props.disabled,
     'onUpdate:meta': (value: Record<string, any>) => emit('update:meta', channel.id, value),
+});
+
+// A saved story_crop belongs to the photo it was drawn on. When the first media a channel publishes
+// changes (upload, removal, AI regeneration, reassignment), drop the frame. This lives here and not in
+// StoryFitSettings because that component unmounts when the content type changes. The null is sent
+// explicitly: the server merges meta and a missing key would leave the old frame in place.
+const firstMediaIdByChannel = computed(() =>
+    Object.fromEntries(selectedChannels.value.map((channel) => [channel.id, scopedMedia(props.media, channel.mediaIds)[0]?.id ?? null])),
+);
+
+watch(firstMediaIdByChannel, (current, previous) => {
+    for (const channel of selectedChannels.value) {
+        const before = previous[channel.id];
+
+        if (before && before !== current[channel.id] && channel.meta?.story_crop) {
+            emit('update:meta', channel.id, { ...channel.meta, story_crop: null });
+        }
+    }
 });
 </script>
 

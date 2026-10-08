@@ -41,7 +41,9 @@ const photo = computed(() => props.media[0] ?? null);
 
 const pickMode = (mode: string) => {
     if (props.disabled) return;
-    emit('update:meta', { ...props.meta, story_fit: mode });
+    // Leaving manual drops the frame (explicit null: the server merges meta and ignores missing keys),
+    // so a stale frame cannot silently come back later.
+    emit('update:meta', { ...props.meta, story_fit: mode, story_crop: mode === 'manual' ? props.meta.story_crop ?? null : null });
 };
 
 const saveRect = (rect: NormalizedRect) => {

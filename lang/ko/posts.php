@@ -702,7 +702,7 @@ return [
             ],
             'smart' => [
                 'label' => '스마트',
-                'description' => 'AI가 가장 좋은 9:16 영역을 고릅니다. 실패하면 가운데가 사용됩니다.',
+                'description' => 'AI가 가장 좋은 9:16 영역을 고릅니다. 실패하면 가운데가 사용됩니다. 이를 위해 사진이 Google Gemini로 전송됩니다.',
             ],
             'manual' => [
                 'label' => '수동',

@@ -702,7 +702,7 @@ return [
             ],
             'smart' => [
                 'label' => 'Intelligente',
-                'description' => 'L\'IA sceglie il miglior ritaglio 9:16. Se non riesce, viene usato il centro.',
+                'description' => 'L\'IA sceglie il miglior ritaglio 9:16. Se non riesce, viene usato il centro. A tal fine la foto viene inviata a Google Gemini.',
             ],
             'manual' => [
                 'label' => 'Manuale',

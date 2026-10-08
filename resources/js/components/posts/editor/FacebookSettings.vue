@@ -8,7 +8,7 @@ import MediaRulesWarning from '@/components/posts/editor/MediaRulesWarning.vue';
 import StoryFitSettings from '@/components/posts/editor/StoryFitSettings.vue';
 import { Avatar } from '@/components/ui/avatar';
 import { Textarea } from '@/components/ui/textarea';
-import { isStoryPhoto } from '@/composables/useMedia';
+import { isStoryPhoto, scopedMedia } from '@/composables/useMedia';
 import { getPlatformLogo } from '@/composables/usePlatformLogo';
 import { ContentType } from '@/types/content-type';
 import type { MediaItem } from '@/types/media';
@@ -64,13 +64,7 @@ const isStory = computed(() => props.contentType === ContentType.FacebookStory);
 const selectedAspectRatio = computed(() => props.meta.aspect_ratio ?? 'original');
 
 // The publisher uses the first media of THIS platform's selection, so the fit settings must too.
-const storyMedia = computed(() => {
-    const assigned = props.mediaIds
-        .map((id) => props.media.find((item) => item.id === id))
-        .filter((item): item is MediaItem => item !== undefined);
-
-    return assigned.length > 0 ? assigned : props.media;
-});
+const storyMedia = computed(() => scopedMedia(props.media, props.mediaIds));
 const showStoryFit = computed(() => isStoryPhoto(props.contentType, storyMedia.value));
 
 const pickVariant = (value: string) => {

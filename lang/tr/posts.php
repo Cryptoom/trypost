@@ -704,7 +704,7 @@ return [
             ],
             'smart' => [
                 'label' => 'Akıllı',
-                'description' => 'Yapay zeka en iyi 9:16 kırpmayı seçer. Başarısız olursa orta kısım kullanılır.',
+                'description' => 'Yapay zeka en iyi 9:16 kırpmayı seçer. Başarısız olursa orta kısım kullanılır. Bunun için fotoğraf Google Gemini\'ye gönderilir.',
             ],
             'manual' => [
                 'label' => 'Manuel',

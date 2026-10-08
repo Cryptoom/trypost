@@ -702,7 +702,7 @@ return [
             ],
             'smart' => [
                 'label' => 'Inteligentny',
-                'description' => 'AI wybiera najlepsze kadrowanie 9:16. Jeśli się nie uda, użyty zostanie środek.',
+                'description' => 'AI wybiera najlepsze kadrowanie 9:16. Jeśli się nie uda, użyty zostanie środek. W tym celu zdjęcie jest wysyłane do Google Gemini.',
             ],
             'manual' => [
                 'label' => 'Ręczny',

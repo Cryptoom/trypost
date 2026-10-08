@@ -702,7 +702,7 @@ return [
             ],
             'smart' => [
                 'label' => 'Smart',
-                'description' => 'AI picks the best 9:16 crop. If that fails, the center is used.',
+                'description' => 'AI picks the best 9:16 crop. If that fails, the center is used. The photo is sent to Google Gemini for this.',
             ],
             'manual' => [
                 'label' => 'Manual',

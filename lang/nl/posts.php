@@ -702,7 +702,7 @@ return [
             ],
             'smart' => [
                 'label' => 'Slim',
-                'description' => 'De AI kiest de beste 9:16-uitsnede. Lukt dat niet, dan wordt het midden gebruikt.',
+                'description' => 'De AI kiest de beste 9:16-uitsnede. Lukt dat niet, dan wordt het midden gebruikt. Hiervoor wordt de foto naar Google Gemini gestuurd.',
             ],
             'manual' => [
                 'label' => 'Handmatig',

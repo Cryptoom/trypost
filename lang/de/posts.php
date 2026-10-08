@@ -704,7 +704,7 @@ return [
             ],
             'smart' => [
                 'label' => 'Smart',
-                'description' => 'Die KI wählt den besten 9:16-Ausschnitt. Klappt das nicht, wird mittig zugeschnitten.',
+                'description' => 'Die KI wählt den besten 9:16-Ausschnitt. Klappt das nicht, wird mittig zugeschnitten. Dafür wird das Foto an Google Gemini gesendet.',
             ],
             'manual' => [
                 'label' => 'Manuell',

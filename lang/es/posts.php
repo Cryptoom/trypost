@@ -703,7 +703,7 @@ return [
             ],
             'smart' => [
                 'label' => 'Inteligente',
-                'description' => 'La IA elige el mejor recorte 9:16. Si falla, se usa el centro.',
+                'description' => 'La IA elige el mejor recorte 9:16. Si falla, se usa el centro. Para ello, la foto se envía a Google Gemini.',
             ],
             'manual' => [
                 'label' => 'Manual',

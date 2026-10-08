@@ -702,7 +702,7 @@ return [
             ],
             'smart' => [
                 'label' => 'Intelligent',
-                'description' => 'L\'IA choisit le meilleur cadrage 9:16. En cas d\'échec, le centre est utilisé.',
+                'description' => 'L\'IA choisit le meilleur cadrage 9:16. En cas d\'échec, le centre est utilisé. Pour cela, la photo est envoyée à Google Gemini.',
             ],
             'manual' => [
                 'label' => 'Manuel',
