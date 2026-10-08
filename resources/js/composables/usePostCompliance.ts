@@ -136,6 +136,15 @@ export const getMediaIncompatibilityReason = (
     const warning = getMediaValidationWarning(contentType, mediaItems);
     if (!warning) return null;
 
+    // PATCH:story-photo-fit: story photos are fitted to 9:16 server-side, so an aspect-ratio
+    // warning on an auto-fitting type can only come from a video. Say what is needed.
+    if (
+        (warning.key === 'aspect_ratio_too_narrow' || warning.key === 'aspect_ratio_too_wide') &&
+        getMediaRulesForContentType(contentType).autoFitsImage
+    ) {
+        return trans('posts.story_fit.video_aspect', { current: warning.params.current });
+    }
+
     const complianceKey = COMPLIANCE_KEY_BY_WARNING[warning.key];
     if (!complianceKey) return trans('posts.edit.compliance_incomplete');
 

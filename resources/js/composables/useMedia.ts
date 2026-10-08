@@ -33,6 +33,14 @@ const sizeParams = (cap: number, size: number): Record<string, string> => {
     return { max: formatBytes(cap, decimal, 0), current: formatBytes(size, decimal, 1) };
 };
 
+/**
+ * PATCH:story-photo-fit: a story whose first media is a photo. The server fits those to 9:16
+ * (see ContentType::autoFitsImage), so the editor shows the fit settings and an info hint
+ * instead of an aspect-ratio error. Videos and every other content type are not affected.
+ */
+export const isStoryPhoto = (contentType: string, media: MediaItem[]): boolean =>
+    getMediaRulesForContentType(contentType).autoFitsImage === true && media.length > 0 && isImage(media[0]);
+
 const formatAspect = (ratio: number): string => ratio.toFixed(2);
 
 const warning = (key: string, params: Record<string, string> = {}): MediaValidationWarning => ({ key, params });

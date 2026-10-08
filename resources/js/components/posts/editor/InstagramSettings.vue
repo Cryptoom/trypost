@@ -1,9 +1,12 @@
 <script setup lang="ts">
+// PATCH:story-photo-fit: StoryFitSettings for story photos.
 import { IconChevronDown, IconChevronUp } from '@tabler/icons-vue';
 import { computed, ref } from 'vue';
 
 import MediaRulesWarning from '@/components/posts/editor/MediaRulesWarning.vue';
+import StoryFitSettings from '@/components/posts/editor/StoryFitSettings.vue';
 import { Avatar } from '@/components/ui/avatar';
+import { isStoryPhoto } from '@/composables/useMedia';
 import { getPlatformLogo } from '@/composables/usePlatformLogo';
 import { ContentType } from '@/types/content-type';
 import type { MediaItem } from '@/types/media';
@@ -54,6 +57,8 @@ const aspectRatios = [
 
 const isFeed = computed(() => props.contentType === ContentType.InstagramFeed);
 const selectedAspectRatio = computed(() => props.meta.aspect_ratio ?? '1:1');
+
+const showStoryFit = computed(() => isStoryPhoto(props.contentType, props.media));
 
 const pickVariant = (value: string) => {
     if (props.disabled) return;
@@ -138,7 +143,15 @@ const pickAspectRatio = (value: string) => {
                 </div>
             </div>
 
-            <MediaRulesWarning :content-type="contentType" :media="media" :platform="Platform.Instagram" />
+            <StoryFitSettings
+                v-if="showStoryFit"
+                :meta="meta"
+                :media="media"
+                :disabled="disabled"
+                @update:meta="emit('update:meta', $event)"
+            />
+
+            <MediaRulesWarning :content-type="contentType" :media="media" :platform="Platform.Instagram" :meta="meta" />
         </div>
     </div>
 </template>

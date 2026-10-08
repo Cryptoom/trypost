@@ -192,6 +192,13 @@ vorher: unbeschnittenes Querformat-Video). `Platform::Instagram` und `Platform::
     gehalten, weil diese Datei bei Upstream-Merges Konflikte erzeugt)
   - `app/Enums/PostPlatform/ContentType.php` (`autoFitsImage()` auch für `FacebookStory`)
   - `app/Support/PostPlatformMetaRules.php` (`story_fit`, `story_crop`, einzige Stelle für Meta-Regeln)
+  - Editor (E1, Frontend, alle mit Marker): `resources/js/lib/imageCrop.ts` (Parameter `aspect`, Normalisierung),
+    `resources/js/components/ImageCropperDialog.vue` (Props `aspect`, `emitRectOnly`, `initialRect`; `PhotoUpload` bleibt unverändert),
+    `resources/js/components/posts/editor/StoryFitSettings.vue` (neu), `FacebookSettings.vue`, `InstagramSettings.vue`,
+    `MediaRulesWarning.vue` (Info-Hinweis je Modus statt Fehler bei Story-Fotos), `resources/js/composables/useMedia.ts`
+    (`isStoryPhoto`), `resources/js/composables/usePostCompliance.ts` (klarer Text für Story-Videos), `lang/*/posts.php`
+    (`posts.story_fit.*` in allen 16 Locales). Videos, Feed-Posts und Reels sind unverändert: Die Aufhebung der Sperre für
+    Story-Fotos kommt weiter allein aus `autoFitsImage` des Backends.
 - **Verhaltensänderungen** (bewusst, Olli-Entscheid 08.10.2026):
   - (a) Instagram-Story-Fotos ohne `story_fit` werden jetzt mittig auf 9:16 zugeschnitten, statt als ganzes Foto
     auf Unschärfe-Hintergrund zu erscheinen (Standard bleibt `center`, kein Rückbau auf `fit`). Deshalb Deploy
