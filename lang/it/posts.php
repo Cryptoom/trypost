@@ -691,4 +691,41 @@ return [
             ],
         ],
     ],
+
+    // PATCH:story-photo-fit
+    'story_fit' => [
+        'label' => 'Formato della foto della storia',
+        'modes' => [
+            'center' => [
+                'label' => 'Centrato',
+                'description' => 'Ritaglia il centro della foto in 9:16.',
+            ],
+            'smart' => [
+                'label' => 'Intelligente',
+                'description' => 'L\'IA sceglie il miglior ritaglio 9:16. Se non riesce, viene usato il centro. A tal fine la foto viene inviata a Google Gemini.',
+            ],
+            'manual' => [
+                'label' => 'Manuale',
+                'description' => 'Scegli tu il ritaglio 9:16.',
+            ],
+            'fit' => [
+                'label' => 'Adatta',
+                'description' => 'Mostra l\'intera foto su uno sfondo sfocato.',
+            ],
+        ],
+        'pick_crop' => 'Scegli ritaglio',
+        'change_crop' => 'Cambia ritaglio',
+        'crop_saved' => 'Ritaglio salvato.',
+        'crop_missing' => 'Nessun ritaglio scelto. Finché non ne scegli uno, viene usato il centro.',
+        'crop_title' => 'Scegli il ritaglio della storia',
+        'crop_description' => 'Sposta il riquadro per scegliere la parte della foto mostrata nella storia 9:16.',
+        'hints' => [
+            'center' => 'La foto viene ritagliata in 9:16 attorno al centro.',
+            'smart' => 'L\'IA sceglie il miglior ritaglio 9:16 della foto. Se non riesce, viene usato il centro.',
+            'manual' => 'La foto viene ritagliata sull\'area 9:16 che hai scelto.',
+            'manual_missing' => 'Nessun ritaglio scelto. La foto viene ritagliata attorno al centro finché non ne scegli uno.',
+            'fit' => 'L\'intera foto viene mostrata in 9:16 su uno sfondo sfocato.',
+        ],
+        'video_aspect' => 'Un video storia deve essere 9:16, questo è :current.',
+    ],
 ];

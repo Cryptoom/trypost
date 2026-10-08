@@ -501,6 +501,28 @@ test('create post rejects invalid Pinterest destination link', function () {
     $response->assertHasErrors();
 });
 
+test('tps01 meta rules story crop mcp accepts a frame without photo id', function () {
+    $facebook = SocialAccount::factory()->facebook()->create(['workspace_id' => $this->workspace->id]);
+    $crop = ['x' => 0.1, 'y' => 0, 'w' => 0.3164, 'h' => 1];
+
+    $platforms = fn (array $meta) => [[
+        'social_account_id' => $facebook->id,
+        'content_type' => ContentType::FacebookStory->value,
+        'meta' => $meta,
+    ]];
+
+    foreach ([
+        ['story_fit' => 'manual', 'story_crop' => $crop],
+        ['story_fit' => 'manual', 'story_crop' => $crop, 'story_crop_media_id' => null],
+        ['story_fit' => 'manual', 'story_crop' => $crop, 'story_crop_media_id' => 'photo-1'],
+        ['story_fit' => 'center', 'story_crop' => null, 'story_crop_media_id' => null],
+    ] as $meta) {
+        TryPostServer::actingAs($this->user)
+            ->tool(CreatePostTool::class, ['content' => 'Story', 'platforms' => $platforms($meta)])
+            ->assertOk();
+    }
+});
+
 test('tps01 meta rules story fit mcp create post persists story_fit and rejects invalid crops', function () {
     $facebook = SocialAccount::factory()->facebook()->create(['workspace_id' => $this->workspace->id]);
 
@@ -513,14 +535,15 @@ test('tps01 meta rules story fit mcp create post persists story_fit and rejects 
     TryPostServer::actingAs($this->user)
         ->tool(CreatePostTool::class, [
             'content' => 'Story',
-            'platforms' => $platforms(['story_fit' => 'manual', 'story_crop' => ['x' => 0.1, 'y' => 0, 'w' => 0.3164, 'h' => 1]]),
+            'platforms' => $platforms(['story_fit' => 'manual', 'story_crop' => ['x' => 0.1, 'y' => 0, 'w' => 0.3164, 'h' => 1], 'story_crop_media_id' => 'media-abc']),
         ])
         ->assertOk();
 
     $meta = PostPlatform::where('social_account_id', $facebook->id)->sole()->meta;
 
     expect($meta['story_fit'])->toBe('manual')
-        ->and(data_get($meta, 'story_crop.x'))->toBe(0.1);
+        ->and(data_get($meta, 'story_crop.x'))->toBe(0.1)
+        ->and($meta['story_crop_media_id'])->toBe('media-abc');
 
     TryPostServer::actingAs($this->user)
         ->tool(CreatePostTool::class, [

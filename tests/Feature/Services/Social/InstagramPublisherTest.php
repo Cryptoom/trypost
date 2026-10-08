@@ -8,6 +8,7 @@ use App\Exceptions\PlatformUnavailableException;
 use App\Exceptions\Social\ErrorCategory;
 use App\Exceptions\Social\InstagramPublishException;
 use App\Exceptions\TokenExpiredException;
+use App\Models\Media;
 use App\Models\Post;
 use App\Models\PostPlatform;
 use App\Models\SocialAccount;
@@ -2200,7 +2201,7 @@ test('tps01 instagram story mode fits the story photo according to story_fit', f
     }
 
     // manual: the user's rectangle inside the blue half.
-    $manual = $publishStoryWith(['story_fit' => 'manual', 'story_crop' => ['x' => 0.6, 'y' => 0, 'w' => 0.31640625, 'h' => 1]]);
+    $manual = $publishStoryWith(['story_fit' => 'manual', 'story_crop' => ['x' => 0.6, 'y' => 0, 'w' => 0.31640625, 'h' => 1], 'story_crop_media_id' => 'test-media-story']);
 
     expect($manual->width())->toBe(1080)
         ->and($manual->height())->toBe(1920)
@@ -2208,10 +2209,19 @@ test('tps01 instagram story mode fits the story photo according to story_fit', f
         ->and($manual->colorAt(540, 960)->red()->value())->toBeLessThan(100);
 
     // manual with a broken rectangle publishes a center crop instead of failing.
-    $broken = $publishStoryWith(['story_fit' => 'manual', 'story_crop' => ['x' => 2, 'y' => 0, 'w' => 0.1, 'h' => 0.1]]);
+    $broken = $publishStoryWith(['story_fit' => 'manual', 'story_crop' => ['x' => 2, 'y' => 0, 'w' => 0.1, 'h' => 0.1], 'story_crop_media_id' => 'test-media-story']);
 
     expect($broken->height())->toBe(1920)
         ->and($broken->colorAt(5, 960)->red()->value())->toBeGreaterThan(150);
+
+    // manual with a frame drawn on another photo, or with no recorded photo: center crop, never an error.
+    foreach ([['story_crop_media_id' => 'some-other-photo'], []] as $binding) {
+        $unbound = $publishStoryWith(['story_fit' => 'manual', 'story_crop' => ['x' => 0.6, 'y' => 0, 'w' => 0.31640625, 'h' => 1], ...$binding]);
+
+        expect($unbound->height())->toBe(1920)
+            ->and($unbound->colorAt(5, 960)->red()->value())->toBeGreaterThan(150)
+            ->and($unbound->colorAt(1074, 960)->blue()->value())->toBeGreaterThan(150);
+    }
 
     // fit: the whole photo stays visible on a blurred background.
     $fit = $publishStoryWith(['story_fit' => 'fit']);
@@ -2220,6 +2230,76 @@ test('tps01 instagram story mode fits the story photo according to story_fit', f
         ->and($fit->height())->toBe(1920)
         ->and($fit->colorAt(100, 960)->red()->value())->toBeGreaterThan(150)
         ->and($fit->colorAt(980, 960)->blue()->value())->toBeGreaterThan(150);
+});
+
+test('tps01 instagram story first photo is the first of the platform selection', function () {
+    $photos = collect(range(1, 2))->map(fn () => Media::factory()->assets()->create([
+        'mediable_type' => (new Workspace)->getMorphClass(),
+        'mediable_id' => $this->workspace->id,
+    ])->id)->all();
+    [$photo1, $photo2] = $photos;
+    $rect = ['x' => 0.6, 'y' => 0, 'w' => 0.31640625, 'h' => 1];
+
+    $publish = function (string $boundTo, array $selected) use ($photos, $rect) {
+        Storage::fake();
+        $this->postPlatform->update([
+            'content_type' => ContentType::InstagramStory,
+            'meta' => ['story_fit' => 'manual', 'story_crop' => $rect, 'story_crop_media_id' => $boundTo],
+        ]);
+        PostPlatform::query()->whereKey($this->postPlatform->id)->update(['error_context' => null]);
+        $this->post->update([
+            'media' => array_map(fn (string $id) => [
+                'id' => $id,
+                'path' => "media/2026-01/{$id}.jpg",
+                'url' => 'https://example.com/media/2026-01/story.jpg',
+                'mime_type' => 'image/jpeg',
+                'original_filename' => 'story.jpg',
+            ], $photos),
+        ]);
+        $this->postPlatform->media()->sync($selected);
+
+        // Left half red, right half blue landscape photo.
+        $gd = imagecreatetruecolor(1600, 900);
+        imagefilledrectangle($gd, 0, 0, 799, 899, imagecolorallocate($gd, 230, 20, 20));
+        imagefilledrectangle($gd, 800, 0, 1599, 899, imagecolorallocate($gd, 20, 20, 230));
+        ob_start();
+        imagejpeg($gd, null, 95);
+        $jpeg = (string) ob_get_clean();
+
+        Http::swap(new Factory);
+        Http::fake([
+            'https://example.com/media/2026-01/story.jpg' => Http::response($jpeg, 200),
+            'https://graph.instagram.com/v25.0/ig_123456789/media' => Http::response(['id' => 'story-container-123'], 200),
+            'https://graph.instagram.com/v25.0/story-container-123*' => Http::response(['status_code' => 'FINISHED'], 200),
+            'https://graph.instagram.com/v25.0/ig_123456789/media_publish' => Http::response(['id' => 'story-123456789'], 200),
+            'https://graph.instagram.com/v25.0/story-123456789*' => Http::response(['permalink' => 'https://www.instagram.com/stories/testuser/123/'], 200),
+        ]);
+
+        $this->publisher->publish($this->postPlatform->fresh());
+
+        $hosted = collect(Storage::allFiles())->first(fn (string $path) => str_starts_with($path, 'social-crops/'));
+        $tempFile = tempnam(sys_get_temp_dir(), 'verify_story_');
+        file_put_contents($tempFile, Storage::get($hosted));
+        $image = (new ImageManager(Driver::class))->decodePath($tempFile);
+        @unlink($tempFile);
+
+        return $image;
+    };
+
+    // Only photo 2 is assigned: a frame bound to photo 2 applies (blue half), one bound to photo 1 means center.
+    $applied = $publish($photo2, [$photo2]);
+    $centered = $publish($photo1, [$photo2]);
+
+    expect($applied->colorAt(540, 960)->blue()->value())->toBeGreaterThan(150)
+        ->and($applied->colorAt(540, 960)->red()->value())->toBeLessThan(100)
+        ->and($centered->colorAt(5, 960)->red()->value())->toBeGreaterThan(150)
+        ->and($centered->colorAt(1074, 960)->blue()->value())->toBeGreaterThan(150);
+
+    // Selecting the bound photo again (photo 1 first) brings the frame back.
+    $again = $publish($photo1, [$photo1, $photo2]);
+
+    expect($again->colorAt(540, 960)->blue()->value())->toBeGreaterThan(150)
+        ->and($again->colorAt(540, 960)->red()->value())->toBeLessThan(100);
 });
 
 function tps01InstagramStoryHostingFailsLeavesNothing(object $test, ?array $meta): void

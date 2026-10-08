@@ -33,6 +33,28 @@ const sizeParams = (cap: number, size: number): Record<string, string> => {
     return { max: formatBytes(cap, decimal, 0), current: formatBytes(size, decimal, 1) };
 };
 
+/**
+ * PATCH:story-photo-fit: a story whose first media is a photo. The server fits those to 9:16
+ * (see ContentType::autoFitsImage), so the editor shows the fit settings and an info hint
+ * instead of an aspect-ratio error. Videos and every other content type are not affected.
+ */
+export const isStoryPhoto = (contentType: string, media: MediaItem[]): boolean =>
+    getMediaRulesForContentType(contentType).autoFitsImage === true && media.length > 0 && isImage(media[0]);
+
+/**
+ * PATCH:story-photo-fit: the media a platform publishes, in the post's media order, narrowed by
+ * its selection (an empty selection means every item). Same order and filter as
+ * PostPlatform::scopedMediaItems(), with one deliberate difference: a stale selection that matches
+ * nothing falls back to every item here so the settings stay usable, while the server would
+ * publish an empty set.
+ */
+export const scopedMedia = (media: MediaItem[], mediaIds: string[] = []): MediaItem[] => {
+    const selected = mediaIds.length === 0 ? media : media.filter((item) => mediaIds.includes(item.id));
+
+    // Editor-only fallback, see above.
+    return selected.length > 0 ? selected : media;
+};
+
 const formatAspect = (ratio: number): string => ratio.toFixed(2);
 
 const warning = (key: string, params: Record<string, string> = {}): MediaValidationWarning => ({ key, params });

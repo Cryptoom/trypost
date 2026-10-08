@@ -565,6 +565,7 @@ it('tps01 meta rules story fit persists story_fit and story_crop on store and re
         ->postJson(route('api.posts.store'), $payload([
             'story_fit' => 'manual',
             'story_crop' => ['x' => 0.25, 'y' => 0, 'w' => 0.3164, 'h' => 1],
+            'story_crop_media_id' => 'media-abc',
         ]))
         ->assertCreated();
 
@@ -572,7 +573,8 @@ it('tps01 meta rules story fit persists story_fit and story_crop on store and re
 
     expect($meta['story_fit'])->toBe('manual')
         ->and(data_get($meta, 'story_crop.w'))->toBe(0.3164)
-        ->and(data_get($meta, 'story_crop.h'))->toBe(1);
+        ->and(data_get($meta, 'story_crop.h'))->toBe(1)
+        ->and($meta['story_crop_media_id'])->toBe('media-abc');
 
     foreach (['center', 'smart', 'fit'] as $mode) {
         $this->withHeaders($this->headers)->postJson(route('api.posts.store'), $payload(['story_fit' => $mode]))->assertCreated();
@@ -584,6 +586,23 @@ it('tps01 meta rules story fit persists story_fit and story_crop on store and re
         ->assertJsonValidationErrors(['platforms.0.meta.story_fit']);
 });
 
+it('tps01 meta rules story crop api accepts a frame without photo id', function () {
+    $facebook = SocialAccount::factory()->facebook()->create(['workspace_id' => $this->workspace->id]);
+    $crop = ['x' => 0.1, 'y' => 0, 'w' => 0.3164, 'h' => 1];
+
+    $post = fn (array $meta) => $this->withHeaders($this->headers)->postJson(route('api.posts.store'), [
+        'content' => 'Story',
+        'platforms' => [['social_account_id' => $facebook->id, 'content_type' => ContentType::FacebookStory->value, 'meta' => $meta]],
+    ]);
+
+    // No 422: without a matching id the frame is ignored at publish time (centered), saving is never blocked.
+    $post(['story_fit' => 'manual', 'story_crop' => $crop])->assertCreated();
+    $post(['story_fit' => 'manual', 'story_crop' => $crop, 'story_crop_media_id' => null])->assertCreated();
+    $post(['story_fit' => 'manual', 'story_crop' => $crop, 'story_crop_media_id' => 'photo-1'])->assertCreated();
+    $post(['story_fit' => 'center', 'story_crop' => null, 'story_crop_media_id' => null])->assertCreated();
+    $post(['story_fit' => 'center'])->assertCreated();
+});
+
 it('tps01 meta rules story crop bounds rejects rectangles outside the image', function () {
     $facebook = SocialAccount::factory()->facebook()->create(['workspace_id' => $this->workspace->id]);
 
@@ -592,7 +611,7 @@ it('tps01 meta rules story crop bounds rejects rectangles outside the image', fu
         'platforms' => [[
             'social_account_id' => $facebook->id,
             'content_type' => ContentType::FacebookStory->value,
-            'meta' => ['story_fit' => 'manual', 'story_crop' => $crop],
+            'meta' => ['story_fit' => 'manual', 'story_crop' => $crop, 'story_crop_media_id' => 'photo-1'],
         ]],
     ]);
 

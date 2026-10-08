@@ -691,4 +691,41 @@ return [
             ],
         ],
     ],
+
+    // PATCH:story-photo-fit
+    'story_fit' => [
+        'label' => '快拍照片格式',
+        'modes' => [
+            'center' => [
+                'label' => '居中',
+                'description' => '将照片中间部分裁剪为 9:16。',
+            ],
+            'smart' => [
+                'label' => '智能',
+                'description' => 'AI 选择最佳的 9:16 裁剪区域。如果失败，则使用居中裁剪。为此，照片会被发送到 Google Gemini。',
+            ],
+            'manual' => [
+                'label' => '手动',
+                'description' => '由你自己选择 9:16 裁剪区域。',
+            ],
+            'fit' => [
+                'label' => '适应',
+                'description' => '在模糊背景上显示整张照片。',
+            ],
+        ],
+        'pick_crop' => '选择裁剪区域',
+        'change_crop' => '更改裁剪区域',
+        'crop_saved' => '裁剪区域已保存。',
+        'crop_missing' => '尚未选择裁剪区域。在你选择之前使用居中裁剪。',
+        'crop_title' => '选择快拍裁剪区域',
+        'crop_description' => '移动裁剪框，选择要在 9:16 快拍中显示的照片部分。',
+        'hints' => [
+            'center' => '照片将以中心为基准裁剪为 9:16。',
+            'smart' => 'AI 会为照片选择最佳的 9:16 裁剪区域。如果失败，则使用居中裁剪。',
+            'manual' => '照片将按你选择的 9:16 区域裁剪。',
+            'manual_missing' => '尚未选择裁剪区域。在你选择之前，照片将以中心为基准裁剪。',
+            'fit' => '整张照片将在模糊背景上以 9:16 显示。',
+        ],
+        'video_aspect' => '快拍视频必须为 9:16，此视频为 :current。',
+    ],
 ];

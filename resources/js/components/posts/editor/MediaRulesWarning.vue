@@ -1,18 +1,47 @@
 <script setup lang="ts">
-import { IconAlertTriangle, IconExternalLink } from '@tabler/icons-vue';
+// PATCH:story-photo-fit: story photos get an info hint matching the chosen fit mode instead of an error.
+import { IconAlertTriangle, IconExternalLink, IconInfoCircle } from '@tabler/icons-vue';
 import { computed } from 'vue';
 
-import { getMediaValidationWarning } from '@/composables/useMedia';
+import { getMediaValidationWarning, isStoryPhoto } from '@/composables/useMedia';
+import { getMediaRulesForContentType } from '@/composables/useMediaRules';
 import { mediaLimitsDocsUrl } from '@/lib/docs';
+import { boundStoryCrop } from '@/lib/imageCrop';
 import type { MediaItem } from '@/types/media';
 
-const props = defineProps<{
-    contentType: string;
-    media: MediaItem[];
-    platform: string;
-}>();
+const props = withDefaults(
+    defineProps<{
+        contentType: string;
+        media: MediaItem[];
+        platform: string;
+        meta?: Record<string, any>;
+        storyMedia?: MediaItem[];
+    }>(),
+    { meta: () => ({}), storyMedia: undefined },
+);
 
 const warning = computed(() => getMediaValidationWarning(props.contentType, props.media));
+
+// An aspect-ratio warning on an auto-fitting type (story) can only come from a video.
+const isStoryVideoAspect = computed(
+    () =>
+        (warning.value?.key === 'aspect_ratio_too_narrow' || warning.value?.key === 'aspect_ratio_too_wide') &&
+        getMediaRulesForContentType(props.contentType).autoFitsImage === true,
+);
+
+const storyHintKey = computed(() => {
+    if (warning.value || !isStoryPhoto(props.contentType, props.storyMedia ?? props.media)) {
+        return null;
+    }
+
+    const mode = (props.meta.story_fit as string | null | undefined) || 'center';
+
+    if (mode === 'manual' && !boundStoryCrop(props.meta, (props.storyMedia ?? props.media)[0]?.id)) {
+        return 'manual_missing';
+    }
+
+    return ['smart', 'manual', 'fit'].includes(mode) ? mode : 'center';
+});
 </script>
 
 <template>
@@ -23,7 +52,8 @@ const warning = computed(() => getMediaValidationWarning(props.contentType, prop
     >
         <IconAlertTriangle class="mt-0.5 size-3.5 shrink-0" />
         <span>
-            {{ $t(`posts.form.warnings.${warning.key}`, warning.params) }}
+            <template v-if="isStoryVideoAspect">{{ $t('posts.story_fit.video_aspect', { current: warning.params.current }) }}</template>
+            <template v-else>{{ $t(`posts.form.warnings.${warning.key}`, warning.params) }}</template>
             <a
                 :href="mediaLimitsDocsUrl(platform)"
                 target="_blank"
@@ -34,5 +64,13 @@ const warning = computed(() => getMediaValidationWarning(props.contentType, prop
                 <IconExternalLink class="size-3" />
             </a>
         </span>
+    </p>
+    <p
+        v-else-if="storyHintKey"
+        class="flex items-start gap-2 rounded-lg border-2 border-foreground bg-foreground/5 p-2 text-xs font-semibold text-foreground"
+        data-testid="story-fit-hint"
+    >
+        <IconInfoCircle class="mt-0.5 size-3.5 shrink-0" />
+        <span>{{ $t(`posts.story_fit.hints.${storyHintKey}`) }}</span>
     </p>
 </template>

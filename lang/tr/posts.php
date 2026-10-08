@@ -693,4 +693,41 @@ return [
             ],
         ],
     ],
+
+    // PATCH:story-photo-fit
+    'story_fit' => [
+        'label' => 'Hikaye fotoğrafı biçimi',
+        'modes' => [
+            'center' => [
+                'label' => 'Ortala',
+                'description' => 'Fotoğrafın ortasını 9:16 olarak kırpar.',
+            ],
+            'smart' => [
+                'label' => 'Akıllı',
+                'description' => 'Yapay zeka en iyi 9:16 kırpmayı seçer. Başarısız olursa orta kısım kullanılır. Bunun için fotoğraf Google Gemini\'ye gönderilir.',
+            ],
+            'manual' => [
+                'label' => 'Manuel',
+                'description' => '9:16 kırpmayı kendin seçersin.',
+            ],
+            'fit' => [
+                'label' => 'Sığdır',
+                'description' => 'Fotoğrafın tamamını bulanık bir arka planda gösterir.',
+            ],
+        ],
+        'pick_crop' => 'Kırpma seç',
+        'change_crop' => 'Kırpmayı değiştir',
+        'crop_saved' => 'Kırpma kaydedildi.',
+        'crop_missing' => 'Henüz kırpma seçilmedi. Seçene kadar orta kısım kullanılır.',
+        'crop_title' => 'Hikaye kırpmasını seç',
+        'crop_description' => 'Çerçeveyi taşıyarak 9:16 hikayede görünecek fotoğraf bölümünü seç.',
+        'hints' => [
+            'center' => 'Fotoğraf ortasından 9:16 olarak kırpılır.',
+            'smart' => 'Yapay zeka fotoğrafın en iyi 9:16 kırpmasını seçer. Başarısız olursa orta kısım kullanılır.',
+            'manual' => 'Fotoğraf, seçtiğin 9:16 alanına göre kırpılır.',
+            'manual_missing' => 'Henüz kırpma seçilmedi. Sen seçene kadar fotoğraf ortasından kırpılır.',
+            'fit' => 'Fotoğrafın tamamı bulanık bir arka planda 9:16 olarak gösterilir.',
+        ],
+        'video_aspect' => 'Hikaye videosu 9:16 olmalı, bu videonun oranı :current.',
+    ],
 ];

@@ -691,4 +691,41 @@ return [
             ],
         ],
     ],
+
+    // PATCH:story-photo-fit
+    'story_fit' => [
+        'label' => 'Formato da foto do story',
+        'modes' => [
+            'center' => [
+                'label' => 'Centralizado',
+                'description' => 'Corta o centro da foto em 9:16.',
+            ],
+            'smart' => [
+                'label' => 'Inteligente',
+                'description' => 'A IA escolhe o melhor corte 9:16. Se falhar, o centro é usado. Para isso, a foto é enviada ao Google Gemini.',
+            ],
+            'manual' => [
+                'label' => 'Manual',
+                'description' => 'Você escolhe o corte 9:16.',
+            ],
+            'fit' => [
+                'label' => 'Ajustar',
+                'description' => 'Mostra a foto inteira sobre um fundo desfocado.',
+            ],
+        ],
+        'pick_crop' => 'Escolher corte',
+        'change_crop' => 'Alterar corte',
+        'crop_saved' => 'Corte salvo.',
+        'crop_missing' => 'Nenhum corte escolhido ainda. O centro é usado até você escolher um.',
+        'crop_title' => 'Escolher corte do story',
+        'crop_description' => 'Mova a moldura para escolher a parte da foto exibida no story 9:16.',
+        'hints' => [
+            'center' => 'A foto é cortada em 9:16 a partir do centro.',
+            'smart' => 'A IA escolhe o melhor corte 9:16 da foto. Se falhar, o centro é usado.',
+            'manual' => 'A foto é cortada na área 9:16 que você escolheu.',
+            'manual_missing' => 'Nenhum corte escolhido ainda. A foto é cortada a partir do centro até você escolher um.',
+            'fit' => 'A foto inteira é exibida em 9:16 sobre um fundo desfocado.',
+        ],
+        'video_aspect' => 'Um vídeo de story precisa ser 9:16, este é :current.',
+    ],
 ];

@@ -692,4 +692,41 @@ return [
             ],
         ],
     ],
+
+    // PATCH:story-photo-fit
+    'story_fit' => [
+        'label' => 'Formato de la foto de la story',
+        'modes' => [
+            'center' => [
+                'label' => 'Centrado',
+                'description' => 'Recorta el centro de la foto a 9:16.',
+            ],
+            'smart' => [
+                'label' => 'Inteligente',
+                'description' => 'La IA elige el mejor recorte 9:16. Si falla, se usa el centro. Para ello, la foto se envía a Google Gemini.',
+            ],
+            'manual' => [
+                'label' => 'Manual',
+                'description' => 'Tú eliges el recorte 9:16.',
+            ],
+            'fit' => [
+                'label' => 'Ajustar',
+                'description' => 'Muestra la foto completa sobre un fondo desenfocado.',
+            ],
+        ],
+        'pick_crop' => 'Elegir recorte',
+        'change_crop' => 'Cambiar recorte',
+        'crop_saved' => 'Recorte guardado.',
+        'crop_missing' => 'Aún no has elegido un recorte. Se usa el centro hasta que lo hagas.',
+        'crop_title' => 'Elegir recorte de la story',
+        'crop_description' => 'Mueve el marco para elegir la parte de la foto que se verá en la story 9:16.',
+        'hints' => [
+            'center' => 'La foto se recorta a 9:16 desde el centro.',
+            'smart' => 'La IA elige el mejor recorte 9:16 de la foto. Si falla, se usa el centro.',
+            'manual' => 'La foto se recorta al área 9:16 que has elegido.',
+            'manual_missing' => 'Aún no has elegido un recorte. La foto se recorta desde el centro hasta que elijas uno.',
+            'fit' => 'La foto completa se muestra en 9:16 sobre un fondo desenfocado.',
+        ],
+        'video_aspect' => 'Un vídeo de story debe ser 9:16, este es :current.',
+    ],
 ];

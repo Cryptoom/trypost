@@ -691,4 +691,41 @@ return [
             ],
         ],
     ],
+
+    // PATCH:story-photo-fit
+    'story_fit' => [
+        'label' => 'Story photo format',
+        'modes' => [
+            'center' => [
+                'label' => 'Center',
+                'description' => 'Crops the middle of the photo to 9:16.',
+            ],
+            'smart' => [
+                'label' => 'Smart',
+                'description' => 'AI picks the best 9:16 crop. If that fails, the center is used. The photo is sent to Google Gemini for this.',
+            ],
+            'manual' => [
+                'label' => 'Manual',
+                'description' => 'You choose the 9:16 crop yourself.',
+            ],
+            'fit' => [
+                'label' => 'Fit',
+                'description' => 'Shows the whole photo on a blurred background.',
+            ],
+        ],
+        'pick_crop' => 'Choose crop',
+        'change_crop' => 'Change crop',
+        'crop_saved' => 'Crop saved.',
+        'crop_missing' => 'No crop chosen yet. The center is used until you pick one.',
+        'crop_title' => 'Choose story crop',
+        'crop_description' => 'Move the frame to choose the part of the photo shown in the 9:16 story.',
+        'hints' => [
+            'center' => 'The photo is cropped to 9:16 around its center.',
+            'smart' => 'AI picks the best 9:16 crop of the photo. If that fails, the center is used.',
+            'manual' => 'The photo is cropped to the 9:16 area you chose.',
+            'manual_missing' => 'No crop chosen yet. The photo is cropped around its center until you pick one.',
+            'fit' => 'The whole photo is shown in 9:16 on a blurred background.',
+        ],
+        'video_aspect' => 'A story video must be 9:16, this one is :current.',
+    ],
 ];

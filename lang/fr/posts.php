@@ -691,4 +691,41 @@ return [
             ],
         ],
     ],
+
+    // PATCH:story-photo-fit
+    'story_fit' => [
+        'label' => 'Format de la photo de story',
+        'modes' => [
+            'center' => [
+                'label' => 'Centré',
+                'description' => 'Recadre le centre de la photo en 9:16.',
+            ],
+            'smart' => [
+                'label' => 'Intelligent',
+                'description' => 'L\'IA choisit le meilleur cadrage 9:16. En cas d\'échec, le centre est utilisé. Pour cela, la photo est envoyée à Google Gemini.',
+            ],
+            'manual' => [
+                'label' => 'Manuel',
+                'description' => 'Vous choisissez vous-même le cadrage 9:16.',
+            ],
+            'fit' => [
+                'label' => 'Ajusté',
+                'description' => 'Affiche la photo entière sur un fond flou.',
+            ],
+        ],
+        'pick_crop' => 'Choisir le cadrage',
+        'change_crop' => 'Modifier le cadrage',
+        'crop_saved' => 'Cadrage enregistré.',
+        'crop_missing' => 'Aucun cadrage choisi pour le moment. Le centre est utilisé tant que vous n\'en choisissez pas.',
+        'crop_title' => 'Choisir le cadrage de la story',
+        'crop_description' => 'Déplacez le cadre pour choisir la partie de la photo affichée dans la story 9:16.',
+        'hints' => [
+            'center' => 'La photo est recadrée en 9:16 autour de son centre.',
+            'smart' => 'L\'IA choisit le meilleur cadrage 9:16 de la photo. En cas d\'échec, le centre est utilisé.',
+            'manual' => 'La photo est recadrée sur la zone 9:16 que vous avez choisie.',
+            'manual_missing' => 'Aucun cadrage choisi pour le moment. La photo est recadrée autour de son centre tant que vous n\'en choisissez pas.',
+            'fit' => 'La photo entière est affichée en 9:16 sur un fond flou.',
+        ],
+        'video_aspect' => 'Une vidéo de story doit être en 9:16, celle-ci est en :current.',
+    ],
 ];

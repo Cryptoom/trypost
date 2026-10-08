@@ -12,6 +12,7 @@ use App\Exceptions\Social\ErrorCategory;
 use App\Exceptions\Social\InstagramPublishException;
 use App\Exceptions\Social\SocialPublishException;
 use App\Models\PostPlatform;
+use App\Services\Media\StoryImageFitter;
 use App\Services\Social\Concerns\CropsImageForAspectRatio;
 use App\Services\Social\Concerns\HasSocialHttpClient;
 use App\Services\Social\Meta\GraphError;
@@ -77,7 +78,7 @@ class InstagramPublisher
 
         return match ($contentType) {
             ContentType::InstagramReel => $this->publishReel($instagramId, $accessToken, $content, $firstMedia),
-            ContentType::InstagramStory => $this->publishStory($instagramId, $accessToken, $firstMedia, data_get($postPlatform->meta, 'story_fit'), data_get($postPlatform->meta, 'story_crop')), // PATCH:story-photo-fit
+            ContentType::InstagramStory => $this->publishStory($instagramId, $accessToken, $firstMedia, data_get($postPlatform->meta, 'story_fit'), StoryImageFitter::boundCrop($postPlatform, $firstMedia->id)), // PATCH:story-photo-fit
             ContentType::InstagramFeed => $this->publishFeed($instagramId, $accessToken, $content, $media, $aspectRatio),
             default => throw new InstagramPublishException(
                 userMessage: "Unsupported Instagram content type: {$contentType?->value}",

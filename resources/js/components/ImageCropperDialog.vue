@@ -1,4 +1,5 @@
 <script setup lang="ts">
+// PATCH:story-photo-fit: optional `aspect`, `emitRectOnly` and `initialRect` props; defaults keep the square avatar crop unchanged.
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
 
 import { Button } from '@/components/ui/button';
@@ -15,10 +16,13 @@ import {
     containScale,
     type Corner,
     defaultSelection,
+    fromNormalizedRect,
+    type NormalizedRect,
     resizeSelection,
     resolveOutputFileName,
     resolveOutputMime,
     type SourceRect,
+    toNormalizedRect,
 } from '@/lib/imageCrop';
 
 type Props = {
@@ -27,17 +31,28 @@ type Props = {
     fileName?: string;
     mimeType?: string;
     outputSize?: number;
+    aspect?: number;
+    emitRectOnly?: boolean;
+    initialRect?: NormalizedRect | null;
+    title?: string;
+    description?: string;
 };
 
 const props = withDefaults(defineProps<Props>(), {
     fileName: 'image.png',
     mimeType: 'image/png',
     outputSize: 512,
+    aspect: 1,
+    emitRectOnly: false,
+    initialRect: null,
+    title: undefined,
+    description: undefined,
 });
 
 const emit = defineEmits<{
     (e: 'update:open', value: boolean): void;
     (e: 'cropped', file: File): void;
+    (e: 'rect', rect: NormalizedRect): void;
 }>();
 
 const viewportEl = ref<HTMLElement | null>(null);
@@ -60,7 +75,7 @@ const ready = computed(() => viewportSize.value > 0 && natural.value.width > 0);
 
 const scale = computed(() => containScale(natural.value.width, natural.value.height, viewportSize.value));
 
-const minSourceSize = computed(() => Math.min(natural.value.width, natural.value.height) * MIN_SELECTION_RATIO);
+const minSourceSize = computed(() => Math.min(natural.value.width, natural.value.height * props.aspect) * MIN_SELECTION_RATIO);
 
 const imageDisplay = computed(() => {
     const width = natural.value.width * scale.value;
@@ -89,6 +104,9 @@ const selectionStyle = computed(() => ({
     boxShadow: '0 0 0 9999px rgba(0, 0, 0, 0.5)',
 }));
 
+// Larger invisible touch target for the narrow 9:16 frame; the square avatar crop keeps its handles as before.
+const handleHitArea = computed(() => (props.aspect === 1 ? '' : "before:absolute before:-inset-2 before:content-['']"));
+
 const outputMime = computed(() => resolveOutputMime(props.mimeType));
 
 const outputFileName = computed(() => resolveOutputFileName(props.fileName, outputMime.value));
@@ -98,7 +116,15 @@ const maybeInitialize = () => {
         return;
     }
 
-    selection.value = defaultSelection(natural.value.width, natural.value.height);
+    selection.value = props.initialRect
+        ? clampSelection(
+              fromNormalizedRect(props.initialRect, natural.value.width, natural.value.height),
+              natural.value.width,
+              natural.value.height,
+              minSourceSize.value,
+              props.aspect,
+          )
+        : defaultSelection(natural.value.width, natural.value.height, props.aspect);
     initialized.value = true;
 };
 
@@ -187,6 +213,7 @@ const onPointerMove = (event: PointerEvent) => {
             natural.value.width,
             natural.value.height,
             minSourceSize.value,
+            props.aspect,
         );
 
         return;
@@ -201,6 +228,7 @@ const onPointerMove = (event: PointerEvent) => {
         natural.value.width,
         natural.value.height,
         minSourceSize.value,
+        props.aspect,
     );
 };
 
@@ -223,9 +251,16 @@ const save = () => {
         return;
     }
 
+    if (props.emitRectOnly) {
+        emit('rect', toNormalizedRect(selection.value, natural.value.width, natural.value.height));
+        close();
+
+        return;
+    }
+
     const canvas = document.createElement('canvas');
     canvas.width = props.outputSize;
-    canvas.height = props.outputSize;
+    canvas.height = Math.round(props.outputSize / props.aspect);
 
     const context = canvas.getContext('2d');
 
@@ -237,7 +272,7 @@ const save = () => {
     processing.value = true;
 
     try {
-        context.drawImage(img, rect.sx, rect.sy, rect.sw, rect.sh, 0, 0, props.outputSize, props.outputSize);
+        context.drawImage(img, rect.sx, rect.sy, rect.sw, rect.sh, 0, 0, canvas.width, canvas.height);
         canvas.toBlob(
             (blob) => {
                 processing.value = false;
@@ -298,8 +333,8 @@ onBeforeUnmount(() => resizeObserver?.disconnect());
     <Dialog :open="open" @update:open="emit('update:open', $event)">
         <DialogContent class="sm:max-w-lg">
             <DialogHeader>
-                <DialogTitle>{{ $t('common.photo_upload.crop_title') }}</DialogTitle>
-                <DialogDescription>{{ $t('common.photo_upload.crop_description') }}</DialogDescription>
+                <DialogTitle>{{ title ?? $t('common.photo_upload.crop_title') }}</DialogTitle>
+                <DialogDescription>{{ description ?? $t('common.photo_upload.crop_description') }}</DialogDescription>
             </DialogHeader>
 
             <div
@@ -336,18 +371,22 @@ onBeforeUnmount(() => resizeObserver?.disconnect());
                     <div class="pointer-events-none absolute inset-0 border-2 border-white shadow-[0_0_0_1px_rgba(0,0,0,0.4)]" />
                     <span
                         class="absolute left-0 top-0 size-3 cursor-nwse-resize rounded-sm border border-foreground bg-white"
+                        :class="handleHitArea"
                         @pointerdown.stop="onHandlePointerDown('nw', $event)"
                     />
                     <span
                         class="absolute right-0 top-0 size-3 cursor-nesw-resize rounded-sm border border-foreground bg-white"
+                        :class="handleHitArea"
                         @pointerdown.stop="onHandlePointerDown('ne', $event)"
                     />
                     <span
                         class="absolute bottom-0 left-0 size-3 cursor-nesw-resize rounded-sm border border-foreground bg-white"
+                        :class="handleHitArea"
                         @pointerdown.stop="onHandlePointerDown('sw', $event)"
                     />
                     <span
                         class="absolute bottom-0 right-0 size-3 cursor-nwse-resize rounded-sm border border-foreground bg-white"
+                        :class="handleHitArea"
                         @pointerdown.stop="onHandlePointerDown('se', $event)"
                     />
                 </div>

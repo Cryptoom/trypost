@@ -1685,6 +1685,34 @@ test('update post accepts valid instagram aspect_ratio meta', function () {
     expect(data_get($postPlatform->meta, 'aspect_ratio'))->toBe('4:5');
 });
 
+test('tps01 meta rules story crop web update accepts a frame without photo id and keeps saving', function () {
+    $account = SocialAccount::factory()->facebook()->create(['workspace_id' => $this->workspace->id]);
+    $crop = ['x' => 0.1, 'y' => 0, 'w' => 0.3164, 'h' => 1];
+    $post = Post::factory()->create(['workspace_id' => $this->workspace->id, 'user_id' => $this->user->id, 'status' => PostStatus::Draft, 'content' => 'before']);
+    // Older data: a frame stored without the id of its photo.
+    $postPlatform = PostPlatform::factory()->facebookStory()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $account->id,
+        'meta' => ['story_fit' => 'manual', 'story_crop' => $crop],
+    ]);
+
+    // The editor sends the stored meta back on every autosave: it must not be rejected.
+    $this->actingAs($this->user)->put(route('app.posts.update', $post), [
+        'status' => 'draft',
+        'content' => 'after',
+        'platforms' => [['id' => $postPlatform->id, 'content_type' => ContentType::FacebookStory->value, 'meta' => ['story_fit' => 'manual', 'story_crop' => $crop]]],
+    ])->assertSessionDoesntHaveErrors();
+
+    expect($post->refresh()->content)->toBe('after')
+        ->and($postPlatform->refresh()->meta['story_crop'])->toBe($crop);
+
+    // A frame sent with an explicit null id is accepted too (it is ignored at publish time, centered).
+    $this->actingAs($this->user)->put(route('app.posts.update', $post), [
+        'status' => 'draft',
+        'platforms' => [['id' => $postPlatform->id, 'content_type' => ContentType::FacebookStory->value, 'meta' => ['story_fit' => 'manual', 'story_crop' => $crop, 'story_crop_media_id' => null]]],
+    ])->assertSessionDoesntHaveErrors();
+});
+
 test('scheduling without content_type per platform fails', function () {
     $youtubeAccount = SocialAccount::factory()->create([
         'workspace_id' => $this->workspace->id,

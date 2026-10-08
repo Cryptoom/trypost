@@ -192,6 +192,26 @@ vorher: unbeschnittenes Querformat-Video). `Platform::Instagram` und `Platform::
     gehalten, weil diese Datei bei Upstream-Merges Konflikte erzeugt)
   - `app/Enums/PostPlatform/ContentType.php` (`autoFitsImage()` auch für `FacebookStory`)
   - `app/Support/PostPlatformMetaRules.php` (`story_fit`, `story_crop`, einzige Stelle für Meta-Regeln)
+  - Editor (E1, Frontend, alle mit Marker): `resources/js/lib/imageCrop.ts` (Parameter `aspect`, Normalisierung),
+    `resources/js/components/ImageCropperDialog.vue` (Props `aspect`, `emitRectOnly`, `initialRect`; `PhotoUpload` bleibt unverändert),
+    `resources/js/components/posts/editor/StoryFitSettings.vue` (neu), `FacebookSettings.vue`, `InstagramSettings.vue`,
+    `MediaRulesWarning.vue` (Info-Hinweis je Modus statt Fehler bei Story-Fotos), `resources/js/composables/useMedia.ts`
+    (`isStoryPhoto`), `resources/js/composables/usePostCompliance.ts` (klarer Text für Story-Videos), `lang/*/posts.php`
+    (`posts.story_fit.*` in allen 16 Locales). Videos, Feed-Posts und Reels sind unverändert: Die Aufhebung der Sperre für
+    Story-Fotos kommt weiter allein aus `autoFitsImage` des Backends.
+  - **Rahmen an Foto gebunden** (Nacharbeit E1): das Meta-Feld `story_crop_media_id` (Regel in `PostPlatformMetaRules`)
+    hält die ID des Fotos, auf dem `story_crop` gezogen wurde. `StoryImageFitter::boundCrop()` wendet den Rahmen bei
+    `manual` nur an, wenn die ID dem ersten Foto der Plattform-Auswahl entspricht, sonst Mitte (Log::info, nie Fehler),
+    für Facebook und Instagram. `story_crop` wirkt also nur zusammen mit passender `story_crop_media_id`; API und MCP
+    müssen beide Felder senden (die MCP-Tool-Beschreibung sagt es). Editor: `resources/js/lib/imageCrop.ts`
+    (`boundStoryCrop`) zeigt "Ausschnitt gespeichert" nur bei passender ID.
+  - **Validierung**: `story_crop_media_id` ist optional (`sometimes|nullable|string|max:64`), `story_crop` ohne ID wird beim
+    Speichern NICHT abgelehnt. Grund: der Editor schickt das gespeicherte Meta bei jedem Autosave zurück, eine Pflichtregel
+    würde Posts mit Rahmen ohne ID sperren (unsichtbarer 422, Änderungen gehen verloren). Ohne passende ID wird beim
+    Veröffentlichen still mittig zugeschnitten (`boundCrop`, Log `media_id_missing` bzw. Abweichung).
+  - **Bestandsdaten**: bereits gespeicherte `manual`-Posts ohne `story_crop_media_id` (aus der Zeit zwischen PR #25
+    und diesem PR, beides vor dem Deploy noch nicht live) werden beim Veröffentlichen mittig zugeschnitten und lassen sich
+    weiter speichern, es gibt keine Migration. API- und MCP-Clients sollten beide Felder senden, sonst wirkt der Rahmen nicht.
 - **Verhaltensänderungen** (bewusst, Olli-Entscheid 08.10.2026):
   - (a) Instagram-Story-Fotos ohne `story_fit` werden jetzt mittig auf 9:16 zugeschnitten, statt als ganzes Foto
     auf Unschärfe-Hintergrund zu erscheinen (Standard bleibt `center`, kein Rückbau auf `fit`). Deshalb Deploy
