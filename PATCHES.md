@@ -501,3 +501,22 @@ Koeder-Test ergaenzt (`rejects a reel upload_url that does not point at the rupl
 simuliert eine Start-Response mit `upload_url` auf `attacker.example.com`, prueft dass die
 Exception geworfen UND dass NIE ein Request an den fremden Host geht (`Http::assertNotSent`).
 Volle Testsuite danach: 4739 passed (0 failed), inkl. dieses neuen Tests.
+
+### Patch 9 · tiktok-refresh-invalid-grant  (TTR-02, 08.10.2026)
+
+Backport aus Upstream trypostit/trypost#390 (nur der TikTok-Refresh-Teil, Commit "Fix the
+production errors reported in Nightwatch"). TikTok beantwortet einen toten Refresh-Token mit einem
+Fehler-Body, oft mit HTTP 200. Der Fork las das als "kein access_token" und damit als
+`PlatformUnavailableException` (vorübergehend): das Konto blieb `connected`, obwohl das
+Access-Token seit 24.09.2026 abgelaufen war, ohne Mail und ohne Reconnect in der UI.
+
+Jetzt: `invalid_grant` im Body (bei 200 oder 4xx) wirft `TokenExpiredException` und lässt
+`RefreshSocialToken` das Konto über `markAsTokenExpired()` auf `token_expired` setzen (Mail, Reconnect).
+Jeder andere Fehlercode bleibt vorübergehend, die Meldung nennt jetzt den Code
+(`TikTok refresh returned <code>: <description>`).
+
+- **Datei**: `app/Services/Social/ConnectionVerifier.php` (`refreshTikTokToken()`,
+  `throwIfDeadTikTokRefresh()`, Konstante `TIKTOK_DEAD_REFRESH_ERRORS`).
+- **Merge-Hinweis**: beim nächsten Upstream-Merge entfällt der Patch, wenn #390 vollständig
+  übernommen wird (Code ist dort wortgleich).
+- **Tests**: `ConnectionVerifierTest` und `RefreshSocialTokenTest` (Abschnitte "TTR-02").

@@ -749,3 +749,52 @@ test('a billed fallback check counts as a verification like any other', function
     // that away means the pre-publish check pays to ask again minutes later.
     expect($this->account->fresh()->last_verified_at)->not->toBeNull();
 });
+
+// TTR-02: TikTok answers a dead refresh token with an error body, often HTTP 200.
+test('tiktok refresh answered 200 with invalid_grant expires the account and notifies the owner', function () {
+    Queue::fake();
+
+    $tiktok = SocialAccount::factory()->tiktok()->create([
+        'workspace_id' => $this->workspace->id,
+        'status' => Status::Connected,
+        'token_expires_at' => now()->subDay(),
+    ]);
+
+    Http::fake([
+        config('trypost.platforms.tiktok.api').'/oauth/token/' => Http::response([
+            'error' => 'invalid_grant',
+            'error_description' => 'Refresh token is invalid or expired.',
+            'log_id' => 'abc',
+        ], 200),
+        config('trypost.platforms.tiktok.api').'/user/info/*' => Http::response(['error' => ['code' => 'access_token_invalid']], 401),
+    ]);
+
+    (new RefreshSocialToken($tiktok))->handle(app(ConnectionVerifier::class));
+
+    expect($tiktok->fresh()->status)->toBe(Status::TokenExpired)
+        ->and($tiktok->fresh()->error_message)->toBe('Refresh token is invalid or expired.');
+
+    Queue::assertPushed(SendNotification::class);
+});
+
+test('tiktok refresh answered 200 with a non-terminal error stays connected', function () {
+    Queue::fake();
+
+    $tiktok = SocialAccount::factory()->tiktok()->create([
+        'workspace_id' => $this->workspace->id,
+        'status' => Status::Connected,
+        'token_expires_at' => now()->subDay(),
+    ]);
+
+    Http::fake([
+        config('trypost.platforms.tiktok.api').'/oauth/token/' => Http::response([
+            'error' => 'server_error',
+            'error_description' => 'Try again later.',
+        ], 200),
+    ]);
+
+    (new RefreshSocialToken($tiktok))->handle(app(ConnectionVerifier::class));
+
+    expect($tiktok->fresh()->status)->toBe(Status::Connected);
+    Queue::assertNotPushed(SendNotification::class);
+});
