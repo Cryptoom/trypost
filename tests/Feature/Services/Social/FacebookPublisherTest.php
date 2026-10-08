@@ -12,6 +12,7 @@ use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Services\Media\ImageToVideoConverter;
+use App\Services\Media\StoryImageFitter;
 use App\Services\Media\StoryMusicGenerator;
 use App\Services\Social\FacebookPublisher;
 use Illuminate\Http\Client\Factory;
@@ -1264,7 +1265,7 @@ function tps01PublishFacebookPhotoStory(object $test, ?array $meta): array
 }
 
 test('tps01 facebook story converter gets 1080x1920', function () {
-    $seen = tps01PublishFacebookPhotoStory($this, ['story_fit' => 'manual', 'story_crop' => ['x' => 0.6, 'y' => 0, 'w' => 0.31640625, 'h' => 1]]);
+    $seen = tps01PublishFacebookPhotoStory($this, ['story_fit' => 'manual', 'story_crop' => ['x' => 0.6, 'y' => 0, 'w' => 0.31640625, 'h' => 1], 'story_crop_media_id' => 'test-media-story']);
 
     expect($seen['width'])->toBe(1080)
         ->and($seen['height'])->toBe(1920)
@@ -1295,4 +1296,23 @@ test('tps01 facebook story without story fit center', function () {
             ->and($seen['right_blue'])->toBeGreaterThan(150)
             ->and($seen['converted_exists_after'])->toBeFalse();
     }
+});
+
+test('tps01 facebook story manual crop applies only to the photo it was drawn on', function () {
+    $rect = ['x' => 0.6, 'y' => 0, 'w' => 0.31640625, 'h' => 1];
+
+    foreach ([['story_crop_media_id' => 'another-photo'], []] as $binding) {
+        $seen = tps01PublishFacebookPhotoStory($this, ['story_fit' => 'manual', 'story_crop' => $rect, ...$binding]);
+
+        // Not bound to this photo: centered, red on the left edge and blue on the right edge, no error.
+        expect($seen['width'])->toBe(1080)
+            ->and($seen['left_red'])->toBeGreaterThan(150)
+            ->and($seen['right_blue'])->toBeGreaterThan(150);
+    }
+
+    expect(StoryImageFitter::boundCrop(['story_crop' => $rect, 'story_crop_media_id' => 'a'], 'a'))->toBe($rect)
+        ->and(StoryImageFitter::boundCrop(['story_crop' => $rect, 'story_crop_media_id' => 'a'], 'b'))->toBeNull()
+        ->and(StoryImageFitter::boundCrop(['story_crop' => $rect], 'a'))->toBeNull()
+        ->and(StoryImageFitter::boundCrop(['story_crop' => $rect, 'story_crop_media_id' => 'a'], null))->toBeNull()
+        ->and(StoryImageFitter::boundCrop(null, 'a'))->toBeNull();
 });

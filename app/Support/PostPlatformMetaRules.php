@@ -59,6 +59,9 @@ class PostPlatformMetaRules
                     $fail(__('validation.in', ['attribute' => 'story crop']));
                 }
             }],
+            // The photo `story_crop` was drawn on. The frame only applies while it is still the first
+            // photo this platform publishes (StoryImageFitter::boundCrop).
+            'platforms.*.meta.story_crop_media_id' => ['sometimes', 'nullable', 'string', 'max:64'],
             'platforms.*.meta.story_crop.x' => ['numeric', 'between:0,1'],
             'platforms.*.meta.story_crop.y' => ['numeric', 'between:0,1'],
             'platforms.*.meta.story_crop.w' => ['numeric', 'gt:0', 'max:1'],

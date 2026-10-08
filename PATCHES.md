@@ -199,6 +199,12 @@ vorher: unbeschnittenes Querformat-Video). `Platform::Instagram` und `Platform::
     (`isStoryPhoto`), `resources/js/composables/usePostCompliance.ts` (klarer Text für Story-Videos), `lang/*/posts.php`
     (`posts.story_fit.*` in allen 16 Locales). Videos, Feed-Posts und Reels sind unverändert: Die Aufhebung der Sperre für
     Story-Fotos kommt weiter allein aus `autoFitsImage` des Backends.
+  - **Rahmen an Foto gebunden** (Nacharbeit E1): das Meta-Feld `story_crop_media_id` (Regel in `PostPlatformMetaRules`)
+    hält die ID des Fotos, auf dem `story_crop` gezogen wurde. `StoryImageFitter::boundCrop()` wendet den Rahmen bei
+    `manual` nur an, wenn die ID dem ersten Foto der Plattform-Auswahl entspricht, sonst Mitte (Log::info, nie Fehler),
+    für Facebook und Instagram. `story_crop` wirkt also nur zusammen mit passender `story_crop_media_id`; API und MCP
+    müssen beide Felder senden (die MCP-Tool-Beschreibung sagt es). Editor: `resources/js/lib/imageCrop.ts`
+    (`boundStoryCrop`) zeigt "Ausschnitt gespeichert" nur bei passender ID.
 - **Verhaltensänderungen** (bewusst, Olli-Entscheid 08.10.2026):
   - (a) Instagram-Story-Fotos ohne `story_fit` werden jetzt mittig auf 9:16 zugeschnitten, statt als ganzes Foto
     auf Unschärfe-Hintergrund zu erscheinen (Standard bleibt `center`, kein Rückbau auf `fit`). Deshalb Deploy

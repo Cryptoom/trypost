@@ -6,7 +6,7 @@ import { computed } from 'vue';
 import { getMediaValidationWarning, isStoryPhoto } from '@/composables/useMedia';
 import { getMediaRulesForContentType } from '@/composables/useMediaRules';
 import { mediaLimitsDocsUrl } from '@/lib/docs';
-import { isNormalizedRect } from '@/lib/imageCrop';
+import { boundStoryCrop } from '@/lib/imageCrop';
 import type { MediaItem } from '@/types/media';
 
 const props = withDefaults(
@@ -36,7 +36,7 @@ const storyHintKey = computed(() => {
 
     const mode = (props.meta.story_fit as string | null | undefined) || 'center';
 
-    if (mode === 'manual' && !isNormalizedRect(props.meta.story_crop)) {
+    if (mode === 'manual' && !boundStoryCrop(props.meta, (props.storyMedia ?? props.media)[0]?.id)) {
         return 'manual_missing';
     }
 

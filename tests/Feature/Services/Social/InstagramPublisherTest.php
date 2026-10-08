@@ -2200,7 +2200,7 @@ test('tps01 instagram story mode fits the story photo according to story_fit', f
     }
 
     // manual: the user's rectangle inside the blue half.
-    $manual = $publishStoryWith(['story_fit' => 'manual', 'story_crop' => ['x' => 0.6, 'y' => 0, 'w' => 0.31640625, 'h' => 1]]);
+    $manual = $publishStoryWith(['story_fit' => 'manual', 'story_crop' => ['x' => 0.6, 'y' => 0, 'w' => 0.31640625, 'h' => 1], 'story_crop_media_id' => 'test-media-story']);
 
     expect($manual->width())->toBe(1080)
         ->and($manual->height())->toBe(1920)
@@ -2208,10 +2208,19 @@ test('tps01 instagram story mode fits the story photo according to story_fit', f
         ->and($manual->colorAt(540, 960)->red()->value())->toBeLessThan(100);
 
     // manual with a broken rectangle publishes a center crop instead of failing.
-    $broken = $publishStoryWith(['story_fit' => 'manual', 'story_crop' => ['x' => 2, 'y' => 0, 'w' => 0.1, 'h' => 0.1]]);
+    $broken = $publishStoryWith(['story_fit' => 'manual', 'story_crop' => ['x' => 2, 'y' => 0, 'w' => 0.1, 'h' => 0.1], 'story_crop_media_id' => 'test-media-story']);
 
     expect($broken->height())->toBe(1920)
         ->and($broken->colorAt(5, 960)->red()->value())->toBeGreaterThan(150);
+
+    // manual with a frame drawn on another photo, or with no recorded photo: center crop, never an error.
+    foreach ([['story_crop_media_id' => 'some-other-photo'], []] as $binding) {
+        $unbound = $publishStoryWith(['story_fit' => 'manual', 'story_crop' => ['x' => 0.6, 'y' => 0, 'w' => 0.31640625, 'h' => 1], ...$binding]);
+
+        expect($unbound->height())->toBe(1920)
+            ->and($unbound->colorAt(5, 960)->red()->value())->toBeGreaterThan(150)
+            ->and($unbound->colorAt(1074, 960)->blue()->value())->toBeGreaterThan(150);
+    }
 
     // fit: the whole photo stays visible on a blurred background.
     $fit = $publishStoryWith(['story_fit' => 'fit']);

@@ -102,6 +102,12 @@ export const toNormalizedRect = (selection: SourceRect, naturalWidth: number, na
     return { x, y, w, h };
 };
 
+// The saved story frame, but only while it still belongs to the photo being published. The frame
+// is stored with `story_crop_media_id`; a different or missing id means it was drawn on another
+// image (the server ignores it then too, see StoryImageFitter::boundCrop).
+export const boundStoryCrop = (meta: Record<string, any>, firstMediaId: string | null | undefined): NormalizedRect | null =>
+    isNormalizedRect(meta.story_crop) && firstMediaId && meta.story_crop_media_id === firstMediaId ? meta.story_crop : null;
+
 export const fromNormalizedRect = (rect: NormalizedRect, naturalWidth: number, naturalHeight: number): SourceRect => ({
     sx: rect.x * naturalWidth,
     sy: rect.y * naturalHeight,

@@ -5,7 +5,7 @@ import { computed, ref } from 'vue';
 
 import ImageCropperDialog from '@/components/ImageCropperDialog.vue';
 import { Button } from '@/components/ui/button';
-import { isNormalizedRect, type NormalizedRect } from '@/lib/imageCrop';
+import { boundStoryCrop, type NormalizedRect } from '@/lib/imageCrop';
 import type { MediaItem } from '@/types/media';
 
 interface Props {
@@ -35,19 +35,20 @@ const selectedMode = computed(() => {
     return (modes as readonly string[]).includes(mode ?? '') ? (mode as (typeof modes)[number]) : 'center';
 });
 
-const savedRect = computed<NormalizedRect | null>(() => (isNormalizedRect(props.meta.story_crop) ? props.meta.story_crop : null));
-
 const photo = computed(() => props.media[0] ?? null);
+
+// Only a frame drawn on the photo that is published first counts as saved.
+const savedRect = computed<NormalizedRect | null>(() => boundStoryCrop(props.meta, photo.value?.id));
 
 const pickMode = (mode: string) => {
     if (props.disabled) return;
-    // Leaving manual drops the frame (explicit null: the server merges meta and ignores missing keys),
-    // so a stale frame cannot silently come back later.
-    emit('update:meta', { ...props.meta, story_fit: mode, story_crop: mode === 'manual' ? props.meta.story_crop ?? null : null });
+    // Leaving manual drops the frame and its photo binding (explicit nulls: the server merges meta and
+    // ignores missing keys), so a stale frame cannot silently come back later.
+    emit('update:meta', { ...props.meta, story_fit: mode, ...(mode === 'manual' ? {} : { story_crop: null, story_crop_media_id: null }) });
 };
 
 const saveRect = (rect: NormalizedRect) => {
-    emit('update:meta', { ...props.meta, story_fit: 'manual', story_crop: rect });
+    emit('update:meta', { ...props.meta, story_fit: 'manual', story_crop: rect, story_crop_media_id: photo.value?.id ?? null });
 };
 </script>
 

@@ -56,7 +56,7 @@ class FacebookPublisher
         $contentType = $postPlatform->content_type;
         $aspectRatio = data_get($postPlatform->meta, 'aspect_ratio');
         $musicDescription = data_get($postPlatform->meta, 'story_music_description');
-        $storyFit = ['mode' => data_get($postPlatform->meta, 'story_fit'), 'rect' => data_get($postPlatform->meta, 'story_crop')]; // PATCH:story-photo-fit
+        $storyFit = ['mode' => data_get($postPlatform->meta, 'story_fit'), 'rect' => StoryImageFitter::boundCrop($postPlatform->meta, $media->first()?->id)]; // PATCH:story-photo-fit
 
         return match ($contentType) {
             ContentType::FacebookReel => $this->publishReel($pageId, $accessToken, $content, $media->first()),

@@ -513,14 +513,15 @@ test('tps01 meta rules story fit mcp create post persists story_fit and rejects 
     TryPostServer::actingAs($this->user)
         ->tool(CreatePostTool::class, [
             'content' => 'Story',
-            'platforms' => $platforms(['story_fit' => 'manual', 'story_crop' => ['x' => 0.1, 'y' => 0, 'w' => 0.3164, 'h' => 1]]),
+            'platforms' => $platforms(['story_fit' => 'manual', 'story_crop' => ['x' => 0.1, 'y' => 0, 'w' => 0.3164, 'h' => 1], 'story_crop_media_id' => 'media-abc']),
         ])
         ->assertOk();
 
     $meta = PostPlatform::where('social_account_id', $facebook->id)->sole()->meta;
 
     expect($meta['story_fit'])->toBe('manual')
-        ->and(data_get($meta, 'story_crop.x'))->toBe(0.1);
+        ->and(data_get($meta, 'story_crop.x'))->toBe(0.1)
+        ->and($meta['story_crop_media_id'])->toBe('media-abc');
 
     TryPostServer::actingAs($this->user)
         ->tool(CreatePostTool::class, [

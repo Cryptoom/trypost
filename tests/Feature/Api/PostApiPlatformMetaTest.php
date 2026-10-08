@@ -565,6 +565,7 @@ it('tps01 meta rules story fit persists story_fit and story_crop on store and re
         ->postJson(route('api.posts.store'), $payload([
             'story_fit' => 'manual',
             'story_crop' => ['x' => 0.25, 'y' => 0, 'w' => 0.3164, 'h' => 1],
+            'story_crop_media_id' => 'media-abc',
         ]))
         ->assertCreated();
 
@@ -572,7 +573,8 @@ it('tps01 meta rules story fit persists story_fit and story_crop on store and re
 
     expect($meta['story_fit'])->toBe('manual')
         ->and(data_get($meta, 'story_crop.w'))->toBe(0.3164)
-        ->and(data_get($meta, 'story_crop.h'))->toBe(1);
+        ->and(data_get($meta, 'story_crop.h'))->toBe(1)
+        ->and($meta['story_crop_media_id'])->toBe('media-abc');
 
     foreach (['center', 'smart', 'fit'] as $mode) {
         $this->withHeaders($this->headers)->postJson(route('api.posts.store'), $payload(['story_fit' => $mode]))->assertCreated();

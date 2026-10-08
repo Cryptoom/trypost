@@ -45,8 +45,12 @@ export const isStoryPhoto = (contentType: string, media: MediaItem[]): boolean =
  * PATCH:story-photo-fit: the media a platform publishes, in the post's media order, narrowed by
  * its selection (an empty selection means every item). Mirrors PostPlatform::scopedMediaItems().
  */
-export const scopedMedia = (media: MediaItem[], mediaIds: string[] = []): MediaItem[] =>
-    mediaIds.length === 0 ? media : media.filter((item) => mediaIds.includes(item.id));
+export const scopedMedia = (media: MediaItem[], mediaIds: string[] = []): MediaItem[] => {
+    const selected = mediaIds.length === 0 ? media : media.filter((item) => mediaIds.includes(item.id));
+
+    // A stale selection that matches nothing falls back to every item, like the server.
+    return selected.length > 0 ? selected : media;
+};
 
 const formatAspect = (ratio: number): string => ratio.toFixed(2);
 
