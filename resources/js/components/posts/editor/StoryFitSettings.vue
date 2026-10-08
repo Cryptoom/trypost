@@ -52,13 +52,12 @@ const saveRect = (rect: NormalizedRect) => {
 <template>
     <div class="space-y-2" data-testid="story-fit-settings">
         <p class="text-[11px] font-black uppercase tracking-widest text-foreground/60">{{ $t('posts.story_fit.label') }}</p>
-        <div class="flex flex-wrap gap-2" role="radiogroup" :aria-label="$t('posts.story_fit.label')">
+        <div class="flex flex-wrap gap-2" role="group" :aria-label="$t('posts.story_fit.label')">
             <button
                 v-for="mode in modes"
                 :key="mode"
                 type="button"
-                role="radio"
-                :aria-checked="selectedMode === mode"
+                :aria-pressed="selectedMode === mode"
                 class="cursor-pointer rounded-full border-2 px-3 py-1 text-xs font-bold uppercase tracking-widest transition-colors disabled:cursor-not-allowed disabled:opacity-50"
                 :class="selectedMode === mode
                     ? 'border-foreground bg-violet-100 text-foreground shadow-2xs'
@@ -85,7 +84,7 @@ const saveRect = (rect: NormalizedRect) => {
                 <IconCrop class="size-4" />
                 {{ savedRect ? $t('posts.story_fit.change_crop') : $t('posts.story_fit.pick_crop') }}
             </Button>
-            <span class="text-xs font-medium text-foreground/70" data-testid="story-fit-crop-status">
+            <span class="text-xs font-medium text-foreground/70" role="status" data-testid="story-fit-crop-status">
                 {{ savedRect ? $t('posts.story_fit.crop_saved') : $t('posts.story_fit.crop_missing') }}
             </span>
         </div>

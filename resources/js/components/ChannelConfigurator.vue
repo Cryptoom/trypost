@@ -1,4 +1,5 @@
 <script setup lang="ts">
+// PATCH:story-photo-fit: passes the per-platform media selection to the Facebook and Instagram settings.
 import { IconAlertCircle, IconCircleCheck, IconExternalLink } from '@tabler/icons-vue';
 import { computed } from 'vue';
 
@@ -135,6 +136,7 @@ const settingsProps = (channel: Channel) => ({
                 v-bind="settingsProps(channel)"
                 :content-type="channel.contentType"
                 :media="media"
+                :media-ids="channel.mediaIds"
                 @update:content-type="emit('update:contentType', channel.id, $event)"
             />
             <FacebookSettings
@@ -142,6 +144,7 @@ const settingsProps = (channel: Channel) => ({
                 v-bind="settingsProps(channel)"
                 :content-type="channel.contentType"
                 :media="media"
+                :media-ids="channel.mediaIds"
                 @update:content-type="emit('update:contentType', channel.id, $event)"
             />
             <TikTokSettings

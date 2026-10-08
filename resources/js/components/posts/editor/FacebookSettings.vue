@@ -28,12 +28,14 @@ interface Props {
     contentType: string;
     media: MediaItem[];
     meta?: Record<string, any>;
+    mediaIds?: string[];
     disabled?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
     disabled: false,
     meta: () => ({}),
+    mediaIds: () => [],
 });
 
 const emit = defineEmits<{
@@ -61,7 +63,15 @@ const isFeed = computed(() => props.contentType === ContentType.FacebookPost);
 const isStory = computed(() => props.contentType === ContentType.FacebookStory);
 const selectedAspectRatio = computed(() => props.meta.aspect_ratio ?? 'original');
 
-const showStoryFit = computed(() => isStoryPhoto(props.contentType, props.media));
+// The publisher uses the first media of THIS platform's selection, so the fit settings must too.
+const storyMedia = computed(() => {
+    const assigned = props.mediaIds
+        .map((id) => props.media.find((item) => item.id === id))
+        .filter((item): item is MediaItem => item !== undefined);
+
+    return assigned.length > 0 ? assigned : props.media;
+});
+const showStoryFit = computed(() => isStoryPhoto(props.contentType, storyMedia.value));
 
 const pickVariant = (value: string) => {
     if (props.disabled) return;
@@ -179,12 +189,12 @@ const storyMusicDescription = computed({
             <StoryFitSettings
                 v-if="showStoryFit"
                 :meta="meta"
-                :media="media"
+                :media="storyMedia"
                 :disabled="disabled"
                 @update:meta="emit('update:meta', $event)"
             />
 
-            <MediaRulesWarning :content-type="contentType" :media="media" :platform="Platform.Facebook" :meta="meta" />
+            <MediaRulesWarning :content-type="contentType" :media="media" :platform="Platform.Facebook" :meta="meta" :story-media="storyMedia" />
         </div>
     </div>
 </template>

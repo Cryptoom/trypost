@@ -15,8 +15,9 @@ const props = withDefaults(
         media: MediaItem[];
         platform: string;
         meta?: Record<string, any>;
+        storyMedia?: MediaItem[];
     }>(),
-    { meta: () => ({}) },
+    { meta: () => ({}), storyMedia: undefined },
 );
 
 const warning = computed(() => getMediaValidationWarning(props.contentType, props.media));
@@ -29,7 +30,7 @@ const isStoryVideoAspect = computed(
 );
 
 const storyHintKey = computed(() => {
-    if (warning.value || !isStoryPhoto(props.contentType, props.media)) {
+    if (warning.value || !isStoryPhoto(props.contentType, props.storyMedia ?? props.media)) {
         return null;
     }
 

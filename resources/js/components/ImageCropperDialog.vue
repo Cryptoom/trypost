@@ -104,6 +104,9 @@ const selectionStyle = computed(() => ({
     boxShadow: '0 0 0 9999px rgba(0, 0, 0, 0.5)',
 }));
 
+// Larger invisible touch target for the narrow 9:16 frame; the square avatar crop keeps its handles as before.
+const handleHitArea = computed(() => (props.aspect === 1 ? '' : "before:absolute before:-inset-2 before:content-['']"));
+
 const outputMime = computed(() => resolveOutputMime(props.mimeType));
 
 const outputFileName = computed(() => resolveOutputFileName(props.fileName, outputMime.value));
@@ -257,7 +260,7 @@ const save = () => {
 
     const canvas = document.createElement('canvas');
     canvas.width = props.outputSize;
-    canvas.height = props.outputSize;
+    canvas.height = Math.round(props.outputSize / props.aspect);
 
     const context = canvas.getContext('2d');
 
@@ -269,7 +272,7 @@ const save = () => {
     processing.value = true;
 
     try {
-        context.drawImage(img, rect.sx, rect.sy, rect.sw, rect.sh, 0, 0, props.outputSize, props.outputSize);
+        context.drawImage(img, rect.sx, rect.sy, rect.sw, rect.sh, 0, 0, canvas.width, canvas.height);
         canvas.toBlob(
             (blob) => {
                 processing.value = false;
@@ -368,18 +371,22 @@ onBeforeUnmount(() => resizeObserver?.disconnect());
                     <div class="pointer-events-none absolute inset-0 border-2 border-white shadow-[0_0_0_1px_rgba(0,0,0,0.4)]" />
                     <span
                         class="absolute left-0 top-0 size-3 cursor-nwse-resize rounded-sm border border-foreground bg-white"
+                        :class="handleHitArea"
                         @pointerdown.stop="onHandlePointerDown('nw', $event)"
                     />
                     <span
                         class="absolute right-0 top-0 size-3 cursor-nesw-resize rounded-sm border border-foreground bg-white"
+                        :class="handleHitArea"
                         @pointerdown.stop="onHandlePointerDown('ne', $event)"
                     />
                     <span
                         class="absolute bottom-0 left-0 size-3 cursor-nesw-resize rounded-sm border border-foreground bg-white"
+                        :class="handleHitArea"
                         @pointerdown.stop="onHandlePointerDown('sw', $event)"
                     />
                     <span
                         class="absolute bottom-0 right-0 size-3 cursor-nwse-resize rounded-sm border border-foreground bg-white"
+                        :class="handleHitArea"
                         @pointerdown.stop="onHandlePointerDown('se', $event)"
                     />
                 </div>
