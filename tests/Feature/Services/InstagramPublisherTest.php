@@ -80,7 +80,7 @@ test('instagram publisher publishes reel', function () {
 
 test('instagram publisher publishes story', function () {
     Storage::fake();
-    $this->postPlatform->update(['content_type' => ContentType::InstagramStory]);
+    $this->postPlatform->update(['content_type' => ContentType::InstagramStory, 'meta' => ['story_fit' => 'fit']]);
 
     $mockOptimizer = Mockery::mock(MediaOptimizer::class);
     $mockOptimizer->shouldReceive('fitToCanvas')->once()->with(Mockery::type('string'), 1080, 1920)->andReturnUsing(function (string $tempFile) {

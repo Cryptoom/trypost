@@ -11,6 +11,7 @@ use App\Exceptions\Social\FacebookPublishException;
 use App\Exceptions\Social\SocialPublishException;
 use App\Models\PostPlatform;
 use App\Services\Media\ImageToVideoConverter;
+use App\Services\Media\StoryImageFitter;
 use App\Services\Media\StoryMusicGenerator;
 use App\Services\Social\Concerns\CropsImageForAspectRatio;
 use App\Services\Social\Concerns\HasSocialHttpClient;
@@ -55,10 +56,11 @@ class FacebookPublisher
         $contentType = $postPlatform->content_type;
         $aspectRatio = data_get($postPlatform->meta, 'aspect_ratio');
         $musicDescription = data_get($postPlatform->meta, 'story_music_description');
+        $storyFit = ['mode' => data_get($postPlatform->meta, 'story_fit'), 'rect' => data_get($postPlatform->meta, 'story_crop')]; // PATCH:story-photo-fit
 
         return match ($contentType) {
             ContentType::FacebookReel => $this->publishReel($pageId, $accessToken, $content, $media->first()),
-            ContentType::FacebookStory => $this->publishStory($pageId, $accessToken, $media->first(), $musicDescription),
+            ContentType::FacebookStory => $this->publishStory($pageId, $accessToken, $media->first(), $musicDescription, $storyFit),
             ContentType::FacebookPost => $this->publishPost($pageId, $accessToken, $content, $media, $aspectRatio),
             default => throw new FacebookPublishException(
                 userMessage: "Unsupported Facebook content type: {$contentType?->value}",
@@ -433,7 +435,7 @@ class FacebookPublisher
      * AI background music, see convertImageToStoryVideo()) before this
      * method's normal video transfer/finish flow runs unchanged.
      */
-    private function publishStory(string $pageId, string $accessToken, $media, ?string $musicDescription = null): array
+    private function publishStory(string $pageId, string $accessToken, $media, ?string $musicDescription = null, array $storyFit = []): array
     {
         if (! $media->isVideo() && ! $media->isImage()) {
             throw new FacebookPublishException(
@@ -478,7 +480,7 @@ class FacebookPublisher
         // actual video).
         [$tempFile, $mimeType] = $media->isVideo()
             ? $this->downloadStoryVideo($media)
-            : $this->convertImageToStoryVideo($media, $musicDescription);
+            : $this->convertImageToStoryVideo($media, $musicDescription, $storyFit);
 
         try {
             $fileSize = filesize($tempFile);
@@ -564,7 +566,7 @@ class FacebookPublisher
      *
      * @return array{0: string, 1: string} [local file path, mime type]
      */
-    private function convertImageToStoryVideo($media, ?string $musicDescription): array
+    private function convertImageToStoryVideo($media, ?string $musicDescription, array $storyFit = []): array
     {
         $imagePath = tempnam(sys_get_temp_dir(), 'fb_story_img_');
         $audioPath = null;
@@ -583,12 +585,15 @@ class FacebookPublisher
                 );
             }
 
+            // PATCH:story-photo-fit: fit to 1080x1920 first, so music and video use the final frame.
+            $fittedPath = app(StoryImageFitter::class)->fitOrKeep($imagePath, data_get($storyFit, 'mode'), data_get($storyFit, 'rect'));
+
             $durationSeconds = (int) config('trypost.platforms.facebook.story_photo_duration_seconds');
 
-            $audioPath = app(StoryMusicGenerator::class)->generate($imagePath, $durationSeconds, $musicDescription);
+            $audioPath = app(StoryMusicGenerator::class)->generate($fittedPath, $durationSeconds, $musicDescription);
 
             try {
-                $videoPath = app(ImageToVideoConverter::class)->convert($imagePath, $durationSeconds, $audioPath);
+                $videoPath = app(ImageToVideoConverter::class)->convert($fittedPath, $durationSeconds, $audioPath);
             } catch (RuntimeException $e) {
                 throw new FacebookPublishException(
                     userMessage: 'Could not convert the story photo to video.',
@@ -600,7 +605,7 @@ class FacebookPublisher
 
             return [$videoPath, 'video/mp4'];
         } finally {
-            foreach ([$imagePath, $audioPath] as $path) {
+            foreach ([$imagePath, $fittedPath ?? null, $audioPath] as $path) {
                 if ($path !== null && file_exists($path) && ! unlink($path)) {
                     Log::warning('Facebook story temp file cleanup failed', ['path' => $path]);
                 }

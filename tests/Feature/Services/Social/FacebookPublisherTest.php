@@ -14,6 +14,7 @@ use App\Models\Workspace;
 use App\Services\Media\ImageToVideoConverter;
 use App\Services\Media\StoryMusicGenerator;
 use App\Services\Social\FacebookPublisher;
+use Illuminate\Http\Client\Factory;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Intervention\Image\Drivers\Gd\Driver;
@@ -1175,4 +1176,123 @@ test('facebook publisher throws exception when delete fails', function () {
 
     expect(fn () => $this->publisher->delete($this->postPlatform))
         ->toThrow(FacebookPublishException::class);
+});
+
+function tps01FacebookStoryTwoTone(): string
+{
+    // Left half red, right half blue 1600x900 landscape photo.
+    $gd = imagecreatetruecolor(1600, 900);
+    imagefilledrectangle($gd, 0, 0, 799, 899, imagecolorallocate($gd, 230, 20, 20));
+    imagefilledrectangle($gd, 800, 0, 1599, 899, imagecolorallocate($gd, 20, 20, 230));
+    ob_start();
+    imagejpeg($gd, null, 95);
+
+    return (string) ob_get_clean();
+}
+
+/**
+ * Publish a landscape photo story and report what the video converter was fed.
+ *
+ * @return array{width: int, height: int, left_red: int, right_blue: int, middle_blue: int, middle_red: int, converted_exists_after: bool}
+ */
+function tps01PublishFacebookPhotoStory(object $test, ?array $meta): array
+{
+    $test->postPlatform->update(['content_type' => ContentType::FacebookStory, 'meta' => $meta]);
+    $test->post->update([
+        'media' => [[
+            'id' => 'test-media-story',
+            'path' => 'media/2026-01/story.jpg',
+            'url' => 'https://example.com/media/2026-01/story.jpg',
+            'mime_type' => 'image/jpeg',
+            'original_filename' => 'story.jpg',
+        ]],
+    ]);
+
+    $convertedVideoPath = tempnam(sys_get_temp_dir(), 'fb_story_converted_');
+    file_put_contents($convertedVideoPath, 'fake-converted-mp4-bytes');
+
+    $seen = [];
+
+    $mockMusicGenerator = Mockery::mock(StoryMusicGenerator::class);
+    $mockMusicGenerator->shouldReceive('generate')
+        ->once()
+        ->withArgs(function (string $imagePath) use (&$seen) {
+            // The music is derived from the FINAL 9:16 frame.
+            $seen['music'] = getimagesize($imagePath);
+
+            return true;
+        })
+        ->andReturn(null);
+    app()->instance(StoryMusicGenerator::class, $mockMusicGenerator);
+
+    $mockConverter = Mockery::mock(ImageToVideoConverter::class);
+    $mockConverter->shouldReceive('convert')
+        ->once()
+        ->withArgs(function (string $imagePath) use (&$seen) {
+            $image = (new ImageManager(Driver::class))->decodePath($imagePath);
+            $seen['width'] = $image->width();
+            $seen['height'] = $image->height();
+            $seen['left_red'] = $image->colorAt(5, 960)->red()->value();
+            $seen['right_blue'] = $image->colorAt($image->width() - 6, 960)->blue()->value();
+            $seen['middle_blue'] = $image->colorAt(intdiv($image->width(), 2), 960)->blue()->value();
+            $seen['middle_red'] = $image->colorAt(intdiv($image->width(), 2), 960)->red()->value();
+            $seen['path'] = $imagePath;
+
+            return true;
+        })
+        ->andReturn($convertedVideoPath);
+    app()->instance(ImageToVideoConverter::class, $mockConverter);
+
+    // Fresh factory per run: an exhausted sequence of an earlier run would otherwise match first.
+    Http::swap(new Factory);
+
+    Http::fake([
+        '*/page_123/video_stories' => Http::sequence()
+            ->push(['video_id' => 'story_video_123', 'upload_url' => 'https://rupload.facebook.com/video-upload/v25.0/story_video_123'], 200)
+            ->push(['success' => true, 'post_id' => 'photo_story_post_123'], 200),
+        '*example.com/media/*' => Http::response(tps01FacebookStoryTwoTone(), 200),
+        '*rupload.facebook.com/*' => Http::response(['success' => true], 200),
+    ]);
+
+    $test->publisher->publish($test->postPlatform->fresh());
+
+    $seen['converted_exists_after'] = file_exists($convertedVideoPath);
+    $seen['fitted_left_over'] = isset($seen['path']) && file_exists($seen['path']);
+    $seen['music_dimensions'] = [$seen['music'][0] ?? null, $seen['music'][1] ?? null];
+
+    return $seen;
+}
+
+test('tps01 facebook story converter gets 1080x1920', function () {
+    $seen = tps01PublishFacebookPhotoStory($this, ['story_fit' => 'manual', 'story_crop' => ['x' => 0.6, 'y' => 0, 'w' => 0.31640625, 'h' => 1]]);
+
+    expect($seen['width'])->toBe(1080)
+        ->and($seen['height'])->toBe(1920)
+        // manual rectangle inside the blue half
+        ->and($seen['middle_blue'])->toBeGreaterThan(150)
+        ->and($seen['middle_red'])->toBeLessThan(100)
+        // music generator and converter both receive the same final frame
+        ->and($seen['music_dimensions'])->toBe([1080, 1920])
+        // every temp file is cleaned up, including the fitted copy
+        ->and($seen['converted_exists_after'])->toBeFalse()
+        ->and($seen['fitted_left_over'])->toBeFalse();
+
+    foreach (['fit', 'smart', 'center'] as $mode) {
+        $other = tps01PublishFacebookPhotoStory($this, ['story_fit' => $mode]);
+
+        expect($other['width'])->toBe(1080)->and($other['height'])->toBe(1920);
+    }
+});
+
+test('tps01 facebook story without story fit center', function () {
+    // PlayCraft and older posts have no story_fit at all: same flow as before, only centered on 9:16.
+    foreach ([null, [], ['story_music_description' => 'upbeat'], ['story_fit' => 'bogus']] as $meta) {
+        $seen = tps01PublishFacebookPhotoStory($this, $meta);
+
+        expect($seen['width'])->toBe(1080)
+            ->and($seen['height'])->toBe(1920)
+            ->and($seen['left_red'])->toBeGreaterThan(150)
+            ->and($seen['right_blue'])->toBeGreaterThan(150)
+            ->and($seen['converted_exists_after'])->toBeFalse();
+    }
 });

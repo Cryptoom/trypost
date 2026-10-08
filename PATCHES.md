@@ -162,6 +162,55 @@ and Privacy links to be clearly visible", genau unser Grund.
   lang/*/auth.php` MUSS leer bleiben (Platzhalter, keine harten URLs mehr, also triviales Grep).
   Der eigentliche Wert kommt jetzt aus der `.env` auf dem Server, nicht mehr aus dem Repo.
 
+### Patch 5 · story-photo-fit  (TPS-01, Backend-Teil B1)
+
+Story-Fotos auf Instagram und Facebook werden auf 9:16 (1080 x 1920 JPEG) gebracht, statt vom
+Editor geblockt oder als Querformat veröffentlicht zu werden. Der Nutzer wählt pro Story-Plattform
+im Meta-Feld `story_fit` einen Modus: `center` (Standard, auch ohne Auswahl oder bei unbekanntem
+Wert), `smart` (Gemini Vision schlägt den Ausschnitt vor, jeder Fehler wird zu `center`),
+`manual` (Rahmen `story_crop`, normalisiert 0..1, ungültig wird zu `center`) und `fit` (ganzes
+Foto auf Unschärfe-Hintergrund). Facebook rendert danach wie bisher das Story-Video mit KI-Musik,
+aber aus dem fertigen 1080 x 1920 Bild. Upstream löst Foto-Stories seit #374 anders (`photo_stories`
+ohne Musik), ein Merge würde unseren Musik-Weg brechen, darum dieser schmale eigene Patch.
+
+Schadensklasse kundendaten: PlayCraft veröffentlicht über dieselbe Instanz. Feed-Posts, Reels und
+Videos sind unverändert. Story-Fotos ohne `story_fit` werden jetzt mittig auf 9:16 zugeschnitten
+(Instagram vorher: ganzes Foto auf Unschärfe-Hintergrund, siehe Verhaltensänderungen (a); Facebook
+vorher: unbeschnittenes Querformat-Video). `Platform::Instagram` und `Platform::InstagramFacebook` nutzen dieselbe
+`InstagramPublisher`-Instanz, das Fitting gilt für beide Wege gleich.
+
+- **Marker**: `PATCH:story-photo-fit` als Kommentar an jeder Berührungsstelle.
+- **Dateien** (alle mit Marker):
+  - `app/Services/Media/MediaOptimizer.php` (`cropToRect`, `coverToSize`, `RECT_RATIO_TOLERANCE`)
+  - `app/Services/Media/StoryImageFitter.php` (neu), `app/Services/Media/StoryCropSuggester.php` (neu,
+    Gemini, wirft nie, Ergebnis pro Bildinhalt 7 Tage gecacht)
+  - `resources/views/prompts/story_crop/suggest.blade.php` (neu, Prompt als Blade)
+  - `app/Services/Media/ImageToVideoConverter.php` (Scale/Pad-Filter auf 1080 x 1920)
+  - `app/Services/Social/Concerns/CropsImageForAspectRatio.php` (`prepareStoryImageUrl`)
+  - `app/Services/Social/InstagramPublisher.php` (Foto-Zweig von `publishStory`)
+  - `app/Services/Social/FacebookPublisher.php` (`convertImageToStoryVideo`, Diff bewusst klein
+    gehalten, weil diese Datei bei Upstream-Merges Konflikte erzeugt)
+  - `app/Enums/PostPlatform/ContentType.php` (`autoFitsImage()` auch für `FacebookStory`)
+  - `app/Support/PostPlatformMetaRules.php` (`story_fit`, `story_crop`, einzige Stelle für Meta-Regeln)
+- **Verhaltensänderungen** (bewusst, Olli-Entscheid 08.10.2026):
+  - (a) Instagram-Story-Fotos ohne `story_fit` werden jetzt mittig auf 9:16 zugeschnitten, statt als ganzes Foto
+    auf Unschärfe-Hintergrund zu erscheinen (Standard bleibt `center`, kein Rückbau auf `fit`). Deshalb Deploy
+    zusammen mit E1 (Editor). Bereits geplante oder per API/MCP erzeugte Instagram-Stories ändern ihr Aussehen.
+    Facebook-Foto-Stories ohne `story_fit` werden ebenfalls mittig geschnitten, vorher gingen sie unbeschnitten raus.
+  - (b) Modus `smart` sendet ein 768-px-Abbild des Kundenfotos an `generativelanguage.googleapis.com`
+    (nur wenn `GEMINI_API_KEY` gesetzt ist).
+- **Prüf-Grep nach jedem Upstream-Merge**: `grep -rl 'PATCH:story-photo-fit' app resources` muss mindestens
+  10 Dateien liefern (die obige Liste), danach `vendor/bin/pest --filter=tps01`.
+- **Bruchbedingung**: Upstream ändert `FacebookPublisher::convertImageToStoryVideo`, `InstagramPublisher::publishStory`
+  oder `ContentType::autoFitsImage()` und der Merge läuft konfliktfrei durch. Dann Marker einzeln
+  gegenprüfen, nicht auf einen Merge-Konflikt verlassen.
+- **Tests**: alle Pest-Namen beginnen mit `tps01 ` (Leerzeichen, Filter `--filter=tps01`; nur die Tempfile-Präfixe
+  haben Unterstriche). Abgedeckt: Fitter, Suggester, `cropToRect`, Facebook- und Instagram-Story,
+  Meta-Regeln in API und MCP, Scale/Pad, `autoFitsImage`, Tempfile-Aufräumen.
+- **Server**: das Produktions-Image hat nur GD (kein Imagick), die GD-Pfade sind getestet. Der
+  Gemini-Key kommt aus `services.gemini.api_key`, ohne Key bleibt `smart` bei `center`.
+- **Stand**: noch nicht deployed (Editor-Teil E1 folgt, Deploy ist ein eigenes Olli-Gate).
+
 ## Geprueft und NICHT gepatcht: is_aigc-Composer-Toggle (25.08.2026)
 
 Der urspruenglich fuer diesen Fork geplante Patch (TikTok-`is_aigc`-Toggle im Post-Composer,

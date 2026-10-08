@@ -57,6 +57,23 @@ test('converts an image into a held-frame mp4 with a silent audio track', functi
     expect($streams)->toContain('video')->toContain('audio');
 });
 
+test('tps01 ffmpeg scale pad', function () {
+    if (! ffmpegAvailableForTest()) {
+        $this->markTestSkipped('ffmpeg is not installed on this machine.');
+    }
+
+    // Odd, landscape source: without scale/pad libx264 would reject the odd size.
+    $manager = new ImageManager(Driver::class);
+    $this->imagePath = tempnam(sys_get_temp_dir(), 'i2v_odd_').'.jpg';
+    file_put_contents($this->imagePath, (string) $manager->createImage(321, 201)->fill('336699')->encodeUsingMediaType('image/jpeg', quality: 80));
+
+    $this->outputPath = (new ImageToVideoConverter)->convert($this->imagePath, 1);
+
+    $size = trim((string) shell_exec('ffprobe -v error -select_streams v:0 -show_entries stream=width,height -of csv=p=0 '.escapeshellarg($this->outputPath)));
+
+    expect($size)->toBe('1080,1920');
+});
+
 test('throws when ffmpeg fails to convert a non-existent image', function () {
     if (! ffmpegAvailableForTest()) {
         $this->markTestSkipped('ffmpeg is not installed on this machine.');

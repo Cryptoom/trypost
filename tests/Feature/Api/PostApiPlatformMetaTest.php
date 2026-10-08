@@ -548,3 +548,77 @@ it('rejects non-http Pinterest links', function () {
             'platforms.0.meta.link' => __('posts.form.pinterest.link_invalid'),
         ]);
 });
+
+it('tps01 meta rules story fit persists story_fit and story_crop on store and rejects unknown modes', function () {
+    $facebook = SocialAccount::factory()->facebook()->create(['workspace_id' => $this->workspace->id]);
+
+    $payload = fn (array $meta) => [
+        'content' => 'Story',
+        'platforms' => [[
+            'social_account_id' => $facebook->id,
+            'content_type' => ContentType::FacebookStory->value,
+            'meta' => $meta,
+        ]],
+    ];
+
+    $this->withHeaders($this->headers)
+        ->postJson(route('api.posts.store'), $payload([
+            'story_fit' => 'manual',
+            'story_crop' => ['x' => 0.25, 'y' => 0, 'w' => 0.3164, 'h' => 1],
+        ]))
+        ->assertCreated();
+
+    $meta = PostPlatform::where('social_account_id', $facebook->id)->sole()->meta;
+
+    expect($meta['story_fit'])->toBe('manual')
+        ->and(data_get($meta, 'story_crop.w'))->toBe(0.3164)
+        ->and(data_get($meta, 'story_crop.h'))->toBe(1);
+
+    foreach (['center', 'smart', 'fit'] as $mode) {
+        $this->withHeaders($this->headers)->postJson(route('api.posts.store'), $payload(['story_fit' => $mode]))->assertCreated();
+    }
+
+    $this->withHeaders($this->headers)
+        ->postJson(route('api.posts.store'), $payload(['story_fit' => 'stretch']))
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['platforms.0.meta.story_fit']);
+});
+
+it('tps01 meta rules story crop bounds rejects rectangles outside the image', function () {
+    $facebook = SocialAccount::factory()->facebook()->create(['workspace_id' => $this->workspace->id]);
+
+    $post = fn (array $crop) => $this->withHeaders($this->headers)->postJson(route('api.posts.store'), [
+        'content' => 'Story',
+        'platforms' => [[
+            'social_account_id' => $facebook->id,
+            'content_type' => ContentType::FacebookStory->value,
+            'meta' => ['story_fit' => 'manual', 'story_crop' => $crop],
+        ]],
+    ]);
+
+    foreach ([
+        ['x' => -0.1, 'y' => 0, 'w' => 0.3, 'h' => 1],
+        ['x' => 0, 'y' => 1.2, 'w' => 0.3, 'h' => 1],
+        ['x' => 0.8, 'y' => 0, 'w' => 0.3, 'h' => 1],
+        ['x' => 0, 'y' => 0.5, 'w' => 0.3, 'h' => 0.6],
+        ['x' => 0, 'y' => 0, 'w' => 0, 'h' => 1],
+        ['x' => 0, 'y' => 0, 'w' => 0.3, 'h' => 0],
+        ['x' => 0, 'y' => 0, 'w' => 1.5, 'h' => 1],
+        ['x' => 0, 'y' => 0, 'w' => 0.3],
+        // Non-numeric values are a 422, never a server error.
+        ['x' => 'abc', 'y' => 0, 'w' => 0.3, 'h' => 1],
+        ['x' => [1], 'y' => 0, 'w' => 0.3, 'h' => 1],
+        ['x' => 0, 'y' => 0, 'w' => 'wide', 'h' => 1],
+        [],
+    ] as $invalid) {
+        $post($invalid)->assertUnprocessable();
+    }
+
+    // The out-of-image message is a readable sentence, not a raw translation key.
+    $messages = collect($post(['x' => 0.9, 'y' => 0, 'w' => 0.3, 'h' => 1])->json('errors'))->flatten()->all();
+
+    expect($messages)->not->toBeEmpty()
+        ->and(collect($messages)->contains(fn ($m) => str_starts_with((string) $m, 'validation.')))->toBeFalse();
+
+    $post(['x' => 0.7, 'y' => 0, 'w' => 0.3, 'h' => 1])->assertCreated();
+});

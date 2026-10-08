@@ -336,7 +336,8 @@ enum ContentType: string
      */
     public function autoFitsImage(): bool
     {
-        return $this === self::InstagramStory;
+        // PATCH:story-photo-fit: Facebook stories fit photos too (center, smart, manual, fit).
+        return $this === self::InstagramStory || $this === self::FacebookStory;
     }
 
     /**

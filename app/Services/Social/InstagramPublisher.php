@@ -77,7 +77,7 @@ class InstagramPublisher
 
         return match ($contentType) {
             ContentType::InstagramReel => $this->publishReel($instagramId, $accessToken, $content, $firstMedia),
-            ContentType::InstagramStory => $this->publishStory($instagramId, $accessToken, $firstMedia),
+            ContentType::InstagramStory => $this->publishStory($instagramId, $accessToken, $firstMedia, data_get($postPlatform->meta, 'story_fit'), data_get($postPlatform->meta, 'story_crop')), // PATCH:story-photo-fit
             ContentType::InstagramFeed => $this->publishFeed($instagramId, $accessToken, $content, $media, $aspectRatio),
             default => throw new InstagramPublishException(
                 userMessage: "Unsupported Instagram content type: {$contentType?->value}",
@@ -163,7 +163,7 @@ class InstagramPublisher
         return $this->finishContainer($instagramId, $accessToken, $containerId);
     }
 
-    private function publishStory(string $instagramId, string $accessToken, $media): array
+    private function publishStory(string $instagramId, string $accessToken, $media, mixed $storyFit = null, mixed $storyCrop = null): array
     {
         $isVideo = $media->isVideo();
 
@@ -175,8 +175,8 @@ class InstagramPublisher
         if ($isVideo) {
             $params['video_url'] = $media->url;
         } else {
-            $dimensions = ContentType::InstagramStory->aiImageDimensions();
-            $params['image_url'] = $this->fitImageToCanvas($media->url, data_get($dimensions, 'width'), data_get($dimensions, 'height'));
+            // PATCH:story-photo-fit: photos are fitted to 9:16 by the user's story_fit mode (default center).
+            $params['image_url'] = $this->prepareStoryImageUrl($media->url, $storyFit, $storyCrop);
         }
 
         $containerId = $this->createContainer($instagramId, $params, 'story container');
