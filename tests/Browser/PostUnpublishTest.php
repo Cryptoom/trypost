@@ -36,6 +36,9 @@ function seedUnpublishPost(Platform $platform, Closure $seedPlatform): Post
     $account = SocialAccount::factory()->create([
         'workspace_id' => $workspace->id,
         'platform' => $platform,
+        // UnpublishPost treats an account without the delete scopes as failed
+        // ("Missing permissions"), so a delete-capable account must carry them.
+        'scopes' => $platform->requiredDeleteScopes(),
     ]);
 
     $seedPlatform($post, $account);
