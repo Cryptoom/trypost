@@ -95,8 +95,15 @@ class PostController extends Controller
      */
     private function withUnpublishAvailability(LengthAwarePaginator $posts): LengthAwarePaginator
     {
-        $posts->getCollection()->each(function (Post $post) {
-            foreach ($post->unpublishAvailability() as $key => $value) {
+        // One extra query: the list only eager-loads ENABLED rows, but
+        // UnpublishPost::execute() also removes disabled published ones.
+        $published = PostPlatform::whereIn('post_id', $posts->getCollection()->modelKeys())
+            ->whereNotNull('platform_post_id')
+            ->get(['id', 'post_id', 'platform', 'content_type', 'platform_post_id'])
+            ->groupBy('post_id');
+
+        $posts->getCollection()->each(function (Post $post) use ($published) {
+            foreach ($post->unpublishAvailability($published->get($post->id, collect())) as $key => $value) {
                 $post->setAttribute($key, $value);
             }
         });

@@ -132,3 +132,17 @@ test('unp01 UnpublishPost still sorts a story into unsupported and a reel into u
         ->and($result['unpublished'][0]->content_type->value)->toBe('facebook_reel')
         ->and($result['failed'])->toBe([]);
 });
+
+test('unp01 index counts a disabled but still published reel, like UnpublishPost does', function () {
+    $post = unp01PublishedPost($this, ['facebookStory']);
+    PostPlatform::factory()->facebookReel()->disabled()->published()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $this->account->id,
+    ]);
+
+    $this->actingAs($this->user)->get(route('app.posts.index'))
+        ->assertInertia(fn ($page) => $page
+            ->where('posts.data.0.can_unpublish', true)
+            ->where('posts.data.0.unpublish_blocked_reason', null)
+        );
+});

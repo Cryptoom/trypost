@@ -214,15 +214,15 @@ class Post extends Model
      * Whether Unpublish can do anything for this post: true when at least one
      * published row (platform_post_id set) can be removed through its
      * platform's API. When it cannot, the reason is `facebook_story` if every
-     * published row is a Facebook Story, otherwise `unsupported`. Reads the
-     * already-loaded postPlatforms relation. PATCH:unp-01
+     * published row is a Facebook Story, otherwise `unsupported`. The caller
+     * passes ALL published rows of the post, disabled ones included, because
+     * UnpublishPost::execute() processes those too. PATCH:unp-01
      *
+     * @param  Collection<int, PostPlatform>  $published
      * @return array{can_unpublish: bool, unpublish_blocked_reason: string|null}
      */
-    public function unpublishAvailability(): array
+    public function unpublishAvailability(Collection $published): array
     {
-        $published = $this->postPlatforms->filter(fn (PostPlatform $postPlatform) => $postPlatform->platform_post_id !== null);
-
         if ($published->contains(fn (PostPlatform $postPlatform) => $postPlatform->canBeUnpublished())) {
             return ['can_unpublish' => true, 'unpublish_blocked_reason' => null];
         }
