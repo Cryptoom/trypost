@@ -344,7 +344,7 @@ watch(
                 {{ $t('posts.form.tiktok.is_aigc') }}
             </label>
 
-            <!-- Disclose video content (parent toggle) -->
+            <!-- PATCH:tiktok-disclosure-label Parent toggle: keep the official TikTok wording (content sharing guidelines) -->
             <div class="space-y-3">
                 <label class="flex items-center gap-2 text-sm font-medium">
                     <Checkbox v-model="discloseOpen" :disabled="props.disabled" />

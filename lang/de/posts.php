@@ -84,7 +84,7 @@ return [
             'duet' => 'Duett',
             'stitch' => 'Stitch',
             'is_aigc' => 'Mit KI erstelltes Video',
-            'disclose' => 'Videoinhalt offenlegen',
+            'disclose' => 'Gib an, ob dieser Inhalt dich selbst, eine Marke, ein Produkt oder eine Dienstleistung bewirbt.',
             'disclose_hint' => 'Aktivieren, um offenzulegen, dass dieses Video Waren oder Dienstleistungen gegen einen Gegenwert bewirbt. Dein Video kann dich selbst, einen Dritten oder beide bewerben.',
             'promotional_organic_title' => 'Dein Foto/Video wird als „Werbeinhalt" gekennzeichnet.',
             'promotional_paid_title' => 'Dein Foto/Video wird als „Bezahlte Partnerschaft" gekennzeichnet.',

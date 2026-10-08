@@ -84,7 +84,7 @@ return [
             'duet' => 'Düet',
             'stitch' => 'Birleştirme (Stitch)',
             'is_aigc' => 'AI ile yapılan video',
-            'disclose' => 'Video içeriğini beyan et',
+            'disclose' => 'Bu içeriğin sizi, bir markayı, ürünü veya hizmeti tanıtıp tanıtmadığını belirtin.',
             'disclose_hint' => 'Bu videonun bir değer karşılığında ürün veya hizmet tanıttığını beyan etmek için açın. Videonuz sizi, üçüncü bir tarafı veya her ikisini de tanıtabilir.',
             'promotional_organic_title' => 'Fotoğrafınız/videonuz "Tanıtım içeriği" olarak etiketlenecek.',
             'promotional_paid_title' => 'Fotoğrafınız/videonuz "Ücretli ortaklık" olarak etiketlenecek.',

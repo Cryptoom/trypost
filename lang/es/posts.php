@@ -82,7 +82,7 @@ return [
             'duet' => 'Dueto',
             'stitch' => 'Stitch',
             'is_aigc' => 'Video hecho con IA',
-            'disclose' => 'Divulgar contenido del video',
+            'disclose' => 'Indica si este contenido te promociona a ti, a una marca, un producto o un servicio.',
             'disclose_hint' => 'Activa para divulgar que este video promueve bienes o servicios a cambio de algo de valor. Tu video puede promocionarte a ti, a un tercero o ambos.',
             'promotional_organic_title' => 'Tu foto/video será etiquetado como "Contenido Promocional".',
             'promotional_paid_title' => 'Tu foto/video será etiquetado como "Asociación pagada".',

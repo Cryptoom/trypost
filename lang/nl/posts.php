@@ -82,7 +82,7 @@ return [
             'duet' => 'Duet',
             'stitch' => 'Stitch',
             'is_aigc' => 'Video gemaakt met AI',
-            'disclose' => 'Video-inhoud onthullen',
+            'disclose' => 'Geef aan of deze content jezelf, een merk, product of dienst promoot.',
             'disclose_hint' => 'Schakel in om te onthullen dat deze video goederen of diensten promoot in ruil voor iets van waarde. Je video kan jezelf, een derde partij of beide promoten.',
             'promotional_organic_title' => 'Je foto/video wordt gelabeld als "Promotionele content".',
             'promotional_paid_title' => 'Je foto/video wordt gelabeld als "Betaald partnerschap".',

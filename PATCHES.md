@@ -321,6 +321,30 @@ bestehende `unpublish_unsupported`-Flash bleibt. Delete des Posts ist unberuehrt
   schlaegt auch auf `origin/main` fehl (Modal-Flow, unabhaengig von diesem Patch).
 - **Stand**: nicht deployed (Olli-Gate).
 
+||||||| parent of a6ffbb89 (fix(tiktok): use the official commercial content disclosure label)
+
+### Patch 8 · tiktok-disclosure-label  (TTL-01, 08.10.2026)
+
+Fuer das TikTok-Direct-Post-Audit verlangen die Content Sharing Guidelines
+(developers.tiktok.com/doc/content-sharing-guidelines, abgerufen 08.10.2026) fuer den Schalter der
+Werbekennzeichnung den Wortlaut "Indicate whether this content promotes yourself, a brand, product
+or service." (die Seite haengt dort "with this feature turned off by default" als Vorgabe an, das
+ist kein Labeltext, der Schalter ist ohnehin standardmaessig aus). Das Label hiess upstream
+"Disclose video content". Nur Text, kein Verhalten: `lang/*/posts.php`, Key
+`posts.form.tiktok.disclose`, in allen 16 Locales sinngemaess uebersetzt. Der Hinweistext darunter
+(`disclose_hint`) bleibt unveraendert.
+
+- **Marker**: `PATCH:tiktok-disclosure-label` (Kommentar in `TikTokSettings.vue`, Testdatei).
+- **Dateien**: `lang/*/posts.php` (`posts.form.tiktok.disclose`), `resources/js/components/posts/editor/TikTokSettings.vue` (nur Kommentar).
+- **Pruef-Grep nach jedem Upstream-Merge**: `grep -n "'disclose' =>" lang/en/posts.php` muss den
+  Satz "Indicate whether this content promotes yourself" zeigen, danach
+  `vendor/bin/pest tests/Unit/TikTokDisclosureLabelTest.php`.
+- **Bruchbedingung**: nach Upstream-Merge Label wieder pruefen (Upstream aendert `lang/*/posts.php`
+  oder `TikTokSettings.vue`), ausserdem vor jeder neuen TikTok-Audit-Einreichung gegen die aktuelle
+  Guidelines-Seite abgleichen.
+- **Tests**: `tests/Unit/TikTokDisclosureLabelTest.php` (Namen mit `ttl01 `).
+- **Stand**: nicht deployed (Olli-Gate).
+
 ## Geprueft und NICHT gepatcht: is_aigc-Composer-Toggle (25.08.2026)
 
 Der urspruenglich fuer diesen Fork geplante Patch (TikTok-`is_aigc`-Toggle im Post-Composer,
