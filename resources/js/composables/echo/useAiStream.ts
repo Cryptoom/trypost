@@ -14,6 +14,8 @@ interface ErrorEvent {
 
 // PATCH:aig-01 Fail a stream that goes silent instead of showing '...' forever.
 export const AI_STREAM_IDLE_TIMEOUT_MS = 60_000;
+// PATCH:aig-01 Generous grace until the first event: the queue worker may need a while to pick the job up.
+export const AI_STREAM_FIRST_EVENT_TIMEOUT_MS = 120_000;
 
 export type AiStreamStatus = 'idle' | 'streaming' | 'completed' | 'failed';
 
@@ -30,6 +32,7 @@ export const useAiStream = () => {
     const errorMessage = ref<string | null>(null);
     let subscribedName: string | null = null;
     let idleTimer: ReturnType<typeof setTimeout> | null = null;
+    let seenEvent = false;
 
     const clearIdleTimer = () => {
         if (idleTimer) {
@@ -39,18 +42,42 @@ export const useAiStream = () => {
     };
 
     const fail = (message?: string | null) => {
+        // PATCH:aig-01 Never overwrite a finished stream (late or duplicate error event).
+        if (status.value === 'completed') {
+            return;
+        }
         clearIdleTimer();
         status.value = 'failed';
         errorMessage.value = message || trans('posts.ai.generate.errors.generation_failed');
     };
 
-    const armIdleTimer = () => {
+    const armTimer = (ms: number) => {
         clearIdleTimer();
         idleTimer = setTimeout(() => {
             if (status.value === 'streaming') {
                 fail(trans('posts.ai.generate.errors.timeout'));
+                // Leave the channel so late events of this generation are not delivered.
+                unsubscribe();
             }
-        }, AI_STREAM_IDLE_TIMEOUT_MS);
+        }, ms);
+    };
+
+    // Any progress event re-arms the idle timer; ignored once the stream is no longer running.
+    const onProgress = (): boolean => {
+        if (status.value !== 'streaming') {
+            return false;
+        }
+        seenEvent = true;
+        armTimer(AI_STREAM_IDLE_TIMEOUT_MS);
+
+        return true;
+    };
+
+    // Call after the generate POST succeeded: starts the first-event deadline.
+    const start = () => {
+        if (status.value === 'streaming' && ! seenEvent) {
+            armTimer(AI_STREAM_FIRST_EVENT_TIMEOUT_MS);
+        }
     };
 
     const reset = () => {
@@ -73,15 +100,19 @@ export const useAiStream = () => {
         reset();
         status.value = 'streaming';
         subscribedName = channelName;
-        armIdleTimer();
+        seenEvent = false;
 
         return subscribePrivateChannel(channelName, (channel) => {
             channel
+                .listen('.stream_start', () => onProgress())
+                .listen('.reasoning_start', () => onProgress())
+                .listen('.reasoning_delta', () => onProgress())
                 .listen('.text_delta', (e: TextDeltaEvent) => {
+                    if (! onProgress()) return;
                     text.value += e.delta ?? '';
-                    armIdleTimer();
                 })
                 .listen('.stream_end', () => {
+                    if (status.value !== 'streaming') return;
                     clearIdleTimer();
                     if (text.value.trim() === '') {
                         fail(trans('posts.ai.generate.errors.empty'));
@@ -95,5 +126,5 @@ export const useAiStream = () => {
 
     onUnmounted(() => unsubscribe());
 
-    return { text, status, errorMessage, subscribe, unsubscribe, reset };
+    return { text, status, errorMessage, subscribe, start, unsubscribe, reset };
 };

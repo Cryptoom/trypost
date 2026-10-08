@@ -27,7 +27,7 @@ const page = usePage();
 const prompt = ref('');
 const dispatching = ref(false);
 const promptError = ref<string | undefined>(undefined);
-const { text, status, errorMessage, subscribe, unsubscribe, reset } = useAiStream();
+const { text, status, errorMessage, subscribe, start, unsubscribe, reset } = useAiStream();
 
 const httpGenerate = useHttp<{ prompt: string; current_content: string | null; generation_id: string }>({
     prompt: '',
@@ -70,6 +70,9 @@ const startGeneration = async () => {
             promptError.value = httpGenerate.errors.prompt ?? trans('posts.ai.generate.errors.start_failed');
             return;
         }
+
+        // PATCH:aig-01 The silence deadline only starts once the job is queued.
+        start();
     } catch {
         unsubscribe();
         status.value = 'failed';
