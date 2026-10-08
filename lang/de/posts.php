@@ -36,6 +36,7 @@ return [
         'copied' => 'ID in die Zwischenablage kopiert',
         'unpublish' => 'Zurückziehen',
         'unpublish_unsupported' => 'Dieser Beitrag kann nicht automatisch zurückgezogen werden. Entferne ihn manuell auf der bzw. den Plattform(en), auf der er veröffentlicht wurde.',
+        'unpublish_unsupported_story' => 'Facebook-Stories können nur in der Facebook-App gelöscht werden (Meta erlaubt das nicht per API). Sie laufen nach 24 Stunden ab.',
     ],
 
     'form' => [

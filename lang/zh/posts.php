@@ -34,6 +34,7 @@ return [
         'copied' => 'ID 已复制到剪贴板',
         'unpublish' => '取消发布',
         'unpublish_unsupported' => '此帖子无法自动取消发布。请在已发布的平台上手动删除。',
+        'unpublish_unsupported_story' => 'Facebook 快拍只能在 Facebook 应用中删除(Meta 不允许通过 API 删除)。快拍会在 24 小时后自动过期。',
     ],
 
     'form' => [

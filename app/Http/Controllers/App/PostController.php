@@ -32,6 +32,7 @@ use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -75,7 +76,9 @@ class PostController extends Controller
 
         return Inertia::render('posts/Index', [
             'workspace' => $workspace,
-            'posts' => Inertia::scroll(fn () => $query->latest('scheduled_at')->paginate(config('app.pagination.default'))),
+            'posts' => Inertia::scroll(fn () => $this->withUnpublishAvailability(
+                $query->latest('scheduled_at')->paginate(config('app.pagination.default')),
+            )),
             'currentStatus' => $status,
             'labels' => $workspace->labels()->orderBy('name')->get(['id', 'name', 'color']),
             'filters' => [
@@ -83,6 +86,29 @@ class PostController extends Controller
                 'labels' => $labelIds,
             ],
         ]);
+    }
+
+    /**
+     * PATCH:unp-01. Adds `can_unpublish` / `unpublish_blocked_reason` to every
+     * listed post so the Unpublish action can be greyed out when the
+     * platform API cannot remove it (e.g. Facebook Stories).
+     */
+    private function withUnpublishAvailability(LengthAwarePaginator $posts): LengthAwarePaginator
+    {
+        // One extra query: the list only eager-loads ENABLED rows, but
+        // UnpublishPost::execute() also removes disabled published ones.
+        $published = PostPlatform::whereIn('post_id', $posts->getCollection()->modelKeys())
+            ->whereNotNull('platform_post_id')
+            ->get(['id', 'post_id', 'platform', 'content_type', 'platform_post_id'])
+            ->groupBy('post_id');
+
+        $posts->getCollection()->each(function (Post $post) use ($published) {
+            foreach ($post->unpublishAvailability($published->get($post->id, collect())) as $key => $value) {
+                $post->setAttribute($key, $value);
+            }
+        });
+
+        return $posts;
     }
 
     public function calendar(Request $request): Response|RedirectResponse

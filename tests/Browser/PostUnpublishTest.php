@@ -141,3 +141,50 @@ test('unpublish is disabled for a tiktok-only post, delete stays available', fun
     // Published status client-side, i.e. nothing was silently triggered.
     expect($post->fresh()->status)->toBe(PostStatus::Published);
 });
+
+test('unp01 unpublish is greyed out with a visible hint for a facebook story, delete stays available', function () {
+    $post = seedUnpublishPost(Platform::Facebook, function (Post $post, SocialAccount $account) {
+        PostPlatform::factory()->facebookStory()->published()->create([
+            'post_id' => $post->id,
+            'social_account_id' => $account->id,
+        ]);
+    });
+
+    $page = visit(route('app.posts.index'));
+    waitForPostsTestId($page, "post-actions-{$post->id}");
+
+    $page->click("@post-actions-{$post->id}");
+    waitForPostsTestId($page, "post-unpublish-hint-{$post->id}");
+
+    $page->assertScript(
+        "document.querySelector('[data-testid=\"post-unpublish-{$post->id}\"]').getAttribute('aria-disabled')",
+        'true'
+    )
+        ->assertSeeIn("@post-unpublish-hint-{$post->id}", __('posts.actions.unpublish_unsupported_story'))
+        ->assertPresent("@post-delete-{$post->id}")
+        ->assertNoJavaScriptErrors();
+
+    expect($post->fresh()->status)->toBe(PostStatus::Published);
+});
+
+test('unp01 unpublish stays active without a hint for a facebook feed post', function () {
+    $post = seedUnpublishPost(Platform::Facebook, function (Post $post, SocialAccount $account) {
+        PostPlatform::factory()->facebook()->published()->create([
+            'post_id' => $post->id,
+            'social_account_id' => $account->id,
+        ]);
+    });
+
+    $page = visit(route('app.posts.index'));
+    waitForPostsTestId($page, "post-actions-{$post->id}");
+
+    $page->click("@post-actions-{$post->id}");
+    waitForPostsTestId($page, "post-unpublish-{$post->id}");
+
+    $page->assertScript(
+        "document.querySelector('[data-testid=\"post-unpublish-{$post->id}\"]').hasAttribute('data-disabled')",
+        false
+    )
+        ->assertMissing("@post-unpublish-hint-{$post->id}")
+        ->assertNoJavaScriptErrors();
+});

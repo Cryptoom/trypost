@@ -34,6 +34,7 @@ return [
         'copied' => 'ID copiado al portapapeles',
         'unpublish' => 'Despublicar',
         'unpublish_unsupported' => 'Esta publicación no se puede despublicar automáticamente. Elimínala manualmente en la(s) plataforma(s) donde se publicó.',
+        'unpublish_unsupported_story' => 'Las historias de Facebook solo se pueden eliminar en la app de Facebook (Meta no lo permite a través de la API). Caducan a las 24 horas.',
     ],
 
     'form' => [
