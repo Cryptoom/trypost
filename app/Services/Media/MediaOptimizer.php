@@ -334,7 +334,7 @@ class MediaOptimizer
      * exhaust memory with an uncatchable fatal. Transforms that can't fall back
      * to the original (crop, fit) call this; `optimizeImage` skips instead.
      */
-    private function assertWithinMemoryBudget(string $filePath): void
+    public function assertWithinMemoryBudget(string $filePath): void
     {
         $imageInfo = @getimagesize($filePath);
 

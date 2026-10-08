@@ -535,4 +535,12 @@ test('tps01_meta_rules_story_fit_mcp create post persists story_fit and rejects 
             'platforms' => $platforms(['story_fit' => 'manual', 'story_crop' => ['x' => 0.9, 'y' => 0, 'w' => 0.3164, 'h' => 1]]),
         ])
         ->assertHasErrors();
+
+    // Non-numeric values are a validation error, never a thrown TypeError.
+    TryPostServer::actingAs($this->user)
+        ->tool(CreatePostTool::class, [
+            'content' => 'Story',
+            'platforms' => $platforms(['story_fit' => 'manual', 'story_crop' => ['x' => 'abc', 'y' => 0, 'w' => 0.3164, 'h' => 1]]),
+        ])
+        ->assertHasErrors();
 });

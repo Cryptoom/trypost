@@ -130,3 +130,16 @@ test('tps01_suggester_cache', function () {
 
     Http::assertSentCount(2);
 });
+
+test('tps01_suggester_oversized_image', function () {
+    // A tiny PNG that declares huge pixel dimensions must not be decoded by GD.
+    $ihdr = pack('N', 20000).pack('N', 20000)."\x08\x02\x00\x00\x00";
+    $huge = tempnam(sys_get_temp_dir(), 'tps01_huge_');
+    file_put_contents($huge, "\x89PNG\r\n\x1a\n".pack('N', 13).'IHDR'.$ihdr.pack('N', 0));
+    Http::fake();
+
+    expect((new StoryCropSuggester)->suggest($huge))->toBeNull();
+
+    Http::assertNothingSent();
+    @unlink($huge);
+});

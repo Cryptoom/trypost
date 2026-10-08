@@ -45,15 +45,24 @@ class PostPlatformMetaRules
             // Facebook stories. A missing or unusable `story_crop` falls back to a
             // center crop at publish time, it never fails the post.
             'platforms.*.meta.story_fit' => ['sometimes', 'nullable', 'string', Rule::in(['center', 'smart', 'manual', 'fit'])],
-            'platforms.*.meta.story_crop' => ['sometimes', 'nullable', 'array', function (string $attribute, mixed $value, Closure $fail): void {
-                if (is_array($value) && (data_get($value, 'x') + data_get($value, 'w') > 1.0001 || data_get($value, 'y') + data_get($value, 'h') > 1.0001)) {
-                    $fail('The story crop rectangle must stay inside the image.');
+            'platforms.*.meta.story_crop' => ['sometimes', 'nullable', 'array', 'required_array_keys:x,y,w,h', function (string $attribute, mixed $value, Closure $fail): void {
+                // Cross-field check only; type and range of each key are validated below.
+                $values = array_map(fn (string $key) => data_get($value, $key), ['x', 'y', 'w', 'h']);
+
+                if (! is_array($value) || count(array_filter($values, 'is_numeric')) !== 4) {
+                    return;
+                }
+
+                [$x, $y, $w, $h] = array_map('floatval', $values);
+
+                if ($x + $w > 1.0001 || $y + $h > 1.0001) {
+                    $fail('validation.in');
                 }
             }],
-            'platforms.*.meta.story_crop.x' => ['required_with:platforms.*.meta.story_crop', 'numeric', 'between:0,1'],
-            'platforms.*.meta.story_crop.y' => ['required_with:platforms.*.meta.story_crop', 'numeric', 'between:0,1'],
-            'platforms.*.meta.story_crop.w' => ['required_with:platforms.*.meta.story_crop', 'numeric', 'gt:0', 'max:1'],
-            'platforms.*.meta.story_crop.h' => ['required_with:platforms.*.meta.story_crop', 'numeric', 'gt:0', 'max:1'],
+            'platforms.*.meta.story_crop.x' => ['numeric', 'between:0,1'],
+            'platforms.*.meta.story_crop.y' => ['numeric', 'between:0,1'],
+            'platforms.*.meta.story_crop.w' => ['numeric', 'gt:0', 'max:1'],
+            'platforms.*.meta.story_crop.h' => ['numeric', 'gt:0', 'max:1'],
 
             // LinkedIn — title shown on a document (PDF carousel) post
             'platforms.*.meta.document_title' => ['sometimes', 'nullable', 'string', 'max:300'],

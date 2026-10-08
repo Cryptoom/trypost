@@ -605,6 +605,11 @@ it('tps01_meta_rules_story_crop_bounds rejects rectangles outside the image', fu
         ['x' => 0, 'y' => 0, 'w' => 0.3, 'h' => 0],
         ['x' => 0, 'y' => 0, 'w' => 1.5, 'h' => 1],
         ['x' => 0, 'y' => 0, 'w' => 0.3],
+        // Non-numeric values are a 422, never a server error.
+        ['x' => 'abc', 'y' => 0, 'w' => 0.3, 'h' => 1],
+        ['x' => [1], 'y' => 0, 'w' => 0.3, 'h' => 1],
+        ['x' => 0, 'y' => 0, 'w' => 'wide', 'h' => 1],
+        [],
     ] as $invalid) {
         $post($invalid)->assertUnprocessable();
     }

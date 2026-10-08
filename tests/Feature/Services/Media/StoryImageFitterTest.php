@@ -206,3 +206,18 @@ test('tps01_gd_driver', function () {
 
     expect($fitted->width())->toBe(1080)->and($fitted->height())->toBe(1920);
 });
+
+test('tps01_fitter_or_keep_returns_original_when_undecodable', function () {
+    $garbage = ($this->track)(tps01WriteTemp('this is not an image'));
+    $fitter = app(StoryImageFitter::class);
+
+    expect(fn () => $fitter->fit($garbage, 'center'))->toThrow(Exception::class)
+        ->and($fitter->fitOrKeep($garbage, 'center'))->toBe($garbage)
+        ->and($fitter->fitOrKeep($garbage, 'fit'))->toBe($garbage);
+
+    $good = ($this->track)(tps01WriteTemp(tps01TwoToneJpeg(1600, 900)));
+    $fitted = ($this->track)($fitter->fitOrKeep($good, 'center'));
+
+    expect($fitted)->not->toBe($good)
+        ->and(tps01Decode($fitted)->height())->toBe(1920);
+});

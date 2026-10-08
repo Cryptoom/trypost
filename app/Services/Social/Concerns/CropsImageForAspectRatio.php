@@ -11,6 +11,7 @@ use App\Services\Media\StoryImageFitter;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Throwable;
 
 trait CropsImageForAspectRatio
 {
@@ -40,7 +41,7 @@ trait CropsImageForAspectRatio
 
             try {
                 $cropped = app(MediaOptimizer::class)->cropToAspectRatio($tempInput, $ratio);
-            } catch (\Throwable) {
+            } catch (Throwable) {
                 throw $this->cropFailureException('Failed to process image for cropping');
             }
 
@@ -75,7 +76,7 @@ trait CropsImageForAspectRatio
 
             try {
                 $fitted = app(MediaOptimizer::class)->fitToCanvas($tempInput, $width, $height);
-            } catch (\Throwable) {
+            } catch (Throwable) {
                 throw $this->cropFailureException('Failed to process image for story fitting');
             }
 
@@ -117,7 +118,7 @@ trait CropsImageForAspectRatio
 
             try {
                 $fitted = app(StoryImageFitter::class)->fit($tempInput, $mode, $rect);
-            } catch (\Throwable) {
+            } catch (Throwable) {
                 throw $this->cropFailureException('Failed to process image for story fitting');
             }
 

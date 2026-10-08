@@ -49,7 +49,7 @@ class StoryCropSuggester
         }
 
         try {
-            $cacheKey = 'story-crop:'.sha1_file($imagePath);
+            $cacheKey = 'story-crop:v1:'.sha1_file($imagePath);
             $cached = Cache::get($cacheKey);
 
             if (is_array($cached)) {
@@ -77,6 +77,9 @@ class StoryCropSuggester
      */
     private function requestRect(string $imagePath): ?array
     {
+        // A small file with huge pixel dimensions would exhaust GD memory with an uncatchable fatal.
+        app(MediaOptimizer::class)->assertWithinMemoryBudget($imagePath);
+
         $image = (new ImageManager(Driver::class))->decodePath($imagePath);
         $width = $image->width();
         $height = $image->height();
