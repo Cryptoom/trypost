@@ -79,21 +79,9 @@ const startGeneration = async () => {
     }
 };
 
-// The streamer agent shares the structured-output prompt template with
-// PostContentGenerator, so what comes through the stream is a JSON object
-// like {"content": "...", "image_title": "...", ...}. We only want the
-// content field — and only once the JSON is complete (mid-stream the parse
-// fails and we show nothing, avoiding the typewriter-of-JSON effect).
-const previewText = computed(() => {
-    if (! text.value) return '';
-    try {
-        const parsed = JSON.parse(text.value);
-        if (parsed && typeof parsed.content === 'string') return parsed.content;
-    } catch {
-        // Mid-stream the JSON is incomplete — leave preview empty.
-    }
-    return '';
-});
+// PATCH:aig-01 The streamer asks the model for plain post text (see
+// PostContentStreamer), so the accumulated stream is the preview as-is.
+const previewText = computed(() => text.value);
 
 const apply = () => {
     emit('apply', previewText.value);

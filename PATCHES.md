@@ -389,3 +389,23 @@ Koeder-Test ergaenzt (`rejects a reel upload_url that does not point at the rupl
 simuliert eine Start-Response mit `upload_url` auf `attacker.example.com`, prueft dass die
 Exception geworfen UND dass NIE ein Request an den fremden Host geht (`Http::assertNotSent`).
 Volle Testsuite danach: 4739 passed (0 failed), inkl. dieses neuen Tests.
+
+## 2026-10-08 AIG-01: "Generate with AI" zeigt keine Vorschau
+
+Symptom (live, social.madevisible.io): Job `StreamPostContent` laeuft durch und Tokens werden
+verbucht, der Dialog bleibt aber bei "..." und endet bei "Try again". Broadcasting selbst ist
+gesund: Event-Namen (`text_delta`, `stream_end`, `error`) stimmen mit `StreamEvent::type()` aus
+laravel/ai ueberein, und der Dialog abonniert den Kanal vor dem POST (#269).
+
+Ursache: Der Streamer nutzte das Prompt-Template des strukturierten Generators ("Output format: a
+JSON object ...") und der Dialog zeigte die Vorschau erst, wenn der gesamte Stream per
+`JSON.parse` lesbar war. Ohne Structured-Output-Modus ist das ein Wunsch an das Modell: jede
+Code-Fence oder jeder Einleitungssatz laesst den Parse scheitern, die Vorschau bleibt leer
+obwohl der Text erzeugt wurde. Das ist aus dem Code und den Messwerten abgeleitet, der rohe
+Stream-Text der Live-Instanz wurde nicht mitgeschnitten (kein Schreibzugriff dort).
+
+Fix: `PostContentStreamer` uebergibt `plain_text`, das Template verlangt dann nur den Beitragstext
+(`@elseif(!empty($plain_text))`), der Dialog zeigt den Stream direkt (echtes Live-Streaming).
+`PostContentGenerator` und die Bild-Templates bleiben unveraendert. Marker `PATCH:aig-01` in
+`generator.blade.php`, `PostContentStreamer.php`, `AiGenerateDialog.vue`.
+Test: `tests/Feature/Ai/PostContentStreamerTest.php` (vorher rot).
