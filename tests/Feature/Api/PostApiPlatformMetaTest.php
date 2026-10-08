@@ -614,5 +614,11 @@ it('tps01 meta rules story crop bounds rejects rectangles outside the image', fu
         $post($invalid)->assertUnprocessable();
     }
 
+    // The out-of-image message is a readable sentence, not a raw translation key.
+    $messages = collect($post(['x' => 0.9, 'y' => 0, 'w' => 0.3, 'h' => 1])->json('errors'))->flatten()->all();
+
+    expect($messages)->not->toBeEmpty()
+        ->and(collect($messages)->contains(fn ($m) => str_starts_with((string) $m, 'validation.')))->toBeFalse();
+
     $post(['x' => 0.7, 'y' => 0, 'w' => 0.3, 'h' => 1])->assertCreated();
 });

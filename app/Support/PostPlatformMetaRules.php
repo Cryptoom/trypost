@@ -56,7 +56,7 @@ class PostPlatformMetaRules
                 [$x, $y, $w, $h] = array_map('floatval', $values);
 
                 if ($x + $w > 1.0001 || $y + $h > 1.0001) {
-                    $fail('validation.in');
+                    $fail(__('validation.in', ['attribute' => 'story crop']));
                 }
             }],
             'platforms.*.meta.story_crop.x' => ['numeric', 'between:0,1'],

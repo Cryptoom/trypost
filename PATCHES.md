@@ -191,6 +191,13 @@ unverändert. `Platform::Instagram` und `Platform::InstagramFacebook` nutzen die
     gehalten, weil diese Datei bei Upstream-Merges Konflikte erzeugt)
   - `app/Enums/PostPlatform/ContentType.php` (`autoFitsImage()` auch für `FacebookStory`)
   - `app/Support/PostPlatformMetaRules.php` (`story_fit`, `story_crop`, einzige Stelle für Meta-Regeln)
+- **Verhaltensänderungen** (bewusst, Olli-Entscheid 08.10.2026):
+  - (a) Instagram-Story-Fotos ohne `story_fit` werden jetzt mittig auf 9:16 zugeschnitten, statt als ganzes Foto
+    auf Unschärfe-Hintergrund zu erscheinen (Standard bleibt `center`, kein Rückbau auf `fit`). Deshalb Deploy
+    zusammen mit E1 (Editor). Bereits geplante oder per API/MCP erzeugte Instagram-Stories ändern ihr Aussehen.
+    Facebook-Foto-Stories ohne `story_fit` werden ebenfalls mittig geschnitten, vorher gingen sie unbeschnitten raus.
+  - (b) Modus `smart` sendet ein 768-px-Abbild des Kundenfotos an `generativelanguage.googleapis.com`
+    (nur wenn `GEMINI_API_KEY` gesetzt ist).
 - **Prüf-Grep nach jedem Upstream-Merge**: `grep -rl 'PATCH:story-photo-fit' app resources` muss mindestens
   10 Dateien liefern (die obige Liste), danach `vendor/bin/pest --filter=tps01`.
 - **Bruchbedingung**: Upstream ändert `FacebookPublisher::convertImageToStoryVideo`, `InstagramPublisher::publishStory`

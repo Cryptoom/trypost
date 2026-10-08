@@ -2220,3 +2220,44 @@ test('tps01 instagram story mode fits the story photo according to story_fit', f
         ->and($fit->colorAt(100, 960)->red()->value())->toBeGreaterThan(150)
         ->and($fit->colorAt(980, 960)->blue()->value())->toBeGreaterThan(150);
 });
+
+function tps01InstagramStoryTempLeftovers(): array
+{
+    return array_merge(
+        glob(sys_get_temp_dir().'/story_in_*') ?: [],
+        glob(sys_get_temp_dir().'/media_cover_*') ?: [],
+        glob(sys_get_temp_dir().'/media_rect_*') ?: [],
+    );
+}
+
+function tps01InstagramStoryHostingFailsLeavesNothing(object $test, ?array $meta): void
+{
+    $test->postPlatform->update(['content_type' => ContentType::InstagramStory, 'meta' => $meta]);
+    $test->post->update([
+        'media' => [[
+            'id' => 'test-media-story',
+            'path' => 'media/story.jpg',
+            'url' => 'https://example.com/media/story.jpg',
+            'mime_type' => 'image/jpeg',
+            'original_filename' => 'story.jpg',
+        ]],
+    ]);
+
+    Http::fake(['https://example.com/media/story.jpg' => Http::response(fakeJpegBytes(1600, 900), 200)]);
+
+    $before = tps01InstagramStoryTempLeftovers();
+
+    Storage::shouldReceive('put')->once()->andThrow(new RuntimeException('disk full'));
+
+    expect(fn () => $test->publisher->publish($test->postPlatform->fresh()))->toThrow(RuntimeException::class);
+
+    expect(array_values(array_diff(tps01InstagramStoryTempLeftovers(), $before)))->toBe([]);
+}
+
+test('tps01 instagram story without story_fit leaves no temp files when hosting fails', function () {
+    tps01InstagramStoryHostingFailsLeavesNothing($this, null);
+});
+
+test('tps01 instagram story manual leaves no temp files when hosting fails', function () {
+    tps01InstagramStoryHostingFailsLeavesNothing($this, ['story_fit' => 'manual', 'story_crop' => ['x' => 0.1, 'y' => 0, 'w' => 0.31640625, 'h' => 1]]);
+});
