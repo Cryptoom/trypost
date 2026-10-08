@@ -8,6 +8,7 @@ use App\Enums\PostPlatform\AspectRatio;
 use App\Enums\SocialAccount\Platform;
 use App\Enums\TikTok\PrivacyLevel;
 use App\Models\Post;
+use Closure;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Validation\Validator;
@@ -39,6 +40,20 @@ class PostPlatformMetaRules
             // App\Services\Social\FacebookPublisher::publishStory() and
             // App\Services\Media\StoryMusicGenerator.
             'platforms.*.meta.story_music_description' => ['sometimes', 'nullable', 'string', 'max:500'],
+
+            // PATCH:story-photo-fit: how a photo is fitted to 9:16 on Instagram and
+            // Facebook stories. A missing or unusable `story_crop` falls back to a
+            // center crop at publish time, it never fails the post.
+            'platforms.*.meta.story_fit' => ['sometimes', 'nullable', 'string', Rule::in(['center', 'smart', 'manual', 'fit'])],
+            'platforms.*.meta.story_crop' => ['sometimes', 'nullable', 'array', function (string $attribute, mixed $value, Closure $fail): void {
+                if (is_array($value) && (data_get($value, 'x') + data_get($value, 'w') > 1.0001 || data_get($value, 'y') + data_get($value, 'h') > 1.0001)) {
+                    $fail('The story crop rectangle must stay inside the image.');
+                }
+            }],
+            'platforms.*.meta.story_crop.x' => ['required_with:platforms.*.meta.story_crop', 'numeric', 'between:0,1'],
+            'platforms.*.meta.story_crop.y' => ['required_with:platforms.*.meta.story_crop', 'numeric', 'between:0,1'],
+            'platforms.*.meta.story_crop.w' => ['required_with:platforms.*.meta.story_crop', 'numeric', 'gt:0', 'max:1'],
+            'platforms.*.meta.story_crop.h' => ['required_with:platforms.*.meta.story_crop', 'numeric', 'gt:0', 'max:1'],
 
             // LinkedIn — title shown on a document (PDF carousel) post
             'platforms.*.meta.document_title' => ['sometimes', 'nullable', 'string', 'max:300'],

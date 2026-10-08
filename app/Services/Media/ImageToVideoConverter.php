@@ -66,7 +66,8 @@ class ImageToVideoConverter
             '-t', (string) $durationSeconds,
             '-c:v', 'libx264',
             '-pix_fmt', 'yuv420p',
-            '-vf', 'fps=30,format=yuv420p',
+            // PATCH:story-photo-fit: always emit an even 1080x1920 frame, letterboxed if the source differs.
+            '-vf', 'scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=30,format=yuv420p',
             '-c:a', 'aac',
             '-b:a', '128k',
             '-shortest',

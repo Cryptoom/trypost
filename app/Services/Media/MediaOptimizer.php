@@ -11,6 +11,7 @@ use Intervention\Image\Drivers\Gd\Driver;
 use Intervention\Image\Drivers\Imagick\Driver as ImagickDriver;
 use Intervention\Image\ImageManager;
 use Intervention\Image\Interfaces\ImageInterface;
+use InvalidArgumentException;
 use RuntimeException;
 
 class MediaOptimizer
@@ -28,6 +29,11 @@ class MediaOptimizer
     private const FIT_GD_BLUR = 45;
 
     private const FIT_GD_BRIGHTNESS = 12;
+
+    // PATCH:story-photo-fit
+    public const RECT_RATIO_TOLERANCE = 0.02;
+
+    private const RECT_QUALITY = 90;
 
     private ImageManager $manager;
 
@@ -153,6 +159,65 @@ class MediaOptimizer
         $tempFile = tempnam(sys_get_temp_dir(), 'media_crop_');
         $encoded = $image->encodeUsingMediaType('image/jpeg', quality: 100);
         file_put_contents($tempFile, (string) $encoded);
+
+        return $tempFile;
+    }
+
+    /**
+     * PATCH:story-photo-fit
+     *
+     * Crop a normalized rectangle (x, y, w, h as 0..1 fractions of the
+     * EXIF-oriented image) and scale it to outW x outH. The rectangle must be
+     * inside the image and match the output aspect ratio within
+     * RECT_RATIO_TOLERANCE, otherwise an InvalidArgumentException is thrown so
+     * callers can fall back to a center crop. Returns a temp file path (caller
+     * must clean up).
+     */
+    public function cropToRect(string $filePath, float $x, float $y, float $w, float $h, int $outW, int $outH): string
+    {
+        $this->assertWithinMemoryBudget($filePath);
+
+        if ($x < 0 || $y < 0 || $w <= 0 || $h <= 0 || $x + $w > 1.0001 || $y + $h > 1.0001) {
+            throw new InvalidArgumentException('Crop rectangle is outside the image.');
+        }
+
+        // Decoding applies the EXIF orientation (Intervention autoOrientation),
+        // so the rectangle is relative to the picture as the user sees it.
+        $image = $this->manager->decodePath($filePath);
+
+        $left = (int) round($x * $image->width());
+        $top = (int) round($y * $image->height());
+        $width = max(1, min((int) round($w * $image->width()), $image->width() - $left));
+        $height = max(1, min((int) round($h * $image->height()), $image->height() - $top));
+
+        $targetRatio = $outW / $outH;
+
+        if (abs(($width / $height) / $targetRatio - 1) > self::RECT_RATIO_TOLERANCE) {
+            throw new InvalidArgumentException('Crop rectangle does not match the target aspect ratio.');
+        }
+
+        $image->crop($width, $height, $left, $top)->resize($outW, $outH);
+
+        return $this->writeTemp($image, 'media_rect_');
+    }
+
+    /**
+     * PATCH:story-photo-fit
+     *
+     * Center-crop an image to cover outW x outH exactly (crop plus scale, EXIF
+     * orientation applied). Returns a temp file path (caller must clean up).
+     */
+    public function coverToSize(string $filePath, int $outW, int $outH): string
+    {
+        $this->assertWithinMemoryBudget($filePath);
+
+        return $this->writeTemp($this->manager->decodePath($filePath)->cover($outW, $outH), 'media_cover_');
+    }
+
+    private function writeTemp(ImageInterface $image, string $prefix): string
+    {
+        $tempFile = tempnam(sys_get_temp_dir(), $prefix);
+        file_put_contents($tempFile, (string) $image->encodeUsingMediaType('image/jpeg', quality: self::RECT_QUALITY));
 
         return $tempFile;
     }
