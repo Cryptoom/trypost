@@ -2139,7 +2139,7 @@ test('instagram publisher throws exception when delete fails', function () {
         ->toThrow(InstagramPublishException::class);
 });
 
-test('tps01_instagram_story_mode fits the story photo according to story_fit', function () {
+test('tps01 instagram story mode fits the story photo according to story_fit', function () {
     $publishStoryWith = function (?array $meta) {
         Storage::fake();
         // error_context carries the publish checkpoint of the previous run, clear it so each run starts fresh.

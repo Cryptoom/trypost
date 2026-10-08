@@ -1263,7 +1263,7 @@ function tps01PublishFacebookPhotoStory(object $test, ?array $meta): array
     return $seen;
 }
 
-test('tps01_facebook_story_converter_gets_1080x1920', function () {
+test('tps01 facebook story converter gets 1080x1920', function () {
     $seen = tps01PublishFacebookPhotoStory($this, ['story_fit' => 'manual', 'story_crop' => ['x' => 0.6, 'y' => 0, 'w' => 0.31640625, 'h' => 1]]);
 
     expect($seen['width'])->toBe(1080)
@@ -1284,7 +1284,7 @@ test('tps01_facebook_story_converter_gets_1080x1920', function () {
     }
 });
 
-test('tps01_facebook_story_without_story_fit_center', function () {
+test('tps01 facebook story without story fit center', function () {
     // PlayCraft and older posts have no story_fit at all: same flow as before, only centered on 9:16.
     foreach ([null, [], ['story_music_description' => 'upbeat'], ['story_fit' => 'bogus']] as $meta) {
         $seen = tps01PublishFacebookPhotoStory($this, $meta);

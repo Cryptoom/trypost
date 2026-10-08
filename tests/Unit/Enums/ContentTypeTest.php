@@ -89,7 +89,7 @@ test('media rules reuse enum capability helpers', function () {
         ->and($rules['max_files'])->toBe(ContentType::InstagramStory->maxMediaCount());
 });
 
-test('tps01_autofits_facebook_story', function () {
+test('tps01 autofits facebook story', function () {
     expect(ContentType::FacebookStory->autoFitsImage())->toBeTrue()
         ->and(ContentType::InstagramStory->autoFitsImage())->toBeTrue()
         ->and(ContentType::FacebookStory->mediaRules()['auto_fits_image'])->toBeTrue();

@@ -57,7 +57,7 @@ test('converts an image into a held-frame mp4 with a silent audio track', functi
     expect($streams)->toContain('video')->toContain('audio');
 });
 
-test('tps01_ffmpeg_scale_pad', function () {
+test('tps01 ffmpeg scale pad', function () {
     if (! ffmpegAvailableForTest()) {
         $this->markTestSkipped('ffmpeg is not installed on this machine.');
     }

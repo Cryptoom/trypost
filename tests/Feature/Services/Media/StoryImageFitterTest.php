@@ -68,7 +68,7 @@ afterEach(function () {
     }
 });
 
-test('tps01_fitter_center_1080x1920', function () {
+test('tps01 fitter center 1080x1920', function () {
     $source = ($this->track)(tps01WriteTemp(tps01TwoToneJpeg(1600, 900)));
 
     $out = ($this->track)(app(StoryImageFitter::class)->fit($source, 'center'));
@@ -83,7 +83,7 @@ test('tps01_fitter_center_1080x1920', function () {
         ->and($image->colorAt(1074, 960)->blue()->value())->toBeGreaterThan(150);
 });
 
-test('tps01_fitter_fit', function () {
+test('tps01 fitter fit', function () {
     $source = ($this->track)(tps01WriteTemp(tps01TwoToneJpeg(1600, 900)));
 
     $out = ($this->track)(app(StoryImageFitter::class)->fit($source, 'fit'));
@@ -96,7 +96,7 @@ test('tps01_fitter_fit', function () {
         ->and($image->colorAt(980, 960)->blue()->value())->toBeGreaterThan(150);
 });
 
-test('tps01_fitter_manual', function () {
+test('tps01 fitter manual', function () {
     $source = ($this->track)(tps01WriteTemp(tps01TwoToneJpeg(1600, 900)));
 
     // 9:16 rectangle inside the blue (right) half: w * 1600 / (h * 900) = 0.5625.
@@ -124,7 +124,7 @@ test('tps01_fitter_manual', function () {
     }
 });
 
-test('tps01_fitter_smart_fallback', function () {
+test('tps01 fitter smart fallback', function () {
     $source = ($this->track)(tps01WriteTemp(tps01TwoToneJpeg(1600, 900)));
 
     // No API key: smart quietly becomes a center crop.
@@ -159,7 +159,7 @@ test('tps01_fitter_smart_fallback', function () {
         ->and($suggested->colorAt(540, 960)->red()->value())->toBeLessThan(100);
 });
 
-test('tps01_fitter_unknown_mode_center', function () {
+test('tps01 fitter unknown mode center', function () {
     $source = ($this->track)(tps01WriteTemp(tps01TwoToneJpeg(1600, 900)));
     $fitter = app(StoryImageFitter::class);
 
@@ -172,7 +172,7 @@ test('tps01_fitter_unknown_mode_center', function () {
     }
 });
 
-test('tps01_exif_rotated', function () {
+test('tps01 exif rotated', function () {
     // Stored 1200x800 landscape with EXIF orientation 6 (rotate 90 degrees clockwise to display):
     // as seen by the user it is 800x1200 portrait, the stored red left half is now the TOP.
     $source = ($this->track)(tps01WriteTemp(tps01WithExifOrientation(tps01TwoToneJpeg(1200, 800), 6)));
@@ -186,7 +186,7 @@ test('tps01_exif_rotated', function () {
         ->and($image->colorAt(540, 1880)->blue()->value())->toBeGreaterThan(150);
 });
 
-test('tps01_gd_driver', function () {
+test('tps01 gd driver', function () {
     // The production image has GD only (no Imagick). Cover the GD paths explicitly.
     expect(extension_loaded('gd'))->toBeTrue();
 
@@ -207,7 +207,7 @@ test('tps01_gd_driver', function () {
     expect($fitted->width())->toBe(1080)->and($fitted->height())->toBe(1920);
 });
 
-test('tps01_fitter_or_keep_returns_original_when_undecodable', function () {
+test('tps01 fitter or keep returns original when undecodable', function () {
     $garbage = ($this->track)(tps01WriteTemp('this is not an image'));
     $fitter = app(StoryImageFitter::class);
 

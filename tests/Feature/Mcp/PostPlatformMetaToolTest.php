@@ -501,7 +501,7 @@ test('create post rejects invalid Pinterest destination link', function () {
     $response->assertHasErrors();
 });
 
-test('tps01_meta_rules_story_fit_mcp create post persists story_fit and rejects invalid crops', function () {
+test('tps01 meta rules story fit mcp create post persists story_fit and rejects invalid crops', function () {
     $facebook = SocialAccount::factory()->facebook()->create(['workspace_id' => $this->workspace->id]);
 
     $platforms = fn (array $meta) => [[

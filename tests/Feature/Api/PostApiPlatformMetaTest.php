@@ -549,7 +549,7 @@ it('rejects non-http Pinterest links', function () {
         ]);
 });
 
-it('tps01_meta_rules_story_fit persists story_fit and story_crop on store and rejects unknown modes', function () {
+it('tps01 meta rules story fit persists story_fit and story_crop on store and rejects unknown modes', function () {
     $facebook = SocialAccount::factory()->facebook()->create(['workspace_id' => $this->workspace->id]);
 
     $payload = fn (array $meta) => [
@@ -584,7 +584,7 @@ it('tps01_meta_rules_story_fit persists story_fit and story_crop on store and re
         ->assertJsonValidationErrors(['platforms.0.meta.story_fit']);
 });
 
-it('tps01_meta_rules_story_crop_bounds rejects rectangles outside the image', function () {
+it('tps01 meta rules story crop bounds rejects rectangles outside the image', function () {
     $facebook = SocialAccount::factory()->facebook()->create(['workspace_id' => $this->workspace->id]);
 
     $post = fn (array $crop) => $this->withHeaders($this->headers)->postJson(route('api.posts.store'), [

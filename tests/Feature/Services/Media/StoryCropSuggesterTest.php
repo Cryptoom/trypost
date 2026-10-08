@@ -42,7 +42,7 @@ afterEach(function () {
     @unlink($this->image);
 });
 
-test('tps01_suggester_valid', function () {
+test('tps01 suggester valid', function () {
     // 1600x900 photo: a 9:16 rectangle is 0.3164 wide and full height.
     tps01GeminiFake(['x' => 0.3, 'y' => 0, 'w' => 0.31640625, 'h' => 1]);
 
@@ -61,7 +61,7 @@ test('tps01_suggester_valid', function () {
     });
 });
 
-test('tps01_suggester_bad_ratio', function () {
+test('tps01 suggester bad ratio', function () {
     // Square-ish rectangle, not 9:16.
     tps01GeminiFake(['x' => 0.1, 'y' => 0.1, 'w' => 0.5, 'h' => 0.5]);
     expect((new StoryCropSuggester)->suggest($this->image))->toBeNull();
@@ -84,7 +84,7 @@ test('tps01_suggester_bad_ratio', function () {
     }
 });
 
-test('tps01_suggester_http500', function () {
+test('tps01 suggester http500', function () {
     tps01GeminiFake('{}', 500);
 
     expect((new StoryCropSuggester)->suggest($this->image))->toBeNull();
@@ -95,7 +95,7 @@ test('tps01_suggester_http500', function () {
     expect((new StoryCropSuggester)->suggest($this->image))->not->toBeNull();
 });
 
-test('tps01_suggester_no_key', function () {
+test('tps01 suggester no key', function () {
     config()->set('services.gemini.api_key', null);
     Http::fake();
 
@@ -108,7 +108,7 @@ test('tps01_suggester_no_key', function () {
     Http::assertNothingSent();
 });
 
-test('tps01_suggester_cache', function () {
+test('tps01 suggester cache', function () {
     tps01GeminiFake(['x' => 0.3, 'y' => 0, 'w' => 0.31640625, 'h' => 1]);
 
     $suggester = new StoryCropSuggester;
@@ -131,7 +131,7 @@ test('tps01_suggester_cache', function () {
     Http::assertSentCount(2);
 });
 
-test('tps01_suggester_oversized_image', function () {
+test('tps01 suggester oversized image', function () {
     // A tiny PNG that declares huge pixel dimensions must not be decoded by GD.
     $ihdr = pack('N', 20000).pack('N', 20000)."\x08\x02\x00\x00\x00";
     $huge = tempnam(sys_get_temp_dir(), 'tps01_huge_');

@@ -346,7 +346,7 @@ it('refuses to crop an image whose dimensions exceed the memory budget', functio
         ->toThrow(RuntimeException::class, 'exceed the safe processing budget');
 });
 
-it('tps01_croptorect crops a normalized rectangle and scales it to the output size', function () use (&$tempFiles) {
+it('tps01 croptorect crops a normalized rectangle and scales it to the output size', function () use (&$tempFiles) {
     // Left half red, right half blue, 1600x900.
     $gd = imagecreatetruecolor(1600, 900);
     imagefilledrectangle($gd, 0, 0, 799, 899, imagecolorallocate($gd, 230, 20, 20));
