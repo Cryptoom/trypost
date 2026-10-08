@@ -345,3 +345,30 @@ it('refuses to crop an image whose dimensions exceed the memory budget', functio
     expect(fn () => $optimizer->cropToAspectRatio($huge, 0.8))
         ->toThrow(RuntimeException::class, 'exceed the safe processing budget');
 });
+
+it('tps01_croptorect crops a normalized rectangle and scales it to the output size', function () use (&$tempFiles) {
+    // Left half red, right half blue, 1600x900.
+    $gd = imagecreatetruecolor(1600, 900);
+    imagefilledrectangle($gd, 0, 0, 799, 899, imagecolorallocate($gd, 230, 20, 20));
+    imagefilledrectangle($gd, 800, 0, 1599, 899, imagecolorallocate($gd, 20, 20, 230));
+    $source = tempnam(sys_get_temp_dir(), 'tps01_rect_');
+    imagejpeg($gd, $source, 95);
+    $tempFiles[] = $source;
+
+    $optimizer = new MediaOptimizer;
+
+    // 9:16 rectangle in the red half.
+    $result = $optimizer->cropToRect($source, 0.1, 0.0, 0.31640625, 1.0, 1080, 1920);
+    $tempFiles[] = $result;
+    $out = (new ImageManager(Driver::class))->decodePath($result);
+
+    expect($out->width())->toBe(1080)
+        ->and($out->height())->toBe(1920)
+        ->and($out->colorAt(540, 960)->red()->value())->toBeGreaterThan(150)
+        ->and($out->colorAt(540, 960)->blue()->value())->toBeLessThan(100);
+
+    // Outside the photo, wrong ratio, and empty rectangles are rejected.
+    expect(fn () => $optimizer->cropToRect($source, 0.9, 0.0, 0.31640625, 1.0, 1080, 1920))->toThrow(InvalidArgumentException::class)
+        ->and(fn () => $optimizer->cropToRect($source, 0.0, 0.0, 0.5, 0.5, 1080, 1920))->toThrow(InvalidArgumentException::class)
+        ->and(fn () => $optimizer->cropToRect($source, 0.0, 0.0, 0.0, 1.0, 1080, 1920))->toThrow(InvalidArgumentException::class);
+});

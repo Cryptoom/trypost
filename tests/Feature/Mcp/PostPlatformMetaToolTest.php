@@ -500,3 +500,39 @@ test('create post rejects invalid Pinterest destination link', function () {
 
     $response->assertHasErrors();
 });
+
+test('tps01_meta_rules_story_fit_mcp create post persists story_fit and rejects invalid crops', function () {
+    $facebook = SocialAccount::factory()->facebook()->create(['workspace_id' => $this->workspace->id]);
+
+    $platforms = fn (array $meta) => [[
+        'social_account_id' => $facebook->id,
+        'content_type' => ContentType::FacebookStory->value,
+        'meta' => $meta,
+    ]];
+
+    TryPostServer::actingAs($this->user)
+        ->tool(CreatePostTool::class, [
+            'content' => 'Story',
+            'platforms' => $platforms(['story_fit' => 'manual', 'story_crop' => ['x' => 0.1, 'y' => 0, 'w' => 0.3164, 'h' => 1]]),
+        ])
+        ->assertOk();
+
+    $meta = PostPlatform::where('social_account_id', $facebook->id)->sole()->meta;
+
+    expect($meta['story_fit'])->toBe('manual')
+        ->and(data_get($meta, 'story_crop.x'))->toBe(0.1);
+
+    TryPostServer::actingAs($this->user)
+        ->tool(CreatePostTool::class, [
+            'content' => 'Story',
+            'platforms' => $platforms(['story_fit' => 'stretch']),
+        ])
+        ->assertHasErrors();
+
+    TryPostServer::actingAs($this->user)
+        ->tool(CreatePostTool::class, [
+            'content' => 'Story',
+            'platforms' => $platforms(['story_fit' => 'manual', 'story_crop' => ['x' => 0.9, 'y' => 0, 'w' => 0.3164, 'h' => 1]]),
+        ])
+        ->assertHasErrors();
+});

@@ -89,6 +89,16 @@ test('media rules reuse enum capability helpers', function () {
         ->and($rules['max_files'])->toBe(ContentType::InstagramStory->maxMediaCount());
 });
 
+test('tps01_autofits_facebook_story', function () {
+    expect(ContentType::FacebookStory->autoFitsImage())->toBeTrue()
+        ->and(ContentType::InstagramStory->autoFitsImage())->toBeTrue()
+        ->and(ContentType::FacebookStory->mediaRules()['auto_fits_image'])->toBeTrue();
+
+    foreach ([ContentType::FacebookPost, ContentType::FacebookReel, ContentType::InstagramFeed, ContentType::InstagramReel, ContentType::YouTubeShort] as $other) {
+        expect($other->autoFitsImage())->toBeFalse();
+    }
+});
+
 test('content type maps to correct platform', function () {
     expect(ContentType::InstagramFeed->platform())->toBe(Platform::Instagram);
     expect(ContentType::InstagramReel->platform())->toBe(Platform::Instagram);

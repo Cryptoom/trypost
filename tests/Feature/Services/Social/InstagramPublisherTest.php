@@ -16,6 +16,7 @@ use App\Models\Workspace;
 use App\Services\Media\MediaOptimizer;
 use App\Services\Social\InstagramPublisher;
 use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Http\Client\Factory;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
@@ -147,7 +148,7 @@ test('instagram publisher can publish reel', function () {
 
 test('instagram publisher fits an image story to 9:16 and posts the hosted copy', function () {
     Storage::fake();
-    $this->postPlatform->update(['content_type' => ContentType::InstagramStory]);
+    $this->postPlatform->update(['content_type' => ContentType::InstagramStory, 'meta' => ['story_fit' => 'fit']]);
 
     $this->post->update([
         'media' => [
@@ -291,7 +292,7 @@ test('instagram publisher surfaces a publish exception when the story container 
 });
 
 test('instagram publisher does not leak the fitted temp file when hosting the story image fails', function () {
-    $this->postPlatform->update(['content_type' => ContentType::InstagramStory]);
+    $this->postPlatform->update(['content_type' => ContentType::InstagramStory, 'meta' => ['story_fit' => 'fit']]);
 
     $this->post->update([
         'media' => [
@@ -2136,4 +2137,86 @@ test('instagram publisher throws exception when delete fails', function () {
 
     expect(fn () => $this->publisher->delete($postPlatform))
         ->toThrow(InstagramPublishException::class);
+});
+
+test('tps01_instagram_story_mode fits the story photo according to story_fit', function () {
+    $publishStoryWith = function (?array $meta) {
+        Storage::fake();
+        // error_context carries the publish checkpoint of the previous run, clear it so each run starts fresh.
+        $this->postPlatform->update(['content_type' => ContentType::InstagramStory, 'meta' => $meta]);
+        PostPlatform::query()->whereKey($this->postPlatform->id)->update(['error_context' => null]);
+
+        $this->post->update([
+            'media' => [[
+                'id' => 'test-media-story',
+                'path' => 'media/2026-01/story.jpg',
+                'url' => 'https://example.com/media/2026-01/story.jpg',
+                'mime_type' => 'image/jpeg',
+                'original_filename' => 'story.jpg',
+            ]],
+        ]);
+
+        // Left half red, right half blue landscape photo.
+        $gd = imagecreatetruecolor(1600, 900);
+        imagefilledrectangle($gd, 0, 0, 799, 899, imagecolorallocate($gd, 230, 20, 20));
+        imagefilledrectangle($gd, 800, 0, 1599, 899, imagecolorallocate($gd, 20, 20, 230));
+        ob_start();
+        imagejpeg($gd, null, 95);
+        $jpeg = (string) ob_get_clean();
+
+        // Fresh factory per run: stubs of an earlier run would otherwise keep matching first.
+        Http::swap(new Factory);
+
+        Http::fake([
+            'https://example.com/media/2026-01/story.jpg' => Http::response($jpeg, 200),
+            'https://graph.instagram.com/v25.0/ig_123456789/media' => Http::response(['id' => 'story-container-123'], 200),
+            'https://graph.instagram.com/v25.0/story-container-123*' => Http::response(['status_code' => 'FINISHED'], 200),
+            'https://graph.instagram.com/v25.0/ig_123456789/media_publish' => Http::response(['id' => 'story-123456789'], 200),
+            'https://graph.instagram.com/v25.0/story-123456789*' => Http::response(['permalink' => 'https://www.instagram.com/stories/testuser/123/'], 200),
+        ]);
+
+        $this->publisher->publish($this->postPlatform->fresh());
+
+        $hosted = collect(Storage::allFiles())->first(fn (string $path) => str_starts_with($path, 'social-crops/'));
+        expect($hosted)->not->toBeNull();
+
+        $tempFile = tempnam(sys_get_temp_dir(), 'verify_story_');
+        file_put_contents($tempFile, Storage::get($hosted));
+        $image = (new ImageManager(Driver::class))->decodePath($tempFile);
+        @unlink($tempFile);
+
+        return $image;
+    };
+
+    // Without any story_fit (and with an unknown one): center crop, red left edge, blue right edge.
+    foreach ([null, [], ['story_fit' => 'bogus']] as $meta) {
+        $image = $publishStoryWith($meta);
+
+        expect($image->width())->toBe(1080)
+            ->and($image->height())->toBe(1920)
+            ->and($image->colorAt(5, 960)->red()->value())->toBeGreaterThan(150)
+            ->and($image->colorAt(1074, 960)->blue()->value())->toBeGreaterThan(150);
+    }
+
+    // manual: the user's rectangle inside the blue half.
+    $manual = $publishStoryWith(['story_fit' => 'manual', 'story_crop' => ['x' => 0.6, 'y' => 0, 'w' => 0.31640625, 'h' => 1]]);
+
+    expect($manual->width())->toBe(1080)
+        ->and($manual->height())->toBe(1920)
+        ->and($manual->colorAt(540, 960)->blue()->value())->toBeGreaterThan(150)
+        ->and($manual->colorAt(540, 960)->red()->value())->toBeLessThan(100);
+
+    // manual with a broken rectangle publishes a center crop instead of failing.
+    $broken = $publishStoryWith(['story_fit' => 'manual', 'story_crop' => ['x' => 2, 'y' => 0, 'w' => 0.1, 'h' => 0.1]]);
+
+    expect($broken->height())->toBe(1920)
+        ->and($broken->colorAt(5, 960)->red()->value())->toBeGreaterThan(150);
+
+    // fit: the whole photo stays visible on a blurred background.
+    $fit = $publishStoryWith(['story_fit' => 'fit']);
+
+    expect($fit->width())->toBe(1080)
+        ->and($fit->height())->toBe(1920)
+        ->and($fit->colorAt(100, 960)->red()->value())->toBeGreaterThan(150)
+        ->and($fit->colorAt(980, 960)->blue()->value())->toBeGreaterThan(150);
 });
