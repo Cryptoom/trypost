@@ -57,7 +57,8 @@ test('unp01 canBeUnpublished keeps the instagram direct login exception', functi
     $post = unp01PublishedPost($this, ['instagram', 'instagramFacebook']);
     $byPlatform = $post->postPlatforms->keyBy(fn (PostPlatform $pp) => $pp->platform->value);
 
-    expect($byPlatform['instagram']->canBeUnpublished())->toBeFalse();
+    expect($byPlatform['instagram']->canBeUnpublished())->toBeFalse()
+        ->and($byPlatform['instagram-facebook']->canBeUnpublished())->toBeTrue();
 });
 
 test('unp01 canBeUnpublished matches platforms without a delete publisher', function () {
@@ -108,6 +109,16 @@ test('unp01 index keeps unpublish active for a post mixing a story and a reel', 
 
 test('unp01 index uses the generic reason for a tiktok-only post', function () {
     unp01PublishedPost($this, ['tiktok']);
+
+    $this->actingAs($this->user)->get(route('app.posts.index'))
+        ->assertInertia(fn ($page) => $page
+            ->where('posts.data.0.can_unpublish', false)
+            ->where('posts.data.0.unpublish_blocked_reason', 'unsupported')
+        );
+});
+
+test('unp01 index flags an instagram direct login post as not unpublishable with the generic reason', function () {
+    unp01PublishedPost($this, ['instagram']);
 
     $this->actingAs($this->user)->get(route('app.posts.index'))
         ->assertInertia(fn ($page) => $page

@@ -317,8 +317,11 @@ bestehende `unpublish_unsupported`-Flash bleibt. Delete des Posts ist unberuehrt
   `supportsDelete()` direkt in `execute()`, driften Anzeige und Aktion auseinander.
 - **Tests**: `tests/Feature/Actions/Post/UnpublishAvailabilityTest.php` und
   `tests/Browser/PostUnpublishTest.php` (Namen mit `unp01 `, Filter `--filter=unp01`).
-- **Bekannt**: der Browser-Test `unpublishing a post removes it from a delete-capable platform ...`
-  schlaegt auch auf `origin/main` fehl (Modal-Flow, unabhaengig von diesem Patch).
+- **Browser-Test repariert (UNP-02, 08.10.2026)**: `unpublishing a post removes it from a delete-capable platform ...`
+  war rot, weil `seedUnpublishPost()` den Facebook-Account mit `scopes => []` anlegte. `UnpublishPost`
+  meldet das als `failed` ("Missing permissions: pages_manage_posts"), der Post blieb Published. Kein App-Fehler,
+  der Seed traegt jetzt `requiredDeleteScopes()`. Zusatz in `UnpublishAvailabilityTest`: `instagram-facebook`
+  ist unpublishbar, ein reiner Instagram-Direct-Post liefert `can_unpublish=false` mit Grund `unsupported`.
 - **Stand**: nicht deployed (Olli-Gate).
 
 ### Patch 8 · tiktok-disclosure-label  (TTL-01, 08.10.2026)
