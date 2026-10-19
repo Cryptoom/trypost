@@ -19,6 +19,7 @@ class PostPlatformResource extends JsonResource
             'platform' => $this->platform?->value,
             'content_type' => $this->content_type?->value,
             'meta' => $this->meta,
+            'media_ids' => $this->whenLoaded('media', fn () => $this->media_ids),
             'status' => $this->status?->value,
             'enabled' => $this->enabled,
             'platform_url' => $this->platform_url,

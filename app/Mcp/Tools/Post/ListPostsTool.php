@@ -34,7 +34,7 @@ class ListPostsTool extends Tool
 
         $query = $request->user()->currentWorkspace
             ->posts()
-            ->with(['postPlatforms.socialAccount', 'labels']);
+            ->with(['postPlatforms.socialAccount', 'postPlatforms.media', 'labels']);
 
         $query = match (data_get($validated, 'status')) {
             Status::Draft->value => $query->draft(),

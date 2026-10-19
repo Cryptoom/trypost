@@ -23,7 +23,7 @@ class GetPostTool extends Tool
         $validated = $request->validate(['post_id' => ['required', 'string']]);
 
         $post = Post::where('workspace_id', $request->user()->current_workspace_id)
-            ->with(['postPlatforms.socialAccount', 'labels'])
+            ->with(['postPlatforms.socialAccount', 'postPlatforms.media', 'labels'])
             ->find(data_get($validated, 'post_id'));
 
         if (! $post) {
