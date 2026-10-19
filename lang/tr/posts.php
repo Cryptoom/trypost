@@ -145,6 +145,12 @@ return [
                 'placeholder' => 'Havayı tarif edin, örn. neşe verici akustik gitar',
                 'hint' => 'Yalnızca bir fotoğraf, yapay zeka tarafından oluşturulan arka plan müziğiyle videoya dönüştürüldüğünde kullanılır.',
             ],
+            // PATCH:story-motion
+            'story_headline' => [
+                'label' => 'Hikaye başlığı (isteğe bağlı)',
+                'placeholder' => 'Kelime kelime beliren kısa bir başlık',
+                'hint' => 'Hareketli Hikaye videosunda fotoğrafın üzerinde gösterilir, en fazla 80 karakter. Emojiler ve desteklenmeyen yazılar çıkarılır.',
+            ],
         ],
         'linkedin' => [
             'settings' => 'LinkedIn Ayarları',

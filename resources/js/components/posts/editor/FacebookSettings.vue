@@ -1,5 +1,6 @@
 <script setup lang="ts">
 // PATCH:story-photo-fit: StoryFitSettings for story photos.
+// PATCH:story-motion: optional animated headline for story photos when motion is enabled for the workspace.
 import { usePage } from '@inertiajs/vue3';
 import { IconChevronDown, IconChevronUp } from '@tabler/icons-vue';
 import { computed, ref } from 'vue';
@@ -7,6 +8,7 @@ import { computed, ref } from 'vue';
 import MediaRulesWarning from '@/components/posts/editor/MediaRulesWarning.vue';
 import StoryFitSettings from '@/components/posts/editor/StoryFitSettings.vue';
 import { Avatar } from '@/components/ui/avatar';
+import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { isStoryPhoto, scopedMedia } from '@/composables/useMedia';
 import { getPlatformLogo } from '@/composables/usePlatformLogo';
@@ -77,8 +79,18 @@ const pickAspectRatio = (value: string) => {
     emit('update:meta', { ...props.meta, aspect_ratio: value });
 };
 
-const page = usePage<{ facebookStoryAiMusicEnabled: boolean }>();
+const page = usePage<{ facebookStoryAiMusicEnabled: boolean; facebookStoryMotionEnabled: boolean }>();
 const storyAiMusicEnabled = computed(() => Boolean(page.props.facebookStoryAiMusicEnabled));
+const storyMotionEnabled = computed(() => Boolean(page.props.facebookStoryMotionEnabled));
+const showStoryHeadline = computed(() => storyMotionEnabled.value && showStoryFit.value);
+
+// Only photo Stories become a moving video, so only they get a headline; the backend validates the length.
+const storyHeadline = computed({
+    get: () => (props.meta.story_headline as string | undefined) || '',
+    set: (value: string) => {
+        emit('update:meta', { ...props.meta, story_headline: value.trim() === '' ? null : value });
+    },
+});
 
 // A photo attached to a Story is auto-converted to video server-side (see
 // FacebookPublisher::publishStory()); this optionally steers the AI-generated
@@ -178,6 +190,18 @@ const storyMusicDescription = computed({
                     data-testid="facebook-story-music-description"
                 />
                 <p class="text-xs font-medium text-foreground/60">{{ $t('posts.form.facebook.story_music.hint') }}</p>
+            </div>
+
+            <div v-if="showStoryHeadline" class="space-y-2">
+                <p class="text-[11px] font-black uppercase tracking-widest text-foreground/60">{{ $t('posts.form.facebook.story_headline.label') }}</p>
+                <Input
+                    v-model="storyHeadline"
+                    type="text"
+                    :placeholder="$t('posts.form.facebook.story_headline.placeholder')"
+                    :disabled="disabled"
+                    data-testid="facebook-story-headline"
+                />
+                <p class="text-xs font-medium text-foreground/60">{{ $t('posts.form.facebook.story_headline.hint') }}</p>
             </div>
 
             <StoryFitSettings

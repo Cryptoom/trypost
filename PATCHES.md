@@ -529,3 +529,51 @@ Jeder andere Fehlercode bleibt vorübergehend, die Meldung nennt jetzt den Code
 - **Merge-Hinweis**: beim nächsten Upstream-Merge entfällt der Patch, wenn #390 vollständig
   übernommen wird (Code ist dort wortgleich, auch `tokenFrom`).
 - **Tests**: `ConnectionVerifierTest` und `RefreshSocialTokenTest` (Abschnitte "TTR-02").
+
+### Patch 10 · story-motion  (TPS-SM-01, 20.10.2026)
+
+Facebook-Story-Fotos werden für freigegebene Workspaces nicht mehr als stehendes Bild, sondern als
+kurzes Kamerafahrt-Video veröffentlicht, optional mit animierter Headline (Wort für Wort). Gerendert
+von einem eigenen internen Container `story-render` (HyperFrames 0.8.174, Chromium, ffmpeg). Jeder
+Fehler, jede Zeitüberschreitung und ein belegter Renderer führen zurück auf das bisherige Standbild
+(`ImageToVideoConverter::convert()`), kein Publish scheitert am neuen Pfad. Default: aus, Allowlist leer.
+
+- **Marker**: `PATCH:story-motion` (`grep -rn "PATCH:story-motion" app config lang resources`).
+- **Render-Dienst (neu, `docker/story-render/`)**: `server.mjs`, `lib/`, `template/` (Komposition,
+  Noto Serif 700 als woff2 mit OFL-Text, lokal), `Dockerfile`, `package.json` plus Lockfile
+  (`hyperframes` und `gsap` gepinnt, `npm ci` beim Build, nie zur Laufzeit geladen), Tests unter `test/`
+  (`cd docker/story-render && node --test`, 38 Tests). `compose.prod.yaml` (Upstream-Selfhost) bleibt unberührt.
+- **Laravel**: `app/Services/Media/StoryMotionRenderer.php` (Allowlist, HTTP, Zeitbudget 300 s ab
+  Publish-Start, ffprobe-Prüfung der Render-Ausgabe), `StoryVideoInspector.php` (ffprobe-Wächter für
+  das Endvideo: ein h264/yuv420p-1080x1920-30-fps-Videostream, genau ein AAC-Stream, Dauer ±0,5 s,
+  moov vorn), `ImageToVideoConverter::addAudioTrack()` (Audio-Mux mit `-c:v copy`),
+  `FacebookPublisher` (`publishStory()`, `convertImageToStoryVideo()`, `renderStoryMotionVideo()`),
+  `PostPlatformMetaRules` (`story_headline`, max 80), Shared Prop `facebookStoryMotionEnabled`
+  (`HandleInertiaRequests`), Feld in `FacebookSettings.vue`, Label in allen 16 `lang/*/posts.php`.
+- **Verhaltensänderung (bewusst)**: Bei Foto-Stories läuft die Konvertierung (und damit Musik und Render)
+  jetzt VOR dem Facebook-`start`-Call, damit ein langer Render keine offene Upload-Sitzung hält. Folge:
+  Musik (Kosten) und Render entstehen auch dann, wenn `start` später abgelehnt wird. Ein `try/finally`
+  umschließt Konvertierung und alle Upload-Phasen. Video-Stories bleiben unverändert (Download nach `start`).
+- **Env (Reihenfolge ENABLED, WORKSPACES, TOKEN, dann URL, TIMEOUT)**: `FACEBOOK_STORY_MOTION_ENABLED`
+  (false), `FACEBOOK_STORY_MOTION_WORKSPACES` (leer = niemand, kommagetrennte Workspace-IDs, strikter
+  String-Vergleich), `FACEBOOK_STORY_MOTION_TOKEN` (gleicher Wert wie `STORY_RENDER_TOKEN` im Dienst),
+  `FACEBOOK_STORY_MOTION_URL` (`http://story-render:3000`), `FACEBOOK_STORY_MOTION_TIMEOUT` (255 =
+  Dienst-Timeout 240 plus 15, im Code auf 10 bis 255 begrenzt). Aktiv nur bei Flag UND nicht leerer Liste
+  UND URL UND Token. Neue Env-Variablen in `/opt/trypost/compose.yml` (bzw. dort, wo die bestehenden
+  `FACEBOOK_*` stehen) nachtragen, siehe Repo-CLAUDE.md "Production Deploy (web02)".
+- **Produktions-Service (Compose auf web02, nicht im Repo)**: Build aus `./src/docker/story-render`,
+  `container_name: trypost-story-render`, eigenes Netz mit `internal: true` (der `app`-Service hängt an
+  beiden Netzen), kein veröffentlichter Port, `init: true`, `read_only: true`, `tmpfs: /tmp`,
+  `cap_drop: [ALL]`, `security_opt: [no-new-privileges:true]`, `user: node`, `pids_limit: 256`,
+  `mem_limit: 3g`, `memswap_limit: 3g`, `cpus: 2`, `shm_size: 1g`, `restart: unless-stopped`
+  (dokumentierte Produktions-Ausnahme), `STORY_RENDER_TOKEN` per Env, Label `owner=trypost`.
+- **Lizenzen**: hyperframes Apache-2.0, Noto Serif SIL OFL 1.1 (Text liegt bei den Fontdateien),
+  fontkit und puppeteer-core MIT bzw. Apache-2.0. GSAP steht unter der "Standard no charge license"
+  (gsap.com/standard-license, kommerzielle Nutzung frei, verboten nur in konkurrierenden visuellen
+  Animations-Buildern): GSAP liegt NICHT im Repo, nur als gepinnte npm-Abhängigkeit, die beim Image-Build
+  installiert wird. Die AGPL-Veröffentlichung des Forks enthält also keinen GSAP-Code.
+- **Merge-Hinweis**: Beim Upstream-Merge `grep -rn "PATCH:story-motion"` gegenprüfen. Upstream kennt
+  weder `docker/story-render/` noch `story_motion`.
+- **Tests**: `StoryMotionRendererTest`, `StoryVideoInspectorTest`, `ImageToVideoConverterTest`
+  (Abschnitt story-motion), `FacebookPublisherTest` (Abschnitt story-motion), `PostApiPlatformMetaTest`,
+  `PostPlatformMetaToolTest`; Render-Dienst `docker/story-render/test/`.

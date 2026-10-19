@@ -10,16 +10,21 @@ use App\Exceptions\Social\ErrorCategory;
 use App\Exceptions\Social\FacebookPublishException;
 use App\Exceptions\Social\SocialPublishException;
 use App\Models\PostPlatform;
+use App\Models\Workspace;
 use App\Services\Media\ImageToVideoConverter;
 use App\Services\Media\StoryImageFitter;
+use App\Services\Media\StoryMotionRenderer;
 use App\Services\Media\StoryMusicGenerator;
+use App\Services\Media\StoryVideoInspector;
 use App\Services\Social\Concerns\CropsImageForAspectRatio;
 use App\Services\Social\Concerns\HasSocialHttpClient;
+use Carbon\CarbonInterface;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use RuntimeException;
+use Throwable;
 
 class FacebookPublisher
 {
@@ -44,6 +49,8 @@ class FacebookPublisher
 
     public function publish(PostPlatform $postPlatform): array
     {
+        $startedAt = now(); // PATCH:story-motion: the render budget counts from here.
+
         $this->validateContentLength($postPlatform);
 
         $content = $postPlatform->post->content ? app(ContentSanitizer::class)->sanitize($postPlatform->post->content, $postPlatform->platform) : null;
@@ -57,10 +64,11 @@ class FacebookPublisher
         $aspectRatio = data_get($postPlatform->meta, 'aspect_ratio');
         $musicDescription = data_get($postPlatform->meta, 'story_music_description');
         $storyFit = ['mode' => data_get($postPlatform->meta, 'story_fit'), 'rect' => StoryImageFitter::boundCrop($postPlatform, $media->first()?->id)]; // PATCH:story-photo-fit
+        $storyMotion = ['workspace' => $postPlatform->post->workspace, 'headline' => data_get($postPlatform->meta, 'story_headline'), 'startedAt' => $startedAt]; // PATCH:story-motion
 
         return match ($contentType) {
             ContentType::FacebookReel => $this->publishReel($pageId, $accessToken, $content, $media->first()),
-            ContentType::FacebookStory => $this->publishStory($pageId, $accessToken, $media->first(), $musicDescription, $storyFit),
+            ContentType::FacebookStory => $this->publishStory($pageId, $accessToken, $media->first(), $musicDescription, $storyFit, $storyMotion),
             ContentType::FacebookPost => $this->publishPost($pageId, $accessToken, $content, $media, $aspectRatio),
             default => throw new FacebookPublishException(
                 userMessage: "Unsupported Facebook content type: {$contentType?->value}",
@@ -434,8 +442,14 @@ class FacebookPublisher
      * instead, it is auto-converted into a held-frame MP4 (with best-effort
      * AI background music, see convertImageToStoryVideo()) before this
      * method's normal video transfer/finish flow runs unchanged.
+     *
+     * PATCH:story-motion: a photo is converted BEFORE the start call, so a render
+     * that can take minutes never holds an open upload session. The temp file
+     * is cleaned up on every path, including a failing start call.
+     *
+     * @param  array{workspace?: ?Workspace, headline?: ?string, startedAt?: ?CarbonInterface}  $storyMotion
      */
-    private function publishStory(string $pageId, string $accessToken, $media, ?string $musicDescription = null, array $storyFit = []): array
+    private function publishStory(string $pageId, string $accessToken, $media, ?string $musicDescription = null, array $storyFit = [], array $storyMotion = []): array
     {
         if (! $media->isVideo() && ! $media->isImage()) {
             throw new FacebookPublishException(
@@ -444,45 +458,55 @@ class FacebookPublisher
             );
         }
 
-        $startResponse = $this->facebookHttp()->post("{$this->baseUrl}/{$pageId}/video_stories", [
-            'upload_phase' => 'start',
-            'access_token' => $accessToken,
-        ]);
-
-        if ($startResponse->failed()) {
-            $this->handleApiError($startResponse);
-        }
-
-        $startData = $startResponse->json();
-        $videoId = data_get($startData, 'video_id');
-        $uploadUrl = data_get($startData, 'upload_url');
-
-        if (! $videoId || ! $uploadUrl) {
-            throw new FacebookPublishException(
-                userMessage: 'Facebook did not return upload_url for story start.',
-                category: ErrorCategory::ServerError,
-                platformErrorCode: null,
-                rawResponse: $startResponse->body(),
-            );
-        }
-
-        $this->assertRuploadUrl($uploadUrl);
-
-        // Same rupload flow as publishReel() (this file, above): the
-        // documented file_url-header shortcut against upload_url is
-        // unreliable in practice, so we always end up with a LOCAL video
-        // file (downloaded, or converted from a photo below) and POST its
-        // raw bytes with the Offset/file_size headers rupload requires. The
-        // previous implementation posted the media URL as a body field
-        // called video_file_chunk to /{video_id} on the regular Graph host,
-        // which is not the transfer step this API expects (Graph API error
-        // 6000, "Problem with file", on every story regardless of the
-        // actual video).
-        [$tempFile, $mimeType] = $media->isVideo()
-            ? $this->downloadStoryVideo($media)
-            : $this->convertImageToStoryVideo($media, $musicDescription, $storyFit);
+        // A photo is converted (and possibly rendered with motion) before anything is
+        // opened at Facebook, see the PATCH:story-motion note above.
+        $tempFile = null;
 
         try {
+            $mimeType = 'video/mp4';
+
+            if (! $media->isVideo()) {
+                [$tempFile, $mimeType] = $this->convertImageToStoryVideo($media, $musicDescription, $storyFit, $storyMotion);
+            }
+
+            $startResponse = $this->facebookHttp()->post("{$this->baseUrl}/{$pageId}/video_stories", [
+                'upload_phase' => 'start',
+                'access_token' => $accessToken,
+            ]);
+
+            if ($startResponse->failed()) {
+                $this->handleApiError($startResponse);
+            }
+
+            $startData = $startResponse->json();
+            $videoId = data_get($startData, 'video_id');
+            $uploadUrl = data_get($startData, 'upload_url');
+
+            if (! $videoId || ! $uploadUrl) {
+                throw new FacebookPublishException(
+                    userMessage: 'Facebook did not return upload_url for story start.',
+                    category: ErrorCategory::ServerError,
+                    platformErrorCode: null,
+                    rawResponse: $startResponse->body(),
+                );
+            }
+
+            $this->assertRuploadUrl($uploadUrl);
+
+            // Same rupload flow as publishReel() (this file, above): the
+            // documented file_url-header shortcut against upload_url is
+            // unreliable in practice, so we always end up with a LOCAL video
+            // file (downloaded, or converted from a photo above) and POST its
+            // raw bytes with the Offset/file_size headers rupload requires. The
+            // previous implementation posted the media URL as a body field
+            // called video_file_chunk to /{video_id} on the regular Graph host,
+            // which is not the transfer step this API expects (Graph API error
+            // 6000, "Problem with file", on every story regardless of the
+            // actual video).
+            if ($tempFile === null) {
+                [$tempFile, $mimeType] = $this->downloadStoryVideo($media);
+            }
+
             $fileSize = filesize($tempFile);
             $stream = fopen($tempFile, 'rb');
 
@@ -505,20 +529,20 @@ class FacebookPublisher
                 Log::error('Facebook video story transfer failed', ['body' => $this->redactResponseBody($uploadResponse->body())]);
                 $this->handleApiError($uploadResponse);
             }
+
+            $finishResponse = $this->facebookHttp()->post("{$this->baseUrl}/{$pageId}/video_stories", [
+                'upload_phase' => 'finish',
+                'video_id' => $videoId,
+                'access_token' => $accessToken,
+            ]);
+
+            if ($finishResponse->failed()) {
+                $this->handleApiError($finishResponse);
+            }
         } finally {
-            if (file_exists($tempFile) && ! unlink($tempFile)) {
+            if ($tempFile !== null && file_exists($tempFile) && ! unlink($tempFile)) {
                 Log::warning('Facebook story temp file cleanup failed', ['path' => $tempFile]);
             }
-        }
-
-        $finishResponse = $this->facebookHttp()->post("{$this->baseUrl}/{$pageId}/video_stories", [
-            'upload_phase' => 'finish',
-            'video_id' => $videoId,
-            'access_token' => $accessToken,
-        ]);
-
-        if ($finishResponse->failed()) {
-            $this->handleApiError($finishResponse);
         }
 
         $storyId = $finishResponse->json()['post_id'] ?? $videoId;
@@ -564,9 +588,15 @@ class FacebookPublisher
      * on any failure so this never blocks the publish), then renders a
      * held-frame MP4 (App\Services\Media\ImageToVideoConverter).
      *
+     * PATCH:story-motion: for allowlisted workspaces the video is rendered with
+     * a camera move and an optional headline instead (see
+     * renderStoryMotionVideo()), and any problem there falls back to the
+     * held-frame MP4 above.
+     *
+     * @param  array{workspace?: ?Workspace, headline?: ?string, startedAt?: ?CarbonInterface}  $storyMotion
      * @return array{0: string, 1: string} [local file path, mime type]
      */
-    private function convertImageToStoryVideo($media, ?string $musicDescription, array $storyFit = []): array
+    private function convertImageToStoryVideo($media, ?string $musicDescription, array $storyFit = [], array $storyMotion = []): array
     {
         $imagePath = tempnam(sys_get_temp_dir(), 'fb_story_img_');
         $audioPath = null;
@@ -593,7 +623,8 @@ class FacebookPublisher
             $audioPath = app(StoryMusicGenerator::class)->generate($fittedPath, $durationSeconds, $musicDescription);
 
             try {
-                $videoPath = app(ImageToVideoConverter::class)->convert($fittedPath, $durationSeconds, $audioPath);
+                $videoPath = $this->renderStoryMotionVideo($fittedPath, $durationSeconds, $audioPath, $storyMotion)
+                    ?? app(ImageToVideoConverter::class)->convert($fittedPath, $durationSeconds, $audioPath);
             } catch (RuntimeException $e) {
                 throw new FacebookPublishException(
                     userMessage: 'Could not convert the story photo to video.',
@@ -611,6 +642,68 @@ class FacebookPublisher
                 }
             }
         }
+    }
+
+    /**
+     * PATCH:story-motion: the camera-move video with audio, or null whenever
+     * motion is off for the workspace or anything about it goes wrong. Every
+     * temp file this creates is removed unless it is returned.
+     *
+     * @param  array{workspace?: ?Workspace, headline?: ?string, startedAt?: ?CarbonInterface}  $storyMotion
+     */
+    private function renderStoryMotionVideo(string $fittedPath, int $durationSeconds, ?string $audioPath, array $storyMotion): ?string
+    {
+        $workspace = data_get($storyMotion, 'workspace');
+
+        if ($workspace === null) {
+            return null;
+        }
+
+        $renderer = app(StoryMotionRenderer::class);
+        $skipReason = $renderer->skipReason($workspace);
+
+        if ($skipReason !== null) {
+            if ($skipReason !== 'disabled') {
+                Log::info('Story motion skipped', ['reason' => $skipReason]);
+            }
+
+            return null;
+        }
+
+        $headline = trim((string) data_get($storyMotion, 'headline'));
+        $silentPath = $renderer->render($fittedPath, $durationSeconds, $headline === '' ? null : $headline, data_get($storyMotion, 'startedAt'));
+
+        if ($silentPath === null) {
+            return null;
+        }
+
+        $finalPath = null;
+
+        try {
+            $finalPath = app(ImageToVideoConverter::class)->addAudioTrack($silentPath, $durationSeconds, $audioPath);
+
+            $problem = app(StoryVideoInspector::class)->problem($finalPath, $durationSeconds, expectAudio: true);
+
+            if ($problem === null) {
+                return $finalPath;
+            }
+
+            Log::warning('Story motion render fell back to the still frame', ['reason' => 'invalid_output', 'problem' => $problem]);
+        } catch (RuntimeException) {
+            Log::warning('Story motion render fell back to the still frame', ['reason' => 'mux_failed']);
+        } catch (Throwable) {
+            Log::warning('Story motion render fell back to the still frame', ['reason' => 'error']);
+        } finally {
+            if (file_exists($silentPath)) {
+                @unlink($silentPath);
+            }
+        }
+
+        if ($finalPath !== null && file_exists($finalPath)) {
+            @unlink($finalPath);
+        }
+
+        return null;
     }
 
     private function handleApiError(Response $response): never

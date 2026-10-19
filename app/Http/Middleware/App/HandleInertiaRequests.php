@@ -13,6 +13,7 @@ use App\Http\Resources\App\HandleInertiaRequests\AuthUserResource;
 use App\Http\Resources\App\HandleInertiaRequests\AuthWorkspaceResource;
 use App\Http\Resources\App\PlanResource;
 use App\Models\Plan;
+use App\Services\Media\StoryMotionRenderer;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -64,6 +65,8 @@ class HandleInertiaRequests extends Middleware
             'languages' => Locale::options(),
             'aiEnabled' => filled(config('ai.providers.'.config('ai.default').'.key')),
             'facebookStoryAiMusicEnabled' => (bool) config('trypost.platforms.facebook.story_ai_music_enabled'),
+            // PATCH:story-motion: whether photo Stories get camera motion and a headline for the current workspace.
+            'facebookStoryMotionEnabled' => $currentWorkspace ? app(StoryMotionRenderer::class)->isEnabledFor($currentWorkspace) : false,
             'selfHosted' => $isSelfHosted,
             'googleAuthEnabled' => SocialAuthProvider::Google->isEnabled(),
             'githubAuthEnabled' => SocialAuthProvider::GitHub->isEnabled(),

@@ -145,6 +145,12 @@ return [
                 'placeholder' => 'Beschreibe die Stimmung, z. B. beschwingte Akustikgitarre',
                 'hint' => 'Wird nur verwendet, wenn ein Foto mit KI-generierter Hintergrundmusik in ein Video umgewandelt wird.',
             ],
+            // PATCH:story-motion
+            'story_headline' => [
+                'label' => 'Story-Überschrift (optional)',
+                'placeholder' => 'Kurze Überschrift, die Wort für Wort eingeblendet wird',
+                'hint' => 'Wird im bewegten Story-Video über dem Foto angezeigt, höchstens 80 Zeichen. Emoji und nicht unterstützte Schriften werden weggelassen.',
+            ],
         ],
         'linkedin' => [
             'settings' => 'LinkedIn-Einstellungen',

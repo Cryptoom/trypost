@@ -91,6 +91,41 @@ test('create post persists Facebook story_music_description meta', function () {
     expect(PostPlatform::where('social_account_id', $facebook->id)->sole()->meta['story_music_description'])->toBe('Upbeat acoustic guitar');
 });
 
+test('create post persists Facebook story_headline meta (PATCH:story-motion)', function () {
+    $facebook = SocialAccount::factory()->facebook()->create(['workspace_id' => $this->workspace->id]);
+
+    $response = TryPostServer::actingAs($this->user)
+        ->tool(CreatePostTool::class, [
+            'content' => 'Check out our story',
+            'platforms' => [[
+                'social_account_id' => $facebook->id,
+                'content_type' => ContentType::FacebookStory->value,
+                'meta' => ['story_headline' => 'Ελληνικά Παιχνίδια'],
+            ]],
+        ]);
+
+    $response->assertOk();
+
+    expect(PostPlatform::where('social_account_id', $facebook->id)->sole()->meta['story_headline'])->toBe('Ελληνικά Παιχνίδια');
+});
+
+test('create post rejects a Facebook story_headline over 80 characters (PATCH:story-motion)', function () {
+    $facebook = SocialAccount::factory()->facebook()->create(['workspace_id' => $this->workspace->id]);
+
+    TryPostServer::actingAs($this->user)
+        ->tool(CreatePostTool::class, [
+            'content' => 'Check out our story',
+            'platforms' => [[
+                'social_account_id' => $facebook->id,
+                'content_type' => ContentType::FacebookStory->value,
+                'meta' => ['story_headline' => str_repeat('x', 81)],
+            ]],
+        ])
+        ->assertHasErrors();
+
+    expect(PostPlatform::where('social_account_id', $facebook->id)->count())->toBe(0);
+});
+
 test('update post merges per-platform meta', function () {
     $post = Post::factory()->create([
         'workspace_id' => $this->workspace->id,

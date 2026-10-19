@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Services\Media\ImageToVideoConverter;
 use Intervention\Image\Drivers\Gd\Driver;
 use Intervention\Image\ImageManager;
+use Symfony\Component\Process\Process;
 
 function imageToVideoJpegPath(): string
 {
@@ -81,4 +82,56 @@ test('throws when ffmpeg fails to convert a non-existent image', function () {
 
     expect(fn () => (new ImageToVideoConverter)->convert('/tmp/definitely-not-a-real-file-'.uniqid().'.jpg', 2))
         ->toThrow(RuntimeException::class);
+});
+
+test('story-motion addAudioTrack muxes a silent video with a silent aac track and copies the video stream', function () {
+    if (! ffmpegAvailableForTest()) {
+        $this->markTestSkipped('ffmpeg is not installed on this machine.');
+    }
+
+    $converter = new ImageToVideoConverter;
+    $silent = (new Process(['ffmpeg', '-y', '-f', 'lavfi', '-i', 'color=c=black:s=1080x1920:r=30:d=3', '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-preset', 'ultrafast', $silentPath = sys_get_temp_dir().'/sm01_silent_'.uniqid().'.mp4']));
+    $silent->mustRun();
+
+    $this->outputPath = $converter->addAudioTrack($silentPath, 3);
+    @unlink($silentPath);
+
+    $streams = shell_exec('ffprobe -v error -show_entries stream=codec_type,codec_name -of csv=p=0 '.escapeshellarg($this->outputPath));
+
+    expect($streams)->toContain('h264,video')->toContain('aac,audio')
+        ->and(substr_count($streams, 'video'))->toBe(1)
+        ->and(substr_count($streams, 'audio'))->toBe(1);
+});
+
+test('story-motion addAudioTrack uses a supplied music track instead of silence', function () {
+    if (! ffmpegAvailableForTest()) {
+        $this->markTestSkipped('ffmpeg is not installed on this machine.');
+    }
+
+    $silentPath = sys_get_temp_dir().'/sm01_silent_'.uniqid().'.mp4';
+    $musicPath = sys_get_temp_dir().'/sm01_music_'.uniqid().'.mp3';
+    (new Process(['ffmpeg', '-y', '-f', 'lavfi', '-i', 'color=c=black:s=1080x1920:r=30:d=3', '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-preset', 'ultrafast', $silentPath]))->mustRun();
+    (new Process(['ffmpeg', '-y', '-f', 'lavfi', '-i', 'sine=frequency=440:duration=1', $musicPath]))->mustRun();
+
+    $this->outputPath = (new ImageToVideoConverter)->addAudioTrack($silentPath, 3, $musicPath);
+    @unlink($silentPath);
+    @unlink($musicPath);
+
+    $duration = (float) trim((string) shell_exec('ffprobe -v error -show_entries format=duration -of csv=p=0 '.escapeshellarg($this->outputPath)));
+    $streams = shell_exec('ffprobe -v error -show_entries stream=codec_type -of csv=p=0 '.escapeshellarg($this->outputPath));
+
+    // The one second track is looped to the full three seconds.
+    expect($streams)->toContain('audio')->and($duration)->toBeGreaterThan(2.5)->toBeLessThan(3.5);
+});
+
+test('story-motion addAudioTrack throws and leaves no output file when the video cannot be read', function () {
+    if (! ffmpegAvailableForTest()) {
+        $this->markTestSkipped('ffmpeg is not installed on this machine.');
+    }
+
+    $before = glob(sys_get_temp_dir().'/*.mp4') ?: [];
+
+    expect(fn () => (new ImageToVideoConverter)->addAudioTrack('/nonexistent/silent.mp4', 3))->toThrow(RuntimeException::class);
+
+    expect(array_values(array_diff(glob(sys_get_temp_dir().'/*.mp4') ?: [], $before)))->toBe([]);
 });

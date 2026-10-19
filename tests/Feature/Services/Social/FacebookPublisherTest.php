@@ -16,12 +16,17 @@ use App\Services\Media\ImageToVideoConverter;
 use App\Services\Media\StoryImageFitter;
 use App\Services\Media\StoryMusicGenerator;
 use App\Services\Social\FacebookPublisher;
+use Carbon\Carbon;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Factory;
+use Illuminate\Http\Client\Request;
+use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Intervention\Image\Drivers\Gd\Driver;
 use Intervention\Image\ImageManager;
+use Tests\Support\StoryMotionFixtures;
 
 function facebookJpegBytes(int $width = 1200, int $height = 800): string
 {
@@ -1337,7 +1342,7 @@ test('tps01 facebook story log notes an unbound crop only for manual story posts
     StoryImageFitter::boundCrop(PostPlatform::make(['content_type' => ContentType::FacebookStory, 'meta' => ['story_fit' => 'center']]), 'a');
     // A leftover frame on a story that is no longer manual is not worth a log line either.
     StoryImageFitter::boundCrop(PostPlatform::make(['content_type' => ContentType::FacebookStory, 'meta' => ['story_fit' => 'fit', 'story_crop' => $rect, 'story_crop_media_id' => 'b']]), 'a');
-    Log::shouldNotHaveReceived('info');
+    Log::shouldNotHaveReceived('info', ['Story motion skipped', Mockery::any()]);
 
     $platform = PostPlatform::make(['content_type' => ContentType::FacebookStory, 'meta' => ['story_fit' => 'manual', 'story_crop' => $rect, 'story_crop_media_id' => 'b']]);
     StoryImageFitter::boundCrop($platform, 'a');
@@ -1367,4 +1372,324 @@ test('tps01 facebook story first photo is the first of the platform selection', 
 
     expect($again['middle_blue'])->toBeGreaterThan(150)
         ->and($again['middle_red'])->toBeLessThan(100);
+});
+
+// ---------------------------------------------------------------------------
+// PATCH:story-motion (TPS-SM-01)
+// ---------------------------------------------------------------------------
+
+/**
+ * Publishes a photo story with the real fitter, converter and ffmpeg, against fake
+ * Facebook and render-service endpoints, and reports what happened.
+ *
+ * @param  array<string, mixed>  $meta
+ * @param  Closure|Response|null  $render  answer of the render service (null = no render configured)
+ * @return array{result: array<string, mixed>, labels: array<int, string>, upload: ?string, requests: array<int, Request>}
+ */
+function sm01PublishPhotoStory(object $test, array $meta = [], mixed $render = null, array $facebook = []): array
+{
+    if (! StoryMotionFixtures::ffmpegAvailable()) {
+        $test->markTestSkipped('ffmpeg or ffprobe is not installed on this machine.');
+    }
+
+    config()->set('trypost.platforms.facebook.story_photo_duration_seconds', 3);
+
+    $test->postPlatform->update(['content_type' => ContentType::FacebookStory, 'meta' => $meta]);
+    $test->post->update([
+        'media' => [[
+            'id' => 'test-media-story',
+            'path' => 'media/2026-01/story.jpg',
+            'url' => 'https://example.com/media/2026-01/story.jpg',
+            'mime_type' => 'image/jpeg',
+            'original_filename' => 'story.jpg',
+        ]],
+    ]);
+
+    $upload = null;
+
+    Http::swap(new Factory);
+    Http::preventStrayRequests();
+    Http::fake(array_filter([
+        '*/page_123/video_stories' => $facebook['stories'] ?? Http::sequence()
+            ->push(['video_id' => 'story_video_123', 'upload_url' => 'https://rupload.facebook.com/video-upload/v25.0/story_video_123'], 200)
+            ->push(['success' => true, 'post_id' => 'photo_story_post_123'], 200),
+        '*example.com/media/*' => $facebook['media'] ?? Http::response(facebookJpegBytes(1200, 800), 200),
+        '*rupload.facebook.com/*' => function (Request $request) use (&$upload) {
+            $upload = $request->body();
+
+            return Http::response(['success' => true], 200);
+        },
+        'story-render:3000/*' => $render,
+    ]));
+
+    $result = null;
+
+    try {
+        $result = $test->publisher->publish($test->postPlatform->fresh());
+    } finally {
+        $labels = collect(Http::recorded())->map(function (array $pair): string {
+            /** @var Request $request */
+            $request = $pair[0];
+            $url = $request->url();
+
+            return match (true) {
+                str_contains($url, 'example.com/media') => 'download',
+                str_contains($url, 'story-render') => 'render',
+                str_contains($url, 'rupload.facebook.com') => 'rupload',
+                str_contains($url, 'video_stories') => data_get($request->data(), 'upload_phase', 'stories'),
+                default => $url,
+            };
+        })->all();
+        $test->sm01Last = ['labels' => $labels];
+    }
+
+    return [
+        'result' => $result,
+        'labels' => $labels,
+        'upload' => $upload,
+        'requests' => collect(Http::recorded())->map(fn (array $pair) => $pair[0])->all(),
+    ];
+}
+
+/**
+ * Stream layout and duration of an MP4 given as bytes.
+ *
+ * @return array{video: string, audio: string, duration: float}
+ */
+function sm01Summary(string $bytes): array
+{
+    $path = sys_get_temp_dir().'/sm01_upload_'.uniqid().'.mp4';
+    file_put_contents($path, $bytes);
+    $info = json_decode((string) shell_exec('ffprobe -v error -print_format json -show_streams -show_format '.escapeshellarg($path)), true);
+    @unlink($path);
+
+    $streams = collect(data_get($info, 'streams', []));
+    $video = $streams->firstWhere('codec_type', 'video');
+    $audio = $streams->firstWhere('codec_type', 'audio');
+
+    return [
+        'video' => implode(',', [data_get($video, 'codec_name'), data_get($video, 'pix_fmt'), data_get($video, 'width'), data_get($video, 'height'), data_get($video, 'r_frame_rate')]),
+        'audio' => (string) data_get($audio, 'codec_name'),
+        'duration' => round((float) data_get($info, 'format.duration'), 1),
+    ];
+}
+
+function sm01EnableMotionFor(object $test): void
+{
+    if (! StoryMotionFixtures::ffmpegAvailable()) {
+        $test->markTestSkipped('ffmpeg or ffprobe is not installed on this machine.');
+    }
+
+    config()->set('trypost.platforms.facebook.story_motion', [
+        'enabled' => true,
+        'workspaces' => $test->workspace->id,
+        'token' => 'secret-token-123',
+        'url' => 'http://story-render:3000',
+        'timeout_seconds' => 255,
+    ]);
+}
+
+/** @return list<string> */
+function sm01TempMedia(): array
+{
+    return array_values(array_merge(glob(sys_get_temp_dir().'/*.mp4') ?: [], glob(sys_get_temp_dir().'/fb_story_*') ?: []));
+}
+
+afterEach(function () {
+    Carbon::setTestNow();
+});
+
+test('story-motion: an allowlisted workspace publishes the rendered video with audio, in the order download, render, start, rupload, finish', function () {
+    sm01EnableMotionFor($this);
+    $rendered = StoryMotionFixtures::video();
+    $before = sm01TempMedia();
+
+    $run = sm01PublishPhotoStory($this, ['story_headline' => 'Zeit für ein Abenteuer'], Http::response(file_get_contents($rendered), 200));
+
+    expect($run['labels'])->toBe(['download', 'render', 'start', 'rupload', 'finish'])
+        ->and($run['result']['id'])->toBe('photo_story_post_123')
+        ->and($run['result']['url'])->toBe('https://www.facebook.com/stories/page_123/photo_story_post_123');
+
+    $summary = sm01Summary($run['upload']);
+
+    expect($summary['video'])->toBe('h264,yuv420p,1080,1920,30/1')
+        ->and($summary['audio'])->toBe('aac')
+        ->and($summary['duration'])->toBe(3.0)
+        // every temp file is gone
+        ->and(array_values(array_diff(sm01TempMedia(), $before, [$rendered])))->toBe([]);
+
+    @unlink($rendered);
+});
+
+test('story-motion: the headline from the meta reaches the render service, a blank one sends none', function () {
+    sm01EnableMotionFor($this);
+    $rendered = StoryMotionFixtures::video();
+
+    $with = sm01PublishPhotoStory($this, ['story_headline' => '  Ελληνικά Παιχνίδια  '], Http::response(file_get_contents($rendered), 200));
+    $renderRequest = collect($with['requests'])->first(fn (Request $request) => str_contains($request->url(), 'story-render'));
+
+    expect(base64_decode(strtr($renderRequest->header('X-Story-Headline-B64')[0], '-_', '+/')))->toBe('Ελληνικά Παιχνίδια')
+        ->and($renderRequest->header('X-Story-Render-Token')[0])->toBe('secret-token-123')
+        ->and($renderRequest->url())->toContain('duration=3');
+
+    $without = sm01PublishPhotoStory($this, ['story_headline' => '   '], Http::response(file_get_contents($rendered), 200));
+    $noHeadline = collect($without['requests'])->first(fn (Request $request) => str_contains($request->url(), 'story-render'));
+
+    expect($noHeadline->hasHeader('X-Story-Headline-B64'))->toBeFalse();
+
+    @unlink($rendered);
+});
+
+test('story-motion: when the render fails the story is the same held-frame video as with motion off', function (string $label, Closure $failure, bool $renderRecorded) {
+    // Baseline: motion switched off (the shipped default).
+    $off = sm01PublishPhotoStory($this, ['story_headline' => 'ignored']);
+    expect($off['labels'])->toBe(['download', 'start', 'rupload', 'finish']);
+
+    sm01EnableMotionFor($this);
+    Log::spy();
+    $before = sm01TempMedia();
+
+    $fallback = sm01PublishPhotoStory($this, ['story_headline' => 'ignored'], $failure);
+
+    expect($fallback['labels'])->toBe($renderRecorded ? ['download', 'render', 'start', 'rupload', 'finish'] : ['download', 'start', 'rupload', 'finish'])
+        ->and($fallback['result'])->toBe($off['result'])
+        ->and(sm01Summary($fallback['upload']))->toBe(sm01Summary($off['upload']))
+        ->and(sm01Summary($fallback['upload'])['audio'])->toBe('aac')
+        ->and(array_values(array_diff(sm01TempMedia(), $before)))->toBe([]);
+
+    Log::shouldHaveReceived('warning')->with('Story motion render fell back to the still frame', Mockery::type('array'))->atLeast()->once();
+})->with([
+    'service busy' => ['service busy', fn () => Http::response(['error' => 'busy'], 503), true],
+    'service timeout' => ['service timeout', fn () => Http::response(['error' => 'render_timeout'], 504), true],
+    // A refused connection throws before any response exists, so the fake records no render request.
+    'service down' => ['service down', fn () => throw new ConnectionException('cURL error 7: Failed to connect'), false],
+    'garbage answer' => ['garbage answer', fn () => Http::response('not a video', 200), true],
+    'video of the wrong size' => ['video of the wrong size', fn () => Http::response(StoryMotionFixtures::videoBytes(['size' => '540x960']), 200), true],
+]);
+
+test('story-motion: no render request for a workspace that is not on the allowlist or while the flag is off', function () {
+    // flag on, workspace not listed
+    sm01EnableMotionFor($this);
+    config()->set('trypost.platforms.facebook.story_motion.workspaces', 'someone-else');
+    Log::spy();
+
+    $run = sm01PublishPhotoStory($this);
+
+    expect($run['labels'])->toBe(['download', 'start', 'rupload', 'finish']);
+    Log::shouldHaveReceived('info')->with('Story motion skipped', ['reason' => 'workspace_not_allowed'])->once();
+
+    // flag on, list empty
+    config()->set('trypost.platforms.facebook.story_motion.workspaces', '');
+    expect(sm01PublishPhotoStory($this)['labels'])->toBe(['download', 'start', 'rupload', 'finish']);
+
+});
+
+test('story-motion: with the flag off (the shipped default) a story publishes as before and motion logs nothing', function () {
+    Log::spy();
+
+    expect(config('trypost.platforms.facebook.story_motion.enabled'))->toBeFalse()
+        ->and(sm01PublishPhotoStory($this, ['story_headline' => 'ignored'])['labels'])->toBe(['download', 'start', 'rupload', 'finish']);
+
+    Log::shouldNotHaveReceived('info', ['Story motion skipped', Mockery::any()]);
+    Log::shouldNotHaveReceived('warning', ['Story motion render fell back to the still frame', Mockery::any()]);
+});
+
+test('story-motion: a mux that fails or yields a story without audio falls back and cleans up', function (Closure $mux) {
+    $off = sm01PublishPhotoStory($this);
+
+    sm01EnableMotionFor($this);
+    $rendered = StoryMotionFixtures::video();
+    $before = sm01TempMedia();
+
+    $converter = Mockery::mock(ImageToVideoConverter::class)->makePartial();
+    $converter->shouldReceive('addAudioTrack')->andReturnUsing($mux);
+    app()->instance(ImageToVideoConverter::class, $converter);
+
+    $run = sm01PublishPhotoStory($this, [], Http::response(file_get_contents($rendered), 200));
+
+    // The fallback is the unchanged held-frame conversion.
+    expect(sm01Summary($run['upload']))->toBe(sm01Summary($off['upload']))
+        ->and(array_values(array_diff(sm01TempMedia(), $before, [$rendered])))->toBe([]);
+
+    @unlink($rendered);
+})->with([
+    'ffmpeg mux throws' => [fn () => throw new RuntimeException('mux failed')],
+    'mux returns a silent video' => [fn () => StoryMotionFixtures::video()],
+    'mux returns a video of the wrong length' => [fn () => StoryMotionFixtures::video(['audio' => true, 'seconds' => 9])],
+]);
+
+test('story-motion: no render when the job has already used more than 300 seconds', function () {
+    sm01EnableMotionFor($this);
+    Carbon::setTestNow('2026-10-20 10:00:00');
+
+    // Music generation eats the time budget.
+    $music = Mockery::mock(StoryMusicGenerator::class);
+    $music->shouldReceive('generate')->once()->andReturnUsing(function () {
+        Carbon::setTestNow(now()->addSeconds(301));
+
+        return null;
+    });
+    app()->instance(StoryMusicGenerator::class, $music);
+
+    $run = sm01PublishPhotoStory($this, [], Http::response('unused', 200));
+
+    expect($run['labels'])->toBe(['download', 'start', 'rupload', 'finish']);
+});
+
+test('story-motion: a failing photo conversion never opens an upload session at Facebook', function () {
+    $converter = Mockery::mock(ImageToVideoConverter::class);
+    $converter->shouldReceive('convert')->once()->andThrow(new RuntimeException('ffmpeg exploded'));
+    app()->instance(ImageToVideoConverter::class, $converter);
+
+    $labels = [];
+
+    try {
+        sm01PublishPhotoStory($this);
+    } catch (FacebookPublishException $e) {
+        $labels = $this->sm01Last['labels'];
+        expect($e->getMessage())->toContain('Could not convert the story photo to video.');
+    }
+
+    expect($labels)->toBe(['download']);
+    Http::assertNotSent(fn (Request $request) => str_contains($request->url(), 'video_stories'));
+});
+
+test('story-motion: a failed photo download never opens an upload session at Facebook', function () {
+    try {
+        sm01PublishPhotoStory($this, [], null, ['media' => Http::response('gone', 404)]);
+        $this->fail('expected an exception');
+    } catch (FacebookPublishException $e) {
+        expect($e->getMessage())->toContain('Could not download media for Facebook story.');
+    }
+
+    expect($this->sm01Last['labels'])->toBe(['download']);
+});
+
+test('story-motion: when the start call is rejected the converted file is still removed', function () {
+    $convertedVideoPath = tempnam(sys_get_temp_dir(), 'fb_story_converted_');
+    file_put_contents($convertedVideoPath, 'fake-converted-mp4-bytes');
+
+    $converter = Mockery::mock(ImageToVideoConverter::class);
+    $converter->shouldReceive('convert')->once()->andReturn($convertedVideoPath);
+    app()->instance(ImageToVideoConverter::class, $converter);
+
+    expect(fn () => sm01PublishPhotoStory($this, [], null, ['stories' => Http::response(['error' => ['message' => 'Invalid parameter', 'code' => 100]], 400)]))
+        ->toThrow(FacebookPublishException::class);
+
+    expect(file_exists($convertedVideoPath))->toBeFalse()
+        ->and($this->sm01Last['labels'])->toBe(['download', 'start']);
+});
+
+test('story-motion: a start response without upload_url removes the converted file too', function () {
+    $convertedVideoPath = tempnam(sys_get_temp_dir(), 'fb_story_converted_');
+    file_put_contents($convertedVideoPath, 'fake-converted-mp4-bytes');
+
+    $converter = Mockery::mock(ImageToVideoConverter::class);
+    $converter->shouldReceive('convert')->once()->andReturn($convertedVideoPath);
+    app()->instance(ImageToVideoConverter::class, $converter);
+
+    expect(fn () => sm01PublishPhotoStory($this, [], null, ['stories' => Http::response(['video_id' => 'story_video_123'], 200)]))
+        ->toThrow(FacebookPublishException::class, 'Facebook did not return upload_url for story start.');
+
+    expect(file_exists($convertedVideoPath))->toBeFalse();
 });

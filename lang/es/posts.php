@@ -143,6 +143,12 @@ return [
                 'placeholder' => 'Describe el ambiente, p. ej. guitarra acústica alegre',
                 'hint' => 'Solo se usa cuando una foto se convierte en video con música de fondo generada por IA.',
             ],
+            // PATCH:story-motion
+            'story_headline' => [
+                'label' => 'Titular de la Historia (opcional)',
+                'placeholder' => 'Un titular corto que aparece palabra por palabra',
+                'hint' => 'Se muestra sobre la foto en el vídeo animado de la Historia, máximo 80 caracteres. Los emojis y las escrituras no compatibles se omiten.',
+            ],
         ],
         'linkedin' => [
             'settings' => 'Configuración de LinkedIn',
