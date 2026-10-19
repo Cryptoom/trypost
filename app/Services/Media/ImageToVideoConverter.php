@@ -7,6 +7,7 @@ namespace App\Services\Media;
 use Illuminate\Support\Str;
 use RuntimeException;
 use Symfony\Component\Process\Exception\ProcessFailedException;
+use Symfony\Component\Process\Exception\ProcessTimedOutException;
 use Symfony\Component\Process\Process;
 
 /**
@@ -23,6 +24,8 @@ use Symfony\Component\Process\Process;
 class ImageToVideoConverter
 {
     private const FFMPEG_TIMEOUT_SECONDS = 120;
+
+    private const MUX_TIMEOUT_SECONDS = 60;
 
     /**
      * Renders `$imagePath` into a held-frame MP4 of `$durationSeconds`,
@@ -50,6 +53,47 @@ class ImageToVideoConverter
             }
 
             throw new RuntimeException("ffmpeg failed to convert image to video: {$e->getMessage()}", previous: $e);
+        }
+
+        return $outputPath;
+    }
+
+    /**
+     * PATCH:story-motion: adds the audio track to an already rendered silent
+     * video without re-encoding it (`-c:v copy`). Same audio rules as
+     * convert(): the supplied track looped and trimmed to `$durationSeconds`, or
+     * a silent AAC track, because Facebook rejects a Story video with no audio
+     * stream. Returns the path of a new temp file, the caller owns cleanup of
+     * it and of `$videoPath`.
+     *
+     * @throws RuntimeException when ffmpeg exits non-zero.
+     */
+    public function addAudioTrack(string $videoPath, int $durationSeconds, ?string $audioPath = null): string
+    {
+        $outputPath = sys_get_temp_dir().'/'.Str::uuid().'.mp4';
+
+        $process = new Process([
+            'ffmpeg', '-y', '-i', $videoPath,
+            ...$this->audioInputArgs($audioPath),
+            '-map', '0:v:0', '-map', '1:a:0',
+            '-t', (string) $durationSeconds,
+            '-c:v', 'copy',
+            '-c:a', 'aac',
+            '-b:a', '128k',
+            '-shortest',
+            '-movflags', '+faststart',
+            $outputPath,
+        ]);
+        $process->setTimeout(self::MUX_TIMEOUT_SECONDS);
+
+        try {
+            $process->mustRun();
+        } catch (ProcessFailedException|ProcessTimedOutException $e) {
+            if (is_file($outputPath)) {
+                @unlink($outputPath);
+            }
+
+            throw new RuntimeException("ffmpeg failed to add the audio track: {$e->getMessage()}", previous: $e);
         }
 
         return $outputPath;

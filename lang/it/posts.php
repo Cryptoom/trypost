@@ -143,6 +143,12 @@ return [
                 'placeholder' => 'Descrivi l\'atmosfera, ad es. chitarra acustica allegra',
                 'hint' => 'Usata solo quando una foto viene convertita in video con musica di sottofondo generata dall\'IA.',
             ],
+            // PATCH:story-motion
+            'story_headline' => [
+                'label' => 'Titolo della Storia (facoltativo)',
+                'placeholder' => 'Un titolo breve che compare parola per parola',
+                'hint' => 'Mostrato sopra la foto nel video animato della Storia, massimo 80 caratteri. Emoji e scritture non supportate vengono omessi.',
+            ],
         ],
         'linkedin' => [
             'settings' => 'Impostazioni LinkedIn',

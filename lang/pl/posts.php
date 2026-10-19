@@ -143,6 +143,12 @@ return [
                 'placeholder' => 'Opisz klimat, np. energiczna gitara akustyczna',
                 'hint' => 'Używane tylko wtedy, gdy zdjęcie jest konwertowane na wideo z muzyką w tle wygenerowaną przez AI.',
             ],
+            // PATCH:story-motion
+            'story_headline' => [
+                'label' => 'Nagłówek Relacji (opcjonalnie)',
+                'placeholder' => 'Krótki nagłówek pojawiający się słowo po słowie',
+                'hint' => 'Wyświetlany nad zdjęciem w animowanym wideo Relacji, maksymalnie 80 znaków. Emoji i nieobsługiwane pisma są pomijane.',
+            ],
         ],
         'linkedin' => [
             'settings' => 'Ustawienia LinkedIn',

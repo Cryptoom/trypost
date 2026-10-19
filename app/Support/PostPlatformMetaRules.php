@@ -41,6 +41,11 @@ class PostPlatformMetaRules
             // App\Services\Media\StoryMusicGenerator.
             'platforms.*.meta.story_music_description' => ['sometimes', 'nullable', 'string', 'max:500'],
 
+            // PATCH:story-motion: optional animated headline for a photo Story. Only used when
+            // story motion is enabled for the workspace (App\Services\Media\StoryMotionRenderer),
+            // otherwise it is stored and ignored at publish time. The render service sanitizes it again.
+            'platforms.*.meta.story_headline' => ['sometimes', 'nullable', 'string', 'max:80'],
+
             // PATCH:story-photo-fit: how a photo is fitted to 9:16 on Instagram and
             // Facebook stories. A missing or unusable `story_crop` falls back to a
             // center crop at publish time, it never fails the post.

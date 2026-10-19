@@ -143,6 +143,12 @@ return [
                 'placeholder' => 'Describe the vibe, e.g. upbeat acoustic guitar',
                 'hint' => 'Used only when a photo is converted to video with AI-generated background music.',
             ],
+            // PATCH:story-motion
+            'story_headline' => [
+                'label' => 'Story headline (optional)',
+                'placeholder' => 'A short headline that appears word by word',
+                'hint' => 'Shown over the photo in the moving Story video, max 80 characters. Emoji and unsupported scripts are left out.',
+            ],
         ],
         'linkedin' => [
             'settings' => 'LinkedIn Settings',

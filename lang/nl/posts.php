@@ -143,6 +143,12 @@ return [
                 'placeholder' => 'Beschrijf de sfeer, bijv. vrolijke akoestische gitaar',
                 'hint' => 'Wordt alleen gebruikt wanneer een foto wordt omgezet in video met door AI gegenereerde achtergrondmuziek.',
             ],
+            // PATCH:story-motion
+            'story_headline' => [
+                'label' => 'Story-kop (optioneel)',
+                'placeholder' => 'Een korte kop die woord voor woord verschijnt',
+                'hint' => 'Wordt boven de foto getoond in de bewegende Story-video, maximaal 80 tekens. Emoji en niet-ondersteunde schriften worden weggelaten.',
+            ],
         ],
         'linkedin' => [
             'settings' => 'LinkedIn-instellingen',

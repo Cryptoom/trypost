@@ -143,6 +143,12 @@ return [
                 'placeholder' => 'Décrivez l\'ambiance, par ex. guitare acoustique entraînante',
                 'hint' => 'Utilisée uniquement lorsqu\'une photo est convertie en vidéo avec une musique de fond générée par IA.',
             ],
+            // PATCH:story-motion
+            'story_headline' => [
+                'label' => 'Titre de la Story (facultatif)',
+                'placeholder' => 'Un titre court qui apparaît mot par mot',
+                'hint' => 'Affiché sur la photo dans la vidéo animée de la Story, 80 caractères maximum. Les emojis et les écritures non prises en charge sont omis.',
+            ],
         ],
         'linkedin' => [
             'settings' => 'Paramètres LinkedIn',

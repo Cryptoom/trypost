@@ -143,6 +143,12 @@ return [
                 'placeholder' => 'Descreva o clima, ex.: violão animado',
                 'hint' => 'Usado apenas quando uma foto é convertida em vídeo com música de fundo gerada por IA.',
             ],
+            // PATCH:story-motion
+            'story_headline' => [
+                'label' => 'Título da Story (opcional)',
+                'placeholder' => 'Um título curto que aparece palavra por palavra',
+                'hint' => 'Exibido sobre a foto no vídeo animado da Story, no máximo 80 caracteres. Emojis e escritas não compatíveis são omitidos.',
+            ],
         ],
         'linkedin' => [
             'settings' => 'Configurações do LinkedIn',

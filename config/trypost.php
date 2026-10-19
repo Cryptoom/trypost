@@ -209,6 +209,20 @@ return [
             // for a photo-to-video Story conversion above. Off by default,
             // real per-song cost. See App\Services\Media\StoryMusicGenerator.
             'story_ai_music_enabled' => (bool) env('FACEBOOK_STORY_AI_MUSIC_ENABLED', false),
+            // PATCH:story-motion: render a photo Story as a short camera-move video
+            // (optional animated headline) through the internal story-render service
+            // (docker/story-render). Off by default and active only for the listed
+            // workspaces. Any failure falls back to the held-frame video above.
+            'story_motion' => [
+                'enabled' => (bool) env('FACEBOOK_STORY_MOTION_ENABLED', false),
+                // Comma separated workspace ids. Empty means nobody.
+                'workspaces' => (string) env('FACEBOOK_STORY_MOTION_WORKSPACES', ''),
+                // Shared secret the render service requires (same value in its STORY_RENDER_TOKEN).
+                'token' => (string) env('FACEBOOK_STORY_MOTION_TOKEN', ''),
+                'url' => (string) env('FACEBOOK_STORY_MOTION_URL', 'http://story-render:3000'),
+                // Service timeout (max 240) plus 15 seconds. Clamped in StoryMotionRenderer.
+                'timeout_seconds' => (int) env('FACEBOOK_STORY_MOTION_TIMEOUT', 255),
+            ],
             // Upstream config key, not yet used by our own FacebookPublisher
             // (siehe PATCHES.md "Upstream-Merge 2026-09-21"), kept forward-compatible.
             'rupload_host' => env('FACEBOOK_RUPLOAD_HOST', 'rupload.facebook.com'),

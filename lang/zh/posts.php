@@ -143,6 +143,12 @@ return [
                 'placeholder' => '描述氛围，例如欢快的原声吉他',
                 'hint' => '仅在照片转换为带有AI生成背景音乐的视频时使用。',
             ],
+            // PATCH:story-motion
+            'story_headline' => [
+                'label' => '快拍标题(可选)',
+                'placeholder' => '按词逐个出现的简短标题',
+                'hint' => '显示在动态快拍视频中的照片上方,最多 80 个字符。表情符号和不受支持的文字会被省略。',
+            ],
         ],
         'linkedin' => [
             'settings' => 'LinkedIn 设置',

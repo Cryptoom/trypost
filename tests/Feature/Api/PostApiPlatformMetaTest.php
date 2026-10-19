@@ -88,6 +88,54 @@ it('persists the Facebook story_music_description meta on store', function () {
     expect(PostPlatform::where('social_account_id', $facebook->id)->sole()->meta['story_music_description'])->toBe('Upbeat acoustic guitar');
 });
 
+it('persists the Facebook story_headline meta on store (PATCH:story-motion)', function () {
+    $facebook = SocialAccount::factory()->facebook()->create(['workspace_id' => $this->workspace->id]);
+
+    $this->withHeaders($this->headers)
+        ->postJson(route('api.posts.store'), [
+            'content' => 'Check out our story',
+            'platforms' => [[
+                'social_account_id' => $facebook->id,
+                'content_type' => ContentType::FacebookStory->value,
+                'meta' => ['story_headline' => str_repeat('ä', 80)],
+            ]],
+        ])
+        ->assertCreated();
+
+    expect(PostPlatform::where('social_account_id', $facebook->id)->sole()->meta['story_headline'])->toBe(str_repeat('ä', 80));
+});
+
+it('rejects a story_headline over 80 characters on store (PATCH:story-motion)', function () {
+    $facebook = SocialAccount::factory()->facebook()->create(['workspace_id' => $this->workspace->id]);
+
+    $this->withHeaders($this->headers)
+        ->postJson(route('api.posts.store'), [
+            'content' => 'Check out our story',
+            'platforms' => [[
+                'social_account_id' => $facebook->id,
+                'content_type' => ContentType::FacebookStory->value,
+                'meta' => ['story_headline' => str_repeat('ä', 81)],
+            ]],
+        ])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['platforms.0.meta.story_headline']);
+});
+
+it('accepts a null story_headline on store (PATCH:story-motion)', function () {
+    $facebook = SocialAccount::factory()->facebook()->create(['workspace_id' => $this->workspace->id]);
+
+    $this->withHeaders($this->headers)
+        ->postJson(route('api.posts.store'), [
+            'content' => 'Check out our story',
+            'platforms' => [[
+                'social_account_id' => $facebook->id,
+                'content_type' => ContentType::FacebookStory->value,
+                'meta' => ['story_headline' => null],
+            ]],
+        ])
+        ->assertCreated();
+});
+
 it('publishes a LinkedIn document post that has a PDF', function () {
     Queue::fake();
 

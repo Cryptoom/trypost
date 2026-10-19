@@ -143,6 +143,12 @@ return [
                 'placeholder' => '분위기를 설명하세요. 예: 경쾌한 어쿠스틱 기타',
                 'hint' => '사진이 AI가 생성한 배경 음악과 함께 동영상으로 변환될 때만 사용됩니다.',
             ],
+            // PATCH:story-motion
+            'story_headline' => [
+                'label' => '스토리 제목(선택)',
+                'placeholder' => '한 단어씩 나타나는 짧은 제목',
+                'hint' => '움직이는 스토리 영상에서 사진 위에 표시됩니다. 최대 80자. 이모지와 지원하지 않는 문자는 제외됩니다.',
+            ],
         ],
         'linkedin' => [
             'settings' => 'LinkedIn 설정',
