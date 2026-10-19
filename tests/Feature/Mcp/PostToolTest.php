@@ -130,6 +130,56 @@ test('get post returns PostResource shape', function () {
         });
 });
 
+test('post read tools return the media selection for every platform', function (string $tool) {
+    $media = Media::factory()->assets()->count(3)->create([
+        'mediable_type' => (new Workspace)->getMorphClass(),
+        'mediable_id' => $this->workspace->id,
+    ]);
+    $post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+        'media' => $media->map(fn (Media $item) => [
+            'id' => $item->id,
+            'path' => $item->path,
+            'url' => $item->url,
+            'type' => $item->type->value,
+        ])->all(),
+    ]);
+    $selectedPlatform = PostPlatform::factory()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $this->socialAccount->id,
+    ]);
+    $selectedIds = $media->take(2)->pluck('id')->all();
+    $selectedPlatform->media()->attach($selectedIds);
+    $allMediaPlatform = PostPlatform::factory()->create([
+        'post_id' => $post->id,
+        'social_account_id' => SocialAccount::factory()->create([
+            'workspace_id' => $this->workspace->id,
+            'platform' => Platform::X,
+        ])->id,
+        'platform' => Platform::X,
+        'content_type' => 'x_post',
+    ]);
+
+    $response = TryPostServer::actingAs($this->user)
+        ->tool($tool, $tool === GetPostTool::class ? ['post_id' => $post->id] : []);
+
+    $response->assertOk()
+        ->assertStructuredContent(function (AssertableJson $json) use ($tool, $selectedPlatform, $selectedIds, $allMediaPlatform) {
+            $prefix = $tool === ListPostsTool::class ? 'posts.0.' : '';
+            $platforms = collect($json->toArray()[$tool === ListPostsTool::class ? 'posts' : 'platforms']);
+            if ($tool === ListPostsTool::class) {
+                $platforms = collect($platforms->first()['platforms']);
+            }
+            $selectedIndex = $platforms->search(fn (array $platform) => $platform['id'] === $selectedPlatform->id);
+            $allMediaIndex = $platforms->search(fn (array $platform) => $platform['id'] === $allMediaPlatform->id);
+
+            $json->where($prefix.'platforms.'.$selectedIndex.'.media_ids', fn ($ids) => collect($ids)->sort()->values()->all() === collect($selectedIds)->sort()->values()->all())
+                ->where($prefix.'platforms.'.$allMediaIndex.'.media_ids', [])
+                ->etc();
+        });
+})->with([GetPostTool::class, ListPostsTool::class]);
+
 test('get post 404 from another workspace', function () {
     $otherWorkspace = Workspace::factory()->create();
     $post = Post::factory()->create(['workspace_id' => $otherWorkspace->id, 'user_id' => $this->user->id]);
