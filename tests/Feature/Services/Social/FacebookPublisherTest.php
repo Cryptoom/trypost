@@ -1342,7 +1342,7 @@ test('tps01 facebook story log notes an unbound crop only for manual story posts
     StoryImageFitter::boundCrop(PostPlatform::make(['content_type' => ContentType::FacebookStory, 'meta' => ['story_fit' => 'center']]), 'a');
     // A leftover frame on a story that is no longer manual is not worth a log line either.
     StoryImageFitter::boundCrop(PostPlatform::make(['content_type' => ContentType::FacebookStory, 'meta' => ['story_fit' => 'fit', 'story_crop' => $rect, 'story_crop_media_id' => 'b']]), 'a');
-    Log::shouldNotHaveReceived('info', ['Story motion skipped', Mockery::any()]);
+    Log::shouldNotHaveReceived('info');
 
     $platform = PostPlatform::make(['content_type' => ContentType::FacebookStory, 'meta' => ['story_fit' => 'manual', 'story_crop' => $rect, 'story_crop_media_id' => 'b']]);
     StoryImageFitter::boundCrop($platform, 'a');
@@ -1543,7 +1543,7 @@ test('story-motion: the headline from the meta reaches the render service, a bla
 test('story-motion: when the render fails the story is the same held-frame video as with motion off', function (string $label, Closure $failure, bool $renderRecorded) {
     // Baseline: motion switched off (the shipped default).
     $off = sm01PublishPhotoStory($this, ['story_headline' => 'ignored']);
-    expect($off['labels'])->toBe(['download', 'start', 'rupload', 'finish']);
+    expect($off['labels'])->toBe(['start', 'download', 'rupload', 'finish']);
 
     sm01EnableMotionFor($this);
     Log::spy();
@@ -1575,12 +1575,12 @@ test('story-motion: no render request for a workspace that is not on the allowli
 
     $run = sm01PublishPhotoStory($this);
 
-    expect($run['labels'])->toBe(['download', 'start', 'rupload', 'finish']);
+    expect($run['labels'])->toBe(['start', 'download', 'rupload', 'finish']);
     Log::shouldHaveReceived('info')->with('Story motion skipped', ['reason' => 'workspace_not_allowed'])->once();
 
     // flag on, list empty
     config()->set('trypost.platforms.facebook.story_motion.workspaces', '');
-    expect(sm01PublishPhotoStory($this)['labels'])->toBe(['download', 'start', 'rupload', 'finish']);
+    expect(sm01PublishPhotoStory($this)['labels'])->toBe(['start', 'download', 'rupload', 'finish']);
 
 });
 
@@ -1588,9 +1588,9 @@ test('story-motion: with the flag off (the shipped default) a story publishes as
     Log::spy();
 
     expect(config('trypost.platforms.facebook.story_motion.enabled'))->toBeFalse()
-        ->and(sm01PublishPhotoStory($this, ['story_headline' => 'ignored'])['labels'])->toBe(['download', 'start', 'rupload', 'finish']);
+        ->and(sm01PublishPhotoStory($this, ['story_headline' => 'ignored'])['labels'])->toBe(['start', 'download', 'rupload', 'finish']);
 
-    Log::shouldNotHaveReceived('info', ['Story motion skipped', Mockery::any()]);
+    Log::shouldNotHaveReceived('info');
     Log::shouldNotHaveReceived('warning', ['Story motion render fell back to the still frame', Mockery::any()]);
 });
 
@@ -1636,7 +1636,8 @@ test('story-motion: no render when the job has already used more than 300 second
     expect($run['labels'])->toBe(['download', 'start', 'rupload', 'finish']);
 });
 
-test('story-motion: a failing photo conversion never opens an upload session at Facebook', function () {
+test('story-motion: with motion on, a failing photo conversion never opens an upload session at Facebook', function () {
+    sm01EnableMotionFor($this);
     $converter = Mockery::mock(ImageToVideoConverter::class);
     $converter->shouldReceive('convert')->once()->andThrow(new RuntimeException('ffmpeg exploded'));
     app()->instance(ImageToVideoConverter::class, $converter);
@@ -1654,7 +1655,8 @@ test('story-motion: a failing photo conversion never opens an upload session at 
     Http::assertNotSent(fn (Request $request) => str_contains($request->url(), 'video_stories'));
 });
 
-test('story-motion: a failed photo download never opens an upload session at Facebook', function () {
+test('story-motion: with motion on, a failed photo download never opens an upload session at Facebook', function () {
+    sm01EnableMotionFor($this);
     try {
         sm01PublishPhotoStory($this, [], null, ['media' => Http::response('gone', 404)]);
         $this->fail('expected an exception');
@@ -1665,7 +1667,8 @@ test('story-motion: a failed photo download never opens an upload session at Fac
     expect($this->sm01Last['labels'])->toBe(['download']);
 });
 
-test('story-motion: when the start call is rejected the converted file is still removed', function () {
+test('story-motion: with motion on, a rejected start call still removes the converted file', function () {
+    sm01EnableMotionFor($this);
     $convertedVideoPath = tempnam(sys_get_temp_dir(), 'fb_story_converted_');
     file_put_contents($convertedVideoPath, 'fake-converted-mp4-bytes');
 
@@ -1680,7 +1683,8 @@ test('story-motion: when the start call is rejected the converted file is still 
         ->and($this->sm01Last['labels'])->toBe(['download', 'start']);
 });
 
-test('story-motion: a start response without upload_url removes the converted file too', function () {
+test('story-motion: with motion on, a start response without upload_url removes the converted file too', function () {
+    sm01EnableMotionFor($this);
     $convertedVideoPath = tempnam(sys_get_temp_dir(), 'fb_story_converted_');
     file_put_contents($convertedVideoPath, 'fake-converted-mp4-bytes');
 
@@ -1692,4 +1696,43 @@ test('story-motion: a start response without upload_url removes the converted fi
         ->toThrow(FacebookPublishException::class, 'Facebook did not return upload_url for story start.');
 
     expect(file_exists($convertedVideoPath))->toBeFalse();
+});
+
+test('story-motion: without motion the order is the original one, a rejected start call converts nothing', function () {
+    $converter = Mockery::mock(ImageToVideoConverter::class);
+    $converter->shouldNotReceive('convert');
+    app()->instance(ImageToVideoConverter::class, $converter);
+    $music = Mockery::mock(StoryMusicGenerator::class);
+    $music->shouldNotReceive('generate');
+    app()->instance(StoryMusicGenerator::class, $music);
+
+    expect(fn () => sm01PublishPhotoStory($this, [], null, ['stories' => Http::response(['error' => ['message' => 'Invalid parameter', 'code' => 100]], 400)]))
+        ->toThrow(FacebookPublishException::class);
+
+    // Neither the photo download nor music nor conversion happened, exactly as on origin/main.
+    expect($this->sm01Last['labels'])->toBe(['start']);
+});
+
+test('story-motion: a workspace that is not allowed keeps the original order too, even with the flag on', function () {
+    sm01EnableMotionFor($this);
+    config()->set('trypost.platforms.facebook.story_motion.workspaces', 'someone-else');
+
+    $converter = Mockery::mock(ImageToVideoConverter::class);
+    $converter->shouldNotReceive('convert');
+    app()->instance(ImageToVideoConverter::class, $converter);
+
+    expect(fn () => sm01PublishPhotoStory($this, [], null, ['stories' => Http::response(['error' => ['message' => 'Invalid parameter', 'code' => 100]], 400)]))
+        ->toThrow(FacebookPublishException::class);
+
+    expect($this->sm01Last['labels'])->toBe(['start']);
+});
+
+test('story-motion: without motion a failing conversion happens after the start call (unchanged behaviour)', function () {
+    $converter = Mockery::mock(ImageToVideoConverter::class);
+    $converter->shouldReceive('convert')->once()->andThrow(new RuntimeException('ffmpeg exploded'));
+    app()->instance(ImageToVideoConverter::class, $converter);
+
+    expect(fn () => sm01PublishPhotoStory($this))->toThrow(FacebookPublishException::class, 'Could not convert the story photo to video.');
+
+    expect($this->sm01Last['labels'])->toBe(['start', 'download']);
 });

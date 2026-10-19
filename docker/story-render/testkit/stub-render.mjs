@@ -25,7 +25,7 @@ switch (mode) {
         makeVideo(['-f', 'lavfi', '-i', 'anullsrc=channel_layout=stereo:sample_rate=44100', '-c:a', 'aac', '-shortest']);
         break;
     case 'slow':
-        setTimeout(() => makeVideo(), 1500);
+        setTimeout(() => makeVideo(), Number(process.argv[5] ?? 1500));
         break;
     case 'hang':
         startGrandchild('story-test-grandchild');
@@ -41,7 +41,7 @@ switch (mode) {
         process.exit(0);
         break;
     case 'fail':
-        process.stderr.write('boom');
+        process.stderr.write(process.argv[5] ?? 'boom');
         process.exit(3);
         break;
     default:

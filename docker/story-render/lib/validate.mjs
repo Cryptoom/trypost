@@ -125,7 +125,8 @@ export const decodeHeadlineHeader = (raw) => {
     return text;
 };
 
-const EMOJI = /[\p{Extended_Pictographic}\p{Emoji_Modifier}\p{Regional_Indicator}\u{FE0E}\u{FE0F}\u{200D}\u{20E3}\u{E0020}-\u{E007F}]/gu;
+// (c), (r) and the trademark sign are pictographic by Unicode, but plain text for us and covered by the font.
+const EMOJI = /(?![\u{00A9}\u{00AE}\u{2122}])[\p{Extended_Pictographic}\p{Emoji_Modifier}\p{Regional_Indicator}\u{FE0E}\u{FE0F}\u{200D}\u{20E3}\u{E0020}-\u{E007F}]/gu;
 const CONTROL = /[\p{Cc}\p{Cf}\u{2028}\u{2029}]/gu;
 
 /**

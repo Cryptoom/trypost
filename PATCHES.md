@@ -542,7 +542,7 @@ Fehler, jede Zeitüberschreitung und ein belegter Renderer führen zurück auf d
 - **Render-Dienst (neu, `docker/story-render/`)**: `server.mjs`, `lib/`, `template/` (Komposition,
   Noto Serif 700 als woff2 mit OFL-Text, lokal), `Dockerfile`, `package.json` plus Lockfile
   (`hyperframes` und `gsap` gepinnt, `npm ci` beim Build, nie zur Laufzeit geladen), Tests unter `test/`
-  (`cd docker/story-render && node --test`, 38 Tests). `compose.prod.yaml` (Upstream-Selfhost) bleibt unberührt.
+  (`cd docker/story-render && node --test`, 42 Tests). `compose.prod.yaml` (Upstream-Selfhost) bleibt unberührt.
 - **Laravel**: `app/Services/Media/StoryMotionRenderer.php` (Allowlist, HTTP, Zeitbudget 300 s ab
   Publish-Start, ffprobe-Prüfung der Render-Ausgabe), `StoryVideoInspector.php` (ffprobe-Wächter für
   das Endvideo: ein h264/yuv420p-1080x1920-30-fps-Videostream, genau ein AAC-Stream, Dauer ±0,5 s,
@@ -550,10 +550,12 @@ Fehler, jede Zeitüberschreitung und ein belegter Renderer führen zurück auf d
   `FacebookPublisher` (`publishStory()`, `convertImageToStoryVideo()`, `renderStoryMotionVideo()`),
   `PostPlatformMetaRules` (`story_headline`, max 80), Shared Prop `facebookStoryMotionEnabled`
   (`HandleInertiaRequests`), Feld in `FacebookSettings.vue`, Label in allen 16 `lang/*/posts.php`.
-- **Verhaltensänderung (bewusst)**: Bei Foto-Stories läuft die Konvertierung (und damit Musik und Render)
-  jetzt VOR dem Facebook-`start`-Call, damit ein langer Render keine offene Upload-Sitzung hält. Folge:
-  Musik (Kosten) und Render entstehen auch dann, wenn `start` später abgelehnt wird. Ein `try/finally`
-  umschließt Konvertierung und alle Upload-Phasen. Video-Stories bleiben unverändert (Download nach `start`).
+- **Reihenfolge nur mit Motion**: Nur für einen Workspace mit aktiver Motion (Flag, Allowlist, URL, Token)
+  läuft die Foto-Konvertierung (Download, Fit, Musik, Render, Mux) VOR dem Facebook-`start`-Call, damit ein
+  langer Render keine offene Upload-Sitzung hält. Für alle anderen Workspaces bleibt der Ablauf wie auf
+  `origin/main`: `start`, dann Konvertierung, dann Upload. Bei Motion entstehen Musik und Render also auch
+  dann, wenn `start` später abgelehnt wird. Ein `try/finally` umschließt Konvertierung und alle
+  Upload-Phasen, die Temp-Datei wird auf jedem Pfad entfernt. Video-Stories bleiben unverändert.
 - **Env (Reihenfolge ENABLED, WORKSPACES, TOKEN, dann URL, TIMEOUT)**: `FACEBOOK_STORY_MOTION_ENABLED`
   (false), `FACEBOOK_STORY_MOTION_WORKSPACES` (leer = niemand, kommagetrennte Workspace-IDs, strikter
   String-Vergleich), `FACEBOOK_STORY_MOTION_TOKEN` (gleicher Wert wie `STORY_RENDER_TOKEN` im Dienst),
@@ -572,6 +574,16 @@ Fehler, jede Zeitüberschreitung und ein belegter Renderer führen zurück auf d
   (gsap.com/standard-license, kommerzielle Nutzung frei, verboten nur in konkurrierenden visuellen
   Animations-Buildern): GSAP liegt NICHT im Repo, nur als gepinnte npm-Abhängigkeit, die beim Image-Build
   installiert wird. Die AGPL-Veröffentlichung des Forks enthält also keinen GSAP-Code.
+- **Akzeptiertes Restrisiko**: HyperFrames startet Chromium fest mit `--no-sandbox` (im Container ohne
+  Capabilities nicht anders möglich). Das Foto kommt von Kunden und wird vom Chromium-Bilddecoder ohne
+  Sandbox dekodiert. Gegenmaßnahmen: nur JPEG/PNG nach Magic Bytes, höchstens 8 MB und 4096 x 4096,
+  Nutzer `node`, `cap_drop: ALL`, `no-new-privileges`, `read_only`, internes Netz ohne Egress, kein
+  veröffentlichter Port, Token. Debian-Chromium-Updates kommen mit jedem Rebuild des Images (Basisimage
+  per Digest im `Dockerfile` gepinnt; Chromium im Smoke 155.0.8059.79, im Deploy-Bericht notieren).
+- **Betrieb des Dienstes**: Erreichbarkeit nur über das interne Compose-Netz (`internal: true`, kein `ports:`,
+  kein `pid: host`, weil der Orphan-Sweep den eigenen PID-Namespace voraussetzt). `server.maxConnections` ist 32.
+  stderr des Renders wird nicht geloggt (es kann Headline-Text zitieren), nur Exit-Code und Größe; zum
+  Debuggen `STORY_RENDER_LOG_STDERR=1` setzen. `tmpfs: /tmp` mit Größe (z. B. `size=1500m`) setzen.
 - **Merge-Hinweis**: Beim Upstream-Merge `grep -rn "PATCH:story-motion"` gegenprüfen. Upstream kennt
   weder `docker/story-render/` noch `story_motion`.
 - **Tests**: `StoryMotionRendererTest`, `StoryVideoInspectorTest`, `ImageToVideoConverterTest`

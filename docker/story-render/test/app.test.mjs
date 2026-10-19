@@ -76,7 +76,8 @@ test('service: /health answers without a token', async () => {
 test('service: a missing or wrong token is a 401 and starts no render', async () => {
     const ctx = await start({ buildCommand: () => { throw new Error('render must not start'); } });
     try {
-        for (const token of [null, 'wrong', '', `${TOKEN}x`]) {
+        // includes a wrong token of exactly the right length
+        for (const token of [null, 'wrong', '', `${TOKEN}x`, TOKEN.replace(/.$/, 'X'), 'x'.repeat(TOKEN.length)]) {
             const res = await post({ port: ctx.port, token });
             assert.equal(res.status, 401, `token ${JSON.stringify(token)}`);
         }
@@ -264,5 +265,58 @@ test('service: an orphan left behind by a finished render is swept up', async ()
         assert.ok(ctx.logs.some((entry) => entry.event === 'leftover_killed'));
     } finally {
         await ctx.stop();
+    }
+});
+
+test('service: a render that outlasts the socket idle limit still completes with 200 (no idle kill during the render)', { skip: hasFfmpeg ? false : 'ffmpeg missing' }, async () => {
+    // The old code destroyed the response after the idle limit of silence on the socket, i.e. mid-render.
+    const ctx = await start({ buildCommand: stubCommand('slow', ['2500']), streamIdleMs: 800 });
+    try {
+        const startedAt = Date.now();
+        const res = await post({ port: ctx.port });
+        assert.ok(Date.now() - startedAt >= 2400, 'render must really take longer than the idle limit');
+        assert.equal(res.status, 200);
+        assert.equal(res.body.subarray(4, 8).toString('latin1'), 'ftyp');
+    } finally {
+        await ctx.stop();
+    }
+});
+
+test('service: the slot is freed even when the cleanup after a render throws', async () => {
+    const throwing = { test() { throw new Error('sweep exploded'); } };
+    const ctx = await start({ buildCommand: stubCommand('fail'), leftoverPattern: throwing });
+    try {
+        const first = await post({ port: ctx.port });
+        assert.equal(first.status, 500);
+        assert.equal(json(first).error, 'internal_error');
+        const second = await post({ port: ctx.port, body: Buffer.from('<svg/>') });
+        // The sweep throws again for the second job too; what matters is that the slot was free (a stuck flag answers 503).
+        assert.equal(second.status, 500, 'a stuck busy flag would answer 503');
+        assert.notEqual(json(second).error, 'busy');
+    } finally {
+        await ctx.stop();
+    }
+});
+
+test('service: a failing render logs only the size of its stderr, never the text (it may quote the headline)', async () => {
+    const bait = 'Ελληνικά-secret-headline';
+    const ctx = await start({ buildCommand: stubCommand('fail', [`error near ${bait}`]) });
+    try {
+        const res = await post({ port: ctx.port, headers: { 'X-Story-Headline-B64': encodeHeadline(bait) } });
+        assert.equal(res.status, 500);
+        const entry = ctx.logs.find((log) => log.reason === 'exit');
+        assert.equal(entry.exitCode, 3);
+        assert.ok(entry.stderrChars > 0);
+        assert.ok(!JSON.stringify(ctx.logs).includes('secret-headline'));
+    } finally {
+        await ctx.stop();
+    }
+
+    const debug = await start({ buildCommand: stubCommand('fail', [`error near ${bait}`]), logStderr: true });
+    try {
+        await post({ port: debug.port, headers: { 'X-Story-Headline-B64': encodeHeadline(bait) } });
+        assert.ok(JSON.stringify(debug.logs).includes('secret-headline'), 'debug flag opts in');
+    } finally {
+        await debug.stop();
     }
 });

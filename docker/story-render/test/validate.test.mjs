@@ -57,6 +57,13 @@ test('headline sanitizer: control characters, emoji and unsupported scripts are 
     assert.equal(sanitizeHeadline('مرحبا', isCovered), '');
 });
 
+test('headline sanitizer: copyright, registered and trademark signs are kept, real emoji are not', () => {
+    assert.equal(sanitizeHeadline('Maisto\u{00ae} GT3', isCovered), 'Maisto\u{00ae} GT3');
+    assert.equal(sanitizeHeadline('PlayCraft\u{2122} Sale', isCovered), 'PlayCraft\u{2122} Sale');
+    assert.equal(sanitizeHeadline('\u{00a9} 2026', isCovered), '\u{00a9} 2026');
+    assert.equal(sanitizeHeadline('Sale 🔥 \u{2122}\u{fe0f}', isCovered), 'Sale \u{2122}');
+});
+
 test('headline sanitizer: Latin, Greek and Cyrillic bait headlines survive unchanged (font coverage)', () => {
     for (const bait of BAIT_SCRIPTS) {
         assert.equal(sanitizeHeadline(bait, isCovered), bait);

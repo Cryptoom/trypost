@@ -235,3 +235,46 @@ test('the request timeout is the service limit plus 15 seconds at most', functio
     config()->set('trypost.platforms.facebook.story_motion.timeout_seconds', 120);
     expect($this->renderer->timeoutSeconds())->toBe(120);
 });
+
+test('render applies the clamped timeout and a short connect timeout to the request itself', function () {
+    sm01EnableMotion($this->workspace->id);
+    config()->set('trypost.platforms.facebook.story_motion.timeout_seconds', 9999);
+    $options = null;
+
+    Http::fake(['story-render:3000/*' => function (Request $request, array $requestOptions) use (&$options) {
+        $options = $requestOptions;
+
+        return Http::response('', 503);
+    }]);
+
+    $this->renderer->render($this->image, 3);
+
+    // Without ->timeout() Laravel's default of 30 seconds would cut every real render short.
+    expect($options['timeout'])->toBe($this->renderer->timeoutSeconds())->toBe(255)
+        ->and($options['connect_timeout'])->toBe(5);
+});
+
+test('render never writes the token or the headline to the log, whatever goes wrong', function (Closure $fake) {
+    sm01EnableMotion($this->workspace->id);
+    Http::fake(['story-render:3000/*' => $fake]);
+
+    $logged = [];
+    foreach (['warning', 'info', 'error', 'notice', 'debug'] as $level) {
+        Log::shouldReceive($level)->zeroOrMoreTimes()->andReturnUsing(function (...$arguments) use (&$logged) {
+            $logged[] = $arguments;
+        });
+    }
+
+    $this->renderer->render($this->image, 3, 'Ελληνικά Geheim-Headline');
+
+    $encoded = json_encode($logged, JSON_UNESCAPED_UNICODE);
+    expect($logged)->not->toBe([])
+        ->and($encoded)->not->toContain('secret-token-123')
+        ->and($encoded)->not->toContain('Geheim-Headline')
+        ->and($encoded)->not->toContain('Ελληνικά');
+})->with([
+    'busy' => [fn () => Http::response(['error' => 'busy'], 503)],
+    'server error echoing the request' => [fn (Request $request) => Http::response('failed for Ελληνικά Geheim-Headline with secret-token-123', 500)],
+    'connection error quoting the headers' => [fn () => throw new ConnectionException('cURL error 7 sending X-Story-Render-Token: secret-token-123 Ελληνικά Geheim-Headline')],
+    'invalid output' => [fn () => Http::response('not a video', 200)],
+]);

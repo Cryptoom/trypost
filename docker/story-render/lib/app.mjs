@@ -54,6 +54,8 @@ export const createApp = ({
     compose = writeComposition,
     ffprobe = 'ffprobe',
     leftoverPattern = null,
+    streamIdleMs = 60000,
+    logStderr = false,
     killOptions,
     log = (entry) => process.stdout.write(`${JSON.stringify(entry)}\n`),
     env = process.env,
@@ -120,7 +122,19 @@ export const createApp = ({
             return;
         }
         busy = true;
+        // Idempotent: the slot is freed as soon as the render is over, and again in the finally as a safety net.
+        const release = () => {
+            busy = false;
+        };
 
+        try {
+            await renderJob(req, res, url, release);
+        } finally {
+            release();
+        }
+    };
+
+    const renderJob = async (req, res, url, release) => {
         const abort = new AbortController();
         // `close` fires for every response; only an unfinished one means the client went away mid-render.
         res.on('close', () => {
@@ -128,7 +142,6 @@ export const createApp = ({
                 abort.abort();
             }
         });
-        res.socket?.setTimeout(120000, () => res.destroy());
 
         const startedAt = Date.now();
         const seconds = () => Math.round((Date.now() - startedAt) / 1000);
@@ -157,7 +170,8 @@ export const createApp = ({
                 log({ event: 'render_failed', reason: 'timeout' });
                 outcome = { status: 504, body: { error: 'render_timeout' } };
             } else if (result.exitCode !== 0) {
-                log({ event: 'render_failed', reason: 'exit', exitCode: result.exitCode, stderr: result.stderrTail.slice(-600) });
+                // stderr can quote composition text, so only its size is logged unless debugging is switched on.
+                log({ event: 'render_failed', reason: 'exit', exitCode: result.exitCode, stderrChars: result.stderrTail.length, ...(logStderr ? { stderr: result.stderrTail.slice(-600) } : {}) });
                 outcome = { status: 500, body: { error: 'render_failed' } };
             } else {
                 const info = await probeFile(outputPath, { ffprobe }).catch(() => null);
@@ -194,7 +208,7 @@ export const createApp = ({
 
         if (outcome?.file === undefined) {
             await removeJobDir();
-            busy = false;
+            release();
             if (outcome !== null) {
                 sendJson(res, outcome.status, outcome.body, req.complete ? {} : { Connection: 'close' });
                 // A rejected upload may still be streaming in: cut it off once the answer is out.
@@ -207,8 +221,11 @@ export const createApp = ({
             return;
         }
 
-        busy = false;
+        release();
         try {
+            // Idle protection only for the download of a finished file. During the render nothing
+            // flows over the socket for minutes, the render timeout bounds that phase instead.
+            res.socket?.setTimeout(streamIdleMs, () => res.destroy());
             res.writeHead(200, { 'Content-Type': 'video/mp4', 'Content-Length': outcome.size, 'X-Render-Seconds': String(seconds()) });
             await pipeline(createReadStream(outcome.file), res);
             log({ event: 'render_ok', seconds: seconds(), bytes: outcome.size, headline: outcome.hasHeadline });
@@ -245,6 +262,7 @@ export const createApp = ({
     });
 
     server.timeoutMs = timeoutMs;
+    server.maxConnections = 32;
     server.requestTimeout = 60000;
     server.headersTimeout = 15000;
     server.keepAliveTimeout = 5000;

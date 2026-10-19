@@ -443,11 +443,13 @@ class FacebookPublisher
      * AI background music, see convertImageToStoryVideo()) before this
      * method's normal video transfer/finish flow runs unchanged.
      *
-     * PATCH:story-motion: a photo is converted BEFORE the start call, so a render
-     * that can take minutes never holds an open upload session. The temp file
-     * is cleaned up on every path, including a failing start call.
+     * PATCH:story-motion: for a workspace with story motion enabled the photo is
+     * converted BEFORE the start call, so a render that can take minutes never
+     * holds an open upload session. Every other workspace keeps the original
+     * order (start call first, conversion after it). The temp file is cleaned
+     * up on every path, including a failing start call.
      *
-     * @param  array{workspace?: ?Workspace, headline?: ?string, startedAt?: ?CarbonInterface}  $storyMotion
+     * @param  array{workspace?: ?Workspace, headline?: ?string, startedAt?: ?CarbonInterface, active?: bool}  $storyMotion
      */
     private function publishStory(string $pageId, string $accessToken, $media, ?string $musicDescription = null, array $storyFit = [], array $storyMotion = []): array
     {
@@ -458,14 +460,13 @@ class FacebookPublisher
             );
         }
 
-        // A photo is converted (and possibly rendered with motion) before anything is
-        // opened at Facebook, see the PATCH:story-motion note above.
+        // PATCH:story-motion: only a motion-enabled photo story converts before the start call.
+        $storyMotion['active'] = ! $media->isVideo() && $this->storyMotionActive($storyMotion);
         $tempFile = null;
+        $mimeType = 'video/mp4';
 
         try {
-            $mimeType = 'video/mp4';
-
-            if (! $media->isVideo()) {
+            if ($storyMotion['active']) {
                 [$tempFile, $mimeType] = $this->convertImageToStoryVideo($media, $musicDescription, $storyFit, $storyMotion);
             }
 
@@ -504,7 +505,9 @@ class FacebookPublisher
             // 6000, "Problem with file", on every story regardless of the
             // actual video).
             if ($tempFile === null) {
-                [$tempFile, $mimeType] = $this->downloadStoryVideo($media);
+                [$tempFile, $mimeType] = $media->isVideo()
+                    ? $this->downloadStoryVideo($media)
+                    : $this->convertImageToStoryVideo($media, $musicDescription, $storyFit, $storyMotion);
             }
 
             $fileSize = filesize($tempFile);
@@ -593,7 +596,7 @@ class FacebookPublisher
      * renderStoryMotionVideo()), and any problem there falls back to the
      * held-frame MP4 above.
      *
-     * @param  array{workspace?: ?Workspace, headline?: ?string, startedAt?: ?CarbonInterface}  $storyMotion
+     * @param  array{workspace?: ?Workspace, headline?: ?string, startedAt?: ?CarbonInterface, active?: bool}  $storyMotion
      * @return array{0: string, 1: string} [local file path, mime type]
      */
     private function convertImageToStoryVideo($media, ?string $musicDescription, array $storyFit = [], array $storyMotion = []): array
@@ -645,31 +648,43 @@ class FacebookPublisher
     }
 
     /**
-     * PATCH:story-motion: the camera-move video with audio, or null whenever
-     * motion is off for the workspace or anything about it goes wrong. Every
-     * temp file this creates is removed unless it is returned.
+     * PATCH:story-motion: whether this photo story takes the motion path. A
+     * workspace that is not allowed gets one info line with the reason (this is
+     * the dark-launch proof), the shipped default (flag off) logs nothing.
      *
-     * @param  array{workspace?: ?Workspace, headline?: ?string, startedAt?: ?CarbonInterface}  $storyMotion
+     * @param  array{workspace?: ?Workspace, headline?: ?string, startedAt?: ?CarbonInterface, active?: bool}  $storyMotion
      */
-    private function renderStoryMotionVideo(string $fittedPath, int $durationSeconds, ?string $audioPath, array $storyMotion): ?string
+    private function storyMotionActive(array $storyMotion): bool
     {
         $workspace = data_get($storyMotion, 'workspace');
 
         if ($workspace === null) {
+            return false;
+        }
+
+        $skipReason = app(StoryMotionRenderer::class)->skipReason($workspace);
+
+        if ($skipReason !== null && $skipReason !== 'disabled') {
+            Log::info('Story motion skipped', ['reason' => $skipReason]);
+        }
+
+        return $skipReason === null;
+    }
+
+    /**
+     * PATCH:story-motion: the camera-move video with audio, or null whenever
+     * motion is off for the workspace or anything about it goes wrong. Every
+     * temp file this creates is removed unless it is returned.
+     *
+     * @param  array{workspace?: ?Workspace, headline?: ?string, startedAt?: ?CarbonInterface, active?: bool}  $storyMotion
+     */
+    private function renderStoryMotionVideo(string $fittedPath, int $durationSeconds, ?string $audioPath, array $storyMotion): ?string
+    {
+        if (! data_get($storyMotion, 'active')) {
             return null;
         }
 
         $renderer = app(StoryMotionRenderer::class);
-        $skipReason = $renderer->skipReason($workspace);
-
-        if ($skipReason !== null) {
-            if ($skipReason !== 'disabled') {
-                Log::info('Story motion skipped', ['reason' => $skipReason]);
-            }
-
-            return null;
-        }
-
         $headline = trim((string) data_get($storyMotion, 'headline'));
         $silentPath = $renderer->render($fittedPath, $durationSeconds, $headline === '' ? null : $headline, data_get($storyMotion, 'startedAt'));
 
