@@ -1,9 +1,9 @@
-import { createApp } from './lib/app.mjs';
+import { createApp, renderTimeoutFromEnv } from './lib/app.mjs';
 
 const port = Number(process.env.PORT ?? 3000);
 const server = createApp({
     token: process.env.STORY_RENDER_TOKEN,
-    renderTimeoutSeconds: Number(process.env.STORY_RENDER_TIMEOUT_SECONDS ?? 240),
+    renderTimeoutSeconds: renderTimeoutFromEnv(process.env.STORY_RENDER_TIMEOUT_SECONDS),
     workDir: process.env.STORY_RENDER_WORKDIR || undefined,
     logStderr: process.env.STORY_RENDER_LOG_STDERR === '1',
     // Only this container's single render ever runs chromium or ffmpeg, so anything left after a job is an orphan.

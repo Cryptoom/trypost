@@ -11,8 +11,10 @@
 #   --user node --pids-limit 256 --memory 3g --memory-swap 3g --cpus 2 --shm-size 1g --init
 # STORY_RENDER_TOKEN is required, the service refuses to start without it.
 # ----------------------------------------------------------------------------
-# Base image pinned by digest (node:22-bookworm-slim as resolved on 19.10.2026). Chromium and ffmpeg come
-# from Debian bookworm (smoke: chromium 155.0.8059.79), so a rebuild picks up Debian security updates.
+# Base image pinned by digest (node:22-bookworm-slim as resolved on 19.10.2026, OCI index with amd64 and
+# arm64). The digest freezes Node and the Debian base layer; they only change when the digest is raised on
+# purpose (maintenance point, see PATCHES.md Patch 10). Only the packages installed below (chromium, ffmpeg and
+# their dependencies, smoke: chromium 155.0.8059.79) are pulled fresh from Debian bookworm on every rebuild.
 FROM node:22-bookworm-slim@sha256:c3de60bf2f9dd0ac6370e6117950ff62d6e339527e7472301c9c78a017978392
 
 ENV NODE_ENV=production \

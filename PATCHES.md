@@ -542,7 +542,7 @@ Fehler, jede Zeitüberschreitung und ein belegter Renderer führen zurück auf d
 - **Render-Dienst (neu, `docker/story-render/`)**: `server.mjs`, `lib/`, `template/` (Komposition,
   Noto Serif 700 als woff2 mit OFL-Text, lokal), `Dockerfile`, `package.json` plus Lockfile
   (`hyperframes` und `gsap` gepinnt, `npm ci` beim Build, nie zur Laufzeit geladen), Tests unter `test/`
-  (`cd docker/story-render && node --test`, 42 Tests). `compose.prod.yaml` (Upstream-Selfhost) bleibt unberührt.
+  (`cd docker/story-render && node --test`, 47 Tests). `compose.prod.yaml` (Upstream-Selfhost) bleibt unberührt.
 - **Laravel**: `app/Services/Media/StoryMotionRenderer.php` (Allowlist, HTTP, Zeitbudget 300 s ab
   Publish-Start, ffprobe-Prüfung der Render-Ausgabe), `StoryVideoInspector.php` (ffprobe-Wächter für
   das Endvideo: ein h264/yuv420p-1080x1920-30-fps-Videostream, genau ein AAC-Stream, Dauer ±0,5 s,
@@ -580,8 +580,12 @@ Fehler, jede Zeitüberschreitung und ein belegter Renderer führen zurück auf d
   Nutzer `node`, `cap_drop: ALL`, `no-new-privileges`, `read_only`, internes Netz ohne Egress, kein
   veröffentlichter Port, Token. Debian-Chromium-Updates kommen mit jedem Rebuild des Images (Basisimage
   per Digest im `Dockerfile` gepinnt; Chromium im Smoke 155.0.8059.79, im Deploy-Bericht notieren).
+- **Wartungspunkt Digest**: Der Digest im `Dockerfile` friert Node und die Debian-Basisschicht ein, sie ändern sich
+  nur durch bewusstes Anheben des Digests (z. B. bei jedem Node-22-Sicherheitsrelease, Digest per
+  `docker buildx imagetools inspect node:22-bookworm-slim` holen). Chromium und ffmpeg kommen bei jedem Rebuild
+  frisch aus Debian bookworm. Nach dem Build `docker exec <dienst> chromium --version` im Deploy-Bericht notieren.
 - **Betrieb des Dienstes**: Erreichbarkeit nur über das interne Compose-Netz (`internal: true`, kein `ports:`,
-  kein `pid: host`, weil der Orphan-Sweep den eigenen PID-Namespace voraussetzt). `server.maxConnections` ist 32.
+  kein `pid: host`, weil der Orphan-Sweep den eigenen PID-Namespace voraussetzt). `server.maxConnections` ist 32. `STORY_RENDER_TIMEOUT_SECONDS` leer oder ungültig fällt auf 240 zurück, sonst 10 bis 240 (am besten gar nicht setzen). Der Slot gehört dem Auftrag, der ihn belegt hat.
   stderr des Renders wird nicht geloggt (es kann Headline-Text zitieren), nur Exit-Code und Größe; zum
   Debuggen `STORY_RENDER_LOG_STDERR=1` setzen. `tmpfs: /tmp` mit Größe (z. B. `size=1500m`) setzen.
 - **Merge-Hinweis**: Beim Upstream-Merge `grep -rn "PATCH:story-motion"` gegenprüfen. Upstream kennt

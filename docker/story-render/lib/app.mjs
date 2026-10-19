@@ -16,6 +16,19 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const HYPERFRAMES_CLI = path.join(here, '..', 'node_modules', 'hyperframes', 'bin', 'hyperframes.mjs');
 
 export const MAX_RENDER_TIMEOUT_SECONDS = 240;
+/**
+ * Render timeout from an environment value: empty, non-numeric or non-positive falls back to the
+ * 240 second default, anything else is held between 10 and 240 seconds.
+ */
+export const renderTimeoutFromEnv = (raw) => {
+    const value = Number(raw);
+    if (raw === undefined || raw === null || String(raw).trim() === '' || !Number.isFinite(value) || value <= 0) {
+        return MAX_RENDER_TIMEOUT_SECONDS;
+    }
+
+    return Math.min(Math.max(value, 10), MAX_RENDER_TIMEOUT_SECONDS);
+};
+
 export const TOKEN_HEADER = 'x-story-render-token';
 export const HEADLINE_HEADER = 'x-story-headline-b64';
 
@@ -122,19 +135,30 @@ export const createApp = ({
             return;
         }
         busy = true;
-        // Idempotent: the slot is freed as soon as the render is over, and again in the finally as a safety net.
+        // Bound to THIS job: the slot is freed once, as soon as the render is over, and the finally below
+        // is only a safety net. A second call must never free the slot a newer job has taken in between
+        // (the first job's download may still run when the next render starts).
+        let released = false;
         const release = () => {
-            busy = false;
+            if (!released) {
+                released = true;
+                busy = false;
+            }
         };
+        const job = { dir: null };
 
         try {
-            await renderJob(req, res, url, release);
+            await renderJob(req, res, url, release, job);
         } finally {
             release();
+            if (job.dir !== null) {
+                await rm(job.dir, { recursive: true, force: true }).catch(() => {});
+                job.dir = null;
+            }
         }
     };
 
-    const renderJob = async (req, res, url, release) => {
+    const renderJob = async (req, res, url, release, job) => {
         const abort = new AbortController();
         // `close` fires for every response; only an unfinished one means the client went away mid-render.
         res.on('close', () => {
@@ -145,7 +169,6 @@ export const createApp = ({
 
         const startedAt = Date.now();
         const seconds = () => Math.round((Date.now() - startedAt) / 1000);
-        let jobDir = null;
         // What to do once the render slot is free again: send an error, stream a file, or nothing.
         let outcome = { status: 500, body: { error: 'internal_error' } };
 
@@ -156,12 +179,12 @@ export const createApp = ({
             const image = inspectImage(imageBuffer);
             const headline = rawHeadline === null ? '' : sanitizeHeadline(rawHeadline, isCovered);
 
-            jobDir = await mkdtemp(path.join(workDir, 'story-job-'));
-            await compose(jobDir, { imageBuffer, ext: image.ext, durationSeconds, headline });
+            job.dir = await mkdtemp(path.join(workDir, 'story-job-'));
+            await compose(job.dir, { imageBuffer, ext: image.ext, durationSeconds, headline });
 
-            const outputPath = path.join(jobDir, 'out.mp4');
-            const spec = buildCommand({ jobDir, outputPath, env });
-            const result = await runKillable({ ...spec, cwd: jobDir, timeoutMs, signal: abort.signal, killOptions });
+            const outputPath = path.join(job.dir, 'out.mp4');
+            const spec = buildCommand({ jobDir: job.dir, outputPath, env });
+            const result = await runKillable({ ...spec, cwd: job.dir, timeoutMs, signal: abort.signal, killOptions });
 
             if (result.aborted) {
                 log({ event: 'render_aborted', reason: 'client_closed' });
@@ -170,7 +193,7 @@ export const createApp = ({
                 log({ event: 'render_failed', reason: 'timeout' });
                 outcome = { status: 504, body: { error: 'render_timeout' } };
             } else if (result.exitCode !== 0) {
-                // stderr can quote composition text, so only its size is logged unless debugging is switched on.
+                // stderr can quote composition text, so only the size of its kept tail (max 4000 characters) is logged unless debugging is switched on.
                 log({ event: 'render_failed', reason: 'exit', exitCode: result.exitCode, stderrChars: result.stderrTail.length, ...(logStderr ? { stderr: result.stderrTail.slice(-600) } : {}) });
                 outcome = { status: 500, body: { error: 'render_failed' } };
             } else {
@@ -196,13 +219,19 @@ export const createApp = ({
         }
 
         // The render is over: sweep orphans and free the slot. Streaming a finished file does not hold it.
-        const leftovers = leftoverPattern === null ? [] : killLeftovers(leftoverPattern);
-        if (leftovers.length > 0) {
-            log({ event: 'leftover_killed', count: leftovers.length });
+        try {
+            const leftovers = leftoverPattern === null ? [] : killLeftovers(leftoverPattern);
+            if (leftovers.length > 0) {
+                log({ event: 'leftover_killed', count: leftovers.length });
+            }
+        } catch (error) {
+            log({ event: 'sweep_failed', message: String(error?.message ?? error).slice(0, 200) });
         }
+        // An error answer goes out only after the job directory is gone; the finally in handleRender is the safety net.
         const removeJobDir = async () => {
-            if (jobDir !== null) {
-                await rm(jobDir, { recursive: true, force: true }).catch(() => {});
+            if (job.dir !== null) {
+                await rm(job.dir, { recursive: true, force: true }).catch(() => {});
+                job.dir = null;
             }
         };
 
@@ -258,7 +287,10 @@ export const createApp = ({
             req.resume();
             return;
         }
-        handleRender(req, res, url).catch(() => sendJson(res, 500, { error: 'internal_error' }));
+        handleRender(req, res, url).catch((error) => {
+            log({ event: 'render_failed', reason: 'internal', message: String(error?.message ?? error).slice(0, 300) });
+            sendJson(res, 500, { error: 'internal_error' });
+        });
     });
 
     server.timeoutMs = timeoutMs;

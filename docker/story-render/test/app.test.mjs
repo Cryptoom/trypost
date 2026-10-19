@@ -5,7 +5,7 @@ import http from 'node:http';
 import net from 'node:net';
 import path from 'node:path';
 import test from 'node:test';
-import { createApp } from '../lib/app.mjs';
+import { createApp, renderTimeoutFromEnv } from '../lib/app.mjs';
 import { STUB, TOKEN, encodeHeadline, fakeJpeg, hasFfmpeg, pidIsAlive, tmpDir, waitFor } from '../testkit/helpers.mjs';
 
 const stubCommand = (mode, extra = []) => ({ outputPath, jobDir }) => ({
@@ -27,6 +27,7 @@ const start = async (options = {}) => {
         logs,
         port,
         stop: async () => {
+            server.closeAllConnections();
             await new Promise((resolve) => server.close(resolve));
             await rm(workDir, { recursive: true, force: true });
         },
@@ -282,17 +283,40 @@ test('service: a render that outlasts the socket idle limit still completes with
     }
 });
 
-test('service: the slot is freed even when the cleanup after a render throws', async () => {
+test('service: a throwing orphan sweep is logged and swallowed, the job directory is still removed', async () => {
     const throwing = { test() { throw new Error('sweep exploded'); } };
     const ctx = await start({ buildCommand: stubCommand('fail'), leftoverPattern: throwing });
+    try {
+        const res = await post({ port: ctx.port });
+        assert.equal(res.status, 500);
+        assert.equal(json(res).error, 'render_failed');
+        assert.ok(ctx.logs.some((entry) => entry.event === 'sweep_failed'));
+        assert.deepEqual(jobDirs(ctx.workDir), []);
+        assert.equal((await post({ port: ctx.port, body: Buffer.from('<svg/>') })).status, 415, 'slot is free');
+    } finally {
+        await ctx.stop();
+    }
+});
+
+test('service: when the handler itself throws, the slot is freed and the job directory removed (safety net)', async () => {
+    // The sweep fails and so does the log call that reports it: the error escapes renderJob.
+    const throwing = { test() { throw new Error('sweep exploded'); } };
+    const logs = [];
+    const log = (entry) => {
+        logs.push(entry);
+        if (entry.event === 'sweep_failed') {
+            throw new Error('log exploded');
+        }
+    };
+    const ctx = await start({ buildCommand: stubCommand('fail'), leftoverPattern: throwing, log });
     try {
         const first = await post({ port: ctx.port });
         assert.equal(first.status, 500);
         assert.equal(json(first).error, 'internal_error');
+        assert.ok(logs.some((entry) => entry.event === 'render_failed' && entry.reason === 'internal'), 'the failure is logged');
+        assert.ok(await waitFor(() => jobDirs(ctx.workDir).length === 0), 'job dir left behind');
         const second = await post({ port: ctx.port, body: Buffer.from('<svg/>') });
-        // The sweep throws again for the second job too; what matters is that the slot was free (a stuck flag answers 503).
-        assert.equal(second.status, 500, 'a stuck busy flag would answer 503');
-        assert.notEqual(json(second).error, 'busy');
+        assert.notEqual(second.status, 503, 'a stuck busy flag would answer 503');
     } finally {
         await ctx.stop();
     }
@@ -319,4 +343,110 @@ test('service: a failing render logs only the size of its stderr, never the text
     } finally {
         await debug.stop();
     }
+});
+
+// Starts a render and returns the paused response, so the finished video stays unread in the socket buffers.
+const startStalledDownload = (port) =>
+    new Promise((resolve, reject) => {
+        const body = fakeJpeg(1080, 1920);
+        const req = http.request({ host: '127.0.0.1', port, method: 'POST', path: '/render?duration=3', headers: { 'X-Story-Render-Token': TOKEN, 'Content-Length': body.length } }, (res) => {
+            res.pause();
+            resolve({ req, res });
+        });
+        req.on('error', reject);
+        req.end(body);
+    });
+
+const readAll = (res) =>
+    new Promise((resolve, reject) => {
+        let bytes = 0;
+        res.on('data', (chunk) => { bytes += chunk.length; });
+        res.on('end', () => resolve(bytes));
+        res.on('error', reject);
+        res.on('aborted', () => reject(new Error('aborted')));
+        res.resume();
+    });
+
+const health = (port) =>
+    new Promise((resolve) => http.get({ host: '127.0.0.1', port, path: '/health' }, (r) => { let b = ''; r.on('data', (c) => (b += c)); r.on('end', () => resolve(JSON.parse(b))); }));
+
+test('service: a client that stops reading the finished video is cut off after the idle limit and nothing is left behind', { skip: hasFfmpeg ? false : 'ffmpeg missing' }, async () => {
+    const ctx = await start({ buildCommand: stubCommand('big'), streamIdleMs: 700 });
+    let res = null;
+    try {
+        ({ res } = await startStalledDownload(ctx.port));
+        assert.ok(Number(res.headers['content-length']) > 8 * 1024 * 1024, 'the video must be larger than the socket buffers');
+        assert.ok(await waitFor(() => ctx.logs.some((entry) => entry.reason === 'client_closed_during_download'), 8000), 'stalled download was never cut off');
+        assert.ok(await waitFor(() => jobDirs(ctx.workDir).length === 0), 'job dir left behind');
+        assert.equal((await health(ctx.port)).busy, false);
+    } finally {
+        res?.destroy();
+        await ctx.stop();
+    }
+});
+
+test('service: the first job finishing its download never frees the slot of a render that started in between', { skip: hasFfmpeg ? false : 'ffmpeg missing' }, async () => {
+    let started = 0;
+    const buildCommand = (context) => (++started === 1 ? stubCommand('big')(context) : stubCommand('slow', ['3000'])(context));
+    const ctx = await start({ buildCommand, streamIdleMs: 20000 });
+    try {
+        // A renders fast, frees its slot and then stalls in the download.
+        const a = await startStalledDownload(ctx.port);
+        assert.equal((await health(ctx.port)).busy, false, 'the slot is free while A only downloads');
+
+        // B starts its render in the freed slot.
+        const b = post({ port: ctx.port });
+        assert.ok(await waitFor(() => started === 2), 'B did not start');
+        assert.equal((await health(ctx.port)).busy, true);
+
+        // A finishes its download: that must not free B's slot.
+        await readAll(a.res);
+        // The client has the last byte; wait until the server side of A is completely done (its finally ran).
+        assert.ok(await waitFor(() => ctx.logs.some((entry) => entry.event === 'render_ok')), 'A did not complete');
+        await new Promise((resolve) => setTimeout(resolve, 100));
+        assert.equal((await health(ctx.port)).busy, true, 'A freed the slot of B');
+        const c = await post({ port: ctx.port });
+        assert.equal(c.status, 503, 'a third job must be refused while B renders');
+        assert.equal((await b).status, 200);
+        assert.equal((await health(ctx.port)).busy, false);
+    } finally {
+        await ctx.stop();
+    }
+});
+
+test('service: no more than 32 connections are held, further ones are dropped', async () => {
+    const ctx = await start();
+    const sockets = [];
+    try {
+        assert.equal(ctx.server.maxConnections, 32);
+        for (let i = 0; i < 32; i += 1) {
+            const socket = net.connect(ctx.port, '127.0.0.1');
+            socket.on('error', () => {});
+            sockets.push(socket);
+        }
+        assert.ok(await waitFor(() => new Promise((resolve) => ctx.server.getConnections((error, count) => resolve(count === 32))), 5000));
+        const extra = net.connect(ctx.port, '127.0.0.1');
+        extra.on('error', () => {});
+        sockets.push(extra);
+        const dropped = await new Promise((resolve) => {
+            extra.on('close', () => resolve(true));
+            setTimeout(() => resolve(false), 3000);
+        });
+        assert.equal(dropped, true, 'the 33rd connection must be dropped');
+    } finally {
+        sockets.forEach((socket) => socket.destroy());
+        await ctx.stop();
+    }
+});
+
+test('service: the render timeout from the environment falls back to 240 and is held between 10 and 240', () => {
+    for (const raw of [undefined, null, '', '   ', 'abc', 'NaN', '0', '-5']) {
+        assert.equal(renderTimeoutFromEnv(raw), 240, `${JSON.stringify(raw)}`);
+    }
+    assert.equal(renderTimeoutFromEnv('5'), 10);
+    assert.equal(renderTimeoutFromEnv('10'), 10);
+    assert.equal(renderTimeoutFromEnv('60'), 60);
+    assert.equal(renderTimeoutFromEnv('240'), 240);
+    assert.equal(renderTimeoutFromEnv('9999'), 240);
+    assert.equal(renderTimeoutFromEnv(90), 90);
 });
