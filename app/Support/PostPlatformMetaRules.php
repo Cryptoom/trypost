@@ -133,7 +133,6 @@ class PostPlatformMetaRules
         return [
             'platforms.*.meta.title' => __('posts.form.pinterest.title'),
             'platforms.*.meta.link' => __('posts.form.pinterest.link'),
-            'platforms.*.meta.story_headline' => __('posts.form.facebook.story_headline.label'),
         ];
     }
 
