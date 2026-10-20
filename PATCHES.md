@@ -542,7 +542,7 @@ Fehler, jede Zeitüberschreitung und ein belegter Renderer führen zurück auf d
 - **Render-Dienst (neu, `docker/story-render/`)**: `server.mjs`, `lib/`, `template/` (Komposition,
   Noto Serif 700 als woff2 mit OFL-Text, lokal), `Dockerfile`, `package.json` plus Lockfile
   (`hyperframes` und `gsap` gepinnt, `npm ci` beim Build, nie zur Laufzeit geladen), Tests unter `test/`
-  (`cd docker/story-render && node --test`, 47 Tests). `compose.prod.yaml` (Upstream-Selfhost) bleibt unberührt.
+  (`cd docker/story-render && node --test`, 142 Tests mit Patch 11). `compose.prod.yaml` (Upstream-Selfhost) bleibt unberührt.
 - **Laravel**: `app/Services/Media/StoryMotionRenderer.php` (Aktivierung, HTTP, Zeitbudget 300 s ab
   Publish-Start, ffprobe-Prüfung der Render-Ausgabe), `StoryVideoInspector.php` (ffprobe-Wächter für
   das Endvideo: ein h264/yuv420p-1080x1920-30-fps-Videostream, genau ein AAC-Stream, Dauer ±0,5 s,
