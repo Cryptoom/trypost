@@ -1,6 +1,7 @@
 <script setup lang="ts">
 // PATCH:story-photo-fit: StoryFitSettings for story photos.
 // PATCH:story-motion: optional animated headline for story photos when motion is enabled for the workspace.
+// PATCH:story-motion-settings: subline, badge and a second language, shown together with the headline.
 import { usePage } from '@inertiajs/vue3';
 import { IconChevronDown, IconChevronUp } from '@tabler/icons-vue';
 import { computed, ref } from 'vue';
@@ -84,13 +85,28 @@ const storyAiMusicEnabled = computed(() => Boolean(page.props.facebookStoryAiMus
 const storyMotionEnabled = computed(() => Boolean(page.props.facebookStoryMotionEnabled));
 const showStoryHeadline = computed(() => storyMotionEnabled.value && showStoryFit.value);
 
-// Only photo Stories become a moving video, so only they get a headline; the backend validates the length.
-const storyHeadline = computed({
-    get: () => (props.meta.story_headline as string | undefined) || '',
-    set: (value: string) => {
-        emit('update:meta', { ...props.meta, story_headline: value.trim() === '' ? null : value });
-    },
-});
+// Only photo Stories become a moving video, so only they get these texts; the backend validates the lengths.
+const storyTextMeta = (key: string) =>
+    computed({
+        get: () => (props.meta[key] as string | undefined) || '',
+        set: (value: string) => {
+            emit('update:meta', { ...props.meta, [key]: value.trim() === '' ? null : value });
+        },
+    });
+
+const storyHeadline = storyTextMeta('story_headline');
+const storySubline = storyTextMeta('story_subline');
+const storyBadge = storyTextMeta('story_badge');
+const storyHeadlineAlt = storyTextMeta('story_headline_alt');
+const storySublineAlt = storyTextMeta('story_subline_alt');
+
+const storyTextFields = [
+    { key: 'story_headline', model: storyHeadline, testId: 'facebook-story-headline' },
+    { key: 'story_subline', model: storySubline, testId: 'facebook-story-subline' },
+    { key: 'story_badge', model: storyBadge, testId: 'facebook-story-badge' },
+    { key: 'story_headline_alt', model: storyHeadlineAlt, testId: 'facebook-story-headline-alt' },
+    { key: 'story_subline_alt', model: storySublineAlt, testId: 'facebook-story-subline-alt' },
+];
 
 // A photo attached to a Story is auto-converted to video server-side (see
 // FacebookPublisher::publishStory()); this optionally steers the AI-generated
@@ -192,16 +208,19 @@ const storyMusicDescription = computed({
                 <p class="text-xs font-medium text-foreground/60">{{ $t('posts.form.facebook.story_music.hint') }}</p>
             </div>
 
-            <div v-if="showStoryHeadline" class="space-y-2">
-                <p class="text-[11px] font-black uppercase tracking-widest text-foreground/60">{{ $t('posts.form.facebook.story_headline.label') }}</p>
-                <Input
-                    v-model="storyHeadline"
-                    type="text"
-                    :placeholder="$t('posts.form.facebook.story_headline.placeholder')"
-                    :disabled="disabled"
-                    data-testid="facebook-story-headline"
-                />
-                <p class="text-xs font-medium text-foreground/60">{{ $t('posts.form.facebook.story_headline.hint') }}</p>
+            <div v-if="showStoryHeadline" class="space-y-4">
+                <div v-for="field in storyTextFields" :key="field.key" class="space-y-2">
+                    <p class="text-[11px] font-black uppercase tracking-widest text-foreground/60">{{ $t(`posts.form.facebook.${field.key}.label`) }}</p>
+                    <Input
+                        v-model="field.model.value"
+                        type="text"
+                        :placeholder="$t(`posts.form.facebook.${field.key}.placeholder`)"
+                        :disabled="disabled"
+                        :data-testid="field.testId"
+                    />
+                    <p class="text-xs font-medium text-foreground/60">{{ $t(`posts.form.facebook.${field.key}.hint`) }}</p>
+                </div>
+                <p class="text-xs font-medium text-foreground/60">{{ $t('posts.form.facebook.story_accent_hint') }}</p>
             </div>
 
             <StoryFitSettings

@@ -176,6 +176,8 @@ Route::middleware(['auth', EnsureAccountReady::class, EnsureHasWorkspace::class]
 
     // Brand settings
     Route::get('settings/workspace/brand', [WorkspaceController::class, 'brandSettings'])->name('app.workspace.brand');
+    // PATCH:story-motion-settings
+    Route::put('settings/workspace/story-video', [WorkspaceController::class, 'updateStoryVideo'])->name('app.workspace.story-video.update');
 
     // Social Accounts
     Route::get('accounts', [SocialController::class, 'index'])->name('app.accounts');

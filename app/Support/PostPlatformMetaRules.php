@@ -46,6 +46,14 @@ class PostPlatformMetaRules
             // otherwise it is stored and ignored at publish time. The render service sanitizes it again.
             'platforms.*.meta.story_headline' => ['sometimes', 'nullable', 'string', 'max:80'],
 
+            // PATCH:story-motion-settings: the other per-Story texts of the Story video. A `*word*` in a
+            // headline marks the one accent word. An empty or missing field leaves that element out. The
+            // render service validates and sanitizes every one of them again.
+            'platforms.*.meta.story_subline' => ['sometimes', 'nullable', 'string', 'max:60'],
+            'platforms.*.meta.story_badge' => ['sometimes', 'nullable', 'string', 'max:12'],
+            'platforms.*.meta.story_headline_alt' => ['sometimes', 'nullable', 'string', 'max:80'],
+            'platforms.*.meta.story_subline_alt' => ['sometimes', 'nullable', 'string', 'max:60'],
+
             // PATCH:story-photo-fit: how a photo is fitted to 9:16 on Instagram and
             // Facebook stories. A missing or unusable `story_crop` falls back to a
             // center crop at publish time, it never fails the post.

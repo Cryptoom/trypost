@@ -689,3 +689,40 @@ it('tps01 meta rules story crop bounds rejects rectangles outside the image', fu
 
     $post(['x' => 0.7, 'y' => 0, 'w' => 0.3, 'h' => 1])->assertCreated();
 });
+
+it('persists the Story video texts on store (PATCH:story-motion-settings)', function () {
+    $facebook = SocialAccount::factory()->facebook()->create(['workspace_id' => $this->workspace->id]);
+    $meta = ['story_subline' => str_repeat('ä', 60), 'story_badge' => str_repeat('ä', 12), 'story_headline_alt' => str_repeat('ä', 80)];
+
+    $this->withHeaders($this->headers)
+        ->postJson(route('api.posts.store'), [
+            'content' => 'Check out our story',
+            'platforms' => [['social_account_id' => $facebook->id, 'content_type' => ContentType::FacebookStory->value, 'meta' => $meta]],
+        ])
+        ->assertCreated();
+
+    expect(PostPlatform::where('social_account_id', $facebook->id)->sole()->meta)->toMatchArray($meta);
+});
+
+it('rejects Story video texts over their limit on store (PATCH:story-motion-settings)', function (string $key, int $limit) {
+    $facebook = SocialAccount::factory()->facebook()->create(['workspace_id' => $this->workspace->id]);
+
+    $this->withHeaders($this->headers)
+        ->postJson(route('api.posts.store'), [
+            'content' => 'Check out our story',
+            'platforms' => [['social_account_id' => $facebook->id, 'content_type' => ContentType::FacebookStory->value, 'meta' => [$key => str_repeat('ä', $limit + 1)]]],
+        ])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(["platforms.0.meta.{$key}"]);
+})->with([['story_subline', 60], ['story_badge', 12], ['story_headline_alt', 80], ['story_subline_alt', 60]]);
+
+it('accepts a null for every Story video text on store (PATCH:story-motion-settings)', function () {
+    $facebook = SocialAccount::factory()->facebook()->create(['workspace_id' => $this->workspace->id]);
+
+    $this->withHeaders($this->headers)
+        ->postJson(route('api.posts.store'), [
+            'content' => 'Check out our story',
+            'platforms' => [['social_account_id' => $facebook->id, 'content_type' => ContentType::FacebookStory->value, 'meta' => ['story_subline' => null, 'story_badge' => null, 'story_headline_alt' => null, 'story_subline_alt' => null]]],
+        ])
+        ->assertCreated();
+});

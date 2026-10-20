@@ -33,6 +33,7 @@ class Workspace extends Model
         'brand_font',
         'image_style',
         'content_language',
+        'story_motion_settings', // PATCH:story-motion-settings
     ];
 
     protected function casts(): array
@@ -40,6 +41,7 @@ class Workspace extends Model
         return [
             'image_style' => ImageStyle::class,
             'brand_voice_traits' => 'array',
+            'story_motion_settings' => 'array', // PATCH:story-motion-settings
         ];
     }
 

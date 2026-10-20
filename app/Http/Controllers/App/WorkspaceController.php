@@ -11,14 +11,21 @@ use App\Enums\Workspace\BrandFont;
 use App\Enums\Workspace\BrandVoiceTrait;
 use App\Enums\Workspace\ContentLanguage;
 use App\Enums\Workspace\ImageStyle;
+use App\Enums\Workspace\StoryMotionEffect;
+use App\Enums\Workspace\StoryMotionFont;
+use App\Enums\Workspace\StoryMotionMode;
 use App\Http\Requests\App\Workspace\AutofillBrandRequest;
 use App\Http\Requests\App\Workspace\StoreWorkspaceRequest;
+use App\Http\Requests\App\Workspace\UpdateStoryVideoSettingsRequest;
 use App\Http\Requests\App\Workspace\UpdateWorkspaceRequest;
 use App\Http\Resources\App\WorkspaceMemberResource;
 use App\Models\Invite;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Services\Brand\LogoAttacher;
+use App\Services\Media\StoryMotionRenderer;
+use App\Services\Media\StoryMotionSettings;
+use App\Support\StoryMotionSettingsRules;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -198,7 +205,38 @@ class WorkspaceController extends Controller
             'availableImageStyles' => ImageStyle::values(),
             'availableVoiceTraits' => BrandVoiceTrait::grouped(),
             'availableContentLanguages' => ContentLanguage::options(),
+            // PATCH:story-motion-settings
+            'storyMotion' => [
+                'available' => app(StoryMotionRenderer::class)->isAvailable(),
+                'settings' => StoryMotionSettings::forWorkspace($workspace)->toArray(),
+                'fonts' => StoryMotionFont::values(),
+                'effects' => StoryMotionEffect::values(),
+                'modes' => StoryMotionMode::values(),
+                'hasLogo' => $workspace->has_logo,
+            ],
         ]);
+    }
+
+    /**
+     * PATCH:story-motion-settings: saves the workspace's Story video settings. Changes are merged into
+     * what is stored, then the merged result is checked as a whole.
+     */
+    public function updateStoryVideo(UpdateStoryVideoSettingsRequest $request): RedirectResponse
+    {
+        $workspace = $request->user()->currentWorkspace;
+
+        if (! $workspace) {
+            return redirect()->route('app.workspaces.create');
+        }
+
+        $this->authorize('update', $workspace);
+
+        $settings = StoryMotionSettings::forWorkspace($workspace)->with($request->validated());
+        StoryMotionSettingsRules::assertComplete($settings->toArray());
+
+        $workspace->update(['story_motion_settings' => $settings->toArray()]);
+
+        return back()->with('flash.success', __('settings.flash.story_video_updated'));
     }
 
     public function uploadLogo(Request $request): RedirectResponse

@@ -149,6 +149,28 @@ return [
                 'placeholder' => 'A short headline that appears word by word',
                 'hint' => 'Shown over the photo in the moving Story video, max 80 characters. Emoji and unsupported scripts are left out.',
             ],
+            // PATCH:story-motion-settings
+            'story_subline' => [
+                'label' => 'Story subline (optional)',
+                'placeholder' => 'For example: Now in store',
+                'hint' => 'A smaller line under the headline, max 60 characters. A " · " splits it into parts with a colored dot.',
+            ],
+            'story_badge' => [
+                'label' => 'Story badge (optional)',
+                'placeholder' => 'For example: -20%',
+                'hint' => 'A small colored tag, max 12 characters.',
+            ],
+            'story_headline_alt' => [
+                'label' => 'Headline, second language (optional)',
+                'placeholder' => 'The headline in the second language',
+                'hint' => 'Softly replaces the headline in the middle of the video. Only for videos of 6 seconds or longer.',
+            ],
+            'story_subline_alt' => [
+                'label' => 'Subline, second language (optional)',
+                'placeholder' => 'The subline in the second language',
+                'hint' => 'Goes with the second-language headline, max 60 characters.',
+            ],
+            'story_accent_hint' => 'Put one word in stars, like *sale*, to color it in your accent color.',
         ],
         'linkedin' => [
             'settings' => 'LinkedIn Settings',

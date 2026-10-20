@@ -45,6 +45,7 @@ test('update workspace sets a valid field and leaves others untouched', function
         ->assertStructuredContent(function (AssertableJson $json) {
             $json->where('id', $this->workspace->id)
                 ->where('name', $this->workspace->name)
+                ->where('story_motion_settings.enabled', false) // PATCH:story-motion-settings: the result carries the Story video settings
                 ->hasAll(['created_at', 'updated_at']);
         });
 

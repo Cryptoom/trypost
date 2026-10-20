@@ -149,6 +149,28 @@ return [
                 'placeholder' => 'Krótki nagłówek pojawiający się słowo po słowie',
                 'hint' => 'Wyświetlany nad zdjęciem w animowanym wideo Relacji, maksymalnie 80 znaków. Emoji i nieobsługiwane pisma są pomijane.',
             ],
+            // PATCH:story-motion-settings
+            'story_subline' => [
+                'label' => 'Podtytuł Story (opcjonalnie)',
+                'placeholder' => 'Na przykład: Już w sklepie',
+                'hint' => 'Mniejsza linijka pod nagłówkiem, maksymalnie 60 znaków. Znak " · " dzieli ją na części z kolorową kropką.',
+            ],
+            'story_badge' => [
+                'label' => 'Plakietka Story (opcjonalnie)',
+                'placeholder' => 'Na przykład: -20%',
+                'hint' => 'Mała kolorowa etykieta, maksymalnie 12 znaków.',
+            ],
+            'story_headline_alt' => [
+                'label' => 'Nagłówek, drugi język (opcjonalnie)',
+                'placeholder' => 'Nagłówek w drugim języku',
+                'hint' => 'Łagodnie zastępuje nagłówek w połowie filmu. Tylko dla filmów od 6 sekund.',
+            ],
+            'story_subline_alt' => [
+                'label' => 'Podtytuł, drugi język (opcjonalnie)',
+                'placeholder' => 'Podtytuł w drugim języku',
+                'hint' => 'Pasuje do nagłówka w drugim języku, maksymalnie 60 znaków.',
+            ],
+            'story_accent_hint' => 'Ujmij jedno słowo w gwiazdki, na przykład *promocja*, aby pokolorować je kolorem akcentu.',
         ],
         'linkedin' => [
             'settings' => 'Ustawienia LinkedIn',

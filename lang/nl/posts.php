@@ -149,6 +149,28 @@ return [
                 'placeholder' => 'Een korte kop die woord voor woord verschijnt',
                 'hint' => 'Wordt boven de foto getoond in de bewegende Story-video, maximaal 80 tekens. Emoji en niet-ondersteunde schriften worden weggelaten.',
             ],
+            // PATCH:story-motion-settings
+            'story_subline' => [
+                'label' => 'Ondertitel van de story (optioneel)',
+                'placeholder' => 'Bijvoorbeeld: Nu in de winkel',
+                'hint' => 'Een kleinere regel onder de kop, maximaal 60 tekens. Een " · " splitst hem in delen met een gekleurd puntje.',
+            ],
+            'story_badge' => [
+                'label' => 'Badge van de story (optioneel)',
+                'placeholder' => 'Bijvoorbeeld: -20%',
+                'hint' => 'Een klein gekleurd label, maximaal 12 tekens.',
+            ],
+            'story_headline_alt' => [
+                'label' => 'Kop, tweede taal (optioneel)',
+                'placeholder' => 'De kop in de tweede taal',
+                'hint' => 'Vervangt de kop zacht halverwege de video. Alleen voor video\'s van 6 seconden of langer.',
+            ],
+            'story_subline_alt' => [
+                'label' => 'Ondertitel, tweede taal (optioneel)',
+                'placeholder' => 'De ondertitel in de tweede taal',
+                'hint' => 'Hoort bij de kop in de tweede taal, maximaal 60 tekens.',
+            ],
+            'story_accent_hint' => 'Zet één woord tussen sterretjes, zoals *sale*, om het in je accentkleur te kleuren.',
         ],
         'linkedin' => [
             'settings' => 'LinkedIn-instellingen',

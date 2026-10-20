@@ -64,7 +64,7 @@ class FacebookPublisher
         $aspectRatio = data_get($postPlatform->meta, 'aspect_ratio');
         $musicDescription = data_get($postPlatform->meta, 'story_music_description');
         $storyFit = ['mode' => data_get($postPlatform->meta, 'story_fit'), 'rect' => StoryImageFitter::boundCrop($postPlatform, $media->first()?->id)]; // PATCH:story-photo-fit
-        $storyMotion = ['workspace' => $postPlatform->post->workspace, 'headline' => data_get($postPlatform->meta, 'story_headline'), 'startedAt' => $startedAt]; // PATCH:story-motion
+        $storyMotion = ['workspace' => $postPlatform->post->workspace, 'postPlatform' => $postPlatform, 'startedAt' => $startedAt]; // PATCH:story-motion
 
         return match ($contentType) {
             ContentType::FacebookReel => $this->publishReel($pageId, $accessToken, $content, $media->first()),
@@ -449,7 +449,7 @@ class FacebookPublisher
      * order (start call first, conversion after it). The temp file is cleaned
      * up on every path, including a failing start call.
      *
-     * @param  array{workspace?: ?Workspace, headline?: ?string, startedAt?: ?CarbonInterface, active?: bool}  $storyMotion
+     * @param  array{workspace?: ?Workspace, postPlatform?: ?PostPlatform, startedAt?: ?CarbonInterface, active?: bool}  $storyMotion
      */
     private function publishStory(string $pageId, string $accessToken, $media, ?string $musicDescription = null, array $storyFit = [], array $storyMotion = []): array
     {
@@ -591,12 +591,12 @@ class FacebookPublisher
      * on any failure so this never blocks the publish), then renders a
      * held-frame MP4 (App\Services\Media\ImageToVideoConverter).
      *
-     * PATCH:story-motion: for allowlisted workspaces the video is rendered with
-     * a camera move and an optional headline instead (see
+     * PATCH:story-motion: for workspaces with Story videos on the video is rendered with
+     * a camera move and the workspace's Story video look instead (see
      * renderStoryMotionVideo()), and any problem there falls back to the
      * held-frame MP4 above.
      *
-     * @param  array{workspace?: ?Workspace, headline?: ?string, startedAt?: ?CarbonInterface, active?: bool}  $storyMotion
+     * @param  array{workspace?: ?Workspace, postPlatform?: ?PostPlatform, startedAt?: ?CarbonInterface, active?: bool}  $storyMotion
      * @return array{0: string, 1: string} [local file path, mime type]
      */
     private function convertImageToStoryVideo($media, ?string $musicDescription, array $storyFit = [], array $storyMotion = []): array
@@ -648,11 +648,12 @@ class FacebookPublisher
     }
 
     /**
-     * PATCH:story-motion: whether this photo story takes the motion path. A
-     * workspace that is not allowed gets one info line with the reason (this is
-     * the dark-launch proof), the shipped default (flag off) logs nothing.
+     * PATCH:story-motion: whether this photo story takes the motion path: the
+     * installation's master switch is on AND the workspace turned Story videos
+     * on. A broken setup gets one info line with the reason, the two normal
+     * states (switch off, workspace off) log nothing.
      *
-     * @param  array{workspace?: ?Workspace, headline?: ?string, startedAt?: ?CarbonInterface, active?: bool}  $storyMotion
+     * @param  array{workspace?: ?Workspace, postPlatform?: ?PostPlatform, startedAt?: ?CarbonInterface, active?: bool}  $storyMotion
      */
     private function storyMotionActive(array $storyMotion): bool
     {
@@ -664,7 +665,9 @@ class FacebookPublisher
 
         $skipReason = app(StoryMotionRenderer::class)->skipReason($workspace);
 
-        if ($skipReason !== null && $skipReason !== 'disabled') {
+        // `disabled` (master switch off) and `workspace_off` (the workspace has not turned Story videos on) are
+        // the normal states, only a broken setup (`no_url`, `no_token`) is worth a line.
+        if ($skipReason !== null && ! in_array($skipReason, ['disabled', 'workspace_off'], true)) {
             Log::info('Story motion skipped', ['reason' => $skipReason]);
         }
 
@@ -676,7 +679,7 @@ class FacebookPublisher
      * motion is off for the workspace or anything about it goes wrong. Every
      * temp file this creates is removed unless it is returned.
      *
-     * @param  array{workspace?: ?Workspace, headline?: ?string, startedAt?: ?CarbonInterface, active?: bool}  $storyMotion
+     * @param  array{workspace?: ?Workspace, postPlatform?: ?PostPlatform, startedAt?: ?CarbonInterface, active?: bool}  $storyMotion
      */
     private function renderStoryMotionVideo(string $fittedPath, int $durationSeconds, ?string $audioPath, array $storyMotion): ?string
     {
@@ -684,9 +687,14 @@ class FacebookPublisher
             return null;
         }
 
-        $renderer = app(StoryMotionRenderer::class);
-        $headline = trim((string) data_get($storyMotion, 'headline'));
-        $silentPath = $renderer->render($fittedPath, $durationSeconds, $headline === '' ? null : $headline, data_get($storyMotion, 'startedAt'));
+        $workspace = data_get($storyMotion, 'workspace');
+        $postPlatform = data_get($storyMotion, 'postPlatform');
+
+        if (! $workspace instanceof Workspace || ! $postPlatform instanceof PostPlatform) {
+            return null;
+        }
+
+        $silentPath = app(StoryMotionRenderer::class)->render($fittedPath, $durationSeconds, $workspace, $postPlatform, data_get($storyMotion, 'startedAt'));
 
         if ($silentPath === null) {
             return null;

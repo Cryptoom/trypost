@@ -6,22 +6,60 @@
 <title>story</title>
 <link rel="stylesheet" href="fonts.css"/>
 <style>
+:root { --accent: #FFFFFF; --accent-text: #0A2A3D; --hfont: sans-serif; --hweight: 700; }
 html, body { margin: 0; background: #000; }
-#root { position: relative; width: 1080px; height: 1920px; overflow: hidden; background: #000; }
+#root { position: relative; width: 1080px; height: 1920px; overflow: hidden; background: #000; font-family: var(--hfont); font-weight: var(--hweight); }
 .layer { position: absolute; inset: 0; }
-#photo { position: absolute; left: 0; top: 0; width: 1080px; height: 1920px; object-fit: cover; transform-origin: 50% 50%; will-change: transform; }
-#scrim { position: absolute; left: 0; top: 0; width: 1080px; height: 900px; opacity: 0; }
-#headline { position: absolute; left: 60px; top: 300px; width: 960px; display: flex; flex-wrap: wrap; justify-content: center; column-gap: 0.3em; row-gap: 0.04em; font-family: "StorySerif", "Noto Serif", serif; font-weight: 700; font-size: 104px; line-height: 1.12; color: #fff; text-align: center; text-shadow: 0 2px 22px rgba(0,0,0,0.6); }
-#headline .wd { display: inline-block; max-width: 960px; opacity: 0; }
-#headline.breakall .wd { overflow-wrap: anywhere; word-break: break-all; }
+
+/* Camera: both photo copies move together; the back copy only fills the soft edge of the focus pull. */
+#move { position: absolute; left: 0; top: 0; width: 1080px; height: 1920px; transform-origin: 50% 50%; will-change: transform; }
+#move img { position: absolute; left: 0; top: 0; width: 1080px; height: 1920px; object-fit: cover; }
+#photoBack { display: none; }
+#leak { position: absolute; left: -500px; top: 200px; width: 1100px; height: 1100px; border-radius: 50%; opacity: 0; background: radial-gradient(circle, rgba(255,170,60,0.55) 0%, rgba(255,120,40,0.25) 40%, rgba(255,120,40,0) 70%); mix-blend-mode: screen; }
+#bokeh { position: absolute; inset: 0; }
+#bokeh .b { position: absolute; border-radius: 50%; background: radial-gradient(circle, rgba(255,236,190,0.85) 0%, rgba(255,214,140,0.35) 45%, rgba(255,214,140,0) 70%); mix-blend-mode: screen; opacity: 0; }
+#vignette { position: absolute; inset: 0; opacity: 0; background: radial-gradient(ellipse at 50% 55%, rgba(10,42,61,0) 55%, rgba(10,42,61,0.55) 100%); }
+
+/* Text: the top veil never gets darker than 0.72 (the accent colour is checked against that). */
+#scrimTop { position: absolute; left: 0; top: 0; width: 1080px; height: 1000px; opacity: 0; }
+#scrimBottom { position: absolute; left: 0; bottom: 0; width: 1080px; height: 640px; opacity: 0; background: linear-gradient(to top, rgba(10,42,61,0.80) 0px, rgba(10,42,61,0.80) 300px, rgba(10,42,61,0) 640px); }
+.blk { position: absolute; left: 60px; top: 300px; width: 960px; display: flex; flex-direction: column; align-items: center; gap: 22px; text-align: center; color: #fff; text-shadow: 0 2px 22px rgba(6,28,42,0.55); }
+.hl { display: flex; flex-wrap: wrap; justify-content: center; column-gap: 0.28em; row-gap: 0.04em; max-width: 960px; font-size: 96px; line-height: 1.12; }
+.hl .wd { display: inline-block; max-width: 960px; opacity: 0; }
+.hl .pop { color: var(--accent); }
+.hl.breakall .wd { overflow-wrap: anywhere; word-break: break-all; }
+.sub { max-width: 960px; font-size: 44px; line-height: 1.2; opacity: 0; }
+.sub .dot { color: var(--accent); padding: 0 0.3em; }
+#badge { position: absolute; right: 80px; top: 800px; max-width: 420px; padding: 12px 30px; border-radius: 999px; background: var(--accent); color: var(--accent-text); font-size: 48px; line-height: 1.1; white-space: nowrap; box-shadow: 0 10px 30px rgba(10,42,61,0.45); opacity: 0; transform: scale(0.2) rotate(-12deg); }
+#end { position: absolute; left: 120px; top: 1400px; width: 840px; display: flex; flex-direction: column; align-items: center; text-align: center; opacity: 0; text-shadow: 0 2px 16px rgba(6,28,42,0.6); }
+#end .rule { width: 120px; height: 5px; margin-bottom: 26px; border-radius: 3px; background: var(--accent); }
+#end .name { font-size: 62px; line-height: 1.1; color: #fff; }
+#end .line { margin-top: 14px; font-size: 40px; line-height: 1.2; color: var(--accent); }
+
+/* Brand layer: above everything, never animated. Side margin at least 60 px. */
+#logo { position: absolute; top: 155px; left: 50%; transform: translateX(-50%); background: #fff; border-radius: 14px; padding: 10px 20px; box-shadow: 0 6px 18px rgba(10,42,61,0.3); }
+#logo img { display: block; }
+#ai { position: absolute; left: 70px; top: 1080px; writing-mode: vertical-rl; transform: rotate(180deg); color: rgba(255,255,255,0.88); background: rgba(10,42,61,0.59); font-size: 20px; letter-spacing: 0.4px; padding: 11px 5px; border-radius: 7px; white-space: nowrap; }
 </style>
 <script src="gsap.min.js"></script>
 <script src="data.js"></script>
 </head>
 <body>
-<div id="root" data-composition-id="main" data-width="1080" data-height="1920" data-start="0" data-duration="__DURATION__">
-  <div id="cam" class="layer clip" data-start="0" data-duration="__DURATION__" data-track-index="0"><img id="photo" src="__PHOTO__" alt=""/></div>
-  <div id="overlay" class="layer clip" data-start="0" data-duration="__DURATION__" data-track-index="1"><div id="scrim"></div><div id="headline"></div></div>
+<div id="root" class="__FONTCLASS__" data-composition-id="main" data-width="1080" data-height="1920" data-start="0" data-duration="__DURATION__">
+  <div id="cam" class="layer clip" data-start="0" data-duration="__DURATION__" data-track-index="0">
+    <div id="move"><img id="photoBack" src="__PHOTO__" alt=""/><img id="photo" src="__PHOTO__" alt=""/></div>
+    <div id="leak"></div><div id="bokeh"></div><div id="vignette"></div>
+  </div>
+  <div id="text" class="layer clip" data-start="0" data-duration="__DURATION__" data-track-index="1">
+    <div id="scrimTop"></div><div id="scrimBottom"></div>
+    <div id="blkA" class="blk"><div class="hl"></div><div class="sub"></div></div>
+    <div id="blkB" class="blk"><div class="hl"></div><div class="sub"></div></div>
+    <div id="badge"></div>
+    <div id="end"><div class="rule"></div><div class="name"></div><div class="line"></div></div>
+  </div>
+  <div id="brand" class="layer clip" data-start="0" data-duration="__DURATION__" data-track-index="2">
+    <div id="logo"><img id="logoImg" alt=""/></div><div id="ai"></div>
+  </div>
 </div>
 <script src="story.js"></script>
 </body>

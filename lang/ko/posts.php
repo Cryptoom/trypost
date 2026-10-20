@@ -149,6 +149,28 @@ return [
                 'placeholder' => '한 단어씩 나타나는 짧은 제목',
                 'hint' => '움직이는 스토리 영상에서 사진 위에 표시됩니다. 최대 80자. 이모지와 지원하지 않는 문자는 제외됩니다.',
             ],
+            // PATCH:story-motion-settings
+            'story_subline' => [
+                'label' => '스토리 부제목(선택)',
+                'placeholder' => '예: 지금 매장에서 만나보세요',
+                'hint' => '제목 아래에 들어가는 작은 한 줄이며 최대 60자입니다. " · "로 나누면 색이 있는 점으로 구분됩니다.',
+            ],
+            'story_badge' => [
+                'label' => '스토리 배지(선택)',
+                'placeholder' => '예: 20% 할인',
+                'hint' => '색이 있는 작은 라벨이며 최대 12자입니다.',
+            ],
+            'story_headline_alt' => [
+                'label' => '제목, 두 번째 언어(선택)',
+                'placeholder' => '두 번째 언어의 제목',
+                'hint' => '영상 중간에 제목을 부드럽게 바꿔 보여 줍니다. 6초 이상의 영상에만 적용됩니다.',
+            ],
+            'story_subline_alt' => [
+                'label' => '부제목, 두 번째 언어(선택)',
+                'placeholder' => '두 번째 언어의 부제목',
+                'hint' => '두 번째 언어 제목과 함께 표시되며 최대 60자입니다.',
+            ],
+            'story_accent_hint' => '한 단어를 별표로 감싸면(예: *세일*) 강조 색상으로 표시됩니다.',
         ],
         'linkedin' => [
             'settings' => 'LinkedIn 설정',

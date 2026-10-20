@@ -1480,13 +1480,24 @@ function sm01EnableMotionFor(object $test): void
         $test->markTestSkipped('ffmpeg or ffprobe is not installed on this machine.');
     }
 
+    // Both switches: the installation's (config) and the workspace's own Story video setting.
     config()->set('trypost.platforms.facebook.story_motion', [
         'enabled' => true,
-        'workspaces' => $test->workspace->id,
         'token' => 'secret-token-123',
         'url' => 'http://story-render:3000',
         'timeout_seconds' => 255,
     ]);
+    $test->workspace->update(['story_motion_settings' => ['enabled' => true]]);
+}
+
+/**
+ * The parts of a multipart request to the render service, by name.
+ *
+ * @return array<string, mixed>
+ */
+function sm01Parts(Request $request): array
+{
+    return collect($request->data())->mapWithKeys(fn (array $part) => [$part['name'] => $part['contents']])->all();
 }
 
 /** @return list<string> */
@@ -1499,7 +1510,7 @@ afterEach(function () {
     Carbon::setTestNow();
 });
 
-test('story-motion: an allowlisted workspace publishes the rendered video with audio, in the order download, render, start, rupload, finish', function () {
+test('story-motion: a workspace with Story videos on publishes the rendered video with audio, in the order download, render, start, rupload, finish', function () {
     sm01EnableMotionFor($this);
     $rendered = StoryMotionFixtures::video();
     $before = sm01TempMedia();
@@ -1521,21 +1532,30 @@ test('story-motion: an allowlisted workspace publishes the rendered video with a
     @unlink($rendered);
 });
 
-test('story-motion: the headline from the meta reaches the render service, a blank one sends none', function () {
+test('story-motion: the texts from the meta reach the render service in the spec, blank ones are sent as null', function () {
     sm01EnableMotionFor($this);
     $rendered = StoryMotionFixtures::video();
 
-    $with = sm01PublishPhotoStory($this, ['story_headline' => '  Ελληνικά Παιχνίδια  '], Http::response(file_get_contents($rendered), 200));
+    $with = sm01PublishPhotoStory($this, ['story_headline' => '  Ελληνικά *Παιχνίδια*  ', 'story_subline' => 'Now in store', 'story_badge' => '-20%', 'story_headline_alt' => 'Zweite Sprache', 'story_subline_alt' => '   '], Http::response(file_get_contents($rendered), 200));
     $renderRequest = collect($with['requests'])->first(fn (Request $request) => str_contains($request->url(), 'story-render'));
+    $parts = sm01Parts($renderRequest);
+    $spec = json_decode($parts['spec'], true);
 
-    expect(base64_decode(strtr($renderRequest->header('X-Story-Headline-B64')[0], '-_', '+/')))->toBe('Ελληνικά Παιχνίδια')
+    expect($renderRequest->url())->toBe('http://story-render:3000/render')
         ->and($renderRequest->header('X-Story-Render-Token')[0])->toBe('secret-token-123')
-        ->and($renderRequest->url())->toContain('duration=3');
+        ->and(array_keys($parts))->toBe(['photo', 'spec'])
+        ->and($spec['duration'])->toBe(3)
+        ->and($spec['headline'])->toBe('Ελληνικά *Παιχνίδια*')
+        ->and($spec['subline'])->toBe('Now in store')
+        ->and($spec['badge'])->toBe('-20%')
+        ->and($spec['headlineAlt'])->toBe('Zweite Sprache')
+        ->and($spec['sublineAlt'])->toBeNull()
+        ->and($spec['logoLayer'])->toBeFalse();
 
     $without = sm01PublishPhotoStory($this, ['story_headline' => '   '], Http::response(file_get_contents($rendered), 200));
-    $noHeadline = collect($without['requests'])->first(fn (Request $request) => str_contains($request->url(), 'story-render'));
+    $bare = collect($without['requests'])->first(fn (Request $request) => str_contains($request->url(), 'story-render'));
 
-    expect($noHeadline->hasHeader('X-Story-Headline-B64'))->toBeFalse();
+    expect(json_decode(sm01Parts($bare)['spec'], true)['headline'])->toBeNull();
 
     @unlink($rendered);
 });
@@ -1567,21 +1587,28 @@ test('story-motion: when the render fails the story is the same held-frame video
     'video of the wrong size' => ['video of the wrong size', fn () => Http::response(StoryMotionFixtures::videoBytes(['size' => '540x960']), 200), true],
 ]);
 
-test('story-motion: no render request for a workspace that is not on the allowlist or while the flag is off', function () {
-    // flag on, workspace not listed
+test('story-motion: no render request, and no log line, for a workspace that has Story videos off', function () {
+    // master switch on, workspace never touched its settings (the default)
     sm01EnableMotionFor($this);
-    config()->set('trypost.platforms.facebook.story_motion.workspaces', 'someone-else');
+    $this->workspace->update(['story_motion_settings' => null]);
     Log::spy();
 
-    $run = sm01PublishPhotoStory($this);
-
-    expect($run['labels'])->toBe(['start', 'download', 'rupload', 'finish']);
-    Log::shouldHaveReceived('info')->with('Story motion skipped', ['reason' => 'workspace_not_allowed'])->once();
-
-    // flag on, list empty
-    config()->set('trypost.platforms.facebook.story_motion.workspaces', '');
     expect(sm01PublishPhotoStory($this)['labels'])->toBe(['start', 'download', 'rupload', 'finish']);
 
+    // master switch on, workspace explicitly off
+    $this->workspace->update(['story_motion_settings' => ['enabled' => false]]);
+    expect(sm01PublishPhotoStory($this)['labels'])->toBe(['start', 'download', 'rupload', 'finish']);
+
+    Log::shouldNotHaveReceived('info');
+});
+
+test('story-motion: a broken setup (no token) is logged once per story and publishes the still frame', function () {
+    sm01EnableMotionFor($this);
+    config()->set('trypost.platforms.facebook.story_motion.token', '');
+    Log::spy();
+
+    expect(sm01PublishPhotoStory($this)['labels'])->toBe(['start', 'download', 'rupload', 'finish']);
+    Log::shouldHaveReceived('info')->with('Story motion skipped', ['reason' => 'no_token'])->once();
 });
 
 test('story-motion: with the flag off (the shipped default) a story publishes as before and motion logs nothing', function () {
@@ -1713,9 +1740,9 @@ test('story-motion: without motion the order is the original one, a rejected sta
     expect($this->sm01Last['labels'])->toBe(['start']);
 });
 
-test('story-motion: a workspace that is not allowed keeps the original order too, even with the flag on', function () {
+test('story-motion: a workspace with Story videos off keeps the original order too, even with the master switch on', function () {
     sm01EnableMotionFor($this);
-    config()->set('trypost.platforms.facebook.story_motion.workspaces', 'someone-else');
+    $this->workspace->update(['story_motion_settings' => ['enabled' => false]]);
 
     $converter = Mockery::mock(ImageToVideoConverter::class);
     $converter->shouldNotReceive('convert');

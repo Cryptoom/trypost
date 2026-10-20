@@ -532,36 +532,36 @@ Jeder andere Fehlercode bleibt vorübergehend, die Meldung nennt jetzt den Code
 
 ### Patch 10 · story-motion  (TPS-SM-01, 20.10.2026)
 
-Facebook-Story-Fotos werden für freigegebene Workspaces nicht mehr als stehendes Bild, sondern als
+Facebook-Story-Fotos werden für Workspaces mit eingeschalteten Story-Videos (seit Patch 11 eine Einstellung pro Workspace) nicht mehr als stehendes Bild, sondern als
 kurzes Kamerafahrt-Video veröffentlicht, optional mit animierter Headline (Wort für Wort). Gerendert
 von einem eigenen internen Container `story-render` (HyperFrames 0.8.174, Chromium, ffmpeg). Jeder
 Fehler, jede Zeitüberschreitung und ein belegter Renderer führen zurück auf das bisherige Standbild
-(`ImageToVideoConverter::convert()`), kein Publish scheitert am neuen Pfad. Default: aus, Allowlist leer.
+(`ImageToVideoConverter::convert()`), kein Publish scheitert am neuen Pfad. Default: aus (Env-Hauptschalter und Workspace-Einstellung).
 
 - **Marker**: `PATCH:story-motion` (`grep -rn "PATCH:story-motion" app config lang resources`).
 - **Render-Dienst (neu, `docker/story-render/`)**: `server.mjs`, `lib/`, `template/` (Komposition,
   Noto Serif 700 als woff2 mit OFL-Text, lokal), `Dockerfile`, `package.json` plus Lockfile
   (`hyperframes` und `gsap` gepinnt, `npm ci` beim Build, nie zur Laufzeit geladen), Tests unter `test/`
   (`cd docker/story-render && node --test`, 47 Tests). `compose.prod.yaml` (Upstream-Selfhost) bleibt unberührt.
-- **Laravel**: `app/Services/Media/StoryMotionRenderer.php` (Allowlist, HTTP, Zeitbudget 300 s ab
+- **Laravel**: `app/Services/Media/StoryMotionRenderer.php` (Aktivierung, HTTP, Zeitbudget 300 s ab
   Publish-Start, ffprobe-Prüfung der Render-Ausgabe), `StoryVideoInspector.php` (ffprobe-Wächter für
   das Endvideo: ein h264/yuv420p-1080x1920-30-fps-Videostream, genau ein AAC-Stream, Dauer ±0,5 s,
   moov vorn), `ImageToVideoConverter::addAudioTrack()` (Audio-Mux mit `-c:v copy`),
   `FacebookPublisher` (`publishStory()`, `convertImageToStoryVideo()`, `renderStoryMotionVideo()`),
   `PostPlatformMetaRules` (`story_headline`, max 80), Shared Prop `facebookStoryMotionEnabled`
   (`HandleInertiaRequests`), Feld in `FacebookSettings.vue`, Label in allen 16 `lang/*/posts.php`.
-- **Reihenfolge nur mit Motion**: Nur für einen Workspace mit aktiver Motion (Flag, Allowlist, URL, Token)
+- **Reihenfolge nur mit Motion**: Nur für einen Workspace mit aktiver Motion (Env-Schalter, URL, Token, Workspace-Einstellung)
   läuft die Foto-Konvertierung (Download, Fit, Musik, Render, Mux) VOR dem Facebook-`start`-Call, damit ein
   langer Render keine offene Upload-Sitzung hält. Für alle anderen Workspaces bleibt der Ablauf wie auf
   `origin/main`: `start`, dann Konvertierung, dann Upload. Bei Motion entstehen Musik und Render also auch
   dann, wenn `start` später abgelehnt wird. Ein `try/finally` umschließt Konvertierung und alle
   Upload-Phasen, die Temp-Datei wird auf jedem Pfad entfernt. Video-Stories bleiben unverändert.
-- **Env (Reihenfolge ENABLED, WORKSPACES, TOKEN, dann URL, TIMEOUT)**: `FACEBOOK_STORY_MOTION_ENABLED`
-  (false), `FACEBOOK_STORY_MOTION_WORKSPACES` (leer = niemand, kommagetrennte Workspace-IDs, strikter
-  String-Vergleich), `FACEBOOK_STORY_MOTION_TOKEN` (gleicher Wert wie `STORY_RENDER_TOKEN` im Dienst),
-  `FACEBOOK_STORY_MOTION_URL` (`http://story-render:3000`), `FACEBOOK_STORY_MOTION_TIMEOUT` (255 =
-  Dienst-Timeout 240 plus 15, im Code auf 10 bis 255 begrenzt). Aktiv nur bei Flag UND nicht leerer Liste
-  UND URL UND Token. Neue Env-Variablen in `/opt/trypost/compose.yml` (bzw. dort, wo die bestehenden
+- **Env (Reihenfolge ENABLED, TOKEN, dann URL, TIMEOUT)**: `FACEBOOK_STORY_MOTION_ENABLED`
+  (false, Hauptschalter der Installation), `FACEBOOK_STORY_MOTION_TOKEN` (gleicher Wert wie `STORY_RENDER_TOKEN` im
+  Dienst), `FACEBOOK_STORY_MOTION_URL` (`http://story-render:3000`), `FACEBOOK_STORY_MOTION_TIMEOUT` (255 =
+  Dienst-Timeout 240 plus 15, im Code auf 10 bis 255 begrenzt). Aktiv nur bei Hauptschalter UND URL UND Token
+  UND Workspace-Einstellung (Patch 11). Die frühere Env-Allowlist `FACEBOOK_STORY_MOTION_WORKSPACES` entfällt
+  mit Patch 11. Neue Env-Variablen in `/opt/trypost/compose.yml` (bzw. dort, wo die bestehenden
   `FACEBOOK_*` stehen) nachtragen, siehe Repo-CLAUDE.md "Production Deploy (web02)".
 - **Produktions-Service (Compose auf web02, nicht im Repo)**: Build aus `./src/docker/story-render`,
   `container_name: trypost-story-render`, eigenes Netz mit `internal: true` (der `app`-Service hängt an
@@ -594,7 +594,7 @@ Fehler, jede Zeitüberschreitung und ein belegter Renderer führen zurück auf d
   (Abschnitt story-motion), `FacebookPublisherTest` (Abschnitt story-motion), `PostApiPlatformMetaTest`,
   `PostPlatformMetaToolTest`; Render-Dienst `docker/story-render/test/`.
 
-#### Deployed 20.10.2026 (Dark Launch, Workspace-Liste leer)
+#### Deployed 20.10.2026 (Dark Launch, Workspace-Liste leer; die Liste wurde mit Patch 11 durch die Workspace-Einstellung ersetzt)
 
 PR #33 ist gemergt (squash `e0b338be96f0dd9ee539bbced2a73d1c0324c21f`) und am 20.10.2026 auf web02 deployed.
 Es läuft als Dark Launch: Flag an, Workspace-Liste leer, also ändert sich für keinen Workspace etwas.
@@ -615,7 +615,93 @@ Es läuft als Dark Launch: Flag an, Workspace-Liste leer, also ändert sich für
   `docker compose up -d --no-deps app` (Standbild wie vorher), den Dienst `story-render` stoppen.
 - **Smoke auf web02**: 15-s-Render in 53 bis 78 s, Spitzen-RAM 1,19 GiB, Endvideo-Wächter ok, kein Egress aus
   dem Dienst (internes Netz).
-- **Offen vor der Aktivierung (P4)**: ein Workspace kommt erst nach Olli-Freigabe in `FACEBOOK_STORY_MOTION_WORKSPACES`,
+- **Offen vor der Aktivierung (P4)**: ein Workspace schaltet Story-Videos erst nach Olli-Freigabe in seinen Einstellungen ein (Patch 11),
   vorher Beispielvideo zeigen. Zu klären sind die Kosten je Horizon-Wiederholung (Render und gegebenenfalls
   KI-Musik, auch wenn Facebook `start` ablehnt) und die Zahl gleichzeitiger Stories pro Slot (es rendert genau
   eine, weitere fallen auf das Standbild zurück).
+
+### Patch 11 · story-motion-settings  (TPS-SM-02, 20.10.2026)
+
+Story-Videos (Patch 10) werden zu Einstellungen pro Marke: Wer die Facebook-Foto-Stories als bewegtes
+Video veröffentlichen will, schaltet das im Workspace unter Einstellungen, Brand, Story-Videos ein (Default
+aus) und wählt Schrift, Bildeffekte, Effekt-Modus, Logo-Ebene, KI-Hinweis und Abschluss. Pro Story gibt es
+zusätzlich Unterzeile, Badge und eine zweite Sprache. Die Env-Allowlist aus Patch 10 entfällt. Der Render-Dienst
+bekommt dafür einen neuen Auftrag (multipart: `photo`, optional `logo`, `spec`), vier Effekte, fünf Schriften und
+eine Spec-Validierung.
+
+- **Marker**: `PATCH:story-motion-settings` (`grep -rn "PATCH:story-motion-settings" app config database lang resources routes`).
+- **Aktivierung**: Env-Hauptschalter `FACEBOOK_STORY_MOTION_ENABLED` UND URL UND Token UND `story_motion_settings.enabled`
+  des Workspace. Skip-Gründe `disabled` und `workspace_off` werden nicht geloggt, `no_url` und `no_token` mit einer Info-Zeile.
+  Zwei Shared Props: `storyMotionAvailable` (Env, URL, Token, steuert den Abschnitt in den Brand-Einstellungen) und
+  `facebookStoryMotionEnabled` (zusätzlich Workspace an, steuert die Felder im Post-Editor).
+- **Migration**: genau eine, `2026_10_20_120000_add_story_motion_settings_to_workspaces_table.php`, eine nullable JSON-Spalte
+  `story_motion_settings` auf `workspaces` (mit `down()`). NULL heißt Defaults, Default ist aus. Läuft beim Containerstart
+  automatisch, darum vor dem Deploy ein `pg_dump` (siehe Plan, P7). Bei Rollback des Images bleibt die Spalte bestehen und ist
+  für das alte Image harmlos.
+- **Einstellungen** (`App\Services\Media\StoryMotionSettings`, liest defensiv und wirft nie): `enabled`, `font`
+  (`inter`, `commissioner`, `comfortaa`, `noto-sans`, `noto-serif`, Default aus `brand_font` falls dort vorhanden, sonst Inter),
+  `effects` (aus `drift`, `focus`, `snap`, `sparkle`, mindestens einer, Default `focus`), `mode` (`fixed`, `rotate`, `random`),
+  `logo_layer`, `ai_notice` (an, Text bis 40), `ending` (an, Name bis 40, Zeile bis 60). Regeln an einer Stelle
+  (`App\Support\StoryMotionSettingsRules`), genutzt vom Web-Endpunkt `PUT settings/workspace/story-video`
+  (`WorkspaceController::updateStoryVideo`, `UpdateStoryVideoSettingsRequest`) und vom MCP-Tool `UpdateWorkspaceTool`
+  (Schlüssel `story_motion_settings`, Merge nur der gesendeten Schlüssel, Rückgabe mit den Einstellungen). Der Abschluss lehnt
+  Adressen und Telefonnummern ab (sechs oder mehr Ziffern, `+` plus Ziffer, `tel:`).
+- **Effektwahl ohne Zustand** (`StoryMotionEffectPicker`): `fixed` der erste gewählte in der Reihenfolge drift, focus, snap, sparkle;
+  `random` per `crc32(PostPlatform-ID) % n`; `rotate` per Anzahl veröffentlichter Facebook-Stories des Workspaces modulo n.
+  Nichts wird gepinnt oder geschrieben, ein Retry wählt dasselbe, solange dazwischen nichts veröffentlicht wurde.
+- **Akzentfarbe** (`App\Support\StoryMotionAccent`): aus `brand_color` (`#RGB`, `#RRGGBB`, `#RRGGBBAA` werden zu `#RRGGBB`), nur wenn
+  WCAG-Kontrast mindestens 3:1 gegen `#4F6673` (oberer Textschleier höchstens 0,72 auf weißem Foto) UND gegen Schwarz, sonst Gold
+  `#FDB31B`, sonst Weiß. Der Dienst prüft nur die Form (`\A#[0-9A-F]{6}\z`).
+- **Logo**: nur JPEG und PNG (Magic Bytes), höchstens 2 MB und 2000 x 2000 px (aus `media.size` und `media.meta`), gelesen über
+  `Storage::get`, keine URL. Sonst Logo weglassen, `logoLayer=false`, Log `logo_unusable` mit Grund. Der Upload-Pfad
+  (`HasMedia::addMedia`) wandelt PNG in JPEG um, ein transparentes PNG wird dabei flach auf Weiß gesetzt.
+- **Bewegung**: kräftige Werte nur mit Logo-Ebene UND KI-Hinweis (Ollis Grundstil-Bündel), sonst ruhig (Skalierung höchstens 1,02
+  über dem Endbild, keine Neigung, keine Drift, Endbild gleich Foto). Tabelle und Deckungsinvariante in
+  `docker/story-render/lib/motion.mjs`, getestet in `test/motion.test.mjs`. Endwerte: `focus` startet bei 1,03 (statt 1,02,
+  wegen der Neigung), `snap` endet bei 1,04 mit 20 px Versatz.
+- **Render-Dienst** (`docker/story-render/`): `lib/multipart.mjs` (Node-Bordmittel `Response.formData()`, höchstens 12 MB,
+  3 Teile, Foto 8 MB, Logo 2 MB, Spec 8 KB), `lib/spec.mjs` (strenge Validierung, unbekannte Schlüssel abgewiesen, nichts aus der
+  Anfrage wird in Namen oder Pfade übernommen), `lib/motion.mjs`, `lib/timeline.mjs`, `lib/text.mjs`, `lib/fonts.mjs`,
+  `template/` (Vorlage, `fonts/`). Schriften: Fontsource 5.3.0, SIL OFL 1.1, Teilmengen latin, latin-ext, greek, cyrillic, je Familie
+  ein eigener `font-family`-Name, OFL-Text je Familie. Quellen und SHA256 siehe unten. `package.json` und Lockfile des Dienstes sind
+  unverändert.
+- **Post-Editor**: `FacebookSettings.vue` zeigt Überschrift, Unterzeile, Badge, zweite Sprache (Überschrift, Unterzeile) und den
+  Hinweis zur `*Akzent*`-Schreibweise nur bei `facebookStoryMotionEnabled`. Meta-Regeln `story_subline` (60), `story_badge` (12),
+  `story_headline_alt` (80), `story_subline_alt` (60) nur in `PostPlatformMetaRules`.
+- **Entfernte oder geänderte Zusicherungen** (Allowlist-Tests aus Patch 10): die Tests, die eine Workspace-Allowlist, den Skip-Grund
+  `workspace_not_allowed` und die Env-Zeile `FACEBOOK_STORY_MOTION_WORKSPACES` festschrieben, sind durch eine Aktivierungsmatrix
+  (Hauptschalter, URL, Token, Workspace-Einstellung) ersetzt. Der Header `X-Story-Headline-B64` und der Query-Parameter `duration`
+  des Dienstes entfallen zugunsten der Spec.
+- **Deploy (Olli-Gate, nicht Teil des Builds)**: Compose auf web02 braucht keine neue Env-Variable. `FACEBOOK_STORY_MOTION_WORKSPACES`
+  kann aus `/opt/trypost/compose.yml` entfernt werden (wird nicht mehr gelesen). Image `trypost-story-render` UND `trypost` neu bauen,
+  beide gemeinsam starten. Die erwartete Migration ist genau die oben genannte. Nach dem Start:
+  `SELECT count(*) FROM workspaces WHERE story_motion_settings->>'enabled' = 'true'` muss 0 sein.
+- **Schrift-Quellen** (`npm pack @fontsource/<name>@5.3.0`, nur die benötigten woff2-Dateien liegen im Repo):
+  - `@fontsource/inter@5.3.0`, Gewicht 800, Tarball SHA256 `02034af8d41dcc67ac8eab88f642e129bb8a2e8922abf30229c32725f54d8fd6`
+    - `inter-cyrillic-800-normal.woff2` `e84cb164b47aaad63db12da876c341c59f78b6b25f9069dcdea3c1f8ca8b8f9b`
+    - `inter-greek-800-normal.woff2` `18a6a4a8e29310db74c01b9d85b30e708e0b1fd8d9a2d01a259b82fe4d112422`
+    - `inter-latin-800-normal.woff2` `a7d0a50f15d389cad679238466bdb5fc9787aa0715719064ce25abaff042820d`
+    - `inter-latin-ext-800-normal.woff2` `eade55593308b9e4916dd7f47826929ce3e40cad85a2b338d56e5fd1e7bf8e5e`
+  - `@fontsource/commissioner@5.3.0`, Gewicht 800, Tarball SHA256 `c532c0c5b6bb118c91e31d549d9f556655706b3285e2dcfe9d393efe44764d9a`
+    - `commissioner-cyrillic-800-normal.woff2` `a43485eea576dff1a2d085944e71b3823de83250ab486a9dfbc020607d7fbc1e`
+    - `commissioner-greek-800-normal.woff2` `28acf78f0eb887e06d387bbd9c169c8fd9dcf22348e20ff25b656d95f2d95d20`
+    - `commissioner-latin-800-normal.woff2` `451f8930780d8d8c183c3b7f854a465b9730b3ddf07f2c971a165d38d67365d4`
+    - `commissioner-latin-ext-800-normal.woff2` `cbb0fb46710f6b9372b676a704c6a18ba0b2d6a93973531dc1b84d5ec1b4ee56`
+  - `@fontsource/comfortaa@5.3.0`, Gewicht 700, Tarball SHA256 `5c82d14fe6efc746213748a2835b7aa7b6e07409f1611eaee52eb25e0bdfcca6`
+    - `comfortaa-cyrillic-700-normal.woff2` `52a4b41d6e1704b770c77ecdd2b3890b7b3dc9da7fd32e731e8607b6f29b1539`
+    - `comfortaa-greek-700-normal.woff2` `1cd07fa22f1c8e21d5d29e8dd2dbbc2691d4ad5fc4084c76ca15c10562f7dea0`
+    - `comfortaa-latin-700-normal.woff2` `ed9f328cf6aaa4c14dfb464d215e8a0d8d56b675a72fb601b819e95a1cb4e45d`
+    - `comfortaa-latin-ext-700-normal.woff2` `bd890b939d24db500fc5c52da95d57ae4d94fa52dd3053a4b6cb6ea61c051b73`
+  - `@fontsource/noto-sans@5.3.0`, Gewicht 700, Tarball SHA256 `f62f8ed40e378f15134e32bed2fd5718d81e9ec7a5603d1022d7b385e2297abc`
+    - `noto-sans-cyrillic-700-normal.woff2` `0980b97224d9130cf3f651c8ad15b9e0b1eb361d31c71259363ec2bbd5f70750`
+    - `noto-sans-greek-700-normal.woff2` `453c49c9043e04c1103ed1228a1d8d96750c858e08d6b204119d7a16b7642246`
+    - `noto-sans-latin-700-normal.woff2` `e77bfe1db912f687b0319b60de158cfada67f89c8ee4f8e2bd6020f970accbfb`
+    - `noto-sans-latin-ext-700-normal.woff2` `c0cd431266a7ed82d6f0dfe281e38a883c28a03eec1fdac308cc2f7c0ea39c3b`
+  - `@fontsource/noto-serif@5.3.0`, Gewicht 700, Tarball SHA256 `846d219c2c9c668ebe2b5ca0e76c403a35f847d83c4c441c107f9bdc152830df`
+    - `noto-serif-cyrillic-700-normal.woff2` `1dd6e758015cc8e424c0d57eabb94addf4adcba14c67ecdfd3b6386fc88295d0`
+    - `noto-serif-greek-700-normal.woff2` `bd24b899d9fe3955fed1c9b0ffa1d12aca02db45474fe906735456430a2efd36`
+    - `noto-serif-latin-700-normal.woff2` `0d0b440760c93e6fec440ad438d10cea6c70367a0f5ecfcfa15cef0a85c67093`
+    - `noto-serif-latin-ext-700-normal.woff2` `52c9361ebb521542e71e5a11aa5683ab3bbd8df5428888e95786478bb1377cba`
+- **Tests**: Pest `StoryMotionSettingsTest`, `StoryMotionSpecTest`, `StoryMotionAccentTest`, `StoryMotionActivationTest`,
+  `StoryMotionEffectTest`, `StoryVideoSettingsTest`, `StoryMotionRendererTest`, `FacebookPublisherTest` (Abschnitt story-motion);
+  Node `cd docker/story-render && node --test`.

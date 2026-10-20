@@ -7,6 +7,7 @@ import SettingsTabsNav from '@/components/settings/SettingsTabsNav.vue';
 import { useWorkspaceSettingsTabs } from '@/composables/useWorkspaceSettingsTabs';
 import AppLayout from '@/layouts/AppLayout.vue';
 import type { ContentLanguageOption } from '@/types';
+import type { StoryMotionProps } from '@/types/story-motion';
 
 interface Workspace {
     id: string;
@@ -28,6 +29,8 @@ defineProps<{
     availableImageStyles: string[];
     availableVoiceTraits: Record<string, string[]>;
     availableContentLanguages: ContentLanguageOption[];
+    // PATCH:story-motion-settings
+    storyMotion?: StoryMotionProps;
 }>();
 
 const tabs = useWorkspaceSettingsTabs();
@@ -51,6 +54,7 @@ const tabs = useWorkspaceSettingsTabs();
                 :available-image-styles="availableImageStyles"
                 :available-voice-traits="availableVoiceTraits"
                 :available-content-languages="availableContentLanguages"
+                :story-motion="storyMotion"
             />
         </div>
     </AppLayout>

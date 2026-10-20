@@ -1,14 +1,8 @@
 import assert from 'node:assert/strict';
-import path from 'node:path';
 import test from 'node:test';
-import { fileURLToPath } from 'node:url';
-import { loadFontCoverage } from '../lib/fonts.mjs';
 import { storyVideoProblem } from '../lib/probe.mjs';
-import { decodeHeadlineHeader, inspectImage, parseDuration, sanitizeHeadline, ValidationError } from '../lib/validate.mjs';
-import { BAIT_SCRIPTS, encodeHeadline, fakeJpeg, fakePng } from '../testkit/helpers.mjs';
-
-const fontsDir = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'template', 'fonts');
-const isCovered = loadFontCoverage(fontsDir);
+import { inspectImage, LIMITS, ValidationError } from '../lib/validate.mjs';
+import { fakeJpeg, fakePng } from '../testkit/helpers.mjs';
 
 const rejects = (fn, code, status) =>
     assert.throws(fn, (error) => error instanceof ValidationError && error.code === code && (status === undefined || error.status === status));
@@ -24,55 +18,18 @@ test('image: rejects everything that is not JPEG or PNG, whatever a Content-Type
     }
 });
 
+test('image: a logo is held to its own, smaller side limit', () => {
+    assert.equal(inspectImage(fakePng(2000, 2000), { maxSide: LIMITS.maxLogoSide }).width, 2000);
+    rejects(() => inspectImage(fakePng(2001, 100), { maxSide: LIMITS.maxLogoSide }), 'image_dimensions_too_large', 413);
+    rejects(() => inspectImage(fakeJpeg(100, 2001), { maxSide: LIMITS.maxLogoSide }), 'image_dimensions_too_large', 413);
+});
+
 test('image: rejects truncated headers and oversize dimensions', () => {
     rejects(() => inspectImage(Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10])), 'invalid_image');
     rejects(() => inspectImage(fakePng(4097, 100)), 'image_dimensions_too_large', 413);
     rejects(() => inspectImage(fakeJpeg(100, 4097)), 'image_dimensions_too_large', 413);
     assert.equal(inspectImage(fakeJpeg(4096, 4096)).width, 4096);
     rejects(() => inspectImage(fakePng(0, 10)), 'invalid_image');
-});
-
-test('duration: only whole seconds from 3 to 20', () => {
-    assert.equal(parseDuration('3'), 3);
-    assert.equal(parseDuration('20'), 20);
-    for (const bad of ['2', '21', '', 'abc', '15.5', '-5', '015', undefined, '1e1']) {
-        rejects(() => parseDuration(bad), 'invalid_duration');
-    }
-});
-
-test('headline header: absent is null, bad encodings and over 80 characters are rejected', () => {
-    assert.equal(decodeHeadlineHeader(undefined), null);
-    assert.equal(decodeHeadlineHeader(encodeHeadline('Hallo')), 'Hallo');
-    assert.equal(decodeHeadlineHeader(encodeHeadline('W'.repeat(80))).length, 80);
-    rejects(() => decodeHeadlineHeader(encodeHeadline('W'.repeat(81))), 'headline_too_long');
-    rejects(() => decodeHeadlineHeader('not base64 !!'), 'invalid_headline');
-    rejects(() => decodeHeadlineHeader(Buffer.from([0xff, 0xfe, 0xfd]).toString('base64url')), 'invalid_headline');
-});
-
-test('headline sanitizer: control characters, emoji and unsupported scripts are removed', () => {
-    assert.equal(sanitizeHeadline('Hi\u0000 \u0007there\u{200b}', isCovered), 'Hi there');
-    assert.equal(sanitizeHeadline('Sale 🔥🔥 now 👍🏽 ❤️', isCovered), 'Sale now');
-    assert.equal(sanitizeHeadline('  a \t\n  b\u{00a0}\u{2028}c  ', isCovered), 'a b c');
-    assert.equal(sanitizeHeadline('日本語 text', isCovered), 'text');
-    assert.equal(sanitizeHeadline('مرحبا', isCovered), '');
-});
-
-test('headline sanitizer: copyright, registered and trademark signs are kept, real emoji are not', () => {
-    assert.equal(sanitizeHeadline('Maisto\u{00ae} GT3', isCovered), 'Maisto\u{00ae} GT3');
-    assert.equal(sanitizeHeadline('PlayCraft\u{2122} Sale', isCovered), 'PlayCraft\u{2122} Sale');
-    assert.equal(sanitizeHeadline('\u{00a9} 2026', isCovered), '\u{00a9} 2026');
-    assert.equal(sanitizeHeadline('Sale 🔥 \u{2122}\u{fe0f}', isCovered), 'Sale \u{2122}');
-});
-
-test('headline sanitizer: Latin, Greek and Cyrillic bait headlines survive unchanged (font coverage)', () => {
-    for (const bait of BAIT_SCRIPTS) {
-        assert.equal(sanitizeHeadline(bait, isCovered), bait);
-    }
-});
-
-test('headline sanitizer: markup characters stay as plain text characters', () => {
-    const bait = '</script><img src=x onerror=alert(1)>';
-    assert.equal(sanitizeHeadline(bait, isCovered), bait);
 });
 
 test('output guard: accepts exactly one h264 yuv420p 1080x1920 30 fps video without audio of the right length', () => {

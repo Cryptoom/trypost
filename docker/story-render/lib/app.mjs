@@ -7,10 +7,12 @@ import path from 'node:path';
 import { pipeline } from 'node:stream/promises';
 import { fileURLToPath } from 'node:url';
 import { writeComposition } from './composition.mjs';
-import { loadFontCoverage } from './fonts.mjs';
+import { loadFontCoverages } from './fonts.mjs';
+import { parseMultipart } from './multipart.mjs';
 import { probeFile, storyVideoProblem } from './probe.mjs';
 import { killLeftovers, runKillable } from './proc.mjs';
-import { decodeHeadlineHeader, inspectImage, LIMITS, parseDuration, sanitizeHeadline, ValidationError } from './validate.mjs';
+import { buildJob, parseSpec } from './spec.mjs';
+import { inspectImage, LIMITS, ValidationError } from './validate.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const HYPERFRAMES_CLI = path.join(here, '..', 'node_modules', 'hyperframes', 'bin', 'hyperframes.mjs');
@@ -30,7 +32,6 @@ export const renderTimeoutFromEnv = (raw) => {
 };
 
 export const TOKEN_HEADER = 'x-story-render-token';
-export const HEADLINE_HEADER = 'x-story-headline-b64';
 
 const digest = (value) => createHash('sha256').update(value).digest();
 
@@ -78,7 +79,7 @@ export const createApp = ({
     }
     const expectedToken = digest(token);
     const timeoutMs = Math.min(renderTimeoutSeconds, MAX_RENDER_TIMEOUT_SECONDS) * 1000;
-    const isCovered = loadFontCoverage(fontsDir);
+    const coverages = loadFontCoverages(fontsDir);
     let busy = false;
 
     const sendJson = (res, status, body, extraHeaders = {}) => {
@@ -100,23 +101,21 @@ export const createApp = ({
     const readBody = (req) =>
         new Promise((resolve, reject) => {
             const declared = Number(req.headers['content-length']);
-            if (Number.isFinite(declared) && declared > LIMITS.maxImageBytes) {
-                reject(new ValidationError('image_too_large', 413));
+            if (Number.isFinite(declared) && declared > LIMITS.maxBodyBytes) {
+                reject(new ValidationError('body_too_large', 413));
                 return;
             }
             const chunks = [];
             let received = 0;
             req.on('data', (chunk) => {
                 received += chunk.length;
-                if (received > LIMITS.maxImageBytes) {
+                if (received > LIMITS.maxBodyBytes) {
                     // Stop keeping bytes; the connection is closed once the 413 is out.
                     chunks.length = 0;
-                    reject(new ValidationError('image_too_large', 413));
+                    reject(new ValidationError('body_too_large', 413));
                     return;
                 }
-                if (received <= LIMITS.maxImageBytes) {
-                    chunks.push(chunk);
-                }
+                chunks.push(chunk);
             });
             req.on('end', () => resolve(Buffer.concat(chunks)));
             req.on('error', reject);
@@ -171,16 +170,35 @@ export const createApp = ({
         const seconds = () => Math.round((Date.now() - startedAt) / 1000);
         // What to do once the render slot is free again: send an error, stream a file, or nothing.
         let outcome = { status: 500, body: { error: 'internal_error' } };
+        let durationSeconds = 0;
+        let hasText = false;
 
         try {
-            const durationSeconds = parseDuration(url.searchParams.get('duration') ?? undefined);
-            const rawHeadline = decodeHeadlineHeader(req.headers[HEADLINE_HEADER]);
-            const imageBuffer = await readBody(req);
-            const image = inspectImage(imageBuffer);
-            const headline = rawHeadline === null ? '' : sanitizeHeadline(rawHeadline, isCovered);
+            if (url.search !== '') {
+                throw new ValidationError('unexpected_query');
+            }
+            const body = await readBody(req);
+            const parts = await parseMultipart(body, req.headers['content-type']);
+            const parsedSpec = parseSpec(parts.spec);
+            const photoInfo = inspectImage(parts.photo);
+            let logoInfo = null;
+            if (parts.logo !== null) {
+                try {
+                    logoInfo = inspectImage(parts.logo, { maxSide: LIMITS.maxLogoSide });
+                } catch (error) {
+                    throw error instanceof ValidationError ? new ValidationError(`logo_${error.code}`, 400, 'logo') : error;
+                }
+            }
+            const built = buildJob(parsedSpec, { logoInfo, coverages });
+            durationSeconds = built.duration;
+            hasText = built.hasText;
 
             job.dir = await mkdtemp(path.join(workDir, 'story-job-'));
-            await compose(job.dir, { imageBuffer, ext: image.ext, durationSeconds, headline });
+            await compose(job.dir, {
+                photo: { buffer: parts.photo, ext: photoInfo.ext },
+                logo: logoInfo === null ? null : { buffer: parts.logo, ext: logoInfo.ext },
+                job: built,
+            });
 
             const outputPath = path.join(job.dir, 'out.mp4');
             const spec = buildCommand({ jobDir: job.dir, outputPath, env });
@@ -204,15 +222,15 @@ export const createApp = ({
                     outcome = { status: 500, body: { error: 'invalid_output' } };
                 } else {
                     const { size } = await stat(outputPath);
-                    outcome = { file: outputPath, size, hasHeadline: headline !== '' };
+                    outcome = { file: outputPath, size, hasText };
                 }
             }
         } catch (error) {
             if (error instanceof ValidationError && error.status === 499) {
                 outcome = null;
             } else if (error instanceof ValidationError) {
-                log({ event: 'render_rejected', reason: error.code });
-                outcome = { status: error.status, body: { error: error.code } };
+                log({ event: 'render_rejected', reason: error.code, ...(error.field === null ? {} : { field: error.field }) });
+                outcome = { status: error.status, body: { error: error.code, ...(error.field === null ? {} : { field: error.field }) } };
             } else {
                 log({ event: 'render_failed', reason: 'internal', message: String(error?.message ?? error).slice(0, 300) });
             }
@@ -257,7 +275,7 @@ export const createApp = ({
             res.socket?.setTimeout(streamIdleMs, () => res.destroy());
             res.writeHead(200, { 'Content-Type': 'video/mp4', 'Content-Length': outcome.size, 'X-Render-Seconds': String(seconds()) });
             await pipeline(createReadStream(outcome.file), res);
-            log({ event: 'render_ok', seconds: seconds(), bytes: outcome.size, headline: outcome.hasHeadline });
+            log({ event: 'render_ok', seconds: seconds(), bytes: outcome.size, text: outcome.hasText });
         } catch (error) {
             log({ event: 'render_aborted', reason: error?.code === 'ERR_STREAM_PREMATURE_CLOSE' ? 'client_closed_during_download' : 'stream_error' });
         } finally {

@@ -55,7 +55,34 @@ export const fakePng = (width, height) => {
     return buf;
 };
 
-export const encodeHeadline = (text) => Buffer.from(text, 'utf8').toString('base64url');
+/** A spec every field of which is valid; tests override single fields. */
+export const validSpec = (overrides = {}) => ({ duration: 3, effect: 'drift', font: 'inter', accent: '#FDB31B', logoLayer: false, aiNotice: null, ...overrides });
+
+/**
+ * Builds a multipart/form-data body the way a real client does: random boundary, binary parts as files
+ * (with a filename), the spec as a plain text field.
+ */
+export const multipartBody = ({ photo = fakeJpeg(1080, 1920), logo = null, spec = validSpec(), boundary = 'story-boundary-8f3a91c2d7' } = {}) => {
+    const pieces = [];
+    const file = (name, buffer) => {
+        pieces.push(Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="${name}"; filename="${name}.bin"\r\nContent-Type: application/octet-stream\r\n\r\n`), buffer, Buffer.from('\r\n'));
+    };
+    const text = (name, value) => {
+        pieces.push(Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="${name}"\r\n\r\n`), Buffer.from(value, 'utf8'), Buffer.from('\r\n'));
+    };
+    if (photo !== null) {
+        file('photo', photo);
+    }
+    if (logo !== null) {
+        file('logo', logo);
+    }
+    if (spec !== null) {
+        text('spec', typeof spec === 'string' ? spec : JSON.stringify(spec));
+    }
+    pieces.push(Buffer.from(`--${boundary}--\r\n`));
+
+    return { body: Buffer.concat(pieces), contentType: `multipart/form-data; boundary=${boundary}` };
+};
 
 /** Bait headlines: Greek, Cyrillic, umlauts, the longest allowed string without spaces. */
 export const BAIT_SCRIPTS = ['Ελληνικά Παιχνίδια', 'ПРОБУЖДАЕТСЯ', 'Größe ÄÖÜß', 'W'.repeat(80)];
