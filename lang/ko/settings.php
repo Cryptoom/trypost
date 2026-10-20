@@ -359,7 +359,7 @@ return [
         'logo_layer' => '내 로고 표시',
         'logo_layer_description' => '워크스페이스 로고가 영상 위쪽에 표시됩니다.',
         'logo_missing' => '사용할 수 있는 로고가 아직 없습니다. 먼저 워크스페이스 설정에서 JPEG 또는 PNG 로고(최대 2000 x 2000 px, 2 MB)를 업로드하세요.',
-        'logo_unusable' => '이 워크스페이스에 저장된 로고는 스토리 영상에 맞지 않아(JPEG 또는 PNG, 2000 x 2000 px 이하, 2 MB 이하) 스토리 영상이 로고 없이 만들어집니다. 워크스페이스 설정에서 로고를 다시 업로드하세요. 자동으로 축소됩니다.',
+        'logo_unusable' => '이 워크스페이스에 저장된 로고는 스토리 영상에 맞지 않아(JPEG 또는 PNG, 2000 x 2000 px 이하, 2 MB 이하) 스토리 영상이 로고 없이 만들어집니다. 워크스페이스 설정에서 로고를 JPEG 또는 PNG로 다시 업로드하세요. 자동으로 축소됩니다.',
         'ai_notice' => 'AI 표시 보이기',
         'ai_notice_description' => '왼쪽 가장자리에 작은 안내문을 표시합니다. 예를 들어 이미지가 AI로 생성되었음을 알립니다.',
         'ai_notice_text' => '안내 문구',
@@ -374,6 +374,8 @@ return [
         'errors' => [
             'no_contact_details' => '여기에 주소나 전화번호를 입력하지 마세요.',
             'notice_text_required' => '안내 문구를 입력하거나 AI 표시를 끄세요.',
+            'notice_text_unsupported' => '라틴 문자, 그리스 문자 또는 키릴 문자를 사용하세요. 영상에는 다른 문자를 표시할 수 없습니다.',
+            'logo_too_many_pixels' => '이 로고는 픽셀 수가 너무 많습니다. 더 작은 이미지를 업로드하세요(최대 :megapixels메가픽셀, 예: 8000 x 5000 px).',
             'ending_text_required' => '이름이나 한 줄을 입력하거나 엔딩을 끄세요.',
         ],
     ],

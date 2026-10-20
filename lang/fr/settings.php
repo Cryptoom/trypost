@@ -359,7 +359,7 @@ return [
         'logo_layer' => 'Afficher mon logo',
         'logo_layer_description' => 'Le logo de l\'espace de travail apparaît en haut de la vidéo.',
         'logo_missing' => 'Aucun logo utilisable pour le moment. Importez d\'abord un logo JPEG ou PNG (jusqu\'à 2000 x 2000 px et 2 Mo) dans les paramètres de l\'espace de travail.',
-        'logo_unusable' => 'Le logo enregistré pour cet espace de travail ne convient pas à la vidéo Story (JPEG ou PNG, jusqu\'à 2000 x 2000 px et 2 Mo), les vidéos Story sont donc créées sans lui. Téléversez à nouveau le logo dans les paramètres de l\'espace de travail : il est réduit automatiquement.',
+        'logo_unusable' => 'Le logo enregistré pour cet espace de travail ne convient pas à la vidéo Story (JPEG ou PNG, jusqu\'à 2000 x 2000 px et 2 Mo), les vidéos Story sont donc créées sans lui. Téléversez à nouveau le logo en JPEG ou PNG dans les paramètres de l\'espace de travail : il est réduit automatiquement.',
         'ai_notice' => 'Afficher une mention IA',
         'ai_notice_description' => 'Une petite note le long du bord gauche, par exemple que l\'image a été générée par IA.',
         'ai_notice_text' => 'Texte de la mention',
@@ -374,6 +374,8 @@ return [
         'errors' => [
             'no_contact_details' => 'Merci de ne saisir ici ni adresse ni numéro de téléphone.',
             'notice_text_required' => 'Saisissez le texte de la mention ou désactivez la mention.',
+            'notice_text_unsupported' => 'Utilisez des lettres latines, grecques ou cyrilliques : la vidéo ne peut pas afficher d\'autres caractères.',
+            'logo_too_many_pixels' => 'Ce logo a trop de pixels. Importez une image plus petite (:megapixels mégapixels au maximum, par exemple 8000 x 5000 px).',
             'ending_text_required' => 'Saisissez un nom ou une ligne, ou désactivez la fin.',
         ],
     ],

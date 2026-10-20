@@ -492,6 +492,20 @@ test('service: the logo travels as its own part, is inspected on its own limits 
     }
 });
 
+test('service: an AI notice that falls back is logged with a fixed code only, never the requested text', { skip: hasFfmpeg ? false : 'ffmpeg missing' }, async () => {
+    let seen = null;
+    const ctx = await start({ compose: async (jobDir, params) => { seen = params; const { writeComposition } = await import('../lib/composition.mjs'); return writeComposition(jobDir, params); } });
+    try {
+        const res = await post({ port: ctx.port, spec: validSpec({ logoLayer: false, aiNotice: 'صورة 🤖' }) });
+        assert.equal(res.status, 200);
+        assert.equal(seen.job.aiNotice, 'AI-generated image');
+        assert.ok(ctx.logs.some((entry) => entry.event === 'ai_notice_fallback' && entry.reason === 'not_drawable'));
+        assert.ok(!JSON.stringify(ctx.logs).includes('صورة'), 'the text must not be logged');
+    } finally {
+        await ctx.stop();
+    }
+});
+
 test('service: a logo that is too large in pixels, not an image, or missing or unexpected is a 400 before any render', async () => {
     const ctx = await start({ buildCommand: () => { throw new Error('render must not start'); } });
     try {

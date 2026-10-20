@@ -687,10 +687,21 @@ eine Spec-Validierung.
   Zeichen der Fontdatei und dem `unicode-range` ihrer `@font-face`-Regel in `template/fonts.css` (`lib/fonts.mjs`), damit der Filter kein Zeichen
   durchlässt, das der Browser aus dem Systemfont zeichnen würde (U+0300, U+0303, U+0309, U+0323, U+FFFF). U+0301 bleibt, es liegt im
   Bereich der kyrillischen Teilmenge. (4) Unterer Schleier: `template/story.js` setzt ihn so, dass seine volle Stärke 0,80 40 px über dem
-  Abschlussblock beginnt und bis zum unteren Rand reicht (auf weißem Foto `#3B5564`, Goldzeile gemessen 4,6:1). (5) Kontaktsperre im Abschluss:
+  Abschlussblock beginnt und bis zum unteren Rand reicht (auf weißem Foto `#3B5564`, Goldzeile gegen den Schleier allein 4,3:1, mit Textschatten rund 4,6:1). (5) Kontaktsperre im Abschluss:
   ein Ziffernlauf aus lauter Jahresgruppen (vier Ziffern, 1900 bis 2099, wie "Seit 1998 2026") gilt nicht als Telefonnummer. (6) Standardtext des
   KI-Hinweises ist der Platzhalter der Form in der Sprache des Nutzers (`StoryMotionSettings::defaultAiNotice()`); Sprachen, deren Text keine der
   fünf Schriften zeichnen kann (Arabisch, Japanisch, Koreanisch, Chinesisch), fallen auf den englischen Text zurück.
+- **Fix-Runde 2 (Review R2-Delta, 20.10.2026)**: (1) KI-Hinweis als Pflichtlabel: `ai_notice.text` muss in Laravel lateinische,
+  griechische oder kyrillische Schrift sein und mindestens einen Buchstaben enthalten (`StoryMotionSettings::isDrawableNotice()`, geprüft in
+  `StoryMotionSettingsRules::rules()` und `assertComplete()`, Meldung `settings.story_video.errors.notice_text_unsupported`). Der Dienst setzt
+  zusätzlich `AI-generated image` ein, wenn der gesendete Hinweis nach dem Glyphenfilter keinen Buchstaben mehr hat, und loggt nur
+  `{"event":"ai_notice_fallback","reason":"not_drawable"}` (`lib/spec.mjs`, `lib/app.mjs`). (2) Logo: vor dem Decodieren prüft `HasMedia` bei
+  Collections mit Grenzen die Pixelzahl (`StoryMotionLogo::MAX_DECODE_PIXELS`, 40 Megapixel) und wirft `ImageTooLargeException`. Der Upload
+  antwortet darauf mit 422 (`settings.story_video.errors.logo_too_many_pixels`), der Website-Autofill überspringt das Logo. Ein Bild, dessen Maße
+  nicht lesbar sind, wird in solchen Collections nicht decodiert. `addMedia` und `addMediaFromPath` löschen bei `single`-Collections das alte
+  Medium erst nach dem Speichern des neuen; `uploadLogo` und `LogoAttacher` rufen `clearMediaCollection` nicht mehr selbst. (3) Kontaktsperre:
+  Trenner sind zusätzlich Komma, Unterstrich, Mittelpunkt, Halbgeviert- und Geviertstrich, ein Doppelpunkt nur zwischen Gruppen ab drei Ziffern.
+  (4) `logo_unusable` nennt JPEG oder PNG als Format für den neuen Upload.
 - **Schrift-Quellen** (`npm pack @fontsource/<name>@5.3.0`, nur die benötigten woff2-Dateien liegen im Repo):
   - `@fontsource/inter@5.3.0`, Gewicht 800, Tarball SHA256 `02034af8d41dcc67ac8eab88f642e129bb8a2e8922abf30229c32725f54d8fd6`
     - `inter-cyrillic-800-normal.woff2` `e84cb164b47aaad63db12da876c341c59f78b6b25f9069dcdea3c1f8ca8b8f9b`

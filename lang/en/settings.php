@@ -359,7 +359,7 @@ return [
         'logo_layer' => 'Show my logo',
         'logo_layer_description' => 'The workspace logo sits at the top of the video.',
         'logo_missing' => 'There is no usable logo yet. First upload a JPEG or PNG logo (up to 2000 x 2000 px and 2 MB) in the workspace settings.',
-        'logo_unusable' => 'The logo stored for this workspace does not fit the Story video (JPEG or PNG, up to 2000 x 2000 px and 2 MB), so Story videos run without it. Upload the logo again in the workspace settings: it is scaled down automatically.',
+        'logo_unusable' => 'The logo stored for this workspace does not fit the Story video (JPEG or PNG, up to 2000 x 2000 px and 2 MB), so Story videos run without it. Upload the logo again as a JPEG or PNG in the workspace settings: it is scaled down automatically.',
         'ai_notice' => 'Show an AI notice',
         'ai_notice_description' => 'A small note along the left edge, for example that the image was AI-generated.',
         'ai_notice_text' => 'Notice text',
@@ -374,6 +374,8 @@ return [
         'errors' => [
             'no_contact_details' => 'Please do not enter an address or phone number here.',
             'notice_text_required' => 'Enter the notice text or turn the notice off.',
+            'notice_text_unsupported' => 'Use Latin, Greek or Cyrillic letters: the video cannot show other characters.',
+            'logo_too_many_pixels' => 'This logo has too many pixels. Upload a smaller image (at most :megapixels megapixels, for example 8000 x 5000 px).',
             'ending_text_required' => 'Enter a name or a line, or turn the ending off.',
         ],
     ],

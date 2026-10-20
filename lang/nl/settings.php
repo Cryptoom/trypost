@@ -359,7 +359,7 @@ return [
         'logo_layer' => 'Mijn logo tonen',
         'logo_layer_description' => 'Het logo van de werkruimte staat bovenaan de video.',
         'logo_missing' => 'Er is nog geen bruikbaar logo. Upload eerst een JPEG- of PNG-logo (maximaal 2000 x 2000 px en 2 MB) in de instellingen van de werkruimte.',
-        'logo_unusable' => 'Het voor deze werkruimte opgeslagen logo past niet bij de Story-video (JPEG of PNG, tot 2000 x 2000 px en 2 MB), dus Story-video\'s worden zonder gemaakt. Upload het logo opnieuw in de werkruimte-instellingen: het wordt automatisch verkleind.',
+        'logo_unusable' => 'Het voor deze werkruimte opgeslagen logo past niet bij de Story-video (JPEG of PNG, tot 2000 x 2000 px en 2 MB), dus Story-video\'s worden zonder gemaakt. Upload het logo opnieuw als JPEG of PNG in de werkruimte-instellingen: het wordt automatisch verkleind.',
         'ai_notice' => 'AI-melding tonen',
         'ai_notice_description' => 'Een kleine notitie langs de linkerrand, bijvoorbeeld dat de afbeelding met AI is gemaakt.',
         'ai_notice_text' => 'Tekst van de melding',
@@ -374,6 +374,8 @@ return [
         'errors' => [
             'no_contact_details' => 'Vul hier geen adres of telefoonnummer in.',
             'notice_text_required' => 'Vul de tekst van de melding in of zet de melding uit.',
+            'notice_text_unsupported' => 'Gebruik Latijnse, Griekse of Cyrillische letters: de video kan andere tekens niet tonen.',
+            'logo_too_many_pixels' => 'Dit logo heeft te veel pixels. Upload een kleinere afbeelding (maximaal :megapixels megapixel, bijvoorbeeld 8000 x 5000 px).',
             'ending_text_required' => 'Vul een naam of een regel in, of zet de afsluiting uit.',
         ],
     ],

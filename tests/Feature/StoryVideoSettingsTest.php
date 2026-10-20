@@ -104,6 +104,43 @@ test('story video settings: invalid input is rejected at the right field and not
     'ending switched on without name and line' => [['ending' => ['enabled' => true, 'name' => '', 'line' => '']], 'ending.name'],
 ]);
 
+test('story video settings: a notice text the video cannot draw is rejected at the notice field', function (string $text, bool $rejected) {
+    $response = ($this->save)(['ai_notice' => ['enabled' => true, 'text' => $text]]);
+
+    if ($rejected) {
+        $response->assertSessionHasErrors(['ai_notice.text' => __('settings.story_video.errors.notice_text_unsupported')]);
+        expect($this->workspace->fresh()->story_motion_settings)->toBeNull();
+    } else {
+        $response->assertSessionHasNoErrors();
+        expect($this->workspace->fresh()->story_motion_settings['ai_notice']['text'])->toBe($text);
+    }
+})->with([
+    'Arabic' => ["\u{635}\u{648}\u{631}\u{629} \u{623}\u{64F}\u{646}\u{634}\u{626}\u{62A}", true],
+    'only emoji' => ["\u{1F916}\u{2728}", true],
+    'only a combining accent' => ["\u{0301}", true],
+    'Chinese with a Latin rest' => ["AI\u{751F}\u{6210}\u{753B}\u{50CF}", true],
+    'only signs' => ['!!! 123', true],
+    'German' => ['KI-generiertes Bild', false],
+    'Greek' => ["\u{0395}\u{03B9}\u{03BA}\u{03CC}\u{03BD}\u{03B1} AI", false],
+    'Russian' => ["\u{0418}\u{0418}-\u{0438}\u{0437}\u{043E}\u{0431}\u{0440}\u{0430}\u{0436}\u{0435}\u{043D}\u{0438}\u{0435}", false],
+]);
+
+test('story video settings: a notice text the video cannot draw is rejected even while the notice is off', function () {
+    ($this->save)(['ai_notice' => ['enabled' => false, 'text' => "\u{1F916}\u{2728}"]])
+        ->assertSessionHasErrors(['ai_notice.text' => __('settings.story_video.errors.notice_text_unsupported')]);
+
+    expect($this->workspace->fresh()->story_motion_settings)->toBeNull();
+});
+
+test('story video settings: switching on a stored notice text the video cannot draw is rejected', function () {
+    $this->workspace->update(['story_motion_settings' => ['ai_notice' => ['enabled' => false, 'text' => "\u{1F916}\u{2728}"]]]);
+
+    ($this->save)(['ai_notice' => ['enabled' => true]])
+        ->assertSessionHasErrors(['ai_notice.text' => __('settings.story_video.errors.notice_text_unsupported')]);
+
+    expect($this->workspace->fresh()->story_motion_settings['ai_notice']['enabled'])->toBeFalse();
+});
+
 test('story video settings: a notice switched on with an empty text gets the default text', function () {
     ($this->save)(['ai_notice' => ['enabled' => true, 'text' => '']])->assertSessionHasNoErrors();
 

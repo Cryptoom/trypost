@@ -10,6 +10,9 @@ const REQUIRED = Object.freeze(['duration', 'effect', 'font', 'accent', 'logoLay
 const ENDING_KEYS = Object.freeze(['name', 'line']);
 
 /** Maximum lengths in characters. Accent marks (`*`) do not count in the two headlines. */
+/** Shown when the requested AI notice has nothing the font can draw (Laravel sends this text by default). */
+export const AI_NOTICE_FALLBACK = 'AI-generated image';
+
 export const TEXT_LIMITS = Object.freeze({ headline: 80, subline: 60, badge: 12, headlineAlt: 80, sublineAlt: 60, aiNotice: 40, 'ending.name': 40, 'ending.line': 60 });
 
 const isPlainObject = (value) => value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -146,7 +149,11 @@ export const buildJob = (spec, { logoInfo, coverages }) => {
         throw bad('logo_unexpected');
     }
 
-    const aiNotice = spec.aiNotice === null ? null : sanitizeText(spec.aiNotice, isCovered) || null;
+    // The AI notice is a mandatory label: when the requested text has no letter the font can draw, the
+    // English notice stands in for it instead of the notice silently disappearing from the video.
+    const drawnNotice = spec.aiNotice === null ? null : sanitizeText(spec.aiNotice, isCovered);
+    const aiNoticeFallback = drawnNotice !== null && !/\p{L}/u.test(drawnNotice);
+    const aiNotice = aiNoticeFallback ? AI_NOTICE_FALLBACK : drawnNotice;
     const strong = spec.logoLayer && aiNotice !== null;
 
     const blocks = [block(spec.headline, spec.subline, isCovered)];
@@ -176,6 +183,7 @@ export const buildJob = (spec, { logoInfo, coverages }) => {
         accentText: textOn(spec.accent),
         logo: spec.logoLayer ? { ext: logoInfo.ext, ...logoSize(logoInfo) } : null,
         aiNotice,
+        aiNoticeFallback,
         strong,
         motion: buildMotion(spec.effect, strong, spec.duration),
         blocks: shown,

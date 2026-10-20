@@ -359,7 +359,7 @@ return [
         'logo_layer' => '显示我的标志',
         'logo_layer_description' => '工作区标志显示在视频顶部。',
         'logo_missing' => '目前没有可用的标志。请先在工作区设置中上传 JPEG 或 PNG 标志(最大 2000 x 2000 像素,2 MB)。',
-        'logo_unusable' => '为此工作区保存的标志不适用于 Story 视频（JPEG 或 PNG，最大 2000 x 2000 像素和 2 MB），因此 Story 视频将不带标志。请在工作区设置中重新上传标志，系统会自动缩小。',
+        'logo_unusable' => '为此工作区保存的标志不适用于 Story 视频（JPEG 或 PNG，最大 2000 x 2000 像素和 2 MB），因此 Story 视频将不带标志。请在工作区设置中以 JPEG 或 PNG 格式重新上传标志，系统会自动缩小。',
         'ai_notice' => '显示 AI 提示',
         'ai_notice_description' => '在左侧边缘显示一条小提示,例如说明图片由 AI 生成。',
         'ai_notice_text' => '提示文字',
@@ -374,6 +374,8 @@ return [
         'errors' => [
             'no_contact_details' => '请不要在这里填写地址或电话号码。',
             'notice_text_required' => '请输入提示文字,或关闭提示。',
+            'notice_text_unsupported' => '请使用拉丁、希腊或西里尔字母：视频无法显示其他字符。',
+            'logo_too_many_pixels' => '此标志的像素过多。请上传较小的图片（最多 :megapixels 百万像素，例如 8000 x 5000 像素）。',
             'ending_text_required' => '请输入名称或一行文字,或关闭结尾。',
         ],
     ],

@@ -71,11 +71,22 @@ final class StoryMotionSettings
     {
         $text = __('settings.story_video.ai_notice_placeholder');
 
-        if (is_string($text) && trim($text) !== '' && mb_strlen($text) <= self::AI_NOTICE_MAX && preg_match('/\A[\p{Latin}\p{Greek}\p{Cyrillic}\p{Common}\p{Inherited}]+\z/u', $text) === 1) {
+        if (is_string($text) && mb_strlen($text) <= self::AI_NOTICE_MAX && self::isDrawableNotice($text)) {
             return trim($text);
         }
 
         return self::DEFAULT_AI_NOTICE;
+    }
+
+    /**
+     * Whether the render service can draw a notice text: only Latin, Greek and Cyrillic script (plus common
+     * signs and combining marks), and at least one letter, so the notice can neither vanish nor turn into an
+     * invisible mark in the video.
+     */
+    public static function isDrawableNotice(string $text): bool
+    {
+        return preg_match('/\A[\p{Latin}\p{Greek}\p{Cyrillic}\p{Common}\p{Inherited}]+\z/u', $text) === 1
+            && preg_match('/\p{L}/u', $text) === 1;
     }
 
     public static function forWorkspace(Workspace $workspace): self

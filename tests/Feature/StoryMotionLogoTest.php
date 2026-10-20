@@ -8,8 +8,10 @@ use App\Models\User;
 use App\Models\Workspace;
 use App\Services\Brand\LogoAttacher;
 use App\Support\StoryMotionLogo;
+use Illuminate\Http\Response;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
 // PATCH:story-motion-settings: a logo is scaled to fit the Story video layer when it is saved (Olli, 19.10.2026,
@@ -47,6 +49,23 @@ function sm02NoisyJpegFile(int $width, int $height): string
     imagejpeg($image, $path, 100);
 
     return $path;
+}
+
+/**
+ * A one-colour progressive JPEG of 9000 x 9000 px (81 megapixels): under 1 MB on disk, but about 324 MB once
+ * GD decodes it.
+ */
+function sm02HugeJpeg(): string
+{
+    $image = imagecreatetruecolor(9000, 9000);
+    imagefill($image, 0, 0, imagecolorallocate($image, 128, 128, 128));
+    imageinterlace($image, true);
+    ob_start();
+    imagejpeg($image, null, 75);
+    $bytes = (string) ob_get_clean();
+    imagedestroy($image);
+
+    return $bytes;
 }
 
 beforeEach(function () {
@@ -164,7 +183,7 @@ test('logo from the website autofill is scaled the same way', function () {
         ->and(StoryMotionLogo::usable($logo->size, $logo->meta['width'], $logo->meta['height'], $logo->mime_type))->toBeTrue();
 });
 
-test('logo upload: other media collections and other workspaces are not scaled', function () {
+test('logo upload: other media collections are not scaled', function () {
     $this->workspace->addMediaFromPath(tap(tempnam(sys_get_temp_dir(), 'sm02_a_').'.png', fn ($p) => file_put_contents($p, sm02LogoPng(3000, 1000))), 'asset.png', 'assets');
 
     expect($this->workspace->fresh()->getFirstMedia('assets')->meta)->toMatchArray(['width' => 3000, 'height' => 1000]);
@@ -215,4 +234,94 @@ test('brand page: logoUsable is judged from stored values, without reading the f
     $this->workspace->addMediaFromStoredPath('medias/does-not-exist.jpg', 'logo.jpg', 'image/jpeg', 1000, 'logo', ['width' => 800, 'height' => 300]);
 
     $this->actingAs($this->user)->get(route('app.workspace.brand'))->assertInertia(fn ($page) => $page->where('storyMotion.logoUsable', true));
+});
+
+test('logo upload: a JPEG of more than 40 megapixels is refused with 422 before it is decoded, and the old logo stays', function () {
+    ($this->upload)('old.png', sm02LogoPng(400, 200));
+    $old = ($this->storedLogo)();
+    $huge = sm02HugeJpeg();
+
+    expect(strlen($huge))->toBeLessThan(1024 * 1024);
+
+    $this->actingAs($this->user)->postJson(route('app.workspace.upload-logo'), [
+        'photo' => UploadedFile::fake()->createWithContent('huge.jpg', $huge),
+    ])->assertStatus(Response::HTTP_UNPROCESSABLE_ENTITY)
+        ->assertJsonValidationErrors(['photo' => '40']);
+
+    expect($this->workspace->fresh()->getMedia('logo')->pluck('id')->all())->toBe([$old->id])
+        ->and(Storage::exists($old->path))->toBeTrue();
+});
+
+test('logo upload: the refusal names the limit in the language of the user', function () {
+    $this->user->update(['locale' => 'de']);
+
+    $this->actingAs($this->user)->postJson(route('app.workspace.upload-logo'), [
+        'photo' => UploadedFile::fake()->createWithContent('huge.jpg', sm02HugeJpeg()),
+    ])->assertStatus(Response::HTTP_UNPROCESSABLE_ENTITY)
+        ->assertJsonValidationErrors(['photo' => 'höchstens 40 Megapixel']);
+});
+
+test('logo from the website autofill: a JPEG of more than 40 megapixels is skipped and the old logo stays', function () {
+    ($this->upload)('old.png', sm02LogoPng(400, 200));
+    $old = ($this->storedLogo)();
+    $huge = sm02HugeJpeg();
+    Http::fake(['*' => Http::response($huge, 200, ['Content-Type' => 'image/jpeg', 'Content-Length' => (string) strlen($huge)])]);
+
+    expect(app(LogoAttacher::class)->attach($this->workspace, 'https://93.184.216.34/logo.jpg'))->toBeFalse()
+        ->and($this->workspace->fresh()->getMedia('logo')->pluck('id')->all())->toBe([$old->id])
+        ->and(Storage::exists($old->path))->toBeTrue();
+});
+
+test('logo upload: when storing the new logo fails, the old logo stays in the database and in storage', function () {
+    ($this->upload)('old.png', sm02LogoPng(400, 200));
+    $old = ($this->storedLogo)();
+    Media::creating(fn () => throw new RuntimeException('media store down'));
+
+    $this->withoutExceptionHandling();
+
+    expect(fn () => $this->actingAs($this->user)->post(route('app.workspace.upload-logo'), [
+        'photo' => UploadedFile::fake()->createWithContent('new.png', sm02LogoPng(500, 200)),
+    ]))->toThrow(RuntimeException::class, 'media store down');
+
+    expect($this->workspace->fresh()->getMedia('logo')->pluck('id')->all())->toBe([$old->id])
+        ->and(Storage::exists($old->path))->toBeTrue();
+});
+
+test('logo from the website autofill: when storing the new logo fails, the old logo stays', function () {
+    ($this->upload)('old.png', sm02LogoPng(400, 200));
+    $old = ($this->storedLogo)();
+    $png = sm02LogoPng(500, 200);
+    Http::fake(['*' => Http::response($png, 200, ['Content-Type' => 'image/png', 'Content-Length' => (string) strlen($png)])]);
+    Media::creating(fn () => throw new RuntimeException('media store down'));
+
+    expect(app(LogoAttacher::class)->attach($this->workspace, 'https://93.184.216.34/logo.png'))->toBeFalse()
+        ->and($this->workspace->fresh()->getMedia('logo')->pluck('id')->all())->toBe([$old->id])
+        ->and(Storage::exists($old->path))->toBeTrue();
+});
+
+test('logo upload: a successful upload replaces the old logo, in the database and in storage', function () {
+    ($this->upload)('old.png', sm02LogoPng(400, 200));
+    $old = ($this->storedLogo)();
+
+    ($this->upload)('new.png', sm02LogoPng(500, 200));
+    $new = ($this->storedLogo)();
+
+    expect($this->workspace->fresh()->getMedia('logo')->pluck('id')->all())->toBe([$new->id])
+        ->and($new->id)->not->toBe($old->id)
+        ->and(Storage::exists($old->path))->toBeFalse()
+        ->and(Storage::exists($new->path))->toBeTrue();
+});
+
+test('logo upload: an image whose dimensions cannot be read is stored as it is and never handed to the decoder', function () {
+    $path = tempnam(sys_get_temp_dir(), 'sm02_bad_').'.png';
+    file_put_contents($path, str_repeat('not an image ', 50));
+    Log::spy();
+
+    $this->workspace->addMediaFromPath($path, 'logo.png', 'logo', [], null, 'image/png');
+    $logo = ($this->storedLogo)();
+
+    expect(Storage::get($logo->path))->toBe(file_get_contents($path))
+        ->and($logo->mime_type)->toBe('image/png');
+    Log::shouldNotHaveReceived('warning');
+    @unlink($path);
 });

@@ -17,6 +17,12 @@ final class StoryMotionLogo
     /** Largest file in bytes the render service takes. */
     public const MAX_BYTES = 2 * 1024 * 1024;
 
+    /**
+     * Most pixels a logo may have to be decoded and scaled down on upload. GD holds about four bytes per
+     * pixel, so 40 megapixels (160 MB) plus the scaled copy stay within the 256 MB memory limit of the production image.
+     */
+    public const MAX_DECODE_PIXELS = 40_000_000;
+
     /** The render service reads JPEG and PNG by their magic bytes, nothing else. */
     public const MIME_TYPES = ['image/jpeg', 'image/png'];
 

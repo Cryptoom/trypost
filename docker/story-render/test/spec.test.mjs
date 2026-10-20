@@ -8,7 +8,7 @@ import { serializeData, storyData, writeComposition } from '../lib/composition.m
 import { loadFontCoverages } from '../lib/fonts.mjs';
 import { amplitude } from '../lib/motion.mjs';
 import { sanitizeText } from '../lib/text.mjs';
-import { buildJob, logoSize, parseSpec, TEXT_LIMITS } from '../lib/spec.mjs';
+import { AI_NOTICE_FALLBACK, buildJob, logoSize, parseSpec, TEXT_LIMITS } from '../lib/spec.mjs';
 import { LIMITS, ValidationError } from '../lib/validate.mjs';
 import { BAIT_INJECTIONS, BAIT_SCRIPTS, fakeJpeg, tmpDir, validSpec } from '../testkit/helpers.mjs';
 
@@ -156,6 +156,31 @@ test('spec: the logo is 48 px high and at most 480 px wide, so the card is at mo
     }
 });
 
+test('spec: an AI notice without a letter the font can draw falls back to the English notice instead of vanishing', () => {
+    const cases = [
+        ['صورة أُنشئت بالذكاء الاصطناعي', AI_NOTICE_FALLBACK, true],
+        ['🤖✨', AI_NOTICE_FALLBACK, true],
+        ['\u0301', AI_NOTICE_FALLBACK, true],
+        ['\u0301\u0300', AI_NOTICE_FALLBACK, true],
+        ['日本語', AI_NOTICE_FALLBACK, true],
+        ['', AI_NOTICE_FALLBACK, true],
+        ['AI生成画像', 'AI', false],
+        ['KI-generiertes Bild', 'KI-generiertes Bild', false],
+        ['Εικόνα AI', 'Εικόνα AI', false],
+    ];
+    for (const [text, shown, fallback] of cases) {
+        const job = build(validSpec({ logoLayer: true, aiNotice: text }), LOGO);
+        assert.equal(job.aiNotice, shown, JSON.stringify(text));
+        assert.equal(job.aiNoticeFallback, fallback, JSON.stringify(text));
+        assert.equal(job.strong, true, `the notice is shown, so motion is strong: ${JSON.stringify(text)}`);
+    }
+
+    const off = build(validSpec({ logoLayer: true, aiNotice: null }), LOGO);
+    assert.equal(off.aiNotice, null, 'a notice that was not requested stays off');
+    assert.equal(off.aiNoticeFallback, false);
+    assert.ok(/\p{L}/u.test(AI_NOTICE_FALLBACK) && sanitizeText(AI_NOTICE_FALLBACK, coverages.inter) === AI_NOTICE_FALLBACK, 'the fallback itself is drawable');
+});
+
 test('spec: strong motion needs the logo layer AND the AI notice, otherwise every effect stays calm', () => {
     for (const effect of ['drift', 'focus', 'snap', 'sparkle']) {
         const strong = build(validSpec({ effect, logoLayer: true, aiNotice: 'AI-generated image' }), LOGO);
@@ -164,9 +189,8 @@ test('spec: strong motion needs the logo layer AND the AI notice, otherwise ever
 
         const calmCases = [
             validSpec({ effect, logoLayer: true, aiNotice: null }),
-            validSpec({ effect, logoLayer: true, aiNotice: '' }),
-            validSpec({ effect, logoLayer: true, aiNotice: '日本語' }),
             validSpec({ effect, logoLayer: false, aiNotice: 'AI-generated image' }),
+            validSpec({ effect, logoLayer: false, aiNotice: '日本語' }),
             validSpec({ effect, logoLayer: false, aiNotice: null }),
         ];
         for (const spec of calmCases) {
@@ -243,7 +267,9 @@ for (const [field, makeSpec] of Object.entries(FIELD_SPECS)) {
             assert.doesNotMatch(source, /[<>&\u{2028}\u{2029}]/u, `literal breaker in data file for ${JSON.stringify(text)}`);
             const data = readData(source);
             // only the two headlines know accent marks; everywhere else a star is an ordinary character
-            const expected = sanitizeText(field.startsWith('headline') ? text.replaceAll('*', '') : text, coverages.inter);
+            const sanitized = sanitizeText(field.startsWith('headline') ? text.replaceAll('*', '') : text, coverages.inter);
+            // the AI notice never vanishes: without a drawable letter the English notice stands in
+            const expected = field === 'aiNotice' && !/\p{L}/u.test(sanitized) ? AI_NOTICE_FALLBACK : sanitized;
             const shown = shownText(field, data);
             assert.equal(shown.replaceAll(' · ', ' '), expected.replaceAll(' · ', ' ').trim().replace(/^·|·$/g, '').trim(), `text of ${field} changed on the way for ${JSON.stringify(text)}`);
 

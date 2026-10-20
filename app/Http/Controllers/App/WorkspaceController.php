@@ -14,6 +14,7 @@ use App\Enums\Workspace\ImageStyle;
 use App\Enums\Workspace\StoryMotionEffect;
 use App\Enums\Workspace\StoryMotionFont;
 use App\Enums\Workspace\StoryMotionMode;
+use App\Exceptions\Media\ImageTooLargeException;
 use App\Http\Requests\App\Workspace\AutofillBrandRequest;
 use App\Http\Requests\App\Workspace\StoreWorkspaceRequest;
 use App\Http\Requests\App\Workspace\UpdateStoryVideoSettingsRequest;
@@ -31,6 +32,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 use RuntimeException;
@@ -255,8 +257,15 @@ class WorkspaceController extends Controller
             'photo' => ['required', 'image', 'max:2048'],
         ]);
 
-        $workspace->clearMediaCollection('logo');
-        $workspace->addMedia($request->file('photo'), 'logo');
+        // addMedia replaces the old logo only once the new one is stored.
+        try {
+            $workspace->addMedia($request->file('photo'), 'logo');
+        } catch (ImageTooLargeException $e) {
+            throw ValidationException::withMessages([
+                'photo' => __('settings.story_video.errors.logo_too_many_pixels', ['megapixels' => intdiv($e->maxPixels, 1_000_000)]),
+            ]);
+        }
+
         $workspace->unsetRelation('media');
 
         return back()->with('flash.success', __('settings.flash.logo_updated'));

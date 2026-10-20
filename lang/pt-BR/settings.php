@@ -359,7 +359,7 @@ return [
         'logo_layer' => 'Mostrar meu logotipo',
         'logo_layer_description' => 'O logotipo do espaço de trabalho fica no topo do vídeo.',
         'logo_missing' => 'Ainda não há um logotipo utilizável. Primeiro envie um logotipo JPEG ou PNG (até 2000 x 2000 px e 2 MB) nas configurações do espaço de trabalho.',
-        'logo_unusable' => 'O logotipo salvo para este espaço de trabalho não serve para o vídeo de Story (JPEG ou PNG, até 2000 x 2000 px e 2 MB), por isso os vídeos de Story são feitos sem ele. Envie o logotipo de novo nas configurações do espaço de trabalho: ele é reduzido automaticamente.',
+        'logo_unusable' => 'O logotipo salvo para este espaço de trabalho não serve para o vídeo de Story (JPEG ou PNG, até 2000 x 2000 px e 2 MB), por isso os vídeos de Story são feitos sem ele. Envie o logotipo de novo em JPEG ou PNG nas configurações do espaço de trabalho: ele é reduzido automaticamente.',
         'ai_notice' => 'Mostrar um aviso de IA',
         'ai_notice_description' => 'Uma pequena nota na borda esquerda, por exemplo que a imagem foi gerada por IA.',
         'ai_notice_text' => 'Texto do aviso',
@@ -374,6 +374,8 @@ return [
         'errors' => [
             'no_contact_details' => 'Não digite aqui um endereço nem um número de telefone.',
             'notice_text_required' => 'Digite o texto do aviso ou desative o aviso.',
+            'notice_text_unsupported' => 'Use letras latinas, gregas ou cirílicas: o vídeo não consegue mostrar outros caracteres.',
+            'logo_too_many_pixels' => 'Este logotipo tem pixels demais. Envie uma imagem menor (no máximo :megapixels megapixels, por exemplo 8000 x 5000 px).',
             'ending_text_required' => 'Digite um nome ou uma linha, ou desative o encerramento.',
         ],
     ],

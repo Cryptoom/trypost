@@ -361,7 +361,7 @@ return [
         'logo_layer' => 'Mein Logo zeigen',
         'logo_layer_description' => 'Das Workspace-Logo steht oben im Video.',
         'logo_missing' => 'Es gibt noch kein nutzbares Logo. Lade zuerst in den Workspace-Einstellungen ein JPEG- oder PNG-Logo hoch (bis 2000 x 2000 px und 2 MB).',
-        'logo_unusable' => 'Das für diesen Workspace gespeicherte Logo passt nicht zum Story-Video (JPEG oder PNG, bis 2000 x 2000 px und 2 MB), deshalb laufen die Story-Videos ohne Logo. Lade das Logo in den Workspace-Einstellungen neu hoch: Es wird automatisch verkleinert.',
+        'logo_unusable' => 'Das für diesen Workspace gespeicherte Logo passt nicht zum Story-Video (JPEG oder PNG, bis 2000 x 2000 px und 2 MB), deshalb laufen die Story-Videos ohne Logo. Lade das Logo in den Workspace-Einstellungen als JPEG oder PNG neu hoch: Es wird automatisch verkleinert.',
         'ai_notice' => 'KI-Hinweis zeigen',
         'ai_notice_description' => 'Ein kleiner Hinweis am linken Rand, zum Beispiel dass das Bild KI-generiert ist.',
         'ai_notice_text' => 'Hinweistext',
@@ -376,6 +376,8 @@ return [
         'errors' => [
             'no_contact_details' => 'Bitte hier keine Adresse und keine Telefonnummer eintragen.',
             'notice_text_required' => 'Gib den Hinweistext ein oder schalte den Hinweis aus.',
+            'notice_text_unsupported' => 'Nutze lateinische, griechische oder kyrillische Buchstaben: Andere Zeichen kann das Video nicht zeigen.',
+            'logo_too_many_pixels' => 'Dieses Logo hat zu viele Pixel. Lade ein kleineres Bild hoch (höchstens :megapixels Megapixel, zum Beispiel 8000 x 5000 px).',
             'ending_text_required' => 'Gib einen Namen oder eine Zeile ein oder schalte den Abschluss aus.',
         ],
     ],

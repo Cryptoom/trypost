@@ -190,6 +190,9 @@ export const createApp = ({
                 }
             }
             const built = buildJob(parsedSpec, { logoInfo, coverages });
+            if (built.aiNoticeFallback) {
+                log({ event: 'ai_notice_fallback', reason: 'not_drawable' });
+            }
             durationSeconds = built.duration;
             hasText = built.hasText;
 
