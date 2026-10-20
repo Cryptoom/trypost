@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync } from 'node:fs';
+import { mkdtempSync, rmSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -19,7 +19,21 @@ export const hasFfmpeg = (() => {
     }
 })();
 
-export const tmpDir = (prefix = 'story-test-') => mkdtempSync(path.join(os.tmpdir(), prefix));
+const createdDirs = new Set();
+
+// Every directory made here is removed when the test process ends (a killed run still leaves its directories behind).
+process.on('exit', () => {
+    for (const dir of createdDirs) {
+        rmSync(dir, { recursive: true, force: true });
+    }
+});
+
+export const tmpDir = (prefix = 'story-test-') => {
+    const dir = mkdtempSync(path.join(os.tmpdir(), prefix));
+    createdDirs.add(dir);
+
+    return dir;
+};
 
 /** Minimal JPEG header with a start-of-frame marker; enough for header inspection, not for decoding. */
 export const fakeJpeg = (width, height, extraBytes = 0) =>

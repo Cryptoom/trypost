@@ -375,7 +375,8 @@ test('service: a client that stops reading the finished video is cut off after t
     let res = null;
     try {
         ({ res } = await startStalledDownload(ctx.port));
-        assert.ok(Number(res.headers['content-length']) > 8 * 1024 * 1024, 'the video must be larger than the socket buffers');
+        // Larger than the socket buffers of any platform (Linux defaults: up to 6 MiB receive plus 4 MiB send).
+        assert.ok(Number(res.headers['content-length']) > 24 * 1024 * 1024, 'the video must be larger than the socket buffers');
         assert.ok(await waitFor(() => ctx.logs.some((entry) => entry.reason === 'client_closed_during_download'), 8000), 'stalled download was never cut off');
         assert.ok(await waitFor(() => jobDirs(ctx.workDir).length === 0), 'job dir left behind');
         assert.equal((await health(ctx.port)).busy, false);
@@ -401,9 +402,9 @@ test('service: the first job finishing its download never frees the slot of a re
 
         // A finishes its download: that must not free B's slot.
         await readAll(a.res);
-        // The client has the last byte; wait until the server side of A is completely done (its finally ran).
-        assert.ok(await waitFor(() => ctx.logs.some((entry) => entry.event === 'render_ok')), 'A did not complete');
-        await new Promise((resolve) => setTimeout(resolve, 100));
+        // The client has the last byte; wait until the server side of A is completely done: its job directory
+        // is gone (the finally with the second release runs right after), only B's directory is left.
+        assert.ok(await waitFor(() => jobDirs(ctx.workDir).length === 1), 'A did not clean up');
         assert.equal((await health(ctx.port)).busy, true, 'A freed the slot of B');
         const c = await post({ port: ctx.port });
         assert.equal(c.status, 503, 'a third job must be refused while B renders');
