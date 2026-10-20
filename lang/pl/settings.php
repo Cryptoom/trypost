@@ -359,6 +359,7 @@ return [
         'logo_layer' => 'Pokaż moje logo',
         'logo_layer_description' => 'Logo przestrzeni roboczej znajduje się u góry filmu.',
         'logo_missing' => 'Nie ma jeszcze użytecznego logo. Najpierw wgraj logo JPEG lub PNG (do 2000 x 2000 px i 2 MB) w ustawieniach przestrzeni roboczej.',
+        'logo_unusable' => 'Logo zapisane dla tego obszaru roboczego nie pasuje do wideo Story (JPEG lub PNG, do 2000 x 2000 px i 2 MB), więc wideo Story powstają bez niego. Wgraj logo ponownie w ustawieniach obszaru roboczego: zostanie automatycznie zmniejszone.',
         'ai_notice' => 'Pokaż oznaczenie AI',
         'ai_notice_description' => 'Mała notka wzdłuż lewej krawędzi, na przykład że obraz wygenerowała sztuczna inteligencja.',
         'ai_notice_text' => 'Tekst oznaczenia',

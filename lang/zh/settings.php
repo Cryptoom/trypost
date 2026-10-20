@@ -359,6 +359,7 @@ return [
         'logo_layer' => '显示我的标志',
         'logo_layer_description' => '工作区标志显示在视频顶部。',
         'logo_missing' => '目前没有可用的标志。请先在工作区设置中上传 JPEG 或 PNG 标志(最大 2000 x 2000 像素,2 MB)。',
+        'logo_unusable' => '为此工作区保存的标志不适用于 Story 视频（JPEG 或 PNG，最大 2000 x 2000 像素和 2 MB），因此 Story 视频将不带标志。请在工作区设置中重新上传标志，系统会自动缩小。',
         'ai_notice' => '显示 AI 提示',
         'ai_notice_description' => '在左侧边缘显示一条小提示,例如说明图片由 AI 生成。',
         'ai_notice_text' => '提示文字',

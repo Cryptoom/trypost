@@ -9,12 +9,15 @@ namespace App\Support;
  * workspace's brand colour.
  *
  * The accent colours one headline word, the dots of the subline, the badge and the
- * ending line over the dark text veil of the render service. The veil reaches at
- * most rgba(10,42,61,0.72); over a white photo that is #4F6673 (the lightest
- * background the text can sit on), and over a dark photo it is close to black. The
- * colour is therefore tested on both sides, WCAG contrast of at least 3:1 against
- * #4F6673 AND against black. A brand colour that fails falls back to gold, and gold
- * to white. The service itself only checks the shape of the value.
+ * ending line. The headline, subline and badge sit on the UPPER text veil of the render
+ * service, which reaches at most rgba(10,42,61,0.72); over a white photo that is
+ * #4F6673 (the lightest background those texts can have), over a dark photo it is close
+ * to black. The colour is therefore tested on both sides, WCAG contrast of at least 3:1
+ * against #4F6673 AND against black. The ending block (name, accent line) sits on the
+ * LOWER veil, which the render service places so that its full strength of 0.80 covers
+ * the whole block; over a white photo that is #3B5564, darker than the reference, so the
+ * same check holds for it with room to spare. A brand colour that fails falls back to
+ * gold, and gold to white. The service itself only checks the shape of the value.
  */
 final class StoryMotionAccent
 {

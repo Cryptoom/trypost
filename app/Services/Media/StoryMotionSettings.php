@@ -26,6 +26,7 @@ final class StoryMotionSettings
 
     public const ENDING_LINE_MAX = 60;
 
+    /** The notice when the translation of the placeholder cannot be drawn by the render service's fonts. */
     public const DEFAULT_AI_NOTICE = 'AI-generated image';
 
     /**
@@ -53,11 +54,28 @@ final class StoryMotionSettings
             mode: StoryMotionMode::DEFAULT,
             logoLayer: false,
             aiNoticeEnabled: false,
-            aiNoticeText: self::DEFAULT_AI_NOTICE,
+            aiNoticeText: self::defaultAiNotice(),
             endingEnabled: false,
             endingName: '',
             endingLine: '',
         );
+    }
+
+    /**
+     * The default notice text: the placeholder of the settings form in the current locale, so what the form
+     * suggests is what gets stored. The render service draws Latin, Greek and Cyrillic only, so a translation in
+     * another script (Arabic, Japanese, Korean, Chinese) or one that is too long falls back to the English text:
+     * a notice that the fonts cannot draw would silently be left out of the video.
+     */
+    public static function defaultAiNotice(): string
+    {
+        $text = __('settings.story_video.ai_notice_placeholder');
+
+        if (is_string($text) && trim($text) !== '' && mb_strlen($text) <= self::AI_NOTICE_MAX && preg_match('/\A[\p{Latin}\p{Greek}\p{Cyrillic}\p{Common}\p{Inherited}]+\z/u', $text) === 1) {
+            return trim($text);
+        }
+
+        return self::DEFAULT_AI_NOTICE;
     }
 
     public static function forWorkspace(Workspace $workspace): self

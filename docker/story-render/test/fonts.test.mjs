@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { FONT_KEYS, FONTS, fontFiles, loadFontCoverages, SUBSETS } from '../lib/fonts.mjs';
+import { FONT_KEYS, FONTS, fontFiles, loadFontCoverages, parseUnicodeRange, SUBSETS, unicodeRangesByFile } from '../lib/fonts.mjs';
 import { sanitizeText } from '../lib/text.mjs';
 
 const templateDir = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'template');
@@ -78,8 +78,46 @@ test('fonts: a directory that lacks one of the shipped files is named in the err
         for (const name of files.filter((entry) => entry !== dropped)) {
             copyFileSync(path.join(templateDir, 'fonts', name), path.join(dir, name));
         }
-        assert.throws(() => loadFontCoverages(dir), new RegExp(`font file missing: ${dropped}`));
+        assert.throws(() => loadFontCoverages(dir, path.join(templateDir, 'fonts.css')), new RegExp(`font file missing: ${dropped}`));
     } finally {
         rmSync(dir, { recursive: true, force: true });
+    }
+});
+
+test('fonts: the unicode-range reader handles single code points, ranges and wildcards', () => {
+    assert.deepEqual(parseUnicodeRange('U+0301,U+0400-045F, U+04??'), [[0x301, 0x301], [0x400, 0x45f], [0x400, 0x4ff]]);
+    assert.throws(() => parseUnicodeRange('U+ZZ'), /unreadable unicode-range token/);
+    const ranges = unicodeRangesByFile('@font-face { font-family: "A"; src: url("fonts/a-latin.woff2") format("woff2"); unicode-range: U+0000-00FF,U+0131; }\n.x { color: red; }');
+    assert.deepEqual([...ranges.keys()], ['a-latin.woff2']);
+    assert.deepEqual(ranges.get('a-latin.woff2'), [[0, 0xff], [0x131, 0x131]]);
+    assert.throws(() => unicodeRangesByFile('@font-face { src: url("fonts/a.woff2"); }'), /without a file or a unicode-range/);
+});
+
+// A character that a font file has a glyph for but that no unicode-range lets the browser take from that file is drawn by the
+// system fallback font. The filter must not let it through.
+for (const key of FONT_KEYS) {
+    test(`font coverage: ${key} follows the unicode-range of its faces, not only the glyphs in its files`, () => {
+        const covered = coverages[key];
+        assert.equal(covered(0x300), false, 'U+0300 is in a file but in no unicode-range');
+        assert.equal(covered(0x303), false, 'U+0303');
+        assert.equal(covered(0x309), false, 'U+0309');
+        assert.equal(covered(0x323), false, 'U+0323');
+        assert.equal(covered(0xffff), false, 'U+FFFF is a noncharacter');
+        assert.equal(covered(0x301), true, 'U+0301 is in the unicode-range of the cyrillic face');
+        assert.equal(covered(0xe9), true, 'a precomposed e acute stays');
+        assert.equal(sanitizeText('e\u0301 a\u0300 a\uFFFFb \u00e9', covered), 'e\u0301 a ab \u00e9');
+    });
+}
+
+test('fonts: every character the filter lets through lies inside the unicode-range of a face of its own family', () => {
+    const css = readFileSync(path.join(templateDir, 'fonts.css'), 'utf8');
+    const rangesByFile = unicodeRangesByFile(css);
+    for (const key of FONT_KEYS) {
+        const ranges = fontFiles(key).flatMap((file) => rangesByFile.get(file));
+        for (let codePoint = 0; codePoint < 0x3000; codePoint += 1) {
+            if (coverages[key](codePoint) && codePoint !== 0x20) {
+                assert.ok(ranges.some(([from, to]) => codePoint >= from && codePoint <= to), `${key} passes U+${codePoint.toString(16)} outside every range`);
+            }
+        }
     }
 });

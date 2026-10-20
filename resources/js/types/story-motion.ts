@@ -19,4 +19,5 @@ export interface StoryMotionProps {
     effects: string[];
     modes: StoryMotionMode[];
     hasLogo: boolean;
+    logoUsable: boolean;
 }

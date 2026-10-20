@@ -359,6 +359,7 @@ return [
         'logo_layer' => 'Mostrar meu logotipo',
         'logo_layer_description' => 'O logotipo do espaço de trabalho fica no topo do vídeo.',
         'logo_missing' => 'Ainda não há um logotipo utilizável. Primeiro envie um logotipo JPEG ou PNG (até 2000 x 2000 px e 2 MB) nas configurações do espaço de trabalho.',
+        'logo_unusable' => 'O logotipo salvo para este espaço de trabalho não serve para o vídeo de Story (JPEG ou PNG, até 2000 x 2000 px e 2 MB), por isso os vídeos de Story são feitos sem ele. Envie o logotipo de novo nas configurações do espaço de trabalho: ele é reduzido automaticamente.',
         'ai_notice' => 'Mostrar um aviso de IA',
         'ai_notice_description' => 'Uma pequena nota na borda esquerda, por exemplo que a imagem foi gerada por IA.',
         'ai_notice_text' => 'Texto do aviso',

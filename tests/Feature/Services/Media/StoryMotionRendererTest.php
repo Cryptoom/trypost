@@ -231,6 +231,18 @@ test('the workspace logo goes through the real upload path and reaches the servi
         ->and(array_keys($run['parts']))->toBe(['photo', 'logo', 'spec']);
 });
 
+test('a 4000 x 1528 logo is scaled on upload, so it is sent and the Story gets the logo layer and the strong motion', function () {
+    sm02EnableMotion($this->workspace, ['logo_layer' => true, 'ai_notice' => ['enabled' => true, 'text' => 'AI-generated image']]);
+    $media = $this->workspace->addMedia(UploadedFile::fake()->createWithContent('logo.png', sm02TransparentPng(4000, 1528)), 'logo');
+    $run = sm02RenderedSpec($this);
+
+    expect(data_get($media->meta, 'width'))->toBe(2000)
+        ->and(data_get($media->meta, 'height'))->toBe(764)
+        ->and($run['parts'])->toHaveKey('logo')
+        ->and($run['spec']['logoLayer'])->toBeTrue();
+    Log::shouldNotHaveReceived('info');
+});
+
 test('a PNG logo that bypassed the conversion is sent as it is', function () {
     sm02EnableMotion($this->workspace, ['logo_layer' => true]);
     $png = sm02TransparentPng();

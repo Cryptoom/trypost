@@ -21,6 +21,7 @@ const props = defineProps<{
     effects: string[];
     modes: StoryMotionMode[];
     hasLogo: boolean;
+    logoUsable: boolean;
 }>();
 
 // Display names of the fonts shipped in the render service; the names are brand names and stay untranslated.
@@ -222,6 +223,13 @@ const submit = () => {
                     data-testid="story-video-logo-missing"
                 >
                     {{ $t('settings.story_video.logo_missing') }}
+                </p>
+                <p
+                    v-if="hasLogo && !logoUsable"
+                    class="text-sm font-medium text-amber-700 dark:text-amber-500"
+                    data-testid="story-video-logo-unusable"
+                >
+                    {{ $t('settings.story_video.logo_unusable') }}
                 </p>
                 <InputError :message="form.errors.logo_layer" />
             </div>

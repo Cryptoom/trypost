@@ -22,6 +22,7 @@ html, body { margin: 0; background: #000; }
 
 /* Text: the top veil never gets darker than 0.72 (the accent colour is checked against that). */
 #scrimTop { position: absolute; left: 0; top: 0; width: 1080px; height: 1000px; opacity: 0; }
+/* The lower veil: story.js places it so that its full strength (0.80) covers the whole ending block; this is the fallback. */
 #scrimBottom { position: absolute; left: 0; bottom: 0; width: 1080px; height: 640px; opacity: 0; background: linear-gradient(to top, rgba(10,42,61,0.80) 0px, rgba(10,42,61,0.80) 300px, rgba(10,42,61,0) 640px); }
 .blk { position: absolute; left: 60px; top: 300px; width: 960px; display: flex; flex-direction: column; align-items: center; gap: 22px; text-align: center; color: #fff; text-shadow: 0 2px 22px rgba(6,28,42,0.55); }
 .hl { display: flex; flex-wrap: wrap; justify-content: center; column-gap: 0.28em; row-gap: 0.04em; max-width: 960px; font-size: 96px; line-height: 1.12; }

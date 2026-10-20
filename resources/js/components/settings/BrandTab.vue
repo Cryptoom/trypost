@@ -79,6 +79,7 @@ const submit = () => {
             :effects="storyMotion.effects"
             :modes="storyMotion.modes"
             :has-logo="storyMotion.hasLogo"
+            :logo-usable="storyMotion.logoUsable"
         />
     </div>
 </template>

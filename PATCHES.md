@@ -542,7 +542,7 @@ Fehler, jede Zeitüberschreitung und ein belegter Renderer führen zurück auf d
 - **Render-Dienst (neu, `docker/story-render/`)**: `server.mjs`, `lib/`, `template/` (Komposition,
   Noto Serif 700 als woff2 mit OFL-Text, lokal), `Dockerfile`, `package.json` plus Lockfile
   (`hyperframes` und `gsap` gepinnt, `npm ci` beim Build, nie zur Laufzeit geladen), Tests unter `test/`
-  (`cd docker/story-render && node --test`, 142 Tests mit Patch 11). `compose.prod.yaml` (Upstream-Selfhost) bleibt unberührt.
+  (`cd docker/story-render && node --test`, 151 Tests mit Patch 11). `compose.prod.yaml` (Upstream-Selfhost) bleibt unberührt.
 - **Laravel**: `app/Services/Media/StoryMotionRenderer.php` (Aktivierung, HTTP, Zeitbudget 300 s ab
   Publish-Start, ffprobe-Prüfung der Render-Ausgabe), `StoryVideoInspector.php` (ffprobe-Wächter für
   das Endvideo: ein h264/yuv420p-1080x1920-30-fps-Videostream, genau ein AAC-Stream, Dauer ±0,5 s,
@@ -632,8 +632,8 @@ eine Spec-Validierung.
 - **Marker**: `PATCH:story-motion-settings` (`grep -rn "PATCH:story-motion-settings" app config database lang resources routes`).
 - **Aktivierung**: Env-Hauptschalter `FACEBOOK_STORY_MOTION_ENABLED` UND URL UND Token UND `story_motion_settings.enabled`
   des Workspace. Skip-Gründe `disabled` und `workspace_off` werden nicht geloggt, `no_url` und `no_token` mit einer Info-Zeile.
-  Zwei Shared Props: `storyMotionAvailable` (Env, URL, Token, steuert den Abschnitt in den Brand-Einstellungen) und
-  `facebookStoryMotionEnabled` (zusätzlich Workspace an, steuert die Felder im Post-Editor).
+  Eine Shared Prop: `facebookStoryMotionEnabled` (zusätzlich Workspace an, steuert die Felder im Post-Editor). Den Abschnitt in den
+  Brand-Einstellungen steuert `storyMotion.available` aus `WorkspaceController::brandSettings` (Env, URL, Token), keine zweite Quelle.
 - **Migration**: genau eine, `2026_10_20_120000_add_story_motion_settings_to_workspaces_table.php`, eine nullable JSON-Spalte
   `story_motion_settings` auf `workspaces` (mit `down()`). NULL heißt Defaults, Default ist aus. Läuft beim Containerstart
   automatisch, darum vor dem Deploy ein `pg_dump` (siehe Plan, P7). Bei Rollback des Images bleibt die Spalte bestehen und ist
@@ -652,9 +652,14 @@ eine Spec-Validierung.
 - **Akzentfarbe** (`App\Support\StoryMotionAccent`): aus `brand_color` (`#RGB`, `#RRGGBB`, `#RRGGBBAA` werden zu `#RRGGBB`), nur wenn
   WCAG-Kontrast mindestens 3:1 gegen `#4F6673` (oberer Textschleier höchstens 0,72 auf weißem Foto) UND gegen Schwarz, sonst Gold
   `#FDB31B`, sonst Weiß. Der Dienst prüft nur die Form (`\A#[0-9A-F]{6}\z`).
-- **Logo**: nur JPEG und PNG (Magic Bytes), höchstens 2 MB und 2000 x 2000 px (aus `media.size` und `media.meta`), gelesen über
+- **Logo** (Regel an einer Stelle: `App\Support\StoryMotionLogo`): nur JPEG und PNG (Magic Bytes), höchstens 2 MB und 2000 x 2000 px (aus `media.size` und `media.meta`), gelesen über
   `Storage::get`, keine URL. Sonst Logo weglassen, `logoLayer=false`, Log `logo_unusable` mit Grund. Der Upload-Pfad
   (`HasMedia::addMedia`) wandelt PNG in JPEG um, ein transparentes PNG wird dabei flach auf Weiß gesetzt.
+  Seit Fix-Runde 1 (Olli-Entscheid 19.10.2026, "automatisch beim Hochladen verkleinern, gilt für alle Marken") verkleinert `HasMedia`
+  ein Logo in der Collection `logo` beim Speichern proportional auf höchstens 2000 px und senkt bei Bedarf die JPEG-Qualität, bis es unter
+  2 MB liegt (Upload im Controller, Website-Autofill über `LogoAttacher`, Direktweg `addMediaFromPath`). GIF wird nie verändert. Die
+  Transparenz geht wie bisher bei der JPEG-Umwandlung verloren (flach auf Weiß), das Verkleinern ändert daran nichts. Die Brand-Seite meldet
+  über `storyMotion.logoUsable` (aus den gespeicherten Werten, ohne Dateizugriff) ein früher gespeichertes Logo, das nicht passt.
 - **Bewegung**: kräftige Werte nur mit Logo-Ebene UND KI-Hinweis (Ollis Grundstil-Bündel), sonst ruhig (Skalierung höchstens 1,02
   über dem Endbild, keine Neigung, keine Drift, Endbild gleich Foto). Tabelle und Deckungsinvariante in
   `docker/story-render/lib/motion.mjs`, getestet in `test/motion.test.mjs`. Endwerte: `focus` startet bei 1,03 (statt 1,02,
@@ -676,6 +681,16 @@ eine Spec-Validierung.
   kann aus `/opt/trypost/compose.yml` entfernt werden (wird nicht mehr gelesen). Image `trypost-story-render` UND `trypost` neu bauen,
   beide gemeinsam starten. Die erwartete Migration ist genau die oben genannte. Nach dem Start:
   `SELECT count(*) FROM workspaces WHERE story_motion_settings->>'enabled' = 'true'` muss 0 sein.
+- **Fix-Runde 1 (Review R1, 20.10.2026)**: (1) Logo: Verkleinern beim Speichern (siehe Logo), Regel in `App\Support\StoryMotionLogo`, Feld
+  `storyMotion.logoUsable` und Hinweis `settings.story_video.logo_unusable` auf der Brand-Seite. (2) Die Shared Prop `storyMotionAvailable`
+  entfällt (die Brand-Seite nutzt `storyMotion.available`). (3) Glyphenfilter im Dienst: Abdeckung je Familie ist die Schnittmenge aus den
+  Zeichen der Fontdatei und dem `unicode-range` ihrer `@font-face`-Regel in `template/fonts.css` (`lib/fonts.mjs`), damit der Filter kein Zeichen
+  durchlässt, das der Browser aus dem Systemfont zeichnen würde (U+0300, U+0303, U+0309, U+0323, U+FFFF). U+0301 bleibt, es liegt im
+  Bereich der kyrillischen Teilmenge. (4) Unterer Schleier: `template/story.js` setzt ihn so, dass seine volle Stärke 0,80 40 px über dem
+  Abschlussblock beginnt und bis zum unteren Rand reicht (auf weißem Foto `#3B5564`, Goldzeile gemessen 4,6:1). (5) Kontaktsperre im Abschluss:
+  ein Ziffernlauf aus lauter Jahresgruppen (vier Ziffern, 1900 bis 2099, wie "Seit 1998 2026") gilt nicht als Telefonnummer. (6) Standardtext des
+  KI-Hinweises ist der Platzhalter der Form in der Sprache des Nutzers (`StoryMotionSettings::defaultAiNotice()`); Sprachen, deren Text keine der
+  fünf Schriften zeichnen kann (Arabisch, Japanisch, Koreanisch, Chinesisch), fallen auf den englischen Text zurück.
 - **Schrift-Quellen** (`npm pack @fontsource/<name>@5.3.0`, nur die benötigten woff2-Dateien liegen im Repo):
   - `@fontsource/inter@5.3.0`, Gewicht 800, Tarball SHA256 `02034af8d41dcc67ac8eab88f642e129bb8a2e8922abf30229c32725f54d8fd6`
     - `inter-cyrillic-800-normal.woff2` `e84cb164b47aaad63db12da876c341c59f78b6b25f9069dcdea3c1f8ca8b8f9b`

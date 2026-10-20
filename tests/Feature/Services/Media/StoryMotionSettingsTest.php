@@ -135,3 +135,52 @@ test('story motion settings: the notice is shown only when on and not blank, the
         ->and(StoryMotionSettings::fromArray(['ending' => ['enabled' => true, 'name' => ' ', 'line' => ' ']])->ending())->toBeNull()
         ->and(StoryMotionSettings::fromArray(['ending' => ['enabled' => false, 'name' => 'Name', 'line' => 'Zeile']])->ending())->toBeNull();
 });
+
+test('story motion settings: the default notice is the placeholder of the form in the current locale', function (string $locale, string $expected) {
+    app()->setLocale($locale);
+
+    expect(StoryMotionSettings::defaults()->aiNoticeText)->toBe($expected)
+        ->and(StoryMotionSettings::fromArray(['ai_notice' => ['enabled' => true]])->aiNoticeText)->toBe($expected)
+        ->and(StoryMotionSettings::fromArray(['ai_notice' => ['enabled' => true, 'text' => 'Mein Hinweis']])->aiNoticeText)->toBe('Mein Hinweis');
+})->with([
+    'English' => ['en', 'AI-generated image'],
+    'German' => ['de', 'KI-generiertes Bild'],
+    'Greek' => ['el', 'Εικόνα που δημιουργήθηκε με AI'],
+    'Russian' => ['ru', 'Изображение создано ИИ'],
+    'Turkish' => ['tr', 'Yapay zekâ ile üretilmiş görsel'],
+    'Arabic falls back, no font draws it' => ['ar', 'AI-generated image'],
+    'Japanese falls back' => ['ja', 'AI-generated image'],
+    'Korean falls back' => ['ko', 'AI-generated image'],
+    'Chinese falls back' => ['zh', 'AI-generated image'],
+]);
+
+test('story motion settings: in every locale the default notice fits the limit and is what the form suggests, or the English text', function () {
+    foreach (array_map('basename', glob(lang_path('*'), GLOB_ONLYDIR)) as $locale) {
+        app()->setLocale($locale);
+        $placeholder = __('settings.story_video.ai_notice_placeholder');
+        $default = StoryMotionSettings::defaultAiNotice();
+
+        expect(mb_strlen($default))->toBeLessThanOrEqual(StoryMotionSettings::AI_NOTICE_MAX)
+            ->and(in_array($default, [$placeholder, StoryMotionSettings::DEFAULT_AI_NOTICE], true))->toBeTrue("locale {$locale}");
+    }
+});
+
+test('story motion settings: switching the notice on without a text stores the default of the user locale', function () {
+    app()->setLocale('de');
+    $workspace = Workspace::factory()->create();
+
+    $workspace->update(['story_motion_settings' => StoryMotionSettings::forWorkspace($workspace)->with(['ai_notice' => ['enabled' => true]])->toArray()]);
+
+    expect($workspace->fresh()->story_motion_settings['ai_notice'])->toBe(['enabled' => true, 'text' => 'KI-generiertes Bild']);
+});
+
+test('story motion settings: a translated placeholder over 40 characters is not used as the default notice', function () {
+    app()->setLocale('en');
+    app('translator')->addLines(['settings.story_video.ai_notice_placeholder' => str_repeat('x', 41)], 'en');
+
+    expect(StoryMotionSettings::defaultAiNotice())->toBe('AI-generated image');
+
+    app('translator')->addLines(['settings.story_video.ai_notice_placeholder' => str_repeat('x', 40)], 'en');
+
+    expect(StoryMotionSettings::defaultAiNotice())->toBe(str_repeat('x', 40));
+});

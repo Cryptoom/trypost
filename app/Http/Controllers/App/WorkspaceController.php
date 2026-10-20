@@ -25,6 +25,7 @@ use App\Models\Workspace;
 use App\Services\Brand\LogoAttacher;
 use App\Services\Media\StoryMotionRenderer;
 use App\Services\Media\StoryMotionSettings;
+use App\Support\StoryMotionLogo;
 use App\Support\StoryMotionSettingsRules;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -199,6 +200,8 @@ class WorkspaceController extends Controller
 
         $this->authorize('update', $workspace);
 
+        $logo = $workspace->getFirstMedia('logo'); // PATCH:story-motion-settings
+
         return Inertia::render('settings/workspace/Brand', [
             'workspace' => $workspace,
             'availableFonts' => BrandFont::values(),
@@ -212,7 +215,10 @@ class WorkspaceController extends Controller
                 'fonts' => StoryMotionFont::values(),
                 'effects' => StoryMotionEffect::values(),
                 'modes' => StoryMotionMode::values(),
-                'hasLogo' => $workspace->has_logo,
+                'hasLogo' => $logo !== null,
+                // Whether the stored logo fits the Story video layer (JPEG or PNG, up to 2000 px and 2 MB).
+                // New uploads are scaled to fit, a logo stored earlier may not be.
+                'logoUsable' => $logo !== null && StoryMotionLogo::usable($logo->size, data_get($logo->meta, 'width'), data_get($logo->meta, 'height'), $logo->mime_type),
             ],
         ]);
     }

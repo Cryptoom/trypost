@@ -359,6 +359,7 @@ return [
         'logo_layer' => 'Mijn logo tonen',
         'logo_layer_description' => 'Het logo van de werkruimte staat bovenaan de video.',
         'logo_missing' => 'Er is nog geen bruikbaar logo. Upload eerst een JPEG- of PNG-logo (maximaal 2000 x 2000 px en 2 MB) in de instellingen van de werkruimte.',
+        'logo_unusable' => 'Het voor deze werkruimte opgeslagen logo past niet bij de Story-video (JPEG of PNG, tot 2000 x 2000 px en 2 MB), dus Story-video\'s worden zonder gemaakt. Upload het logo opnieuw in de werkruimte-instellingen: het wordt automatisch verkleind.',
         'ai_notice' => 'AI-melding tonen',
         'ai_notice_description' => 'Een kleine notitie langs de linkerrand, bijvoorbeeld dat de afbeelding met AI is gemaakt.',
         'ai_notice_text' => 'Tekst van de melding',

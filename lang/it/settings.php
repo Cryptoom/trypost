@@ -359,6 +359,7 @@ return [
         'logo_layer' => 'Mostra il mio logo',
         'logo_layer_description' => 'Il logo dello spazio di lavoro appare in alto nel video.',
         'logo_missing' => 'Non c\'è ancora un logo utilizzabile. Carica prima un logo JPEG o PNG (fino a 2000 x 2000 px e 2 MB) nelle impostazioni dello spazio di lavoro.',
+        'logo_unusable' => 'Il logo salvato per questo spazio di lavoro non è adatto al video Story (JPEG o PNG, fino a 2000 x 2000 px e 2 MB), quindi i video Story escono senza. Carica di nuovo il logo nelle impostazioni dello spazio di lavoro: viene ridotto automaticamente.',
         'ai_notice' => 'Mostra un avviso IA',
         'ai_notice_description' => 'Una piccola nota sul bordo sinistro, ad esempio che l\'immagine è stata generata con IA.',
         'ai_notice_text' => 'Testo dell\'avviso',

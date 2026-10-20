@@ -18,6 +18,17 @@ test('image: rejects everything that is not JPEG or PNG, whatever a Content-Type
     }
 });
 
+test('image: a PNG needs all eight signature bytes, a correct start and a wrong rest is no PNG', () => {
+    const good = fakePng(100, 100);
+    assert.equal(inspectImage(good).type, 'png');
+    for (let index = 4; index < 8; index += 1) {
+        const broken = Buffer.from(good);
+        broken[index] = broken[index] ^ 0xff;
+        rejects(() => inspectImage(broken), 'unsupported_image_type', 415);
+    }
+    rejects(() => inspectImage(Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47]), good.subarray(4, 7)])), 'unsupported_image_type', 415);
+});
+
 test('image: a logo is held to its own, smaller side limit', () => {
     assert.equal(inspectImage(fakePng(2000, 2000), { maxSide: LIMITS.maxLogoSide }).width, 2000);
     rejects(() => inspectImage(fakePng(2001, 100), { maxSide: LIMITS.maxLogoSide }), 'image_dimensions_too_large', 413);

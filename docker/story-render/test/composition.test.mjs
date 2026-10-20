@@ -259,3 +259,35 @@ test('composition (browser): the page replays the motion table, scale, tilt and 
         }
     }
 });
+
+test('composition (browser): the whole ending block, accent line included, sits inside the full-strength part of the lower veil', { skip: findBrowser() ? false : 'no browser installed' }, async () => {
+    const endings = [
+        { name: 'PlayCraft', line: 'Paphos' },
+        { name: null, line: 'Only a line' },
+        { name: 'N'.repeat(40), line: 'L'.repeat(60) },
+        { name: 'ПРОБУЖДАЕТСЯ'.repeat(3), line: 'Ελληνικά Παιχνίδια και ΠΟΛΛΑ ΑΚΟΜΑ ΛΟΓΙΑ ΓΙΑ ΔΥΟ' },
+    ];
+    for (const ending of endings) {
+        for (const font of ['inter', 'comfortaa', 'noto-serif']) {
+            await withPage(validSpec({ duration: 8, font, ending }), null, async ({ page, job }) => {
+                await seek(page, job.duration - 0.2);
+                const geometry = await page.evaluate(() => {
+                    const veil = document.getElementById('scrimBottom');
+                    const end = document.getElementById('end');
+                    const stops = [...getComputedStyle(veil).backgroundImage.matchAll(/rgba\(10, 42, 61, ([0-9.]+)\) ([0-9.]+)(px|%)/g)].map((match) => ({ alpha: Number(match[1]), at: Number(match[2]), unit: match[3] }));
+                    const veilBox = veil.getBoundingClientRect();
+                    const endBox = end.getBoundingClientRect();
+                    const rule = end.querySelector('.rule').getBoundingClientRect();
+
+                    return { gradient: getComputedStyle(veil).backgroundImage, veilTop: veilBox.top, veilBottom: veilBox.bottom, stops, endTop: endBox.top, endBottom: endBox.bottom, ruleTop: rule.top };
+                });
+                assert.match(geometry.gradient, /^linear-gradient\((to bottom, )?rgba/, 'the veil runs from transparent at its top to full strength towards the bottom');
+                const full = geometry.stops.find((stop) => stop.alpha === 0.8 && stop.unit === 'px');
+                assert.ok(full, `a full-strength stop in px: ${JSON.stringify(geometry.stops)}`);
+                assert.ok(geometry.veilBottom >= 1920 - 0.5, 'the veil runs to the bottom edge');
+                assert.ok(geometry.veilTop + full.at <= geometry.ruleTop - 39, `full strength starts at ${geometry.veilTop + full.at}, the block (rule) at ${geometry.ruleTop}`);
+                assert.ok(geometry.endBottom <= 1540 + 1, 'the block still ends at y=1540');
+            });
+        }
+    }
+});

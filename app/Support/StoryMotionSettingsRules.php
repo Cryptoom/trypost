@@ -53,15 +53,41 @@ class StoryMotionSettingsRules
 
     /**
      * An ending is meant to carry a shop name and a line, not an address or a phone number: a run of six
-     * or more digits (separators ignored), a plus sign followed by a digit, or a tel: link.
+     * or more digits (separators between digits ignored), a plus sign followed by a digit, or a tel: link.
+     * A run that consists only of year-like groups of four digits (1900 to 2099, as in "Seit 1998 2026")
+     * is not a phone number and passes.
      */
     public static function looksLikeContactDetails(string $text): bool
     {
-        $compact = preg_replace('/(?<=\d)[\s.\-()\/]+(?=\d)/u', '', $text) ?? $text;
+        if (preg_match('/\+\s*\d/', $text) === 1 || preg_match('/tel:/i', $text) === 1) {
+            return true;
+        }
 
-        return preg_match('/\d{6,}/', $compact) === 1
-            || preg_match('/\+\s*\d/', $text) === 1
-            || preg_match('/tel:/i', $text) === 1;
+        preg_match_all('/\d+(?:[\s.\-()\/]+\d+)*/u', $text, $runs);
+
+        foreach ($runs[0] as $run) {
+            $groups = preg_split('/[\s.\-()\/]+/u', $run) ?: [];
+
+            if (strlen(implode('', $groups)) >= 6 && ! self::onlyYears($groups)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * @param  array<int, string>  $groups  digit groups of one run
+     */
+    private static function onlyYears(array $groups): bool
+    {
+        foreach ($groups as $group) {
+            if (preg_match('/\A(?:19|20)\d{2}\z/', $group) !== 1) {
+                return false;
+            }
+        }
+
+        return $groups !== [];
     }
 
     /**

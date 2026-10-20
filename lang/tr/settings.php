@@ -361,6 +361,7 @@ return [
         'logo_layer' => 'Logomu göster',
         'logo_layer_description' => 'Çalışma alanının logosu videonun üstünde yer alır.',
         'logo_missing' => 'Henüz kullanılabilir bir logo yok. Önce çalışma alanı ayarlarından bir JPEG veya PNG logo yükleyin (en fazla 2000 x 2000 px ve 2 MB).',
+        'logo_unusable' => 'Bu çalışma alanı için kayıtlı logo Story videosuna uymuyor (JPEG veya PNG, en fazla 2000 x 2000 px ve 2 MB), bu yüzden Story videoları logosuz hazırlanır. Logoyu çalışma alanı ayarlarında yeniden yükleyin: otomatik olarak küçültülür.',
         'ai_notice' => 'Yapay zekâ notu göster',
         'ai_notice_description' => 'Sol kenar boyunca küçük bir not, örneğin görselin yapay zekâ ile üretildiği.',
         'ai_notice_text' => 'Not metni',

@@ -15,6 +15,10 @@ test('story motion accent: short, long and alpha hex colours are normalized to u
     '5 digits' => ['#12345', null],
     'letters outside hex' => ['#GGGGGG', null],
     'trailing newline' => ["#FDB31B\n", null],
+    'a prefix before the hash' => ['xx#FDB31B', null],
+    'a prefix of one digit' => ['0#FDB31B', null],
+    'a suffix after the colour' => ['#FDB31Bxx', null],
+    'a space before the hash' => [' #FDB31B', null],
     'empty' => ['', null],
     'null' => [null, null],
     'a css name' => ['red', null],
@@ -60,4 +64,18 @@ test('story motion accent: the chain is brand colour, then gold, then white', fu
 test('story motion accent: gold itself passes, so the chain never needs the white fallback for a readable gold', function () {
     expect(StoryMotionAccent::readable(StoryMotionAccent::GOLD))->toBeTrue()
         ->and(StoryMotionAccent::readable(StoryMotionAccent::WHITE))->toBeTrue();
+});
+
+test('story motion accent: the ending block sits on the lower veil at 0.80 over a white photo, darker than the upper reference, so the check holds there', function () {
+    $blend = fn (float $alpha) => sprintf('#%02X%02X%02X', ...array_map(fn (int $veil) => (int) round($alpha * $veil + (1 - $alpha) * 255), [10, 42, 61]));
+
+    expect($blend(0.72))->toBe(StoryMotionAccent::LIGHT_BACKGROUND)
+        ->and($blend(0.80))->toBe('#3B5564')
+        ->and(StoryMotionAccent::contrast('#FDB31B', $blend(0.80)))->toBeGreaterThan(StoryMotionAccent::contrast('#FDB31B', StoryMotionAccent::LIGHT_BACKGROUND))
+        ->and(round(StoryMotionAccent::contrast('#FDB31B', $blend(0.80)), 1))->toBe(4.4);
+
+    foreach (['#FDB31B', '#FFFFFF', '#FFE066', '#B8B8B8'] as $accent) {
+        expect(StoryMotionAccent::readable($accent))->toBeTrue()
+            ->and(StoryMotionAccent::contrast($accent, $blend(0.80)))->toBeGreaterThanOrEqual(StoryMotionAccent::MIN_CONTRAST);
+    }
 });

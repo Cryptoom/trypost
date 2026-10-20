@@ -135,6 +135,16 @@
             fitBlock(end.querySelector('.line'), { maxWidth: 840, maxFont: 40, minFont: 24, maxLines: 2, lineHeight: 1.2, step: 2 });
             // The block ends at y=1540, well above the lower story controls.
             end.style.top = `${1540 - end.offsetHeight}px`;
+
+            // The lower veil is at full strength (0.80) from 40 px above the block down to the bottom edge, so the
+            // whole ending block, accent line included, always sits on the dark veil, whatever the photo is.
+            const fullFrom = end.offsetTop - 40;
+            const fadeLength = 340;
+            const veil = $('scrimBottom');
+            veil.style.top = `${fullFrom - fadeLength}px`;
+            veil.style.height = `${1920 - (fullFrom - fadeLength)}px`;
+            veil.style.bottom = 'auto';
+            veil.style.background = `linear-gradient(to bottom, rgba(10,42,61,0) 0px, rgba(10,42,61,0.80) ${fadeLength}px, rgba(10,42,61,0.80) 100%)`;
         }
 
         if (story.aiNotice) {

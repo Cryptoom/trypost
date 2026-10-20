@@ -65,9 +65,6 @@ class HandleInertiaRequests extends Middleware
             'languages' => Locale::options(),
             'aiEnabled' => filled(config('ai.providers.'.config('ai.default').'.key')),
             'facebookStoryAiMusicEnabled' => (bool) config('trypost.platforms.facebook.story_ai_music_enabled'),
-            // PATCH:story-motion-settings: whether this installation can render Story videos at all (env switch,
-            // service URL and token). Drives the Story video section of the Brand settings page.
-            'storyMotionAvailable' => app(StoryMotionRenderer::class)->isAvailable(),
             // PATCH:story-motion: whether photo Stories get camera motion and texts for the current workspace
             // (installation available AND the workspace turned it on). Drives the fields in the post editor.
             'facebookStoryMotionEnabled' => $currentWorkspace ? app(StoryMotionRenderer::class)->isEnabledFor($currentWorkspace) : false,

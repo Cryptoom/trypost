@@ -8,6 +8,7 @@ use App\Enums\Media\Type;
 use App\Models\Media;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Support\StoryMotionLogo;
 use App\Support\VideoDurationProbe;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Http\UploadedFile;
@@ -35,6 +36,18 @@ trait HasMedia
         ],
         User::class => [
             'avatar' => 'single',
+        ],
+    ];
+
+    /**
+     * PATCH:story-motion-settings: images of these collections are scaled down (proportionally, never up)
+     * until their longest side and their file size fit. The logo must fit what the Story render service takes.
+     *
+     * @var array<class-string, array<string, array{side: int, bytes: int}>>
+     */
+    protected static array $mediaImageLimits = [
+        Workspace::class => [
+            'logo' => ['side' => StoryMotionLogo::MAX_SIDE, 'bytes' => StoryMotionLogo::MAX_BYTES],
         ],
     ];
 
@@ -88,6 +101,7 @@ trait HasMedia
             $mimeType,
             $type,
             $file->getClientOriginalExtension(),
+            $this->imageLimitsFor($collection),
         );
 
         $filename = Str::uuid().'.'.$normalizedExt;
@@ -133,7 +147,7 @@ trait HasMedia
         $meta = $this->withVideoDuration($meta, $type, $filePath);
 
         $stored = $type === Type::Image
-            ? $this->storeImageFromPath($filePath, $mimeType, $type, $extension, $meta)
+            ? $this->storeImageFromPath($filePath, $mimeType, $type, $extension, $meta, $this->imageLimitsFor($collection))
             : $this->streamFileToStorage($filePath, $mimeType, $extension, $meta);
 
         return $this->media()->create([
@@ -196,15 +210,17 @@ trait HasMedia
 
     /**
      * @param  array<string, mixed>  $meta
+     * @param  array{side: int, bytes: int}|null  $limits
      * @return array{path: string, mime_type: string, size: int, meta: array<string, mixed>}
      */
-    private function storeImageFromPath(string $filePath, string $mimeType, Type $type, string $extension, array $meta): array
+    private function storeImageFromPath(string $filePath, string $mimeType, Type $type, string $extension, array $meta, ?array $limits = null): array
     {
         [$bytes, $storedMime, $storedExt] = $this->normalizeImageFormat(
             $filePath,
             $mimeType,
             $type,
             $extension,
+            $limits,
         );
 
         $filename = Str::uuid().".{$storedExt}";
@@ -290,25 +306,59 @@ trait HasMedia
     }
 
     /**
+     * @return array{side: int, bytes: int}|null
+     */
+    private function imageLimitsFor(string $collection): ?array
+    {
+        return self::$mediaImageLimits[static::class][$collection] ?? null;
+    }
+
+    /**
      * Convert PNG/WebP/HEIC/AVIF to JPEG at q100 (keeps dimensions). GIF and
      * JPEG are returned untouched. Non-image types are passed through.
      *
+     * With `$limits` (PATCH:story-motion-settings, logo collection) a still image whose longest side is
+     * larger is scaled down proportionally, and the JPEG quality is lowered step by step until the file
+     * fits the byte limit. A JPEG that already fits is stored untouched. GIF is never scaled (animation).
+     *
+     * @param  array{side: int, bytes: int}|null  $limits
      * @return array{0: string, 1: string, 2: string} [bytes, mime_type, extension]
      */
-    private function normalizeImageFormat(string $filePath, string $mimeType, Type $type, string $originalExtension): array
+    private function normalizeImageFormat(string $filePath, string $mimeType, Type $type, string $originalExtension, ?array $limits = null): array
     {
         if ($type !== Type::Image) {
             return [file_get_contents($filePath), $mimeType, $originalExtension];
         }
 
-        // Formats that publish safely everywhere (JPEG is universal, GIF needed for X/Bluesky/Mastodon).
-        if (in_array($mimeType, ['image/jpeg', 'image/jpg', 'image/gif'], true)) {
+        if ($mimeType === 'image/gif') {
+            return [file_get_contents($filePath), $mimeType, $originalExtension];
+        }
+
+        // Formats that publish safely everywhere (JPEG is universal). A JPEG is only re-encoded when it
+        // is larger than the limits of its collection.
+        if (in_array($mimeType, ['image/jpeg', 'image/jpg'], true) && ! $this->exceedsImageLimits($filePath, $limits)) {
             return [file_get_contents($filePath), $mimeType, $originalExtension];
         }
 
         try {
             $manager = new ImageManager(new Driver);
-            $encoded = (string) $manager->decodePath($filePath)->encode(new JpegEncoder(quality: 100));
+            $image = $manager->decodePath($filePath);
+
+            if ($limits !== null && ($image->width() > $limits['side'] || $image->height() > $limits['side'])) {
+                $image = $image->scaleDown($limits['side'], $limits['side']);
+            }
+
+            $encoded = (string) $image->encode(new JpegEncoder(quality: 100));
+
+            if ($limits !== null) {
+                foreach ([92, 85, 75, 65, 55] as $quality) {
+                    if (strlen($encoded) <= $limits['bytes']) {
+                        break;
+                    }
+
+                    $encoded = (string) $image->encode(new JpegEncoder(quality: $quality));
+                }
+            }
 
             return [$encoded, 'image/jpeg', 'jpg'];
         } catch (\Throwable $e) {
@@ -319,5 +369,19 @@ trait HasMedia
 
             return [file_get_contents($filePath), $mimeType, $originalExtension];
         }
+    }
+
+    /**
+     * @param  array{side: int, bytes: int}|null  $limits
+     */
+    private function exceedsImageLimits(string $filePath, ?array $limits): bool
+    {
+        if ($limits === null) {
+            return false;
+        }
+
+        $info = @getimagesize($filePath);
+
+        return $info !== false && ($info[0] > $limits['side'] || $info[1] > $limits['side'] || filesize($filePath) > $limits['bytes']);
     }
 }

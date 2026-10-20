@@ -7,6 +7,7 @@ namespace App\Services\Media;
 use App\Models\PostPlatform;
 use App\Models\Workspace;
 use App\Support\StoryMotionAccent;
+use App\Support\StoryMotionLogo;
 use Carbon\CarbonInterface;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Response;
@@ -36,11 +37,6 @@ class StoryMotionRenderer
     private const BUDGET_SECONDS = 300;
 
     private const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
-
-    /** The service takes a logo of at most 2 MB and 2000 x 2000 pixels, JPEG or PNG. */
-    private const MAX_LOGO_BYTES = 2 * 1024 * 1024;
-
-    private const MAX_LOGO_SIDE = 2000;
 
     private const CONNECT_TIMEOUT_SECONDS = 5;
 
@@ -221,9 +217,9 @@ class StoryMotionRenderer
         $media = $workspace->getFirstMedia('logo');
         $detail = match (true) {
             $media === null => 'missing',
-            (int) $media->size > self::MAX_LOGO_BYTES => 'size',
+            (int) $media->size > StoryMotionLogo::MAX_BYTES => 'size',
             (int) data_get($media->meta, 'width') < 1 || (int) data_get($media->meta, 'height') < 1 => 'dimensions',
-            (int) data_get($media->meta, 'width') > self::MAX_LOGO_SIDE || (int) data_get($media->meta, 'height') > self::MAX_LOGO_SIDE => 'dimensions',
+            (int) data_get($media->meta, 'width') > StoryMotionLogo::MAX_SIDE || (int) data_get($media->meta, 'height') > StoryMotionLogo::MAX_SIDE => 'dimensions',
             default => null,
         };
 
@@ -238,7 +234,7 @@ class StoryMotionRenderer
 
             $detail = match (true) {
                 ! is_string($bytes) || $bytes === '' => 'unreadable',
-                strlen($bytes) > self::MAX_LOGO_BYTES => 'size',
+                strlen($bytes) > StoryMotionLogo::MAX_BYTES => 'size',
                 str_starts_with($bytes, "\xFF\xD8\xFF") => null,
                 str_starts_with($bytes, "\x89PNG\r\n\x1A\n") => null,
                 default => 'format',

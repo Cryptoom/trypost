@@ -123,6 +123,14 @@ test('story video settings: the ending takes a name or a line but no phone numbe
     'a plus sign and a digit' => ['Call +357', true],
     'a tel link' => ['tel:call me', true],
     'five digits are fine' => ['Shop 12345', false],
+    'a pair of years' => ['Seit 1998 2026', false],
+    'a pair of years without a word' => ['1998 2026', false],
+    'three years' => ['1999 2000 2010', false],
+    'years in a phone-like run' => ['1998 2026 123', true],
+    'a phone number that starts with a year-like group' => ['2026 99 123 456', true],
+    'a phone number with slashes' => ['99/123/456', true],
+    'a phone number with a bracketed area code' => ['(0172) 7935396', true],
+    'two groups that are no years' => ['1899 2100', true],
 ]);
 
 test('story video settings: unknown keys are not stored', function () {
@@ -148,12 +156,14 @@ test('story video settings: the page props carry the workspace-aware flag for th
     config()->set('trypost.platforms.facebook.story_motion', ['enabled' => true, 'url' => 'http://story-render:3000', 'token' => 'secret', 'timeout_seconds' => 255]);
 
     $this->actingAs($this->user)->get(route('app.workspace.brand'))->assertInertia(fn ($page) => $page
-        ->where('storyMotionAvailable', true)
+        ->missing('storyMotionAvailable')
+        ->where('storyMotion.available', true)
         ->where('facebookStoryMotionEnabled', false));
 
     ($this->save)(['enabled' => true]);
 
     $this->actingAs($this->user)->get(route('app.workspace.brand'))->assertInertia(fn ($page) => $page
-        ->where('storyMotionAvailable', true)
+        ->missing('storyMotionAvailable')
+        ->where('storyMotion.available', true)
         ->where('facebookStoryMotionEnabled', true));
 });

@@ -1,4 +1,4 @@
-import { readdirSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { openSync } from 'fontkit';
 
@@ -25,17 +25,71 @@ export const fontFiles = (key) => SUBSETS.map((subset) => `${FONTS[key].prefix}-
 const cache = new Map();
 
 /**
- * Per family, the set of code points its shipped files have glyphs for, read from the font files
- * themselves so the text filter can never drift from them. Plain spaces are laid out by the browser.
+ * Parses a `unicode-range` value such as `U+0301,U+0400-045F,U+04??` into [from, to] pairs.
+ *
+ * @param {string} value
+ * @returns {Array<[number, number]>}
+ */
+export const parseUnicodeRange = (value) =>
+    value
+        .split(',')
+        .map((token) => token.trim())
+        .filter((token) => token !== '')
+        .map((token) => {
+            const match = /^U\+([0-9A-Fa-f?]{1,6})(?:-([0-9A-Fa-f]{1,6}))?$/.exec(token);
+            if (match === null) {
+                throw new Error(`unreadable unicode-range token: ${token}`);
+            }
+            if (match[1].includes('?')) {
+                return [Number.parseInt(match[1].replaceAll('?', '0'), 16), Number.parseInt(match[1].replaceAll('?', 'F'), 16)];
+            }
+            const from = Number.parseInt(match[1], 16);
+
+            return [from, match[2] === undefined ? from : Number.parseInt(match[2], 16)];
+        });
+
+/**
+ * The `unicode-range` of every @font-face rule in the stylesheet, by font file name. The browser draws a
+ * character from a face only inside that range and takes it from the fallback font otherwise.
+ *
+ * @param {string} css
+ * @returns {Map<string, Array<[number, number]>>}
+ */
+export const unicodeRangesByFile = (css) => {
+    const ranges = new Map();
+    for (const line of css.split('\n')) {
+        if (!line.startsWith('@font-face')) {
+            continue;
+        }
+        const file = /url\("fonts\/([^"/]+)"\)/.exec(line)?.[1];
+        const range = /unicode-range:\s*([^;}]+)[;}]/.exec(line)?.[1];
+        if (file === undefined || range === undefined) {
+            throw new Error('@font-face rule without a file or a unicode-range');
+        }
+        ranges.set(file, parseUnicodeRange(range));
+    }
+
+    return ranges;
+};
+
+/**
+ * Per family, the set of code points the browser really draws from the shipped files: what a file has a
+ * glyph for AND what the @font-face rule of that file lets the browser use (its `unicode-range`). Both are
+ * read from the shipped files themselves, so the text filter can never drift from them. Characters in a
+ * file but outside its range would be drawn by the fallback font, so they must not pass the filter.
+ * Plain spaces are laid out by the browser.
  *
  * @param {string} fontsDir directory holding the *.woff2 files
+ * @param {string} [cssFile] the stylesheet with the @font-face rules, default `fonts.css` next to the directory
  * @returns {Record<string, (codePoint: number) => boolean>}
  */
-export const loadFontCoverages = (fontsDir) => {
-    if (cache.has(fontsDir)) {
-        return cache.get(fontsDir);
+export const loadFontCoverages = (fontsDir, cssFile = path.join(fontsDir, '..', 'fonts.css')) => {
+    const cacheKey = `${fontsDir}|${cssFile}`;
+    if (cache.has(cacheKey)) {
+        return cache.get(cacheKey);
     }
     const present = new Set(readdirSync(fontsDir));
+    const rangesByFile = unicodeRangesByFile(readFileSync(cssFile, 'utf8'));
     const coverages = {};
 
     for (const key of FONT_KEYS) {
@@ -44,14 +98,20 @@ export const loadFontCoverages = (fontsDir) => {
             if (!present.has(file)) {
                 throw new Error(`font file missing: ${file}`);
             }
+            const ranges = rangesByFile.get(file);
+            if (ranges === undefined) {
+                throw new Error(`no @font-face rule for font file: ${file}`);
+            }
             for (const codePoint of openSync(path.join(fontsDir, file)).characterSet) {
-                covered.add(codePoint);
+                if (ranges.some(([from, to]) => codePoint >= from && codePoint <= to)) {
+                    covered.add(codePoint);
+                }
             }
         }
         coverages[key] = (codePoint) => covered.has(codePoint);
     }
 
-    cache.set(fontsDir, coverages);
+    cache.set(cacheKey, coverages);
 
     return coverages;
 };
