@@ -68,6 +68,9 @@ class StoryMotionSettingsRules
      */
     public static function looksLikeContactDetails(string $text): bool
     {
+        // The renderer removes invisible format characters too, so they must not split a digit run here.
+        $text = preg_replace('/\p{Cf}/u', '', $text) ?? $text;
+
         if (preg_match('/\+\s*\d/', $text) === 1 || preg_match('/tel:/i', $text) === 1) {
             return true;
         }

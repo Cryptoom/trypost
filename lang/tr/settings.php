@@ -377,7 +377,7 @@ return [
             'no_contact_details' => 'Lütfen buraya adres veya telefon numarası yazmayın.',
             'notice_text_required' => 'Not metnini girin veya notu kapatın.',
             'notice_text_unsupported' => 'Latin, Yunan veya Kiril harfleri kullanın: video başka karakterleri gösteremez.',
-            'logo_too_many_pixels' => 'Bu logoda çok fazla piksel var. Daha küçük bir görsel yükleyin (en fazla :megapixels megapiksel, örneğin 8000 x 5000 px).',
+            'logo_too_many_pixels' => 'Bu logo kullanılabilir bellek için çok büyük. Daha küçük bir görsel yükleyin (en fazla :megapixels megapiksel, örneğin 4000 x 2000 px; bellek azsa daha küçük).',
             'ending_text_required' => 'Bir ad veya satır girin ya da kapanışı kapatın.',
         ],
     ],

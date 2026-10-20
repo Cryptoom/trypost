@@ -50,4 +50,13 @@ test('story motion rules: year pairs and short numbers pass, phone numbers do no
     'years with a comma' => ['Seit 1998, 2026', false],
     'years with an en dash' => ["1998\u{2013}2026", false],
     'around the clock' => ['24/7 4 you', false],
+    'zero width space in a number' => ["99\u{200B}123\u{200B}456", true],
+    'soft hyphen in a number' => ["99\u{00AD}123\u{00AD}456", true],
+    'word joiner in a number' => ["99\u{2060}123\u{2060}456", true],
+    'invisible characters between years' => ["Seit 1998\u{200B} 2026", false],
+    'invisible character in opening hours' => ["10:00\u{2060} - 19:00", false],
+    'age list' => ['Ages 3, 5, 7, 9', false],
+    'year followed by around the clock service (ambiguous)' => ['Seit 2012 · 24/7 Service', true],
+    'age groups (ambiguous)' => ['Ab 10, 20, 30 Jahre', true],
+    'quantity formatted as a phone number (ambiguous)' => ['1,200,000 toys', true],
 ]);

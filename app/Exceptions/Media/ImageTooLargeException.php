@@ -8,8 +8,8 @@ use RuntimeException;
 
 /**
  * PATCH:story-motion-settings: raised before an image of a size-limited collection (the workspace logo)
- * is decoded, when its pixel count is too large to decode safely within the PHP memory limit. Nothing has
- * been stored or deleted when it is thrown.
+ * is decoded, when it exceeds the input ceiling or the estimated memory budget. Nothing has been stored
+ * or deleted when it is thrown. It does not claim a measured bound for every decoder or allocator.
  */
 class ImageTooLargeException extends RuntimeException
 {
@@ -18,6 +18,6 @@ class ImageTooLargeException extends RuntimeException
         public readonly int $height,
         public readonly int $maxPixels,
     ) {
-        parent::__construct("Image of {$width} x {$height} px exceeds {$maxPixels} pixels");
+        parent::__construct("Image of {$width} x {$height} px exceeds the processing budget (pixel ceiling: {$maxPixels})");
     }
 }

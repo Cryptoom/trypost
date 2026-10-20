@@ -375,7 +375,7 @@ return [
             'no_contact_details' => 'Non inserire qui un indirizzo né un numero di telefono.',
             'notice_text_required' => 'Inserisci il testo dell\'avviso oppure disattiva l\'avviso.',
             'notice_text_unsupported' => 'Usa lettere latine, greche o cirilliche: il video non può mostrare altri caratteri.',
-            'logo_too_many_pixels' => 'Questo logo ha troppi pixel. Carica un\'immagine più piccola (al massimo :megapixels megapixel, ad esempio 8000 x 5000 px).',
+            'logo_too_many_pixels' => 'Questo logo è troppo grande per la memoria disponibile. Carica un\'immagine più piccola (fino a :megapixels megapixel, ad esempio 4000 x 2000 px; meno se la memoria è limitata).',
             'ending_text_required' => 'Inserisci un nome o una riga, oppure disattiva la chiusura.',
         ],
     ],

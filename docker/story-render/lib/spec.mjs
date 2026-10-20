@@ -1,7 +1,7 @@
 import { textOn } from './colors.mjs';
 import { FONTS, FONT_KEYS } from './fonts.mjs';
 import { buildMotion, EFFECTS } from './motion.mjs';
-import { headlineTokens, sanitizeText, sublineParts, textLength, withoutAccentMarks } from './text.mjs';
+import { headlineTokens, normalizeText, sanitizeText, sublineParts, textLength, withoutAccentMarks } from './text.mjs';
 import { MIN_ENDING_DURATION, MIN_SWAP_DURATION, textTimeline } from './timeline.mjs';
 import { LIMITS, ValidationError } from './validate.mjs';
 
@@ -9,10 +9,10 @@ const TOP_LEVEL = Object.freeze(['duration', 'effect', 'font', 'accent', 'logoLa
 const REQUIRED = Object.freeze(['duration', 'effect', 'font', 'accent', 'logoLayer']);
 const ENDING_KEYS = Object.freeze(['name', 'line']);
 
-/** Maximum lengths in characters. Accent marks (`*`) do not count in the two headlines. */
-/** Shown when the requested AI notice has nothing the font can draw (Laravel sends this text by default). */
+/** Shown when the font cannot draw the entire requested AI notice. */
 export const AI_NOTICE_FALLBACK = 'AI-generated image';
 
+/** Maximum lengths in characters. Accent marks (`*`) do not count in the two headlines. */
 export const TEXT_LIMITS = Object.freeze({ headline: 80, subline: 60, badge: 12, headlineAlt: 80, sublineAlt: 60, aiNotice: 40, 'ending.name': 40, 'ending.line': 60 });
 
 const isPlainObject = (value) => value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -149,10 +149,11 @@ export const buildJob = (spec, { logoInfo, coverages }) => {
         throw bad('logo_unexpected');
     }
 
-    // The AI notice is a mandatory label: when the requested text has no letter the font can draw, the
-    // English notice stands in for it instead of the notice silently disappearing from the video.
-    const drawnNotice = spec.aiNotice === null ? null : sanitizeText(spec.aiNotice, isCovered);
-    const aiNoticeFallback = drawnNotice !== null && !/\p{L}/u.test(drawnNotice);
+    // A mandatory label must remain complete. Normalize harmless layout differences and canonical
+    // Unicode composition first; losing any remaining character selects the controlled English notice.
+    const normalizedNotice = spec.aiNotice === null ? null : normalizeText(spec.aiNotice);
+    const drawnNotice = normalizedNotice === null ? null : sanitizeText(normalizedNotice, isCovered);
+    const aiNoticeFallback = drawnNotice !== null && (!/\p{L}/u.test(drawnNotice) || drawnNotice !== normalizedNotice);
     const aiNotice = aiNoticeFallback ? AI_NOTICE_FALLBACK : drawnNotice;
     const strong = spec.logoLayer && aiNotice !== null;
 

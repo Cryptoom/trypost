@@ -702,6 +702,19 @@ eine Spec-Validierung.
   Medium erst nach dem Speichern des neuen; `uploadLogo` und `LogoAttacher` rufen `clearMediaCollection` nicht mehr selbst. (3) Kontaktsperre:
   Trenner sind zusätzlich Komma, Unterstrich, Mittelpunkt, Halbgeviert- und Geviertstrich, ein Doppelpunkt nur zwischen Gruppen ab drei Ziffern.
   (4) `logo_unusable` nennt JPEG oder PNG als Format für den neuen Upload.
+- **Fix-Runde 3 (R3-Delta, 20.10.2026)**: Die frühere 40-Megapixel-Rechnung war unvollständig. Aktuell höchstens
+  8 Megapixel je Logo-Eingabe, zusätzlich vor jedem tatsächlichen Dekodieren eine Schätzung gegen das aktuelle `memory_limit`
+  und `memory_get_usage(true)`: 16 Byte je Pixel für mehrere Bildkopien sowie 64 MiB weitere Reserve. Bei unbegrenztem PHP
+  gilt für diese Schätzung ein Budget von 256 MiB. Das ist eine konservative Vorprüfung, kein gemessener Produktions-RAM-Nachweis.
+  Sie gilt für Upload, Autofill und Direktpfad; bei Ablehnung bleibt das alte Logo erhalten. Die 16 Sprachtexte nennen die
+  kleinere Grenze und den verfügbaren Speicher. EXIF-Ausrichtung bleibt unverändert beim Decoder; sie ist im Mehrkopienbudget
+  berücksichtigt und wird mit Orientierung 6 geprüft. Gleichzeitige Logo-Ersetzungen werden auf der Workspace-Zeile gesperrt,
+  nur die Logo-Collection wird innerhalb der Transaktion mit einem aktuellen Locking Read auf den zuletzt gespeicherten Eintrag
+  reduziert (auch bei einer äußeren MySQL-Transaktion). Andere Collections
+  behalten ihre bisherige Speicherlogik. Der KI-Hinweis wird nach NFC-/Whitespace-/Kontrollzeichen-Normalisierung nur vollständig
+  dargestellt; entfernt der Glyphenfilter weitere Zeichen, wird komplett `AI-generated image` eingesetzt. Die Kontaktsperre
+  entfernt unsichtbare Cf-Zeichen wie der Renderer, bleibt aber eine Komfortprüfung. Mehrdeutige Ziffernlisten wie `1,200,000 toys`
+  oder `Ab 10, 20, 30 Jahre` bleiben abgewiesen; keine weitergehende Telefonnummernerkennung ergänzt.
 - **Schrift-Quellen** (`npm pack @fontsource/<name>@5.3.0`, nur die benötigten woff2-Dateien liegen im Repo):
   - `@fontsource/inter@5.3.0`, Gewicht 800, Tarball SHA256 `02034af8d41dcc67ac8eab88f642e129bb8a2e8922abf30229c32725f54d8fd6`
     - `inter-cyrillic-800-normal.woff2` `e84cb164b47aaad63db12da876c341c59f78b6b25f9069dcdea3c1f8ca8b8f9b`

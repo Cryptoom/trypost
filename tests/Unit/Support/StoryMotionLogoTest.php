@@ -33,3 +33,20 @@ test('story motion logo: a stored logo is usable only inside every limit', funct
     'zero width' => [1000, 0, 100, 'image/jpeg', false],
     'dimensions as strings from a JSON column' => ['1000', '1200', '458', 'image/png', true],
 ]);
+
+test('story motion logo: decode budget includes current allocations, multiple copies and reserve', function () {
+    $pixels = StoryMotionLogo::MAX_DECODE_PIXELS;
+    $usage = 42 * 1024 * 1024;
+    $required = $usage + 64 * 1024 * 1024 + 16 * $pixels;
+
+    expect($pixels)->toBe(8_000_000)
+        ->and(StoryMotionLogo::decodeFitsMemory($pixels, $required, $usage))->toBeTrue()
+        ->and(StoryMotionLogo::decodeFitsMemory($pixels, $required - 1, $usage))->toBeFalse()
+        ->and(StoryMotionLogo::decodeFitsMemory($pixels, $required, $usage + 1))->toBeFalse()
+        ->and(StoryMotionLogo::decodeFitsMemory($pixels, $usage + 64 * 1024 * 1024 + 12 * $pixels, $usage))->toBeFalse()
+        ->and(StoryMotionLogo::decodeFitsMemory($pixels, $usage + 16 * $pixels, $usage))->toBeFalse()
+        ->and(StoryMotionLogo::decodeFitsMemory($pixels, -1, $usage))->toBeTrue()
+        ->and(StoryMotionLogo::decodeFitsMemory($pixels, -1, 100 * 1024 * 1024))->toBeFalse()
+        ->and(StoryMotionLogo::decodeFitsMemory(1, 32 * 1024 * 1024, $usage))->toBeFalse()
+        ->and(StoryMotionLogo::decodeFitsMemory(0, $required, $usage))->toBeFalse();
+});

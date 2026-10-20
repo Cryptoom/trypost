@@ -375,7 +375,7 @@ return [
             'no_contact_details' => 'Merci de ne saisir ici ni adresse ni numéro de téléphone.',
             'notice_text_required' => 'Saisissez le texte de la mention ou désactivez la mention.',
             'notice_text_unsupported' => 'Utilisez des lettres latines, grecques ou cyrilliques : la vidéo ne peut pas afficher d\'autres caractères.',
-            'logo_too_many_pixels' => 'Ce logo a trop de pixels. Importez une image plus petite (:megapixels mégapixels au maximum, par exemple 8000 x 5000 px).',
+            'logo_too_many_pixels' => 'Ce logo est trop grand pour la mémoire disponible. Importez une image plus petite (jusqu’à :megapixels mégapixels, par exemple 4000 x 2000 px ; moins si la mémoire est limitée).',
             'ending_text_required' => 'Saisissez un nom ou une ligne, ou désactivez la fin.',
         ],
     ],

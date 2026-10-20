@@ -9,6 +9,9 @@ const SPACES = /[\t\n\r\u{00a0}\u{2000}-\u{200a}\u{2028}\u{2029}\u{202f}\u{205f}
 /** Length in characters (code points), the way the limits count. */
 export const textLength = (text) => [...text].length;
 
+/** Normalize layout/control characters without silently removing unsupported letters or emoji. */
+export const normalizeText = (text) => text.normalize('NFC').replace(SPACES, ' ').replace(CONTROL, '').replace(/ +/g, ' ').trim();
+
 /**
  * Plain displayable text: control and format characters, emoji and every character the chosen font has
  * no glyph for are removed, whitespace is collapsed. `isCovered(codePoint)` tells whether the font

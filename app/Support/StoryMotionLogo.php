@@ -18,10 +18,19 @@ final class StoryMotionLogo
     public const MAX_BYTES = 2 * 1024 * 1024;
 
     /**
-     * Most pixels a logo may have to be decoded and scaled down on upload. GD holds about four bytes per
-     * pixel, so 40 megapixels (160 MB) plus the scaled copy stay within the 256 MB memory limit of the production image.
+     * Conservative input ceiling. Decoding, PNG buffers and EXIF orientation can hold multiple full-size
+     * copies. The separate runtime budget check reserves 16 bytes per pixel plus 64 MiB beyond current PHP
+     * allocations. This is a preflight estimate, not a guarantee about an unmeasured production allocator.
      */
-    public const MAX_DECODE_PIXELS = 40_000_000;
+    public const MAX_DECODE_PIXELS = 8_000_000;
+
+    public static function decodeFitsMemory(int $pixels, int $memoryLimit, int $memoryUsage): bool
+    {
+        // An unlimited CLI must still respect a finite budget for allocations in external GD.
+        $budget = $memoryLimit > 0 ? $memoryLimit : 256 * 1024 * 1024;
+
+        return $pixels > 0 && $pixels <= intdiv(max(0, $budget - $memoryUsage - 64 * 1024 * 1024), 16);
+    }
 
     /** The render service reads JPEG and PNG by their magic bytes, nothing else. */
     public const MIME_TYPES = ['image/jpeg', 'image/png'];

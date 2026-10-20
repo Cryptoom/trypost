@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { serializeData, storyData, writeComposition } from '../lib/composition.mjs';
 import { loadFontCoverages } from '../lib/fonts.mjs';
 import { amplitude } from '../lib/motion.mjs';
-import { sanitizeText } from '../lib/text.mjs';
+import { normalizeText, sanitizeText } from '../lib/text.mjs';
 import { AI_NOTICE_FALLBACK, buildJob, logoSize, parseSpec, TEXT_LIMITS } from '../lib/spec.mjs';
 import { LIMITS, ValidationError } from '../lib/validate.mjs';
 import { BAIT_INJECTIONS, BAIT_SCRIPTS, fakeJpeg, tmpDir, validSpec } from '../testkit/helpers.mjs';
@@ -164,7 +164,7 @@ test('spec: an AI notice without a letter the font can draw falls back to the En
         ['\u0301\u0300', AI_NOTICE_FALLBACK, true],
         ['日本語', AI_NOTICE_FALLBACK, true],
         ['', AI_NOTICE_FALLBACK, true],
-        ['AI生成画像', 'AI', false],
+        ['AI生成画像', AI_NOTICE_FALLBACK, true],
         ['KI-generiertes Bild', 'KI-generiertes Bild', false],
         ['Εικόνα AI', 'Εικόνα AI', false],
     ];
@@ -179,6 +179,21 @@ test('spec: an AI notice without a letter the font can draw falls back to the En
     assert.equal(off.aiNotice, null, 'a notice that was not requested stays off');
     assert.equal(off.aiNoticeFallback, false);
     assert.ok(/\p{L}/u.test(AI_NOTICE_FALLBACK) && sanitizeText(AI_NOTICE_FALLBACK, coverages.inter) === AI_NOTICE_FALLBACK, 'the fallback itself is drawable');
+});
+
+test('spec: an AI notice stays complete in every font or uses the controlled English fallback', () => {
+    for (const font of Object.keys(coverages)) {
+        for (const text of ['Ảnh do AI tạo', 'ἀἁἂ ἄρτος', 'A ạạạạ']) {
+            const job = build(validSpec({ font, aiNotice: text }));
+            assert.equal(job.aiNotice, AI_NOTICE_FALLBACK, `${font}: ${text}`);
+            assert.equal(job.aiNoticeFallback, true);
+        }
+        for (const text of ['KI-generiertes Bild', 'Εικόνα AI', 'ИИ-изображение']) {
+            assert.equal(build(validSpec({ font, aiNotice: text })).aiNotice, text, `${font}: ${text}`);
+        }
+        assert.equal(build(validSpec({ font, aiNotice: '  Cre\u0301e\u0301\tpar\u00a0AI  ' })).aiNotice, 'Créé par AI');
+        assert.equal(build(validSpec({ font, aiNotice: 'AI\u200B image' })).aiNotice, 'AI image');
+    }
 });
 
 test('spec: strong motion needs the logo layer AND the AI notice, otherwise every effect stays calm', () => {
@@ -269,7 +284,7 @@ for (const [field, makeSpec] of Object.entries(FIELD_SPECS)) {
             // only the two headlines know accent marks; everywhere else a star is an ordinary character
             const sanitized = sanitizeText(field.startsWith('headline') ? text.replaceAll('*', '') : text, coverages.inter);
             // the AI notice never vanishes: without a drawable letter the English notice stands in
-            const expected = field === 'aiNotice' && !/\p{L}/u.test(sanitized) ? AI_NOTICE_FALLBACK : sanitized;
+            const expected = field === 'aiNotice' && (!/\p{L}/u.test(sanitized) || sanitized !== normalizeText(text)) ? AI_NOTICE_FALLBACK : sanitized;
             const shown = shownText(field, data);
             assert.equal(shown.replaceAll(' · ', ' '), expected.replaceAll(' · ', ' ').trim().replace(/^·|·$/g, '').trim(), `text of ${field} changed on the way for ${JSON.stringify(text)}`);
 

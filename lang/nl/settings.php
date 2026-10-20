@@ -375,7 +375,7 @@ return [
             'no_contact_details' => 'Vul hier geen adres of telefoonnummer in.',
             'notice_text_required' => 'Vul de tekst van de melding in of zet de melding uit.',
             'notice_text_unsupported' => 'Gebruik Latijnse, Griekse of Cyrillische letters: de video kan andere tekens niet tonen.',
-            'logo_too_many_pixels' => 'Dit logo heeft te veel pixels. Upload een kleinere afbeelding (maximaal :megapixels megapixel, bijvoorbeeld 8000 x 5000 px).',
+            'logo_too_many_pixels' => 'Dit logo is te groot voor het beschikbare geheugen. Upload een kleinere afbeelding (tot :megapixels megapixel, bijvoorbeeld 4000 x 2000 px; minder bij beperkt geheugen).',
             'ending_text_required' => 'Vul een naam of een regel in, of zet de afsluiting uit.',
         ],
     ],

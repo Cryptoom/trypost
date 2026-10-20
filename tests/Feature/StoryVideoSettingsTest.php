@@ -123,6 +123,9 @@ test('story video settings: a notice text the video cannot draw is rejected at t
     'German' => ['KI-generiertes Bild', false],
     'Greek' => ["\u{0395}\u{03B9}\u{03BA}\u{03CC}\u{03BD}\u{03B1} AI", false],
     'Russian' => ["\u{0418}\u{0418}-\u{0438}\u{0437}\u{043E}\u{0431}\u{0440}\u{0430}\u{0436}\u{0435}\u{043D}\u{0438}\u{0435}", false],
+    // The script gate permits these; actual per-font completeness is enforced by the render service.
+    'Vietnamese uses service fallback' => ['Ảnh do AI tạo', false],
+    'polytonic Greek uses service fallback' => ['ἀἁἂ ἄρτος', false],
 ]);
 
 test('story video settings: a notice text the video cannot draw is rejected even while the notice is off', function () {

@@ -112,7 +112,7 @@ trait HasMedia
 
         Storage::put($path, $normalizedBytes);
 
-        $media = $this->media()->create([
+        return $this->persistMediaRecord([
             'group_id' => $groupId ?? Str::uuid()->toString(),
             'collection' => $collection,
             'type' => $type,
@@ -122,11 +122,7 @@ trait HasMedia
             'size' => strlen($normalizedBytes),
             'order' => 0,
             'meta' => [...$this->imageDimensions($normalizedBytes, $type), ...$meta],
-        ]);
-
-        $this->deleteMediaByIds($previous);
-
-        return $media;
+        ], $previous);
     }
 
     /**
@@ -155,7 +151,7 @@ trait HasMedia
             ? $this->storeImageFromPath($filePath, $mimeType, $type, $extension, $meta, $this->imageLimitsFor($collection))
             : $this->streamFileToStorage($filePath, $mimeType, $extension, $meta);
 
-        $media = $this->media()->create([
+        return $this->persistMediaRecord([
             'group_id' => $groupId ?? Str::uuid()->toString(),
             'collection' => $collection,
             'type' => $type,
@@ -165,11 +161,7 @@ trait HasMedia
             'size' => $stored['size'],
             'order' => 0,
             'meta' => $stored['meta'],
-        ]);
-
-        $this->deleteMediaByIds($previous);
-
-        return $media;
+        ], $previous);
     }
 
     /**
@@ -231,6 +223,32 @@ trait HasMedia
         }
 
         $this->media()->whereKey($ids)->get()->each(fn (Media $media) => $media->delete());
+    }
+
+    /**
+     * Serialize logo replacements on the workspace row, including the first upload (no media row yet).
+     * The file has already been stored. Other collections retain their existing persistence contract.
+     *
+     * @param  array<string, mixed>  $attributes
+     * @param  array<int, int|string>  $previous
+     */
+    private function persistMediaRecord(array $attributes, array $previous): Media
+    {
+        if (static::class !== Workspace::class || $attributes['collection'] !== 'logo') {
+            $media = $this->media()->create($attributes);
+            $this->deleteMediaByIds($previous);
+
+            return $media;
+        }
+
+        return $this->getConnection()->transaction(function () use ($attributes): Media {
+            $this->newQuery()->whereKey($this->getKey())->lockForUpdate()->firstOrFail();
+            $media = $this->media()->create($attributes);
+            // A locking read also sees current rows inside an outer MySQL REPEATABLE READ transaction.
+            $this->getMedia('logo')->whereKeyNot($media->getKey())->lockForUpdate()->get()->each(fn (Media $previous) => $previous->delete());
+
+            return $media;
+        });
     }
 
     public function isSingleMediaCollection(string $collection): bool
@@ -354,7 +372,8 @@ trait HasMedia
      * larger is scaled down proportionally, and the JPEG quality is lowered step by step until the file
      * fits the byte limit. A JPEG that already fits is stored untouched. GIF is never scaled (animation).
      * Before anything is decoded, an image with more than `$limits['pixels']` pixels is refused
-     * (ImageTooLargeException), and one whose dimensions cannot be read is stored untouched.
+     * (ImageTooLargeException), and one whose dimensions cannot be read is stored untouched. A runtime
+     * budget check also accounts for current allocations, multiple image copies and additional reserve.
      *
      * @param  array{side: int, bytes: int, pixels: int}|null  $limits
      * @return array{0: string, 1: string, 2: string} [bytes, mime_type, extension]
@@ -385,6 +404,10 @@ trait HasMedia
         // is larger than the limits of its collection.
         if (in_array($mimeType, ['image/jpeg', 'image/jpg'], true) && ! $this->exceedsImageLimits($filePath, $limits)) {
             return [file_get_contents($filePath), $mimeType, $originalExtension];
+        }
+
+        if ($limits !== null && ! StoryMotionLogo::decodeFitsMemory($info[0] * $info[1], ini_parse_quantity((string) ini_get('memory_limit')), memory_get_usage(true))) {
+            throw new ImageTooLargeException($info[0], $info[1], $limits['pixels']);
         }
 
         try {
