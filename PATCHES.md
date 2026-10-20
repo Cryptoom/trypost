@@ -587,9 +587,35 @@ Fehler, jede Zeitüberschreitung und ein belegter Renderer führen zurück auf d
 - **Betrieb des Dienstes**: Erreichbarkeit nur über das interne Compose-Netz (`internal: true`, kein `ports:`,
   kein `pid: host`, weil der Orphan-Sweep den eigenen PID-Namespace voraussetzt). `server.maxConnections` ist 32. `STORY_RENDER_TIMEOUT_SECONDS` leer oder ungültig fällt auf 240 zurück, sonst 10 bis 240 (am besten gar nicht setzen). Der Slot gehört dem Auftrag, der ihn belegt hat.
   stderr des Renders wird nicht geloggt (es kann Headline-Text zitieren), nur Exit-Code und Größe; zum
-  Debuggen `STORY_RENDER_LOG_STDERR=1` setzen. `tmpfs: /tmp` mit Größe (z. B. `size=1500m`) setzen.
+  Debuggen `STORY_RENDER_LOG_STDERR=1` setzen. `tmpfs: /tmp` mit `size=4g` setzen (Deckel, keine Belegung): HyperFrames bricht ab, wenn der Arbeitsordner 1 GB oder weniger frei hat (Meldung "Low disk space ... 1.0 GB free"), mit `size=1500m` oder kleiner wäre der Dienst auf web02 unbrauchbar.
 - **Merge-Hinweis**: Beim Upstream-Merge `grep -rn "PATCH:story-motion"` gegenprüfen. Upstream kennt
   weder `docker/story-render/` noch `story_motion`.
 - **Tests**: `StoryMotionRendererTest`, `StoryVideoInspectorTest`, `ImageToVideoConverterTest`
   (Abschnitt story-motion), `FacebookPublisherTest` (Abschnitt story-motion), `PostApiPlatformMetaTest`,
   `PostPlatformMetaToolTest`; Render-Dienst `docker/story-render/test/`.
+
+#### Deployed 20.10.2026 (Dark Launch, Workspace-Liste leer)
+
+PR #33 ist gemergt (squash `e0b338be96f0dd9ee539bbced2a73d1c0324c21f`) und am 20.10.2026 auf web02 deployed.
+Es läuft als Dark Launch: Flag an, Workspace-Liste leer, also ändert sich für keinen Workspace etwas.
+
+- **Compose** (`/opt/trypost/compose.yml`, nicht im Repo): Service `story-render`, `container_name:
+  trypost-story-render`, Build aus `./src/docker/story-render`, Netz `story-render-internal` mit `internal: true`
+  (der `app`-Service hängt am `default`-Netz und am internen Netz), `read_only: true`, `tmpfs: /tmp` mit
+  `size=4g`, `cap_drop: [ALL]`, `security_opt: [no-new-privileges:true]`, `mem_limit: 3g`, `memswap_limit: 3g`,
+  `cpus: 2`, `shm_size: 1g`, `pids_limit: 256`, `init: true`, `restart: unless-stopped` (dokumentierte
+  Produktions-Ausnahme), keine Ports.
+- **Env am `app`-Service**: `FACEBOOK_STORY_MOTION_ENABLED=true`, `FACEBOOK_STORY_MOTION_WORKSPACES=` (leer),
+  `FACEBOOK_STORY_MOTION_TOKEN` gesetzt (gleicher Wert wie `STORY_RENDER_TOKEN` am Dienst, der Wert wird nie
+  dokumentiert), `FACEBOOK_STORY_MOTION_URL=http://story-render:3000`, `FACEBOOK_STORY_MOTION_TIMEOUT=255`.
+  Am Dienst sind `STORY_RENDER_LOG_STDERR` und `STORY_RENDER_TIMEOUT_SECONDS` im Betrieb NICHT gesetzt und
+  bleiben es.
+- **Rückweg**: Backup `/opt/trypost/compose.yml.bak-pre-story-motion-20261020024828`, Rückweg-Image
+  `trypost:pre-story-motion-20261020024828`. Schnellster Weg: `FACEBOOK_STORY_MOTION_ENABLED=false` und
+  `docker compose up -d --no-deps app` (Standbild wie vorher), den Dienst `story-render` stoppen.
+- **Smoke auf web02**: 15-s-Render in 53 bis 78 s, Spitzen-RAM 1,19 GiB, Endvideo-Wächter ok, kein Egress aus
+  dem Dienst (internes Netz).
+- **Offen vor der Aktivierung (P4)**: ein Workspace kommt erst nach Olli-Freigabe in `FACEBOOK_STORY_MOTION_WORKSPACES`,
+  vorher Beispielvideo zeigen. Zu klären sind die Kosten je Horizon-Wiederholung (Render und gegebenenfalls
+  KI-Musik, auch wenn Facebook `start` ablehnt) und die Zahl gleichzeitiger Stories pro Slot (es rendert genau
+  eine, weitere fallen auf das Standbild zurück).

@@ -17,9 +17,9 @@ const startGrandchild = (nonce) => {
     writeFileSync(pidFile, `${process.pid} ${grandchild.pid}`);
 };
 
-// A valid story video of roughly 10 to 20 MB, larger than any socket buffer, so a download can stall.
+// A valid story video of about 32 MB (crf 30), larger than the socket buffers of any platform, so a download can stall.
 const makeBigVideo = () => {
-    const result = spawnSync('ffmpeg', ['-y', '-f', 'lavfi', '-i', 'color=c=gray:s=1080x1920:r=30:d=3,noise=alls=60:allf=t+u', '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-preset', 'ultrafast', '-crf', '35', '-movflags', '+faststart', outputPath], { stdio: 'ignore' });
+    const result = spawnSync('ffmpeg', ['-y', '-f', 'lavfi', '-i', 'color=c=gray:s=1080x1920:r=30:d=3,noise=alls=60:allf=t+u', '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-preset', 'ultrafast', '-crf', '30', '-movflags', '+faststart', outputPath], { stdio: 'ignore' });
     process.exit(result.status ?? 1);
 };
 
