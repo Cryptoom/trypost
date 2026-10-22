@@ -210,13 +210,12 @@ return [
             // real per-song cost. See App\Services\Media\StoryMusicGenerator.
             'story_ai_music_enabled' => (bool) env('FACEBOOK_STORY_AI_MUSIC_ENABLED', false),
             // PATCH:story-motion: render a photo Story as a short camera-move video
-            // (optional animated headline) through the internal story-render service
-            // (docker/story-render). Off by default and active only for the listed
-            // workspaces. Any failure falls back to the held-frame video above.
+            // through the internal story-render service (docker/story-render). The
+            // flag is the master switch for the whole installation, each workspace
+            // then turns it on itself in its Story video settings (default off).
+            // Any failure falls back to the held-frame video above.
             'story_motion' => [
                 'enabled' => (bool) env('FACEBOOK_STORY_MOTION_ENABLED', false),
-                // Comma separated workspace ids. Empty means nobody.
-                'workspaces' => (string) env('FACEBOOK_STORY_MOTION_WORKSPACES', ''),
                 // Shared secret the render service requires (same value in its STORY_RENDER_TOKEN).
                 'token' => (string) env('FACEBOOK_STORY_MOTION_TOKEN', ''),
                 'url' => (string) env('FACEBOOK_STORY_MOTION_URL', 'http://story-render:3000'),

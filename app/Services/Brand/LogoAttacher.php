@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Brand;
 
+use App\Exceptions\Media\ImageTooLargeException;
 use App\Models\Workspace;
 use Illuminate\Support\Facades\Log;
 use Throwable;
@@ -69,7 +70,7 @@ class LogoAttacher
         $tempPath = $this->writeToTempFile($body, $this->extensionForMime($contentType));
 
         try {
-            $workspace->clearMediaCollection('logo');
+            // addMediaFromPath replaces the old logo only once the new one is stored.
             $workspace->addMediaFromPath(
                 $tempPath,
                 'logo.'.$this->extensionForMime($contentType),
@@ -78,6 +79,10 @@ class LogoAttacher
             );
 
             return true;
+        } catch (ImageTooLargeException $e) {
+            Log::debug('Logo rejected: too many pixels', ['url' => $logoUrl, 'width' => $e->width, 'height' => $e->height]);
+
+            return false;
         } catch (Throwable $e) {
             Log::warning('Logo rejected — persistence error', ['url' => $logoUrl, 'error' => $e->getMessage()]);
 

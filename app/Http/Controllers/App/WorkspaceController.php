@@ -11,18 +11,28 @@ use App\Enums\Workspace\BrandFont;
 use App\Enums\Workspace\BrandVoiceTrait;
 use App\Enums\Workspace\ContentLanguage;
 use App\Enums\Workspace\ImageStyle;
+use App\Enums\Workspace\StoryMotionEffect;
+use App\Enums\Workspace\StoryMotionFont;
+use App\Enums\Workspace\StoryMotionMode;
+use App\Exceptions\Media\ImageTooLargeException;
 use App\Http\Requests\App\Workspace\AutofillBrandRequest;
 use App\Http\Requests\App\Workspace\StoreWorkspaceRequest;
+use App\Http\Requests\App\Workspace\UpdateStoryVideoSettingsRequest;
 use App\Http\Requests\App\Workspace\UpdateWorkspaceRequest;
 use App\Http\Resources\App\WorkspaceMemberResource;
 use App\Models\Invite;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Services\Brand\LogoAttacher;
+use App\Services\Media\StoryMotionRenderer;
+use App\Services\Media\StoryMotionSettings;
+use App\Support\StoryMotionLogo;
+use App\Support\StoryMotionSettingsRules;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 use RuntimeException;
@@ -192,13 +202,49 @@ class WorkspaceController extends Controller
 
         $this->authorize('update', $workspace);
 
+        $logo = $workspace->getFirstMedia('logo'); // PATCH:story-motion-settings
+
         return Inertia::render('settings/workspace/Brand', [
             'workspace' => $workspace,
             'availableFonts' => BrandFont::values(),
             'availableImageStyles' => ImageStyle::values(),
             'availableVoiceTraits' => BrandVoiceTrait::grouped(),
             'availableContentLanguages' => ContentLanguage::options(),
+            // PATCH:story-motion-settings
+            'storyMotion' => [
+                'available' => app(StoryMotionRenderer::class)->isAvailable(),
+                'settings' => StoryMotionSettings::forWorkspace($workspace)->toArray(),
+                'fonts' => StoryMotionFont::values(),
+                'effects' => StoryMotionEffect::values(),
+                'modes' => StoryMotionMode::values(),
+                'hasLogo' => $logo !== null,
+                // Whether the stored logo fits the Story video layer (JPEG or PNG, up to 2000 px and 2 MB).
+                // New uploads are scaled to fit, a logo stored earlier may not be.
+                'logoUsable' => $logo !== null && StoryMotionLogo::usable($logo->size, data_get($logo->meta, 'width'), data_get($logo->meta, 'height'), $logo->mime_type),
+            ],
         ]);
+    }
+
+    /**
+     * PATCH:story-motion-settings: saves the workspace's Story video settings. Changes are merged into
+     * what is stored, then the merged result is checked as a whole.
+     */
+    public function updateStoryVideo(UpdateStoryVideoSettingsRequest $request): RedirectResponse
+    {
+        $workspace = $request->user()->currentWorkspace;
+
+        if (! $workspace) {
+            return redirect()->route('app.workspaces.create');
+        }
+
+        $this->authorize('update', $workspace);
+
+        $settings = StoryMotionSettings::forWorkspace($workspace)->with($request->validated());
+        StoryMotionSettingsRules::assertComplete($settings->toArray());
+
+        $workspace->update(['story_motion_settings' => $settings->toArray()]);
+
+        return back()->with('flash.success', __('settings.flash.story_video_updated'));
     }
 
     public function uploadLogo(Request $request): RedirectResponse
@@ -211,8 +257,15 @@ class WorkspaceController extends Controller
             'photo' => ['required', 'image', 'max:2048'],
         ]);
 
-        $workspace->clearMediaCollection('logo');
-        $workspace->addMedia($request->file('photo'), 'logo');
+        // addMedia replaces the old logo only once the new one is stored.
+        try {
+            $workspace->addMedia($request->file('photo'), 'logo');
+        } catch (ImageTooLargeException $e) {
+            throw ValidationException::withMessages([
+                'photo' => __('settings.story_video.errors.logo_too_many_pixels', ['megapixels' => intdiv($e->maxPixels, 1_000_000)]),
+            ]);
+        }
+
         $workspace->unsetRelation('media');
 
         return back()->with('flash.success', __('settings.flash.logo_updated'));

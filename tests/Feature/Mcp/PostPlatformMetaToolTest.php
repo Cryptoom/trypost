@@ -602,3 +602,30 @@ test('tps01 meta rules story fit mcp create post persists story_fit and rejects 
         ])
         ->assertHasErrors();
 });
+
+test('create post persists the Story video texts and the Greek alternative (PATCH:story-motion-settings)', function () {
+    $facebook = SocialAccount::factory()->facebook()->create(['workspace_id' => $this->workspace->id]);
+    $meta = ['story_headline' => 'Camping *Peppa*', 'story_subline' => 'Now in store', 'story_badge' => '-20%', 'story_headline_alt' => 'Κάμπινγκ', 'story_subline_alt' => 'Στο κατάστημα'];
+
+    TryPostServer::actingAs($this->user)
+        ->tool(CreatePostTool::class, [
+            'content' => 'Check out our story',
+            'platforms' => [['social_account_id' => $facebook->id, 'content_type' => ContentType::FacebookStory->value, 'meta' => $meta]],
+        ])
+        ->assertOk();
+
+    expect(PostPlatform::where('social_account_id', $facebook->id)->sole()->meta)->toMatchArray($meta);
+});
+
+test('create post rejects Story video texts over their limit (PATCH:story-motion-settings)', function (string $key, int $limit) {
+    $facebook = SocialAccount::factory()->facebook()->create(['workspace_id' => $this->workspace->id]);
+
+    TryPostServer::actingAs($this->user)
+        ->tool(CreatePostTool::class, [
+            'content' => 'Check out our story',
+            'platforms' => [['social_account_id' => $facebook->id, 'content_type' => ContentType::FacebookStory->value, 'meta' => [$key => str_repeat('ä', $limit + 1)]]],
+        ])
+        ->assertHasErrors();
+
+    expect(PostPlatform::where('social_account_id', $facebook->id)->count())->toBe(0);
+})->with([['story_subline', 60], ['story_badge', 12], ['story_headline_alt', 80], ['story_subline_alt', 60]]);

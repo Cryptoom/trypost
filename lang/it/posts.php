@@ -149,6 +149,28 @@ return [
                 'placeholder' => 'Un titolo breve che compare parola per parola',
                 'hint' => 'Mostrato sopra la foto nel video animato della Storia, massimo 80 caratteri. Emoji e scritture non supportate vengono omessi.',
             ],
+            // PATCH:story-motion-settings
+            'story_subline' => [
+                'label' => 'Sottotitolo della Storia (facoltativo)',
+                'placeholder' => 'Ad esempio: Ora in negozio',
+                'hint' => 'Una riga più piccola sotto il titolo, massimo 60 caratteri. Un " · " la divide in parti con un punto colorato.',
+            ],
+            'story_badge' => [
+                'label' => 'Badge della Storia (facoltativo)',
+                'placeholder' => 'Ad esempio: -20%',
+                'hint' => 'Una piccola etichetta colorata, massimo 12 caratteri.',
+            ],
+            'story_headline_alt' => [
+                'label' => 'Titolo, seconda lingua (facoltativo)',
+                'placeholder' => 'Il titolo nella seconda lingua',
+                'hint' => 'Sostituisce dolcemente il titolo a metà del video. Solo per video di 6 secondi o più.',
+            ],
+            'story_subline_alt' => [
+                'label' => 'Sottotitolo, seconda lingua (facoltativo)',
+                'placeholder' => 'Il sottotitolo nella seconda lingua',
+                'hint' => 'Accompagna il titolo della seconda lingua, massimo 60 caratteri.',
+            ],
+            'story_accent_hint' => 'Metti una parola tra asterischi, come *saldi*, per colorarla con il tuo colore d\'accento.',
         ],
         'linkedin' => [
             'settings' => 'Impostazioni LinkedIn',

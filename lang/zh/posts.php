@@ -149,6 +149,28 @@ return [
                 'placeholder' => '按词逐个出现的简短标题',
                 'hint' => '显示在动态快拍视频中的照片上方,最多 80 个字符。表情符号和不受支持的文字会被省略。',
             ],
+            // PATCH:story-motion-settings
+            'story_subline' => [
+                'label' => '快拍副标题(可选)',
+                'placeholder' => '例如:现已到店',
+                'hint' => '标题下方的较小一行,最多 60 个字符。用 " · " 分隔后会以彩色圆点隔开各部分。',
+            ],
+            'story_badge' => [
+                'label' => '快拍徽章(可选)',
+                'placeholder' => '例如:8 折',
+                'hint' => '带颜色的小标签,最多 12 个字符。',
+            ],
+            'story_headline_alt' => [
+                'label' => '标题,第二语言(可选)',
+                'placeholder' => '第二语言的标题',
+                'hint' => '在视频中段柔和地替换标题。仅适用于 6 秒及以上的视频。',
+            ],
+            'story_subline_alt' => [
+                'label' => '副标题,第二语言(可选)',
+                'placeholder' => '第二语言的副标题',
+                'hint' => '与第二语言的标题配套,最多 60 个字符。',
+            ],
+            'story_accent_hint' => '把一个词放在星号之间,例如 *特卖*,即可用你的强调色着色。',
         ],
         'linkedin' => [
             'settings' => 'LinkedIn 设置',

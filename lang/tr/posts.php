@@ -151,6 +151,28 @@ return [
                 'placeholder' => 'Kelime kelime beliren kısa bir başlık',
                 'hint' => 'Hareketli Hikaye videosunda fotoğrafın üzerinde gösterilir, en fazla 80 karakter. Emojiler ve desteklenmeyen yazılar çıkarılır.',
             ],
+            // PATCH:story-motion-settings
+            'story_subline' => [
+                'label' => 'Story alt başlığı (isteğe bağlı)',
+                'placeholder' => 'Örneğin: Şimdi mağazada',
+                'hint' => 'Başlığın altında daha küçük bir satır, en fazla 60 karakter. " · " onu renkli bir noktayla parçalara böler.',
+            ],
+            'story_badge' => [
+                'label' => 'Story rozeti (isteğe bağlı)',
+                'placeholder' => 'Örneğin: %20 indirim',
+                'hint' => 'Küçük renkli bir etiket, en fazla 12 karakter.',
+            ],
+            'story_headline_alt' => [
+                'label' => 'Başlık, ikinci dil (isteğe bağlı)',
+                'placeholder' => 'İkinci dildeki başlık',
+                'hint' => 'Videonun ortasında başlığı yumuşakça değiştirir. Yalnızca 6 saniye veya daha uzun videolar için.',
+            ],
+            'story_subline_alt' => [
+                'label' => 'Alt başlık, ikinci dil (isteğe bağlı)',
+                'placeholder' => 'İkinci dildeki alt başlık',
+                'hint' => 'İkinci dildeki başlıkla birlikte gider, en fazla 60 karakter.',
+            ],
+            'story_accent_hint' => 'Bir kelimeyi yıldızların içine alın, örneğin *indirim*, vurgu renginizle renklendirmek için.',
         ],
         'linkedin' => [
             'settings' => 'LinkedIn Ayarları',

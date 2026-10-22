@@ -151,6 +151,28 @@ return [
                 'placeholder' => 'Kurze Überschrift, die Wort für Wort eingeblendet wird',
                 'hint' => 'Wird im bewegten Story-Video über dem Foto angezeigt, höchstens 80 Zeichen. Emoji und nicht unterstützte Schriften werden weggelassen.',
             ],
+            // PATCH:story-motion-settings
+            'story_subline' => [
+                'label' => 'Story-Unterzeile (optional)',
+                'placeholder' => 'Zum Beispiel: Jetzt im Geschäft',
+                'hint' => 'Kleinere Zeile unter der Überschrift, höchstens 60 Zeichen. Ein " · " teilt sie in Teile mit einem farbigen Punkt.',
+            ],
+            'story_badge' => [
+                'label' => 'Story-Badge (optional)',
+                'placeholder' => 'Zum Beispiel: -20 %',
+                'hint' => 'Kleines farbiges Etikett, höchstens 12 Zeichen.',
+            ],
+            'story_headline_alt' => [
+                'label' => 'Überschrift, zweite Sprache (optional)',
+                'placeholder' => 'Die Überschrift in der zweiten Sprache',
+                'hint' => 'Ersetzt die Überschrift in der Mitte des Videos weich. Nur bei Videos ab 6 Sekunden.',
+            ],
+            'story_subline_alt' => [
+                'label' => 'Unterzeile, zweite Sprache (optional)',
+                'placeholder' => 'Die Unterzeile in der zweiten Sprache',
+                'hint' => 'Gehört zur Überschrift in der zweiten Sprache, höchstens 60 Zeichen.',
+            ],
+            'story_accent_hint' => 'Setze ein Wort in Sternchen, etwa *Sale*, um es in deiner Akzentfarbe einzufärben.',
         ],
         'linkedin' => [
             'settings' => 'LinkedIn-Einstellungen',

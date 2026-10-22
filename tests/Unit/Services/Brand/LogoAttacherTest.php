@@ -21,8 +21,9 @@ function fakeLogo(string $mime = 'image/png', string $body = 'PNG'): void
 test('attaches the downloaded logo and returns true', function () {
     fakeLogo();
 
+    // The old logo is replaced by addMediaFromPath itself, only once the new one is stored.
     $workspace = mock(Workspace::class);
-    $workspace->shouldReceive('clearMediaCollection')->once();
+    $workspace->shouldReceive('clearMediaCollection')->never();
     $workspace->shouldReceive('addMediaFromPath')->once();
 
     expect(app(LogoAttacher::class)->attach($workspace, LOGO_URL))->toBeTrue();
@@ -32,7 +33,7 @@ test('swallows a persistence failure and returns false', function () {
     fakeLogo();
 
     $workspace = mock(Workspace::class);
-    $workspace->shouldReceive('clearMediaCollection')->once()->andThrow(new RuntimeException('media store down'));
+    $workspace->shouldReceive('addMediaFromPath')->once()->andThrow(new RuntimeException('media store down'));
 
     expect(app(LogoAttacher::class)->attach($workspace, LOGO_URL))->toBeFalse();
 });

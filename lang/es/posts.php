@@ -149,6 +149,28 @@ return [
                 'placeholder' => 'Un titular corto que aparece palabra por palabra',
                 'hint' => 'Se muestra sobre la foto en el vídeo animado de la Historia, máximo 80 caracteres. Los emojis y las escrituras no compatibles se omiten.',
             ],
+            // PATCH:story-motion-settings
+            'story_subline' => [
+                'label' => 'Subtítulo de la Story (opcional)',
+                'placeholder' => 'Por ejemplo: Ya en tienda',
+                'hint' => 'Una línea más pequeña bajo el titular, máximo 60 caracteres. Un " · " la divide en partes con un punto de color.',
+            ],
+            'story_badge' => [
+                'label' => 'Insignia de la Story (opcional)',
+                'placeholder' => 'Por ejemplo: -20 %',
+                'hint' => 'Una pequeña etiqueta de color, máximo 12 caracteres.',
+            ],
+            'story_headline_alt' => [
+                'label' => 'Titular, segundo idioma (opcional)',
+                'placeholder' => 'El titular en el segundo idioma',
+                'hint' => 'Sustituye suavemente el titular a mitad del vídeo. Solo para vídeos de 6 segundos o más.',
+            ],
+            'story_subline_alt' => [
+                'label' => 'Subtítulo, segundo idioma (opcional)',
+                'placeholder' => 'El subtítulo en el segundo idioma',
+                'hint' => 'Va con el titular del segundo idioma, máximo 60 caracteres.',
+            ],
+            'story_accent_hint' => 'Pon una palabra entre asteriscos, como *oferta*, para colorearla con tu color de acento.',
         ],
         'linkedin' => [
             'settings' => 'Configuración de LinkedIn',

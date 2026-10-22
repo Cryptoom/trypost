@@ -8,9 +8,14 @@ use App\Enums\Workspace\BrandFont;
 use App\Enums\Workspace\BrandVoiceTrait;
 use App\Enums\Workspace\ContentLanguage;
 use App\Enums\Workspace\ImageStyle;
+use App\Enums\Workspace\StoryMotionEffect;
+use App\Enums\Workspace\StoryMotionFont;
+use App\Enums\Workspace\StoryMotionMode;
 use App\Http\Resources\Api\WorkspaceResource;
 use App\Mcp\Concerns\AuthorizesMcpTool;
 use App\Models\Workspace;
+use App\Services\Media\StoryMotionSettings;
+use App\Support\StoryMotionSettingsRules;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Illuminate\Validation\Rule;
 use Laravel\Mcp\Request;
@@ -19,7 +24,7 @@ use Laravel\Mcp\ResponseFactory;
 use Laravel\Mcp\Server\Attributes\Description;
 use Laravel\Mcp\Server\Tool;
 
-#[Description('Update the current workspace brand settings (name, website, description, voice traits, colors, font, image style, content language). All fields are optional, only the fields you pass are changed.')]
+#[Description('Update the current workspace brand settings (name, website, description, voice traits, colors, font, image style, content language) and its Story video settings (story_motion_settings: enabled, font, effects, mode, logo_layer, ai_notice, ending). All fields are optional, only the fields you pass are changed; inside story_motion_settings only the keys you pass change. The result includes the current story_motion_settings.')]
 class UpdateWorkspaceTool extends Tool
 {
     use AuthorizesMcpTool;
@@ -50,7 +55,13 @@ class UpdateWorkspaceTool extends Tool
             'brand_font' => ['sometimes', 'required', 'string', Rule::in(BrandFont::values())],
             'image_style' => ['sometimes', 'required', 'string', Rule::in(ImageStyle::values())],
             'content_language' => ['sometimes', 'string', Rule::in(ContentLanguage::values())],
+            // PATCH:story-motion-settings: merged key by key, same rules as the web endpoint.
+            'story_motion_settings' => ['sometimes', 'array'],
+            ...StoryMotionSettingsRules::rules('story_motion_settings.'),
         ]);
+
+        $storyMotionChanges = $validated['story_motion_settings'] ?? null;
+        unset($validated['story_motion_settings']);
 
         if (array_key_exists('brand_voice_traits', $validated) && $validated['brand_voice_traits'] !== null) {
             $validated['brand_voice_traits'] = BrandVoiceTrait::coerce($validated['brand_voice_traits']);
@@ -61,11 +72,20 @@ class UpdateWorkspaceTool extends Tool
         // logo_url (logo upload has its own dedicated flow, not brand settings).
         $payload = array_intersect_key($validated, array_flip($workspace->getFillable()));
 
+        if ($storyMotionChanges !== null) {
+            $settings = StoryMotionSettings::forWorkspace($workspace)->with($storyMotionChanges);
+            StoryMotionSettingsRules::assertComplete($settings->toArray(), 'story_motion_settings.');
+            $payload['story_motion_settings'] = $settings->toArray();
+        }
+
         if ($payload !== []) {
             $workspace->update($payload);
         }
 
-        return Response::structured((new WorkspaceResource($workspace))->resolve());
+        return Response::structured([
+            ...(new WorkspaceResource($workspace))->resolve(),
+            'story_motion_settings' => StoryMotionSettings::forWorkspace($workspace)->toArray(),
+        ]);
     }
 
     public function schema(JsonSchema $schema): array
@@ -83,6 +103,22 @@ class UpdateWorkspaceTool extends Tool
             'brand_font' => $schema->string()->enum(BrandFont::values())->description('Brand font family name.'),
             'image_style' => $schema->string()->enum(ImageStyle::values())->description('AI image generation style.'),
             'content_language' => $schema->string()->enum(ContentLanguage::values())->description('Content language code (e.g. "en", "de").'),
+            'story_motion_settings' => $schema->object([
+                'enabled' => $schema->boolean()->description('Turn Story videos (a moving video instead of a still photo for Facebook photo Stories) on for this workspace. Default off.'),
+                'font' => $schema->string()->enum(StoryMotionFont::values())->description('Font of the Story video texts.'),
+                'effects' => $schema->array()->items($schema->string()->enum(StoryMotionEffect::values()))->description('One or more image effects. With mode "fixed" the first one in the order drift, focus, snap, sparkle is used.'),
+                'mode' => $schema->string()->enum(StoryMotionMode::values())->description('How one effect is picked per Story: fixed, rotate or random.'),
+                'logo_layer' => $schema->boolean()->description('Show the workspace logo on the Story video (needs an uploaded JPEG or PNG logo up to 2000 x 2000 px and 2 MB).'),
+                'ai_notice' => $schema->object([
+                    'enabled' => $schema->boolean(),
+                    'text' => $schema->string()->description('Notice text, up to 40 characters.'),
+                ])->description('AI notice layer, shown vertically at the left edge.'),
+                'ending' => $schema->object([
+                    'enabled' => $schema->boolean(),
+                    'name' => $schema->string()->description('Name, up to 40 characters. No address or phone number.'),
+                    'line' => $schema->string()->description('Line, up to 60 characters. No address or phone number.'),
+                ])->description('Soft ending in the last 1.5 seconds.'),
+            ])->description('Story video settings. Only the keys you pass are changed.'),
         ];
     }
 }

@@ -4,8 +4,10 @@ import { useForm } from '@inertiajs/vue3';
 import WorkspaceController from '@/actions/App/Http/Controllers/App/WorkspaceController';
 import BrandForm from '@/components/BrandForm.vue';
 import HeadingSmall from '@/components/HeadingSmall.vue';
+import StoryVideoSettings from '@/components/settings/StoryVideoSettings.vue';
 import { Button } from '@/components/ui/button';
 import type { ContentLanguageOption } from '@/types';
+import type { StoryMotionProps } from '@/types/story-motion';
 
 interface Workspace {
     id: string;
@@ -27,6 +29,7 @@ const props = defineProps<{
     availableImageStyles: string[];
     availableVoiceTraits: Record<string, string[]>;
     availableContentLanguages: ContentLanguageOption[];
+    storyMotion?: StoryMotionProps; // PATCH:story-motion-settings
 }>();
 
 const form = useForm({
@@ -49,22 +52,34 @@ const submit = () => {
 </script>
 
 <template>
-    <form class="flex flex-col space-y-6" @submit.prevent="submit">
-        <HeadingSmall
-            :title="$t('settings.brand.title')"
-            :description="$t('settings.brand.description')"
-        />
+    <div class="flex flex-col space-y-10">
+        <form class="flex flex-col space-y-6" @submit.prevent="submit">
+            <HeadingSmall
+                :title="$t('settings.brand.title')"
+                :description="$t('settings.brand.description')"
+            />
 
-        <BrandForm
-            :fields="form"
-            :errors="form.errors"
-            :available-fonts="availableFonts"
-            :available-image-styles="availableImageStyles"
-            :available-voice-traits="availableVoiceTraits"
-            :available-content-languages="availableContentLanguages"
-            :autofill="!workspace.brand_website"
-        />
+            <BrandForm
+                :fields="form"
+                :errors="form.errors"
+                :available-fonts="availableFonts"
+                :available-image-styles="availableImageStyles"
+                :available-voice-traits="availableVoiceTraits"
+                :available-content-languages="availableContentLanguages"
+                :autofill="!workspace.brand_website"
+            />
 
-        <Button :disabled="form.processing">{{ $t('settings.workspace.save') }}</Button>
-    </form>
+            <Button :disabled="form.processing">{{ $t('settings.workspace.save') }}</Button>
+        </form>
+
+        <StoryVideoSettings
+            v-if="storyMotion?.available"
+            :settings="storyMotion.settings"
+            :fonts="storyMotion.fonts"
+            :effects="storyMotion.effects"
+            :modes="storyMotion.modes"
+            :has-logo="storyMotion.hasLogo"
+            :logo-usable="storyMotion.logoUsable"
+        />
+    </div>
 </template>

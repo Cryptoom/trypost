@@ -6,7 +6,7 @@ import net from 'node:net';
 import path from 'node:path';
 import test from 'node:test';
 import { createApp, renderTimeoutFromEnv } from '../lib/app.mjs';
-import { STUB, TOKEN, encodeHeadline, fakeJpeg, hasFfmpeg, pidIsAlive, tmpDir, waitFor } from '../testkit/helpers.mjs';
+import { STUB, TOKEN, fakeJpeg, fakePng, hasFfmpeg, multipartBody, pidIsAlive, tmpDir, validSpec, waitFor } from '../testkit/helpers.mjs';
 
 const stubCommand = (mode, extra = []) => ({ outputPath, jobDir }) => ({
     command: process.execPath,
@@ -34,16 +34,18 @@ const start = async (options = {}) => {
     };
 };
 
-const post = ({ port, query = 'duration=3', headers = {}, body = fakeJpeg(1080, 1920), token = TOKEN }) =>
-    new Promise((resolve, reject) => {
-        const req = http.request({ host: '127.0.0.1', port, method: 'POST', path: `/render?${query}`, headers: { ...(token === null ? {} : { 'X-Story-Render-Token': token }), 'Content-Length': body.length, ...headers } }, (res) => {
+// One multipart request. `spec` and `photo` default to a valid job; `raw` replaces the whole body.
+const post = ({ port, query = '', spec, photo, logo, raw, token = TOKEN, headers = {} }) =>
+    new Promise((resolve) => {
+        const built = raw ?? multipartBody({ ...(photo === undefined ? {} : { photo }), ...(logo === undefined ? {} : { logo }), ...(spec === undefined ? {} : { spec }) });
+        const req = http.request({ host: '127.0.0.1', port, method: 'POST', path: `/render${query}`, headers: { ...(token === null ? {} : { 'X-Story-Render-Token': token }), 'Content-Type': built.contentType, 'Content-Length': built.body.length, ...headers } }, (res) => {
             const chunks = [];
             res.on('data', (chunk) => chunks.push(chunk));
             res.on('end', () => resolve({ status: res.statusCode, headers: res.headers, body: Buffer.concat(chunks) }));
         });
         // A server that answers 413 early may close while the body is still being written.
         req.on('error', () => resolve({ status: 0, headers: {}, body: Buffer.alloc(0) }));
-        req.end(body);
+        req.end(built.body);
     });
 
 const json = (response) => JSON.parse(response.body.toString('utf8'));
@@ -103,30 +105,35 @@ test('service: unknown paths and wrong methods are rejected', async () => {
 test('service: input is validated before anything renders', async () => {
     const ctx = await start({ buildCommand: () => { throw new Error('render must not start'); } });
     try {
-        assert.equal((await post({ port: ctx.port, body: Buffer.from('<svg/>'), headers: { 'Content-Type': 'image/jpeg' } })).status, 415);
-        assert.equal((await post({ port: ctx.port, query: 'duration=2' })).status, 400);
-        assert.equal((await post({ port: ctx.port, query: '' })).status, 400);
-        assert.equal((await post({ port: ctx.port, headers: { 'X-Story-Headline-B64': encodeHeadline('W'.repeat(81)) } })).status, 400);
-        assert.equal((await post({ port: ctx.port, body: fakeJpeg(5000, 100) })).status, 413);
+        const status = async (options) => (await post({ port: ctx.port, ...options })).status;
+        assert.equal(await status({ photo: Buffer.from('<svg/>') }), 415);
+        assert.equal(await status({ spec: validSpec({ duration: 2 }) }), 400);
+        assert.equal(await status({ spec: validSpec({ duration: 21 }) }), 400);
+        assert.equal(await status({ spec: validSpec({ duration: 3.5 }) }), 400);
+        assert.equal(await status({ spec: validSpec({ headline: 'W'.repeat(81) }) }), 400);
+        assert.equal(await status({ spec: validSpec({ effect: 'wobble' }) }), 400);
+        assert.equal(await status({ spec: null }), 400);
+        assert.equal(await status({ photo: fakeJpeg(5000, 100) }), 413);
+        assert.equal(await status({ query: '?duration=3' }), 400, 'duration is only read from the spec');
         assert.deepEqual(jobDirs(ctx.workDir), []);
     } finally {
         await ctx.stop();
     }
 });
 
-test('service: a declared Content-Length over 8 MB is a 413 before any byte is read', async () => {
+test('service: a declared Content-Length over 12 MB is a 413 before any byte is read', async () => {
     const ctx = await start({ buildCommand: () => { throw new Error('render must not start'); } });
     try {
         const answer = await new Promise((resolve, reject) => {
             const socket = net.connect(ctx.port, '127.0.0.1', () => {
-                socket.write(`POST /render?duration=3 HTTP/1.1\r\nHost: x\r\nX-Story-Render-Token: ${TOKEN}\r\nContent-Length: ${9 * 1024 * 1024}\r\n\r\n`);
+                socket.write(`POST /render HTTP/1.1\r\nHost: x\r\nX-Story-Render-Token: ${TOKEN}\r\nContent-Length: ${13 * 1024 * 1024}\r\n\r\n`);
             });
             let data = '';
             socket.on('data', (chunk) => { data += chunk.toString('latin1'); socket.destroy(); resolve(data); });
             socket.on('error', reject);
         });
         assert.match(answer, /^HTTP\/1\.1 413 /);
-        assert.match(answer, /image_too_large/);
+        assert.match(answer, /body_too_large/);
     } finally {
         await ctx.stop();
     }
@@ -136,10 +143,10 @@ test('service: the body limit is enforced while streaming, without a Content-Len
     const ctx = await start({ buildCommand: () => { throw new Error('render must not start'); } });
     try {
         const status = await new Promise((resolve) => {
-            const req = http.request({ host: '127.0.0.1', port: ctx.port, method: 'POST', path: '/render?duration=3', headers: { 'X-Story-Render-Token': TOKEN, 'Transfer-Encoding': 'chunked' } }, (res) => { res.resume(); resolve(res.statusCode); });
+            const req = http.request({ host: '127.0.0.1', port: ctx.port, method: 'POST', path: '/render', headers: { 'X-Story-Render-Token': TOKEN, 'Transfer-Encoding': 'chunked' } }, (res) => { res.resume(); resolve(res.statusCode); });
             req.on('error', () => resolve('closed'));
             const chunk = Buffer.alloc(1024 * 1024, 0x11);
-            for (let i = 0; i < 10; i += 1) {
+            for (let i = 0; i < 14; i += 1) {
                 req.write(chunk);
             }
             req.end();
@@ -189,15 +196,16 @@ test('service: success returns the MP4 and leaves nothing behind', { skip: hasFf
     let seen = null;
     const ctx = await start({ compose: async (jobDir, params) => { seen = params; const { writeComposition } = await import('../lib/composition.mjs'); return writeComposition(jobDir, params); } });
     try {
-        const res = await post({ port: ctx.port, headers: { 'X-Story-Headline-B64': encodeHeadline('Sale 🔥 Ελληνικά\u0007') } });
+        const res = await post({ port: ctx.port, spec: validSpec({ headline: 'Sale 🔥 Ελληνικά\u0007 *Wow*', subline: 'Open now · Paphos' }) });
         assert.equal(res.status, 200);
         assert.equal(res.headers['content-type'], 'video/mp4');
         assert.equal(res.body.subarray(4, 8).toString('latin1'), 'ftyp');
-        assert.equal(seen.headline, 'Sale Ελληνικά', 'emoji and control characters are stripped before composing');
-        assert.equal(seen.durationSeconds, 3);
-        assert.equal(seen.ext, 'jpg');
+        assert.deepEqual(seen.job.blocks[0].headline, [{ t: 'Sale', a: false }, { t: 'Ελληνικά', a: false }, { t: 'Wow', a: true }], 'emoji and control characters are stripped before composing');
+        assert.equal(seen.job.duration, 3);
+        assert.equal(seen.photo.ext, 'jpg');
+        assert.equal(seen.logo, null);
         assert.ok(await waitFor(() => jobDirs(ctx.workDir).length === 0), 'job dir not removed after streaming');
-        assert.ok(!JSON.stringify(ctx.logs).includes('Ελληνικά'), 'the headline must not be logged');
+        assert.ok(!JSON.stringify(ctx.logs).includes('Ελληνικά'), 'the text must not be logged');
     } finally {
         await ctx.stop();
     }
@@ -238,16 +246,17 @@ test('service: a render that hangs is a 504, its processes (incl. a setsid grand
 test('service: when the client disconnects mid-render the render tree is killed and the service is free again', async () => {
     const ctx = await start({ buildCommand: stubCommand('hang'), renderTimeoutSeconds: 60 });
     try {
-        const req = http.request({ host: '127.0.0.1', port: ctx.port, method: 'POST', path: '/render?duration=3', headers: { 'X-Story-Render-Token': TOKEN, 'Content-Length': fakeJpeg(1080, 1920).length } });
+        const built = multipartBody();
+        const req = http.request({ host: '127.0.0.1', port: ctx.port, method: 'POST', path: '/render', headers: { 'X-Story-Render-Token': TOKEN, 'Content-Type': built.contentType, 'Content-Length': built.body.length } });
         req.on('error', () => {});
-        req.end(fakeJpeg(1080, 1920));
+        req.end(built.body);
         const pidFileName = () => readdirSync(ctx.workDir).find((name) => name.startsWith('pids-hang'));
         assert.ok(await waitFor(() => { const f = pidFileName(); return f && readFileSync(path.join(ctx.workDir, f), 'utf8').includes(' '); }), 'render did not start');
         const [childPid, grandchildPid] = readFileSync(path.join(ctx.workDir, pidFileName()), 'utf8').split(' ').map(Number);
         req.destroy();
         assert.ok(await waitFor(() => !pidIsAlive(childPid) && !pidIsAlive(grandchildPid), 8000), 'render tree survived the client abort');
         assert.ok(await waitFor(() => jobDirs(ctx.workDir).length === 0));
-        const next = await post({ port: ctx.port, body: Buffer.from('<svg/>') });
+        const next = await post({ port: ctx.port, photo: Buffer.from('<svg/>') });
         assert.equal(next.status, 415, 'busy flag must have been released');
     } finally {
         await ctx.stop();
@@ -292,7 +301,7 @@ test('service: a throwing orphan sweep is logged and swallowed, the job director
         assert.equal(json(res).error, 'render_failed');
         assert.ok(ctx.logs.some((entry) => entry.event === 'sweep_failed'));
         assert.deepEqual(jobDirs(ctx.workDir), []);
-        assert.equal((await post({ port: ctx.port, body: Buffer.from('<svg/>') })).status, 415, 'slot is free');
+        assert.equal((await post({ port: ctx.port, photo: Buffer.from('<svg/>') })).status, 415, 'slot is free');
     } finally {
         await ctx.stop();
     }
@@ -315,7 +324,7 @@ test('service: when the handler itself throws, the slot is freed and the job dir
         assert.equal(json(first).error, 'internal_error');
         assert.ok(logs.some((entry) => entry.event === 'render_failed' && entry.reason === 'internal'), 'the failure is logged');
         assert.ok(await waitFor(() => jobDirs(ctx.workDir).length === 0), 'job dir left behind');
-        const second = await post({ port: ctx.port, body: Buffer.from('<svg/>') });
+        const second = await post({ port: ctx.port, photo: Buffer.from('<svg/>') });
         assert.notEqual(second.status, 503, 'a stuck busy flag would answer 503');
     } finally {
         await ctx.stop();
@@ -326,7 +335,7 @@ test('service: a failing render logs only the size of its stderr, never the text
     const bait = 'Ελληνικά-secret-headline';
     const ctx = await start({ buildCommand: stubCommand('fail', [`error near ${bait}`]) });
     try {
-        const res = await post({ port: ctx.port, headers: { 'X-Story-Headline-B64': encodeHeadline(bait) } });
+        const res = await post({ port: ctx.port, spec: validSpec({ headline: bait }) });
         assert.equal(res.status, 500);
         const entry = ctx.logs.find((log) => log.reason === 'exit');
         assert.equal(entry.exitCode, 3);
@@ -338,23 +347,38 @@ test('service: a failing render logs only the size of its stderr, never the text
 
     const debug = await start({ buildCommand: stubCommand('fail', [`error near ${bait}`]), logStderr: true });
     try {
-        await post({ port: debug.port, headers: { 'X-Story-Headline-B64': encodeHeadline(bait) } });
+        await post({ port: debug.port, spec: validSpec({ headline: bait }) });
         assert.ok(JSON.stringify(debug.logs).includes('secret-headline'), 'debug flag opts in');
     } finally {
         await debug.stop();
     }
 });
 
+test('service: a rejected request logs its reason and field only, never the request text', async () => {
+    const bait = 'Ελληνικά-secret-headline';
+    const ctx = await start();
+    try {
+        const res = await post({ port: ctx.port, spec: validSpec({ headline: bait.repeat(5), badge: bait }) });
+        assert.equal(res.status, 400);
+        const entry = ctx.logs.find((log) => log.event === 'render_rejected');
+        assert.equal(entry.reason, 'spec_text_too_long');
+        assert.ok(!JSON.stringify(ctx.logs).includes('secret-headline'));
+        assert.ok(!res.body.toString('utf8').includes('secret-headline'));
+    } finally {
+        await ctx.stop();
+    }
+});
+
 // Starts a render and returns the paused response, so the finished video stays unread in the socket buffers.
 const startStalledDownload = (port) =>
     new Promise((resolve, reject) => {
-        const body = fakeJpeg(1080, 1920);
-        const req = http.request({ host: '127.0.0.1', port, method: 'POST', path: '/render?duration=3', headers: { 'X-Story-Render-Token': TOKEN, 'Content-Length': body.length } }, (res) => {
+        const built = multipartBody();
+        const req = http.request({ host: '127.0.0.1', port, method: 'POST', path: '/render', headers: { 'X-Story-Render-Token': TOKEN, 'Content-Type': built.contentType, 'Content-Length': built.body.length } }, (res) => {
             res.pause();
             resolve({ req, res });
         });
         req.on('error', reject);
-        req.end(body);
+        req.end(built.body);
     });
 
 const readAll = (res) =>
@@ -450,4 +474,76 @@ test('service: the render timeout from the environment falls back to 240 and is 
     assert.equal(renderTimeoutFromEnv('240'), 240);
     assert.equal(renderTimeoutFromEnv('9999'), 240);
     assert.equal(renderTimeoutFromEnv(90), 90);
+});
+
+test('service: the logo travels as its own part, is inspected on its own limits and reaches the composition', { skip: hasFfmpeg ? false : 'ffmpeg missing' }, async () => {
+    let seen = null;
+    const ctx = await start({ compose: async (jobDir, params) => { seen = params; const { writeComposition } = await import('../lib/composition.mjs'); return writeComposition(jobDir, params); } });
+    try {
+        const logo = fakePng(1500, 600);
+        const res = await post({ port: ctx.port, spec: validSpec({ logoLayer: true, aiNotice: 'AI-generated image' }), logo });
+        assert.equal(res.status, 200);
+        assert.equal(seen.logo.ext, 'png');
+        assert.ok(seen.logo.buffer.equals(logo));
+        assert.deepEqual(seen.job.logo, { ext: 'png', w: 120, h: 48 });
+        assert.equal(seen.job.strong, true);
+    } finally {
+        await ctx.stop();
+    }
+});
+
+test('service: an AI notice that falls back is logged with a fixed code only, never the requested text', { skip: hasFfmpeg ? false : 'ffmpeg missing' }, async () => {
+    let seen = null;
+    const ctx = await start({ compose: async (jobDir, params) => { seen = params; const { writeComposition } = await import('../lib/composition.mjs'); return writeComposition(jobDir, params); } });
+    try {
+        const res = await post({ port: ctx.port, spec: validSpec({ logoLayer: false, aiNotice: 'صورة 🤖' }) });
+        assert.equal(res.status, 200);
+        assert.equal(seen.job.aiNotice, 'AI-generated image');
+        assert.ok(ctx.logs.some((entry) => entry.event === 'ai_notice_fallback' && entry.reason === 'not_drawable'));
+        assert.ok(!JSON.stringify(ctx.logs).includes('صورة'), 'the text must not be logged');
+    } finally {
+        await ctx.stop();
+    }
+});
+
+test('service: a logo that is too large in pixels, not an image, or missing or unexpected is a 400 before any render', async () => {
+    const ctx = await start({ buildCommand: () => { throw new Error('render must not start'); } });
+    try {
+        const answer = async (options) => { const res = await post({ port: ctx.port, ...options }); return [res.status, json(res).error]; };
+        assert.deepEqual(await answer({ spec: validSpec({ logoLayer: true }), logo: fakePng(2001, 100) }), [400, 'logo_image_dimensions_too_large']);
+        assert.deepEqual(await answer({ spec: validSpec({ logoLayer: true }), logo: Buffer.from('<svg/>') }), [400, 'logo_unsupported_image_type']);
+        assert.deepEqual(await answer({ spec: validSpec({ logoLayer: true }) }), [400, 'logo_required']);
+        assert.deepEqual(await answer({ spec: validSpec({ logoLayer: false }), logo: fakePng(100, 100) }), [400, 'logo_unexpected']);
+        assert.deepEqual(jobDirs(ctx.workDir), []);
+    } finally {
+        await ctx.stop();
+    }
+});
+
+test('service: a rejected spec names the field but never echoes request text', async () => {
+    const ctx = await start({ buildCommand: () => { throw new Error('render must not start'); } });
+    try {
+        const bait = '</script><img src=x onerror=alert(1)>';
+        const tooLong = await post({ port: ctx.port, spec: validSpec({ badge: bait }) });
+        assert.equal(tooLong.status, 400);
+        assert.deepEqual(json(tooLong), { error: 'spec_text_too_long', field: 'badge' });
+        const unknown = await post({ port: ctx.port, spec: JSON.stringify({ ...validSpec(), [bait]: 1 }) });
+        assert.equal(unknown.status, 400);
+        assert.ok(!unknown.body.toString('utf8').includes('script'), 'the answer must not repeat the key');
+        assert.ok(!JSON.stringify(ctx.logs).includes('script'), 'nor may the log');
+    } finally {
+        await ctx.stop();
+    }
+});
+
+test('service: the spec is read with the effect from the request, so a bad effect never starts a render', async () => {
+    const ctx = await start({ buildCommand: () => { throw new Error('render must not start'); } });
+    try {
+        for (const effect of ['wobble', '', null, 7]) {
+            const res = await post({ port: ctx.port, spec: { ...validSpec(), effect } });
+            assert.equal(res.status, 400, `effect ${JSON.stringify(effect)}`);
+        }
+    } finally {
+        await ctx.stop();
+    }
 });
