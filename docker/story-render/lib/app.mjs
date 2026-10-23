@@ -33,7 +33,7 @@ export const renderTimeoutFromEnv = (raw) => {
 
 export const DEFAULT_RENDER_WORKERS = 1;
 /**
- * Render worker count from an environment value: only the plain digits 1 to 4 are accepted, anything
+ * PATCH:story-motion-speed. Render worker count from an environment value: only the plain digits 1 to 4 are accepted, anything
  * else (empty, 0, 5, 2.5, 02, 1e0, text) falls back to the one-worker default.
  */
 export const renderWorkersFromEnv = (raw) => {

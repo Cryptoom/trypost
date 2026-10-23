@@ -113,7 +113,7 @@ export const parseSpec = (raw) => {
 };
 
 /**
- * Display size of the logo: 64 px high, at most 640 px wide (the white card adds 20 px each side and 10 px
+ * PATCH:story-motion-speed. Display size of the logo: 64 px high, at most 640 px wide (the white card adds 20 px each side and 10 px
  * top and bottom, so the card is at most 680 px wide and 84 px high).
  */
 export const LOGO_HEIGHT = 64;
