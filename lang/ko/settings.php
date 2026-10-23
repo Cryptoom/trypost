@@ -375,7 +375,7 @@ return [
             'no_contact_details' => '여기에 주소나 전화번호를 입력하지 마세요.',
             'notice_text_required' => '안내 문구를 입력하거나 AI 표시를 끄세요.',
             'notice_text_unsupported' => '라틴 문자, 그리스 문자 또는 키릴 문자를 사용하세요. 영상에는 다른 문자를 표시할 수 없습니다.',
-            'logo_too_many_pixels' => '이 로고는 사용 가능한 메모리에 비해 너무 큽니다. 더 작은 이미지를 업로드하세요(최대 :megapixels메가픽셀, 예: 4000 x 2000 px. 메모리가 부족하면 더 작게 줄이세요).',
+            'logo_too_many_pixels' => '이 로고는 사용 가능한 메모리에 비해 너무 큽니다. 더 작은 이미지를 업로드하세요(최대 :megapixels메가픽셀, 예: 3000 x 2000 px. 메모리가 부족하면 더 작게 줄이세요).',
             'ending_text_required' => '이름이나 한 줄을 입력하거나 엔딩을 끄세요.',
         ],
     ],

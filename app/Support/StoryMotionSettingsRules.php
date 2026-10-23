@@ -64,12 +64,14 @@ class StoryMotionSettingsRules
      * Separators are spaces, dots, commas, underscores, hyphens, slashes, brackets, the middle dot and the
      * en and em dash; a colon only between two groups of three or more digits, so "10:00 - 19:00" passes.
      * A run that consists only of year-like groups of four digits (1900 to 2099, as in "Seit 1998 2026")
-     * is not a phone number and passes.
+     * is not a phone number and passes. Control characters (Cc, such as DEL or U+0080) and format characters (Cf)
+     * are removed first, exactly as the render service does; only tab, line feed and carriage return stay and count as spaces.
      */
     public static function looksLikeContactDetails(string $text): bool
     {
-        // The renderer removes invisible format characters too, so they must not split a digit run here.
-        $text = preg_replace('/\p{Cf}/u', '', $text) ?? $text;
+        // The renderer removes invisible format characters and control characters (the tab, the line feed and the
+        // carriage return become spaces there), so none of them may split a digit run here.
+        $text = preg_replace('/(?![\t\n\r])[\p{Cc}\p{Cf}]/u', '', $text) ?? $text;
 
         if (preg_match('/\+\s*\d/', $text) === 1 || preg_match('/tel:/i', $text) === 1) {
             return true;

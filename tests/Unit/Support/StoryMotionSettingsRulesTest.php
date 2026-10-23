@@ -60,3 +60,32 @@ test('story motion rules: year pairs and short numbers pass, phone numbers do no
     'age groups (ambiguous)' => ['Ab 10, 20, 30 Jahre', true],
     'quantity formatted as a phone number (ambiguous)' => ['1,200,000 toys', true],
 ]);
+
+// TPS-SM-03 (review N2): the renderer removes every Cc character too, so a control character between digits must not hide a number.
+test('story motion rules: control characters between digits do not split a phone number, in both directions', function (string $text, bool $contact) {
+    expect(StoryMotionSettingsRules::looksLikeContactDetails($text))->toBe($contact);
+})->with([
+    'DEL between digit groups' => ["99\u{007F}123\u{007F}456", true],
+    'U+0080 between digit groups' => ["99\u{0080}123\u{0080}456", true],
+    'DEL inside a plain run' => ["12\u{007F}34\u{007F}56", true],
+    'U+0080 inside a plain run' => ["12\u{0080}34\u{0080}56", true],
+    'U+009F between digit groups' => ["99\u{009F}123\u{009F}456", true],
+    'NUL between digit groups' => ["99\u{0000}123\u{0000}456", true],
+    'vertical tab between digit groups' => ["99\u{000B}123\u{000B}456", true],
+    'control and format characters mixed' => ["99\u{007F}\u{200B}123\u{0080}456", true],
+    'a plus with DEL before the digit' => ["+\u{007F}357", true],
+    'tel with DEL inside' => ["te\u{007F}l:123", true],
+    'DEL between years' => ["Seit 1998\u{007F} 2026", false],
+    'U+0080 between years' => ["Seit 1998\u{0080} 2026", false],
+    'DEL inside opening hours' => ["10:00\u{007F} - 19:00", false],
+    'U+0080 inside a short number' => ["12\u{0080}345", false],
+    'DEL inside a house number' => ["Makarios 1\u{007F}2", false],
+    'DEL between two years joins them into one number' => ["1998\u{007F}2026", true],
+    'U+0080 between two years joins them into one number' => ["1998\u{0080}2026", true],
+    'a tab between two years is a space, as in the renderer' => ["Seit 1998\t2026", false],
+    'a line feed between two years is a space, as in the renderer' => ["Seit 1998\n2026", false],
+    'a carriage return between two years is a space, as in the renderer' => ["Seit 1998\r2026", false],
+    'a tab is whitespace and keeps the groups apart' => ["99\t123", false],
+    'a line feed is whitespace and keeps the groups apart' => ["99\n123", false],
+    'a tab between long groups still counts' => ["123\t456", true],
+]);

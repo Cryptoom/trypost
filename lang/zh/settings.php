@@ -375,7 +375,7 @@ return [
             'no_contact_details' => '请不要在这里填写地址或电话号码。',
             'notice_text_required' => '请输入提示文字,或关闭提示。',
             'notice_text_unsupported' => '请使用拉丁、希腊或西里尔字母：视频无法显示其他字符。',
-            'logo_too_many_pixels' => '此标志对于可用内存而言过大。请上传较小的图片（最多 :megapixels 百万像素，例如 4000 x 2000 像素；内存不足时需更小）。',
+            'logo_too_many_pixels' => '此标志对于可用内存而言过大。请上传较小的图片（最多 :megapixels 百万像素，例如 3000 x 2000 像素；内存不足时需更小）。',
             'ending_text_required' => '请输入名称或一行文字,或关闭结尾。',
         ],
     ],

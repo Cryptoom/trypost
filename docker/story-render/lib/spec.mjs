@@ -113,15 +113,18 @@ export const parseSpec = (raw) => {
 };
 
 /**
- * Display size of the logo: 48 px high, at most 480 px wide (the white card adds 20 px each side, so the
- * card is at most 520 px wide and 68 px high).
+ * PATCH:story-motion-speed. Display size of the logo: 64 px high, at most 640 px wide (the white card adds 20 px each side and 10 px
+ * top and bottom, so the card is at most 680 px wide and 84 px high).
  */
+export const LOGO_HEIGHT = 64;
+export const LOGO_MAX_WIDTH = 640;
+
 export const logoSize = ({ width, height }) => {
-    let h = 48;
-    let w = Math.round((48 * width) / height);
-    if (w > 480) {
-        w = 480;
-        h = Math.max(1, Math.round((480 * height) / width));
+    let h = LOGO_HEIGHT;
+    let w = Math.round((LOGO_HEIGHT * width) / height);
+    if (w > LOGO_MAX_WIDTH) {
+        w = LOGO_MAX_WIDTH;
+        h = Math.max(1, Math.round((LOGO_MAX_WIDTH * height) / width));
     }
 
     return { w: Math.max(1, w), h };

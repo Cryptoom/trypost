@@ -226,9 +226,9 @@ test('composition (browser): logo and AI notice sit still at the agreed spot whi
             assert.deepEqual(middle.ai, first.ai, `${effect}: notice moved`);
             assert.deepEqual(last.ai, first.ai, `${effect}: notice moved`);
             assert.notDeepEqual(middle.photo, first.photo, `${effect}: the photo must move`);
-            // logo card: 68 px high, centred, top at y=155; notice starts at x=70, y=1080
+            // logo card: 84 px high, centred, top at y=155; notice starts at x=70, y=1080
             assert.equal(first.logo[1], 155);
-            assert.equal(first.logo[3], 68);
+            assert.equal(first.logo[3], 84);
             assert.ok(Math.abs(first.logo[0] + first.logo[2] / 2 - 540) < 0.5);
             assert.equal(first.ai[0], 70);
             assert.equal(first.ai[1], 1080);

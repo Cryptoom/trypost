@@ -31,16 +31,30 @@ export const renderTimeoutFromEnv = (raw) => {
     return Math.min(Math.max(value, 10), MAX_RENDER_TIMEOUT_SECONDS);
 };
 
+export const DEFAULT_RENDER_WORKERS = 1;
+/**
+ * PATCH:story-motion-speed. Render worker count from an environment value: only the plain digits 1 to 4 are accepted, anything
+ * else (empty, 0, 5, 2.5, 02, 1e0, text) falls back to the one-worker default.
+ */
+export const renderWorkersFromEnv = (raw) => {
+    if (typeof raw !== 'string' && typeof raw !== 'number') {
+        return DEFAULT_RENDER_WORKERS;
+    }
+    const text = String(raw).trim();
+
+    return /^[1-4]$/.test(text) ? Number(text) : DEFAULT_RENDER_WORKERS;
+};
+
 export const TOKEN_HEADER = 'x-story-render-token';
 
 const digest = (value) => createHash('sha256').update(value).digest();
 
 /**
- * Default render command: the pinned HyperFrames CLI, one worker, no network use.
+ * Default render command: the pinned HyperFrames CLI, STORY_RENDER_WORKERS workers (default 1), no network use.
  */
 export const hyperframesCommand = ({ jobDir, outputPath, env }) => ({
     command: process.execPath,
-    args: [HYPERFRAMES_CLI, 'render', jobDir, '--output', outputPath, '--fps', '30', '--workers', '1', '--quiet'],
+    args: [HYPERFRAMES_CLI, 'render', jobDir, '--output', outputPath, '--fps', '30', '--workers', String(renderWorkersFromEnv(env.STORY_RENDER_WORKERS)), '--quiet'],
     env: {
         PATH: env.PATH ?? '/usr/local/bin:/usr/bin:/bin',
         HOME: path.join(jobDir, '.home'),

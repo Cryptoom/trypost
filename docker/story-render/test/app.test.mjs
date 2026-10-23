@@ -5,7 +5,7 @@ import http from 'node:http';
 import net from 'node:net';
 import path from 'node:path';
 import test from 'node:test';
-import { createApp, renderTimeoutFromEnv } from '../lib/app.mjs';
+import { createApp, hyperframesCommand, renderTimeoutFromEnv, renderWorkersFromEnv } from '../lib/app.mjs';
 import { STUB, TOKEN, fakeJpeg, fakePng, hasFfmpeg, multipartBody, pidIsAlive, tmpDir, validSpec, waitFor } from '../testkit/helpers.mjs';
 
 const stubCommand = (mode, extra = []) => ({ outputPath, jobDir }) => ({
@@ -476,6 +476,39 @@ test('service: the render timeout from the environment falls back to 240 and is 
     assert.equal(renderTimeoutFromEnv(90), 90);
 });
 
+test('service: the render worker count comes from STORY_RENDER_WORKERS, only 1 to 4 pass, everything else is 1', () => {
+    for (const raw of [1, 2, 3, 4, '1', '2', '3', '4', ' 3 ']) {
+        assert.equal(renderWorkersFromEnv(raw), Number(String(raw).trim()), `${JSON.stringify(raw)}`);
+    }
+    for (const raw of [undefined, null, '', '   ', '0', '5', '8', '16', '-1', '-2', '2.5', '1.0', '02', '0x2', '1e0', '2 3', '2,3', 'abc', 'NaN', 'Infinity', 0, 5, -1, 2.5, NaN, Infinity, true, [], {}, ['2'], '٢']) {
+        assert.equal(renderWorkersFromEnv(raw), 1, `${JSON.stringify(raw)}`);
+    }
+});
+
+test('service: the render command passes the checked worker count to HyperFrames and keeps the hardening flags', () => {
+    const argsOf = (env) => {
+        const { args, env: childEnv } = hyperframesCommand({ jobDir: '/tmp/job', outputPath: '/tmp/job/out.mp4', env });
+        assert.ok(!('STORY_RENDER_WORKERS' in childEnv), 'the setting is not handed on to the child process');
+
+        return args;
+    };
+    const workersOf = (args) => args[args.indexOf('--workers') + 1];
+
+    assert.equal(workersOf(argsOf({})), '1');
+    assert.equal(workersOf(argsOf({ STORY_RENDER_WORKERS: '1' })), '1');
+    assert.equal(workersOf(argsOf({ STORY_RENDER_WORKERS: '3' })), '3');
+    assert.equal(workersOf(argsOf({ STORY_RENDER_WORKERS: '4' })), '4');
+    assert.equal(workersOf(argsOf({ STORY_RENDER_WORKERS: '5' })), '1');
+    assert.equal(workersOf(argsOf({ STORY_RENDER_WORKERS: '2; rm -rf /' })), '1');
+    assert.equal(workersOf(argsOf({ STORY_RENDER_WORKERS: '--quiet' })), '1');
+    for (const value of [undefined, '2', 'x']) {
+        const args = argsOf({ STORY_RENDER_WORKERS: value });
+        assert.equal(args[args.indexOf('--fps') + 1], '30');
+        assert.equal(args.at(-1), '--quiet');
+        assert.equal(args.filter((arg) => arg === '--workers').length, 1);
+    }
+});
+
 test('service: the logo travels as its own part, is inspected on its own limits and reaches the composition', { skip: hasFfmpeg ? false : 'ffmpeg missing' }, async () => {
     let seen = null;
     const ctx = await start({ compose: async (jobDir, params) => { seen = params; const { writeComposition } = await import('../lib/composition.mjs'); return writeComposition(jobDir, params); } });
@@ -485,7 +518,7 @@ test('service: the logo travels as its own part, is inspected on its own limits 
         assert.equal(res.status, 200);
         assert.equal(seen.logo.ext, 'png');
         assert.ok(seen.logo.buffer.equals(logo));
-        assert.deepEqual(seen.job.logo, { ext: 'png', w: 120, h: 48 });
+        assert.deepEqual(seen.job.logo, { ext: 'png', w: 160, h: 64 });
         assert.equal(seen.job.strong, true);
     } finally {
         await ctx.stop();
