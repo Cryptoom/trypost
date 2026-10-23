@@ -50,3 +50,18 @@ test('story motion logo: decode budget includes current allocations, multiple co
         ->and(StoryMotionLogo::decodeFitsMemory(1, 32 * 1024 * 1024, $usage))->toBeFalse()
         ->and(StoryMotionLogo::decodeFitsMemory(0, $required, $usage))->toBeFalse();
 });
+
+test('story motion logo: the size example in the too-large error is in all 16 languages 3000 x 2000 and inside the pixel limit', function () {
+    // PATCH:story-motion-settings (TPS-SM-03, review N1): 4000 x 2000 is 8 MP at the limit and fails with little spare room.
+    expect(3000 * 2000)->toBeLessThan(StoryMotionLogo::MAX_DECODE_PIXELS);
+
+    $locales = array_map('basename', glob(base_path('lang/*'), GLOB_ONLYDIR));
+    expect($locales)->toHaveCount(16);
+
+    foreach ($locales as $locale) {
+        $message = trans('settings.story_video.errors.logo_too_many_pixels', ['megapixels' => 8], $locale);
+
+        expect($message)->toMatch('/3000 [x×] 2000/u', $locale)
+            ->and($message)->not->toContain('4000', $locale);
+    }
+});

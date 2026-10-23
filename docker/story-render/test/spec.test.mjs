@@ -144,15 +144,16 @@ test('spec: logo layer needs a logo, and a logo needs the layer', () => {
     assert.equal(build(validSpec({ logoLayer: false })).logo, null);
 });
 
-test('spec: the logo is 48 px high and at most 480 px wide, so the card is at most 520 x 68', () => {
-    assert.deepEqual(logoSize({ width: 4000, height: 1528 }), { w: 126, h: 48 });
-    assert.deepEqual(logoSize({ width: 100, height: 100 }), { w: 48, h: 48 });
-    assert.deepEqual(logoSize({ width: 2000, height: 100 }), { w: 480, h: 24 }, 'a very wide logo is shrunk proportionally');
-    assert.deepEqual(logoSize({ width: 2000, height: 1 }), { w: 480, h: 1 });
-    for (const [width, height] of [[1, 2000], [2000, 2000], [2000, 100], [333, 77]]) {
+test('spec: the logo is 64 px high and at most 640 px wide, so the card is at most 680 x 84', () => {
+    assert.deepEqual(logoSize({ width: 4000, height: 1528 }), { w: 168, h: 64 });
+    assert.deepEqual(logoSize({ width: 100, height: 100 }), { w: 64, h: 64 });
+    assert.deepEqual(logoSize({ width: 2000, height: 100 }), { w: 640, h: 32 }, 'a very wide logo is shrunk proportionally');
+    assert.deepEqual(logoSize({ width: 2000, height: 1 }), { w: 640, h: 1 });
+    assert.deepEqual(logoSize({ width: 960, height: 100 }), { w: 614, h: 64 }, 'just below the width limit the height stays 64');
+    for (const [width, height] of [[1, 2000], [2000, 2000], [2000, 100], [333, 77], [961, 100], [10000, 100]]) {
         const { w, h } = logoSize({ width, height });
-        assert.ok(h <= 48 && w <= 480 && w >= 1 && h >= 1);
-        assert.ok(w + 40 <= 520 && h + 20 <= 68);
+        assert.ok(h <= 64 && w <= 640 && w >= 1 && h >= 1);
+        assert.ok(w + 40 <= 680 && h + 20 <= 84);
     }
 });
 
@@ -321,5 +322,5 @@ test('spec text injection (data file): numbers and names in the data come from t
     assert.deepEqual(data.font, { family: 'StoryComfortaa', weight: 700 });
     assert.equal(data.logo, null);
     const logoData = storyData(build(validSpec({ logoLayer: true }), { ext: 'jpg', width: 300, height: 100 }));
-    assert.deepEqual(logoData.logo, { file: 'logo.jpg', w: 144, h: 48 });
+    assert.deepEqual(logoData.logo, { file: 'logo.jpg', w: 192, h: 64 });
 });
