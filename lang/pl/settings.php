@@ -329,6 +329,8 @@ return [
         'description' => 'Zamień zdjęciowe Stories na Facebooku w krótkie filmy z ruchem kamery, animowanym tekstem i Twoim logo.',
         'enabled' => 'Publikuj zdjęciowe Stories jako wideo',
         'enabled_description' => 'Zdjęcia w Stories na Facebooku stają się filmem w ruchu. Jeśli coś pójdzie nie tak, zostanie opublikowane nieruchome zdjęcie, jak dotąd.',
+        'instagram' => 'Także dla relacji na Instagramie',
+        'instagram_description' => 'Zdjęcia w relacjach na Instagramie zamieniają się w to samo ruchome wideo. Jeśli coś pójdzie nie tak, zostanie opublikowane zdjęcie statyczne, tak jak dotąd.',
         'font' => 'Czcionka',
         'font_description' => 'Używana we wszystkich tekstach w filmie.',
         'effects' => 'Efekty obrazu',

@@ -329,6 +329,8 @@ return [
         'description' => 'Trasforma le Storie foto di Facebook in brevi video con movimento di camera, testo animato e il tuo logo.',
         'enabled' => 'Pubblica le Storie foto come video',
         'enabled_description' => 'Le foto delle Storie di Facebook diventano un video in movimento. Se qualcosa va storto, viene pubblicata la foto fissa come prima.',
+        'instagram' => 'Anche per le Storie di Instagram',
+        'instagram_description' => 'Le foto nelle Storie di Instagram diventano lo stesso video in movimento. Se qualcosa va storto, viene pubblicata la foto statica come prima.',
         'font' => 'Carattere',
         'font_description' => 'Usato per tutti i testi del video.',
         'effects' => 'Effetti immagine',

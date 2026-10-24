@@ -17,6 +17,10 @@ use App\Models\Workspace;
  * garbage, a wrong type or an unknown value all fall back to the default for
  * that one value, and the default for "enabled" is off. That is what keeps the
  * publish path safe against a bad row.
+ *
+ * PATCH:story-motion-instagram: `instagram` is the workspace's "also for
+ * Instagram Stories" switch (default off, so a row stored before it existed
+ * keeps Instagram on the photo Story). It only matters while `enabled` is on.
  */
 final class StoryMotionSettings
 {
@@ -43,12 +47,14 @@ final class StoryMotionSettings
         public readonly bool $endingEnabled,
         public readonly string $endingName,
         public readonly string $endingLine,
+        public readonly bool $instagram = false,
     ) {}
 
     public static function defaults(?string $brandFont = null): self
     {
         return new self(
             enabled: false,
+            instagram: false,
             font: StoryMotionFont::fromBrandFont($brandFont),
             effects: [StoryMotionEffect::DEFAULT],
             mode: StoryMotionMode::DEFAULT,
@@ -112,6 +118,7 @@ final class StoryMotionSettings
 
         return new self(
             enabled: is_bool($data['enabled'] ?? null) ? $data['enabled'] : $defaults->enabled,
+            instagram: is_bool($data['instagram'] ?? null) ? $data['instagram'] : $defaults->instagram,
             font: is_string($data['font'] ?? null) ? (StoryMotionFont::tryFrom($data['font']) ?? $defaults->font) : $defaults->font,
             effects: self::effects($data['effects'] ?? null) ?? $defaults->effects,
             mode: is_string($data['mode'] ?? null) ? (StoryMotionMode::tryFrom($data['mode']) ?? $defaults->mode) : $defaults->mode,
@@ -133,6 +140,7 @@ final class StoryMotionSettings
     {
         return [
             'enabled' => $this->enabled,
+            'instagram' => $this->instagram,
             'font' => $this->font->value,
             'effects' => array_map(fn (StoryMotionEffect $effect) => $effect->value, $this->effects),
             'mode' => $this->mode->value,

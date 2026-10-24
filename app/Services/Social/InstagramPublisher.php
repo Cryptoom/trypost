@@ -7,20 +7,26 @@ namespace App\Services\Social;
 use App\Enums\Instagram\ContainerStatus;
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
+use App\Exceptions\Media\StoryVideoBuildException;
 use App\Exceptions\PlatformUnavailableException;
 use App\Exceptions\Social\ErrorCategory;
 use App\Exceptions\Social\InstagramPublishException;
 use App\Exceptions\Social\SocialPublishException;
 use App\Models\PostPlatform;
 use App\Services\Media\StoryImageFitter;
+use App\Services\Media\StoryVideoBuilder;
+use App\Services\Media\StoryVideoHost;
 use App\Services\Social\Concerns\CropsImageForAspectRatio;
 use App\Services\Social\Concerns\HasSocialHttpClient;
 use App\Services\Social\Meta\GraphError;
 use App\Support\Social\PublishCheckpoint;
+use Carbon\CarbonInterface;
 use Closure;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Response;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Log;
+use Throwable;
 
 class InstagramPublisher
 {
@@ -30,6 +36,9 @@ class InstagramPublisher
     private string $baseUrl;
 
     private PostPlatform $postPlatform;
+
+    /** PATCH:story-motion-instagram: storage path of the hosted Story video of this publish, if there is one. */
+    private ?string $storyVideoPath = null;
 
     private const int STATUS_RETRY_DELAY_SECONDS = 10;
 
@@ -41,7 +50,9 @@ class InstagramPublisher
 
     public function publish(PostPlatform $postPlatform): array
     {
+        $startedAt = now(); // PATCH:story-motion-instagram: the render budget counts from here.
         $this->postPlatform = $postPlatform;
+        $this->storyVideoPath = null;
         $this->validateContentLength($postPlatform);
 
         $account = $postPlatform->socialAccount;
@@ -59,7 +70,7 @@ class InstagramPublisher
         $pendingWorkflow = PublishCheckpoint::instagramWorkflow($postPlatform->error_context);
 
         if ($pendingWorkflow !== null) {
-            return $this->resumeWorkflow($instagramId, $accessToken, $content, $pendingWorkflow);
+            return $this->resumeWorkflowWithStoryVideo($instagramId, $accessToken, $content, $pendingWorkflow);
         }
 
         $media = $postPlatform->scopedMediaItems();
@@ -78,7 +89,7 @@ class InstagramPublisher
 
         return match ($contentType) {
             ContentType::InstagramReel => $this->publishReel($instagramId, $accessToken, $content, $firstMedia),
-            ContentType::InstagramStory => $this->publishStory($instagramId, $accessToken, $firstMedia, data_get($postPlatform->meta, 'story_fit'), StoryImageFitter::boundCrop($postPlatform, $firstMedia->id)), // PATCH:story-photo-fit
+            ContentType::InstagramStory => $this->publishStory($instagramId, $accessToken, $firstMedia, data_get($postPlatform->meta, 'story_fit'), StoryImageFitter::boundCrop($postPlatform, $firstMedia->id), $startedAt), // PATCH:story-photo-fit, PATCH:story-motion-instagram
             ContentType::InstagramFeed => $this->publishFeed($instagramId, $accessToken, $content, $media, $aspectRatio),
             default => throw new InstagramPublishException(
                 userMessage: "Unsupported Instagram content type: {$contentType?->value}",
@@ -164,25 +175,199 @@ class InstagramPublisher
         return $this->finishContainer($instagramId, $accessToken, $containerId);
     }
 
-    private function publishStory(string $instagramId, string $accessToken, $media, mixed $storyFit = null, mixed $storyCrop = null): array
+    /**
+     * PATCH:story-motion-instagram: a photo Story of a workspace that turned "also for Instagram Stories"
+     * on is published as the same Story video as on Facebook (video_url instead of image_url). Anything
+     * wrong with the video, whether its build, its hosting or Instagram refusing it, ends in the photo
+     * Story this method published before. `$startedAt` is only passed by the first attempt: a resumed
+     * publish never gets here (see publish()), so a container that is still pending is never rendered again.
+     */
+    private function publishStory(string $instagramId, string $accessToken, $media, mixed $storyFit = null, mixed $storyCrop = null, ?CarbonInterface $startedAt = null): array
     {
-        $isVideo = $media->isVideo();
-
         $params = [
             'media_type' => 'STORIES',
             'access_token' => $accessToken,
         ];
 
-        if ($isVideo) {
+        $hostedVideo = null;
+
+        if ($media->isVideo()) {
             $params['video_url'] = $media->url;
         } else {
-            // PATCH:story-photo-fit: photos are fitted to 9:16 by the user's story_fit mode (default center).
-            $params['image_url'] = $this->prepareStoryImageUrl($media->url, $storyFit, $storyCrop);
+            $hostedVideo = $this->hostedStoryMotionVideo($media, $storyFit, $storyCrop, $startedAt);
+
+            if ($hostedVideo !== null) {
+                $params['video_url'] = $hostedVideo['url'];
+                $this->storyVideoPath = $hostedVideo['path'];
+            } else {
+                // PATCH:story-photo-fit: photos are fitted to 9:16 by the user's story_fit mode (default center).
+                $params['image_url'] = $this->prepareStoryImageUrl($media->url, $storyFit, $storyCrop);
+            }
         }
 
-        $containerId = $this->createContainer($instagramId, $params, 'story container');
+        try {
+            $containerId = $this->createContainer($instagramId, $params, 'story container');
+
+            $result = $this->finishContainer($instagramId, $accessToken, $containerId);
+        } catch (PlatformUnavailableException $e) {
+            // A container that exists keeps its hosted video until the publish is over (see resumeWorkflowWithStoryVideo()).
+            if (PublishCheckpoint::instagramWorkflow($e->context) === null) {
+                $this->releaseStoryVideo();
+            }
+
+            throw $e;
+        } catch (Throwable $e) {
+            $this->releaseStoryVideo();
+
+            if ($hostedVideo !== null && $this->shouldFallBackToPhoto($e)) {
+                return $this->publishPhotoStoryInstead($instagramId, $accessToken, $media, $storyFit, $storyCrop, $e);
+            }
+
+            throw $e;
+        }
+
+        $this->releaseStoryVideo();
+
+        return $result;
+    }
+
+    /**
+     * The Story video of the photo, hosted for Instagram, or null when the photo story stays a photo
+     * (motion off for the workspace or Instagram, or any problem on the way: nothing here may fail a publish).
+     *
+     * @return array{url: string, path: string}|null
+     */
+    private function hostedStoryMotionVideo($media, mixed $storyFit, mixed $storyCrop, ?CarbonInterface $startedAt): ?array
+    {
+        $workspace = $this->postPlatform->post->workspace;
+        $builder = app(StoryVideoBuilder::class);
+
+        if (! $builder->motionActive($workspace, forInstagram: true)) {
+            return null;
+        }
+
+        $videoPath = null;
+
+        try {
+            $videoPath = $builder->build(
+                $media->url,
+                data_get($this->postPlatform->meta, 'story_music_description'),
+                ['mode' => $storyFit, 'rect' => $storyCrop],
+                ['workspace' => $workspace, 'postPlatform' => $this->postPlatform, 'startedAt' => $startedAt, 'active' => true],
+                'ig_story_img_',
+                heldFrameFallback: false,
+            );
+
+            return $videoPath === null ? null : app(StoryVideoHost::class)->host($videoPath);
+        } catch (Throwable $e) {
+            Log::warning('Instagram story video could not be prepared, publishing the photo story', [
+                'reason' => $e instanceof StoryVideoBuildException ? $e->reason : 'host_failed',
+            ]);
+
+            return null;
+        } finally {
+            if ($videoPath !== null && file_exists($videoPath) && ! unlink($videoPath)) {
+                Log::warning('Instagram story video temp file cleanup failed', ['path' => $videoPath]);
+            }
+        }
+    }
+
+    /**
+     * Whether a failure of a Story video publish is worth a second try as the photo Story: Instagram refusing
+     * or failing on the video. A rate limit or a permission problem would hit the photo just the same.
+     */
+    private function shouldFallBackToPhoto(Throwable $e): bool
+    {
+        return $e instanceof InstagramPublishException
+            && in_array($e->category, [ErrorCategory::MediaFormat, ErrorCategory::ServerError, ErrorCategory::Unknown], true);
+    }
+
+    private function publishPhotoStoryInstead(string $instagramId, string $accessToken, $media, mixed $storyFit, mixed $storyCrop, Throwable $reason): array
+    {
+        Log::warning('Instagram story video was not accepted, publishing the photo story', [
+            'error' => $reason->getMessage(),
+        ]);
+
+        // The same photo path a workspace without Story videos takes.
+        $containerId = $this->createContainer($instagramId, [
+            'media_type' => 'STORIES',
+            'access_token' => $accessToken,
+            'image_url' => $this->prepareStoryImageUrl($media->url, $storyFit, $storyCrop),
+        ], 'story container');
 
         return $this->finishContainer($instagramId, $accessToken, $containerId);
+    }
+
+    /**
+     * PATCH:story-motion-instagram: resumes a pending workflow. A Story video that was hosted for it is deleted
+     * once the publish is over (published, or failed for good) and stays while the container is still pending.
+     * Nothing is rendered here: the container id is all a resume needs. When Instagram turns the video down
+     * before anything was published, the photo Story is published instead.
+     *
+     * @param  array<string, mixed>  $workflow
+     */
+    private function resumeWorkflowWithStoryVideo(string $instagramId, string $accessToken, ?string $content, array $workflow): array
+    {
+        $this->storyVideoPath = $this->stringId(data_get($workflow, 'story_video_path'));
+
+        try {
+            $result = $this->resumeWorkflow($instagramId, $accessToken, $content, $workflow);
+        } catch (PlatformUnavailableException $e) {
+            throw $e;
+        } catch (Throwable $e) {
+            $hadVideo = $this->storyVideoPath !== null;
+            $this->releaseStoryVideo();
+
+            if ($hadVideo && $this->shouldFallBackToPhoto($e)) {
+                return $this->publishStoryPhotoAfterVideo($instagramId, $accessToken, $e);
+            }
+
+            throw $e;
+        }
+
+        $this->releaseStoryVideo();
+
+        return $result;
+    }
+
+    private function publishStoryPhotoAfterVideo(string $instagramId, string $accessToken, Throwable $reason): array
+    {
+        $media = $this->postPlatform->scopedMediaItems()->first();
+
+        if ($media === null || $media->isVideo()) {
+            throw $reason;
+        }
+
+        // The checkpoint of the refused video container must not send the next attempt back into it.
+        $this->postPlatform->update([
+            'error_context' => Arr::except($this->postPlatform->error_context ?? [], [PublishCheckpoint::INSTAGRAM_WORKFLOW, PublishCheckpoint::INSTAGRAM_STATUS]),
+        ]);
+
+        return $this->publishPhotoStoryInstead(
+            $instagramId,
+            $accessToken,
+            $media,
+            data_get($this->postPlatform->meta, 'story_fit'),
+            StoryImageFitter::boundCrop($this->postPlatform, $media->id),
+            $reason,
+        );
+    }
+
+    private function releaseStoryVideo(): void
+    {
+        app(StoryVideoHost::class)->delete($this->storyVideoPath);
+        $this->storyVideoPath = null;
+    }
+
+    /**
+     * The checkpoint of a workflow, with the hosted Story video it still has to delete.
+     *
+     * @param  array<string, mixed>  $workflow
+     * @return array<string, mixed>
+     */
+    private function withStoryVideo(array $workflow): array
+    {
+        return $this->storyVideoPath === null ? $workflow : [...$workflow, 'story_video_path' => $this->storyVideoPath];
     }
 
     private function publishCarousel(string $instagramId, string $accessToken, ?string $content, $mediaCollection, ?string $aspectRatio): array
@@ -426,11 +611,11 @@ class InstagramPublisher
         $this->postPlatform->update([
             'error_context' => [
                 ...($this->postPlatform->error_context ?? []),
-                PublishCheckpoint::INSTAGRAM_WORKFLOW => [
+                PublishCheckpoint::INSTAGRAM_WORKFLOW => $this->withStoryVideo([
                     'stage' => self::WORKFLOW_FINAL_CONTAINER,
                     'container_id' => $containerId,
                     'media_id' => $mediaId,
-                ],
+                ]),
             ],
         ]);
     }
@@ -501,7 +686,7 @@ class InstagramPublisher
      */
     private function pendingContainerException(string $containerId, array $workflow, ?int $httpStatus = null, ?string $statusCode = null): PlatformUnavailableException
     {
-        $context = [PublishCheckpoint::INSTAGRAM_WORKFLOW => $workflow];
+        $context = [PublishCheckpoint::INSTAGRAM_WORKFLOW => $this->withStoryVideo($workflow)];
 
         if (is_string($statusCode) && $statusCode !== '') {
             $context[PublishCheckpoint::INSTAGRAM_STATUS] = $statusCode;

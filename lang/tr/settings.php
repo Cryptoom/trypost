@@ -331,6 +331,8 @@ return [
         'description' => 'Facebook fotoğraf Story\'lerini kamera hareketi, hareketli metin ve logonuzla kısa videolara dönüştürün.',
         'enabled' => 'Fotoğraf Story\'lerini video olarak yayınla',
         'enabled_description' => 'Facebook Story\'lerindeki fotoğraflar hareketli bir videoya dönüşür. Bir şey ters giderse, eskisi gibi sabit fotoğraf yayınlanır.',
+        'instagram' => 'Instagram Hikâyeleri için de',
+        'instagram_description' => 'Instagram Hikâyeleri\'ndeki fotoğraflar aynı hareketli videoya dönüşür. Bir sorun olursa fotoğraf eskisi gibi sabit olarak yayınlanır.',
         'font' => 'Yazı tipi',
         'font_description' => 'Videodaki tüm metinlerde kullanılır.',
         'effects' => 'Görüntü efektleri',

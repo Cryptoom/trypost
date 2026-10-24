@@ -6,16 +6,14 @@ namespace App\Services\Social;
 
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
+use App\Exceptions\Media\StoryVideoBuildException;
 use App\Exceptions\Social\ErrorCategory;
 use App\Exceptions\Social\FacebookPublishException;
 use App\Exceptions\Social\SocialPublishException;
 use App\Models\PostPlatform;
 use App\Models\Workspace;
-use App\Services\Media\ImageToVideoConverter;
 use App\Services\Media\StoryImageFitter;
-use App\Services\Media\StoryMotionRenderer;
-use App\Services\Media\StoryMusicGenerator;
-use App\Services\Media\StoryVideoInspector;
+use App\Services\Media\StoryVideoBuilder;
 use App\Services\Social\Concerns\CropsImageForAspectRatio;
 use App\Services\Social\Concerns\HasSocialHttpClient;
 use Carbon\CarbonInterface;
@@ -23,8 +21,6 @@ use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use RuntimeException;
-use Throwable;
 
 class FacebookPublisher
 {
@@ -461,7 +457,7 @@ class FacebookPublisher
         }
 
         // PATCH:story-motion: only a motion-enabled photo story converts before the start call.
-        $storyMotion['active'] = ! $media->isVideo() && $this->storyMotionActive($storyMotion);
+        $storyMotion['active'] = ! $media->isVideo() && app(StoryVideoBuilder::class)->motionActive(data_get($storyMotion, 'workspace'));
         $tempFile = null;
         $mimeType = 'video/mp4';
 
@@ -586,147 +582,41 @@ class FacebookPublisher
 
     /**
      * Facebook Stories require a video file, but a user may only supply a
-     * photo. Downloads the photo, best-effort generates an AI background
-     * track (App\Services\Media\StoryMusicGenerator, falls back to null
-     * on any failure so this never blocks the publish), then renders a
-     * held-frame MP4 (App\Services\Media\ImageToVideoConverter).
+     * photo. The shared App\Services\Media\StoryVideoBuilder downloads the
+     * photo, best-effort generates an AI background track
+     * (App\Services\Media\StoryMusicGenerator, falls back to null on any
+     * failure so this never blocks the publish), then renders a held-frame MP4
+     * (App\Services\Media\ImageToVideoConverter).
      *
      * PATCH:story-motion: for workspaces with Story videos on the video is rendered with
-     * a camera move and the workspace's Story video look instead (see
-     * renderStoryMotionVideo()), and any problem there falls back to the
-     * held-frame MP4 above.
+     * a camera move and the workspace's Story video look instead, and any
+     * problem there falls back to the held-frame MP4 above.
      *
      * @param  array{workspace?: ?Workspace, postPlatform?: ?PostPlatform, startedAt?: ?CarbonInterface, active?: bool}  $storyMotion
      * @return array{0: string, 1: string} [local file path, mime type]
      */
     private function convertImageToStoryVideo($media, ?string $musicDescription, array $storyFit = [], array $storyMotion = []): array
     {
-        $imagePath = tempnam(sys_get_temp_dir(), 'fb_story_img_');
-        $audioPath = null;
-
         try {
-            $download = Http::withOptions(['sink' => $imagePath])
-                ->timeout(600)
-                ->get($media->url);
-
-            if ($download->failed()) {
-                throw new FacebookPublishException(
+            $videoPath = app(StoryVideoBuilder::class)->build($media->url, $musicDescription, $storyFit, $storyMotion, 'fb_story_img_', heldFrameFallback: true);
+        } catch (StoryVideoBuildException $e) {
+            throw match ($e->reason) {
+                StoryVideoBuildException::DOWNLOAD => new FacebookPublishException(
                     userMessage: 'Could not download media for Facebook story.',
                     category: ErrorCategory::ServerError,
-                    platformErrorCode: (string) $download->status(),
+                    platformErrorCode: (string) $e->httpStatus,
                     rawResponse: null,
-                );
-            }
-
-            // PATCH:story-photo-fit: fit to 1080x1920 first, so music and video use the final frame.
-            $fittedPath = app(StoryImageFitter::class)->fitOrKeep($imagePath, data_get($storyFit, 'mode'), data_get($storyFit, 'rect'));
-
-            $durationSeconds = (int) config('trypost.platforms.facebook.story_photo_duration_seconds');
-
-            $audioPath = app(StoryMusicGenerator::class)->generate($fittedPath, $durationSeconds, $musicDescription);
-
-            try {
-                $videoPath = $this->renderStoryMotionVideo($fittedPath, $durationSeconds, $audioPath, $storyMotion)
-                    ?? app(ImageToVideoConverter::class)->convert($fittedPath, $durationSeconds, $audioPath);
-            } catch (RuntimeException $e) {
-                throw new FacebookPublishException(
+                ),
+                default => new FacebookPublishException(
                     userMessage: 'Could not convert the story photo to video.',
                     category: ErrorCategory::ServerError,
                     platformErrorCode: null,
                     rawResponse: $e->getMessage(),
-                );
-            }
-
-            return [$videoPath, 'video/mp4'];
-        } finally {
-            foreach ([$imagePath, $fittedPath ?? null, $audioPath] as $path) {
-                if ($path !== null && file_exists($path) && ! unlink($path)) {
-                    Log::warning('Facebook story temp file cleanup failed', ['path' => $path]);
-                }
-            }
-        }
-    }
-
-    /**
-     * PATCH:story-motion: whether this photo story takes the motion path: the
-     * installation's master switch is on AND the workspace turned Story videos
-     * on. A broken setup gets one info line with the reason, the two normal
-     * states (switch off, workspace off) log nothing.
-     *
-     * @param  array{workspace?: ?Workspace, postPlatform?: ?PostPlatform, startedAt?: ?CarbonInterface, active?: bool}  $storyMotion
-     */
-    private function storyMotionActive(array $storyMotion): bool
-    {
-        $workspace = data_get($storyMotion, 'workspace');
-
-        if ($workspace === null) {
-            return false;
+                ),
+            };
         }
 
-        $skipReason = app(StoryMotionRenderer::class)->skipReason($workspace);
-
-        // `disabled` (master switch off) and `workspace_off` (the workspace has not turned Story videos on) are
-        // the normal states, only a broken setup (`no_url`, `no_token`) is worth a line.
-        if ($skipReason !== null && ! in_array($skipReason, ['disabled', 'workspace_off'], true)) {
-            Log::info('Story motion skipped', ['reason' => $skipReason]);
-        }
-
-        return $skipReason === null;
-    }
-
-    /**
-     * PATCH:story-motion: the camera-move video with audio, or null whenever
-     * motion is off for the workspace or anything about it goes wrong. Every
-     * temp file this creates is removed unless it is returned.
-     *
-     * @param  array{workspace?: ?Workspace, postPlatform?: ?PostPlatform, startedAt?: ?CarbonInterface, active?: bool}  $storyMotion
-     */
-    private function renderStoryMotionVideo(string $fittedPath, int $durationSeconds, ?string $audioPath, array $storyMotion): ?string
-    {
-        if (! data_get($storyMotion, 'active')) {
-            return null;
-        }
-
-        $workspace = data_get($storyMotion, 'workspace');
-        $postPlatform = data_get($storyMotion, 'postPlatform');
-
-        if (! $workspace instanceof Workspace || ! $postPlatform instanceof PostPlatform) {
-            return null;
-        }
-
-        $silentPath = app(StoryMotionRenderer::class)->render($fittedPath, $durationSeconds, $workspace, $postPlatform, data_get($storyMotion, 'startedAt'));
-
-        if ($silentPath === null) {
-            return null;
-        }
-
-        $finalPath = null;
-
-        try {
-            $finalPath = app(ImageToVideoConverter::class)->addAudioTrack($silentPath, $durationSeconds, $audioPath);
-
-            $problem = app(StoryVideoInspector::class)->problem($finalPath, $durationSeconds, expectAudio: true);
-
-            if ($problem === null) {
-                return $finalPath;
-            }
-
-            Log::warning('Story motion render fell back to the still frame', ['reason' => 'invalid_output', 'problem' => $problem]);
-        } catch (RuntimeException) {
-            Log::warning('Story motion render fell back to the still frame', ['reason' => 'mux_failed']);
-        } catch (Throwable) {
-            Log::warning('Story motion render fell back to the still frame', ['reason' => 'error']);
-        } finally {
-            if (file_exists($silentPath)) {
-                @unlink($silentPath);
-            }
-        }
-
-        if ($finalPath !== null && file_exists($finalPath)) {
-            @unlink($finalPath);
-        }
-
-        return null;
+        return [$videoPath, 'video/mp4'];
     }
 
     private function handleApiError(Response $response): never
