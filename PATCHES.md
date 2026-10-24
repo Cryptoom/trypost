@@ -784,3 +784,50 @@ Einstellung in der App, kein Eingriff in die Härtung des Containers.
   Stand Prod am 24.10.2026 (gelesen per `docker inspect`): 4 cpus, `pids_limit` 384, 2 Worker.
 - **Tests**: Node `docker/story-render/test/app.test.mjs` (Worker-Allowlist, Aufrufargumente), `spec.test.mjs` (Logomaße), `composition.test.mjs`
   (Kartenhöhe 84 im Browser); Pest `tests/Unit/Support/StoryMotionSettingsRulesTest.php` (N2), `tests/Unit/Support/StoryMotionLogoTest.php` (N1).
+
+### Patch 13 · story-motion-instagram  (TPS-SM-04, 24.10.2026)
+
+Instagram-Stories mit Foto bekommen dieselbe Bewegung wie die Facebook-Stories (Patch 10 bis 12), wenn die Marke es einschaltet. Keine
+Migration, keine neue Env. Facebook bleibt im Verhalten unverändert, bis auf das Timing der Effekte (nächster Punkt).
+
+- **Marker**: `PATCH:story-motion-instagram` (`grep -rn "PATCH:story-motion-instagram" app`).
+- **Gemeinsamer Baustein** `App\Services\Media\StoryVideoBuilder`: die Kette Foto laden, auf 1080x1920 bringen, Musik (best effort), Kamerafahrt
+  mit dem Look der Marke und Audiospur kommt aus `FacebookPublisher::convertImageToStoryVideo` in diesen Dienst, den beide Publisher nutzen.
+  Facebook ruft ihn mit Standbild-Fallback auf (jedes Problem der Kamerafahrt endet im Standbild-MP4, wie vorher), Instagram nur mit der Kamerafahrt
+  (kein Video heißt: Foto-Story). Fehler beim Laden oder Umwandeln wirft die plattformneutrale `App\Exceptions\Media\StoryVideoBuildException`, Facebook
+  macht daraus dieselben `FacebookPublishException`-Texte wie vorher. Einzige sichtbare Änderung für Facebook: die Log-Zeile zum
+  Aufräumen einer Temp-Datei heißt jetzt "Story temp file cleanup failed" (ohne "Facebook").
+- **Schalter** `story_motion_settings.instagram` (`StoryMotionSettings::$instagram`, Default aus): gilt nur zusätzlich zu `enabled`. Eine
+  bereits gespeicherte Einstellung ohne das Feld, ungültige Werte und fehlende Einstellungen bleiben bei Instagram aus. Gleiche Regeln in
+  `StoryMotionSettingsRules` (Web und MCP `update-workspace-tool`), neue Position in der gespeicherten Reihenfolge direkt nach `enabled`.
+- **UI**: Schalter "Auch für Instagram-Stories" im Abschnitt Story-Video der Marke (`StoryVideoSettings.vue`, erscheint bei eingeschaltetem
+  Story-Video), Texte `settings.story_video.instagram` und `instagram_description` in allen 16 Sprachen.
+- **Instagram** (`InstagramPublisher::publishStory`): Foto plus beide Schalter an: Video bauen, per `App\Services\Media\StoryVideoHost` unter
+  `social-story-videos/<uuid>.mp4` auf der öffentlichen Disk ablegen (Pfad nicht erratbar), Container `media_type STORIES` mit `video_url`,
+  Warten und Wiederaufnahme über den vorhandenen Verarbeitungsweg. Der Pfad der Datei steht im Checkpoint `instagram_workflow.story_video_path`.
+  Eine Wiederaufnahme (`resumeWorkflow`) rendert nie neu: sie läuft vor jeder Medienverarbeitung und kennt nur die Container-ID.
+- **Fallback auf die Foto-Story** bei jedem Problem: Bau oder Ablage des Videos scheitert (Render-Dienst, Zeitbudget, Mux, Prüfung, Disk), Instagram
+  lehnt den Video-Container ab (Kategorie Medienformat, Serverfehler oder unbekannt) oder meldet später ERROR/EXPIRED für den noch nicht
+  veröffentlichten Container. Dann wird der Checkpoint des Video-Containers entfernt und die Foto-Story wie bisher gepostet. Ratenlimit,
+  Rechteproblem und Token-Fehler lösen keinen zweiten Versuch aus (sie träfen das Foto genauso).
+  Der Fallback gilt nur für Fehler VOR `media_publish` (nach dem Senden könnte das Video live sein, ein Foto würde doppelt posten; die Tatsache
+  steht als `media_publish_started` im Checkpoint, damit auch eine Wiederaufnahme nicht zurückfällt). **Höchstens ein Render pro Veröffentlichung:**
+  bevor der Render beginnt, speichert der Publisher `story_video_attempted` in `error_context`. Jeder spätere Versuch ohne Workflow (transienter
+  Fehler vor der Container-Anlage, Token-Erneuerung, fehlgeschlagener Foto-Fallback, abgelehntes Video) postet die Foto-Story, ohne Download für
+  den Render, ohne Musik und ohne neues Hosting. Eine Wiederaufnahme mit Workflow rendert nie. `markAsPublished` leert den Kontext; ein bewusst
+  neuer Publish nach `posts:retry` (der Kontext behält nur Workflow und TikTok-Schlüssel) rendert wieder höchstens einmal.
+- **Aufräumen**: die abgelegte MP4 wird gelöscht, sobald der Publish vorbei ist (veröffentlicht oder endgültig gescheitert), nicht solange der Container
+  noch verarbeitet wird. Dazu der Befehl `app:prune-story-videos` (stündlich im Scheduler, `routes/console.php`): löscht Dateien in
+  `social-story-videos/` mit Namen `<uuid>.mp4`, die älter als 24 Stunden sind (Rest eines abgestürzten oder erschöpften Publish). Temp-Dateien
+  der Kette werden wie bei Facebook auf jedem Weg entfernt.
+- **Timing der Effekte** (Olli-Entscheid 24.10.2026, `docker/story-render/lib/motion.mjs`, Marker `PATCH:story-motion-timing`): Fokuszug,
+  Vignetten, Lichtleck, Funken und der Snap-Stoß beginnen `EFFECT_DELAY` = 1,0 s später (der Snap wartet in der Startpose des Stoßes, ohne Sprung),
+  und die Zeiten der Extras werden an die Clip-Dauer nach dem Versatz angepasst (`effectUnit`, vorher bei 1 gekappt, also bei 15 s alles in den ersten
+  3 Sekunden). Bei 8 s gilt das alte Timing plus 1 s. Kamera, Amplituden und Ruhe-Regeln bleiben unverändert. Das gilt für Facebook UND Instagram, weil
+  beide denselben Render-Dienst nutzen: dafür muss `trypost-story-render` neu gebaut werden (nicht nur `trypost`).
+- **Last**: Facebook- und Instagram-Story desselben Posts rendern einzeln (bewusst, kein geteilter Render).
+- **Deploy (Olli-Gate, nicht Teil des Builds)**: `trypost` UND `trypost-story-render` neu bauen (Letzteres wegen des neuen Timings). Der Schalter ist überall aus,
+  bis eine Marke ihn einschaltet. Der Scheduler muss laufen, sonst bleibt nur das Aufräumen nach dem Publish (Reste bleiben liegen).
+- **Tests**: Pest `tests/Feature/Services/Social/InstagramStoryMotionTest.php` (Schalter an/aus, Renderfehler, Hostingfehler, Ablehnung durch
+  Instagram, pending ohne Neurender, Aufräumen, Facebook-Regression, Host und Befehl), angepasst `StoryMotionSettingsTest`,
+  `StoryVideoSettingsTest`, `WorkspaceStoryMotionToolTest`. Node `docker/story-render/test/motion.test.mjs` und `composition.test.mjs` (Versatz, nichts nach Clip-Ende, 8 s und 15 s, Browser-Prüfung des Fokuszugs).

@@ -331,6 +331,8 @@ return [
         'description' => 'Mach aus Facebook-Foto-Stories kurze Videos mit Kamerabewegung, animiertem Text und deinem Logo.',
         'enabled' => 'Foto-Stories als Video veröffentlichen',
         'enabled_description' => 'Fotos in Facebook-Stories werden zu einem bewegten Video. Geht etwas schief, wird wie bisher das Standbild veröffentlicht.',
+        'instagram' => 'Auch für Instagram-Stories',
+        'instagram_description' => 'Fotos in Instagram-Stories werden zum gleichen bewegten Video. Geht etwas schief, wird wie bisher das Standbild veröffentlicht.',
         'font' => 'Schrift',
         'font_description' => 'Wird für alle Texte im Video verwendet.',
         'effects' => 'Bildeffekte',

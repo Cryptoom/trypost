@@ -43,6 +43,7 @@ class StoryMotionSettingsRules
 
         return [
             $prefix.'enabled' => ['sometimes', 'boolean'],
+            $prefix.'instagram' => ['sometimes', 'boolean'],
             $prefix.'font' => ['sometimes', 'string', Rule::in(StoryMotionFont::values())],
             $prefix.'effects' => ['sometimes', 'array', 'min:1', 'max:'.count(StoryMotionEffect::cases())],
             $prefix.'effects.*' => ['string', 'distinct', Rule::in(StoryMotionEffect::values())],

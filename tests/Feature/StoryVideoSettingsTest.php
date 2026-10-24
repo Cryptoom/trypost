@@ -41,6 +41,7 @@ test('story video settings: the brand page carries the settings, the option list
         ->component('settings/workspace/Brand', false)
         ->where('storyMotion.available', true)
         ->where('storyMotion.settings.enabled', false)
+        ->where('storyMotion.settings.instagram', false)
         ->where('storyMotion.settings.font', 'noto-serif')
         ->where('storyMotion.fonts', ['inter', 'commissioner', 'comfortaa', 'noto-sans', 'noto-serif'])
         ->where('storyMotion.effects', ['drift', 'focus', 'snap', 'sparkle'])
@@ -56,6 +57,7 @@ test('story video settings: the brand page reports the section as unavailable on
 test('story video settings: saving stores the full normalized object and redirects back with a success flash', function () {
     ($this->save)([
         'enabled' => true,
+        'instagram' => true,
         'font' => 'comfortaa',
         'effects' => ['snap', 'drift'],
         'mode' => 'rotate',
@@ -66,6 +68,7 @@ test('story video settings: saving stores the full normalized object and redirec
 
     expect($this->workspace->fresh()->story_motion_settings)->toBe([
         'enabled' => true,
+        'instagram' => true,
         'font' => 'comfortaa',
         'effects' => ['drift', 'snap'],
         'mode' => 'rotate',
@@ -98,6 +101,7 @@ test('story video settings: invalid input is rejected at the right field and not
     'duplicate effect' => [['effects' => ['snap', 'snap']], 'effects.0'],
     'more effects than exist' => [['effects' => ['drift', 'focus', 'snap', 'sparkle', 'drift']], 'effects'],
     'enabled as text' => [['enabled' => 'maybe'], 'enabled'],
+    'instagram as text' => [['instagram' => 'maybe'], 'instagram'],
     'notice text over 40 characters' => [['ai_notice' => ['enabled' => true, 'text' => str_repeat('x', 41)]], 'ai_notice.text'],
     'ending name over 40 characters' => [['ending' => ['enabled' => true, 'name' => str_repeat('x', 41)]], 'ending.name'],
     'ending line over 60 characters' => [['ending' => ['enabled' => true, 'line' => str_repeat('x', 61)]], 'ending.line'],
@@ -176,7 +180,7 @@ test('story video settings: the ending takes a name or a line but no phone numbe
 test('story video settings: unknown keys are not stored', function () {
     ($this->save)(['enabled' => true, 'pwned' => 'x', 'ai_notice' => ['enabled' => false, 'evil' => '<b>']]);
 
-    expect(array_keys($this->workspace->fresh()->story_motion_settings))->toBe(['enabled', 'font', 'effects', 'mode', 'logo_layer', 'ai_notice', 'ending'])
+    expect(array_keys($this->workspace->fresh()->story_motion_settings))->toBe(['enabled', 'instagram', 'font', 'effects', 'mode', 'logo_layer', 'ai_notice', 'ending'])
         ->and(array_keys($this->workspace->fresh()->story_motion_settings['ai_notice']))->toBe(['enabled', 'text']);
 });
 

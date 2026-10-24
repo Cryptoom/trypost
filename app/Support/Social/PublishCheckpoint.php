@@ -21,6 +21,9 @@ final class PublishCheckpoint
 
     public const string INSTAGRAM_STATUS = 'instagram_status';
 
+    /** PATCH:story-motion-instagram: set before the Story video of this publish is rendered, so no later attempt renders again. */
+    public const string INSTAGRAM_STORY_VIDEO_ATTEMPTED = 'story_video_attempted';
+
     /**
      * @param  array<string, mixed>|null  $context
      */
@@ -71,5 +74,17 @@ final class PublishCheckpoint
         $value = data_get($context, self::INSTAGRAM_STATUS);
 
         return is_string($value) && $value !== '' ? $value : null;
+    }
+
+    /**
+     * PATCH:story-motion-instagram: whether an earlier attempt of this publish already started to render the Story
+     * video. Every later attempt without a workflow posts the photo Story and never renders, generates music or
+     * hosts a video again: at most one render per publish, whichever way the first attempt ended.
+     *
+     * @param  array<string, mixed>|null  $context
+     */
+    public static function instagramStoryVideoAttempted(?array $context): bool
+    {
+        return data_get($context, self::INSTAGRAM_STORY_VIDEO_ATTEMPTED) === true;
     }
 }

@@ -329,6 +329,8 @@ return [
         'description' => 'Turn Facebook photo Stories into short videos with camera movement, animated text and your logo.',
         'enabled' => 'Publish photo Stories as video',
         'enabled_description' => 'Photos in Facebook Stories become a moving video. If anything goes wrong, the still photo is published as before.',
+        'instagram' => 'Also for Instagram Stories',
+        'instagram_description' => 'Photos in Instagram Stories become the same moving video. If anything goes wrong, the still photo is published as before.',
         'font' => 'Font',
         'font_description' => 'Used for all texts in the video.',
         'effects' => 'Image effects',

@@ -329,6 +329,8 @@ return [
         'description' => 'Facebook 사진 스토리를 카메라 움직임, 애니메이션 텍스트, 로고가 들어간 짧은 영상으로 만듭니다.',
         'enabled' => '사진 스토리를 영상으로 게시',
         'enabled_description' => 'Facebook 스토리의 사진이 움직이는 영상이 됩니다. 문제가 생기면 이전처럼 정지 사진이 게시됩니다.',
+        'instagram' => 'Instagram 스토리에도 적용',
+        'instagram_description' => 'Instagram 스토리의 사진도 같은 움직이는 영상으로 바뀝니다. 문제가 생기면 지금까지처럼 정지된 사진이 게시됩니다.',
         'font' => '글꼴',
         'font_description' => '영상의 모든 텍스트에 사용됩니다.',
         'effects' => '이미지 효과',

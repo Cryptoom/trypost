@@ -16,6 +16,7 @@ test('story motion settings: NULL and an empty array give the defaults, which ar
     $settings = StoryMotionSettings::fromArray($stored);
 
     expect($settings->enabled)->toBeFalse()
+        ->and($settings->instagram)->toBeFalse()
         ->and($settings->font)->toBe(StoryMotionFont::Inter)
         ->and($settings->effects)->toBe([StoryMotionEffect::Focus])
         ->and($settings->mode)->toBe(StoryMotionMode::Fixed)
@@ -39,6 +40,10 @@ test('story motion settings: garbage never throws and every bad value falls back
     'enabled as a number' => [['enabled' => 1], 'enabled', false],
     'enabled missing, rest valid' => [['font' => 'noto-serif'], 'enabled', false],
     'enabled true is kept' => [['enabled' => true], 'enabled', true],
+    'instagram missing in a stored row from before the switch' => [['enabled' => true, 'font' => 'noto-serif'], 'instagram', false],
+    'instagram as a string' => [['instagram' => 'true'], 'instagram', false],
+    'instagram as a number' => [['instagram' => 1], 'instagram', false],
+    'instagram true is kept' => [['instagram' => true], 'instagram', true],
     'unknown font' => [['font' => 'comic-sans'], 'font', 'inter'],
     'font of the wrong type' => [['font' => ['inter']], 'font', 'inter'],
     'a valid font is kept' => [['font' => 'comfortaa'], 'font', 'comfortaa'],
@@ -94,11 +99,12 @@ test('story motion settings: a workspace with NULL, a list or text in the column
 ]);
 
 test('story motion settings: toArray round-trips through fromArray', function () {
-    $settings = new StoryMotionSettings(true, StoryMotionFont::Comfortaa, [StoryMotionEffect::Snap, StoryMotionEffect::Sparkle], StoryMotionMode::Rotate, true, true, 'KI', true, 'Name', 'Zeile');
+    $settings = new StoryMotionSettings(true, StoryMotionFont::Comfortaa, [StoryMotionEffect::Snap, StoryMotionEffect::Sparkle], StoryMotionMode::Rotate, true, true, 'KI', true, 'Name', 'Zeile', true);
 
     expect(StoryMotionSettings::fromArray($settings->toArray())->toArray())->toBe($settings->toArray())
         ->and($settings->toArray())->toBe([
             'enabled' => true,
+            'instagram' => true,
             'font' => 'comfortaa',
             'effects' => ['snap', 'sparkle'],
             'mode' => 'rotate',

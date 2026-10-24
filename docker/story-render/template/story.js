@@ -176,8 +176,8 @@
     if (motion.pull) {
         // Focus pull: soft and dim at first, then sharp. The sharp copy behind fills the blurred edge.
         $('photoBack').style.display = 'block';
-        tl.fromTo('#photoBack', { filter: `brightness(${motion.pull.brightness})` }, { filter: 'brightness(1)', duration: motion.pull.duration, ease: 'power2.out' }, 0);
-        tl.fromTo('#photo', { filter: `blur(${motion.pull.blur}px) brightness(${motion.pull.brightness})` }, { filter: 'blur(0px) brightness(1)', duration: motion.pull.duration, ease: 'power2.out' }, 0);
+        tl.fromTo('#photoBack', { filter: `brightness(${motion.pull.brightness})` }, { filter: 'brightness(1)', duration: motion.pull.duration, ease: 'power2.out' }, motion.pull.at);
+        tl.fromTo('#photo', { filter: `blur(${motion.pull.blur}px) brightness(${motion.pull.brightness})` }, { filter: 'blur(0px) brightness(1)', duration: motion.pull.duration, ease: 'power2.out' }, motion.pull.at);
     }
     if (motion.vignette) {
         tl.to('#vignette', { opacity: motion.vignette.opacity, duration: motion.vignette.duration }, motion.vignette.at);

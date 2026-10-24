@@ -329,6 +329,8 @@ return [
         'description' => 'Maak van Facebook-fotostory\'s korte video\'s met camerabeweging, geanimeerde tekst en je logo.',
         'enabled' => 'Fotostory\'s als video publiceren',
         'enabled_description' => 'Foto\'s in Facebook-story\'s worden een bewegende video. Gaat er iets mis, dan wordt de stilstaande foto gepubliceerd zoals voorheen.',
+        'instagram' => 'Ook voor Instagram-stories',
+        'instagram_description' => 'Foto\'s in Instagram-stories worden dezelfde bewegende video. Gaat er iets mis, dan wordt zoals voorheen de stilstaande foto gepubliceerd.',
         'font' => 'Lettertype',
         'font_description' => 'Wordt gebruikt voor alle teksten in de video.',
         'effects' => 'Beeldeffecten',

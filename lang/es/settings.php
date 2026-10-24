@@ -329,6 +329,8 @@ return [
         'description' => 'Convierte las Stories de foto de Facebook en vídeos cortos con movimiento de cámara, texto animado y tu logotipo.',
         'enabled' => 'Publicar Stories de foto como vídeo',
         'enabled_description' => 'Las fotos de las Stories de Facebook se convierten en un vídeo en movimiento. Si algo falla, se publica la foto fija como antes.',
+        'instagram' => 'También para las Stories de Instagram',
+        'instagram_description' => 'Las fotos de las Stories de Instagram se convierten en el mismo vídeo en movimiento. Si algo sale mal, se publica la foto fija como hasta ahora.',
         'font' => 'Fuente',
         'font_description' => 'Se usa para todos los textos del vídeo.',
         'effects' => 'Efectos de imagen',

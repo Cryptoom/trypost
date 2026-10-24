@@ -35,6 +35,7 @@ const fontNames: Record<string, string> = {
 
 const form = useForm<StoryMotionSettings>({
     enabled: props.settings.enabled,
+    instagram: props.settings.instagram,
     font: props.settings.font,
     effects: [...props.settings.effects],
     mode: props.settings.mode,
@@ -116,6 +117,27 @@ const submit = () => {
         <InputError :message="form.errors.enabled" />
 
         <template v-if="form.enabled">
+            <div
+                class="flex items-center justify-between gap-4 rounded-xl border-2 border-foreground bg-card p-4 shadow-2xs"
+            >
+                <div class="space-y-0.5">
+                    <Label
+                        for="story-video-instagram"
+                        class="text-sm font-bold"
+                        >{{ $t('settings.story_video.instagram') }}</Label
+                    >
+                    <p class="text-sm text-foreground/70">
+                        {{ $t('settings.story_video.instagram_description') }}
+                    </p>
+                </div>
+                <Switch
+                    id="story-video-instagram"
+                    v-model="form.instagram"
+                    data-testid="story-video-instagram"
+                />
+            </div>
+            <InputError :message="form.errors.instagram" />
+
             <div class="grid gap-2">
                 <Label>{{ $t('settings.story_video.font') }}</Label>
                 <p class="text-xs font-medium text-foreground/60">
