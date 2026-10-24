@@ -40,6 +40,9 @@ class InstagramPublisher
     /** PATCH:story-motion-instagram: storage path of the hosted Story video of this publish, if there is one. */
     private ?string $storyVideoPath = null;
 
+    /** PATCH:story-motion-instagram: media_publish was sent for the container of this publish (also in an earlier attempt). */
+    private bool $mediaPublishStarted = false;
+
     private const int STATUS_RETRY_DELAY_SECONDS = 10;
 
     private const int STATUS_MAX_RETRIES = 90;
@@ -53,6 +56,7 @@ class InstagramPublisher
         $startedAt = now(); // PATCH:story-motion-instagram: the render budget counts from here.
         $this->postPlatform = $postPlatform;
         $this->storyVideoPath = null;
+        $this->mediaPublishStarted = false;
         $this->validateContentLength($postPlatform);
 
         $account = $postPlatform->socialAccount;
@@ -213,6 +217,11 @@ class InstagramPublisher
             // A container that exists keeps its hosted video until the publish is over (see resumeWorkflowWithStoryVideo()).
             if (PublishCheckpoint::instagramWorkflow($e->context) === null) {
                 $this->releaseStoryVideo();
+
+                // No container, so the retry starts from scratch: it posts the photo Story and must not render again.
+                if ($hostedVideo !== null) {
+                    $e->context[PublishCheckpoint::INSTAGRAM_STORY_VIDEO_FAILED] = true;
+                }
             }
 
             throw $e;
@@ -239,6 +248,10 @@ class InstagramPublisher
      */
     private function hostedStoryMotionVideo($media, mixed $storyFit, mixed $storyCrop, ?CarbonInterface $startedAt): ?array
     {
+        if (PublishCheckpoint::instagramStoryVideoFailed($this->postPlatform->error_context)) {
+            return null;
+        }
+
         $workspace = $this->postPlatform->post->workspace;
         $builder = app(StoryVideoBuilder::class);
 
@@ -274,11 +287,14 @@ class InstagramPublisher
 
     /**
      * Whether a failure of a Story video publish is worth a second try as the photo Story: Instagram refusing
-     * or failing on the video. A rate limit or a permission problem would hit the photo just the same.
+     * or failing on the video BEFORE media_publish was sent. Once it was sent the video may be live, so a photo
+     * Story could post the same Story twice. A rate limit or a permission problem would hit the photo just the same.
+     * `Unknown` stays in on purpose: Instagram names few failures by subcode, so a refused video mostly arrives there.
      */
     private function shouldFallBackToPhoto(Throwable $e): bool
     {
-        return $e instanceof InstagramPublishException
+        return ! $this->mediaPublishStarted
+            && $e instanceof InstagramPublishException
             && in_array($e->category, [ErrorCategory::MediaFormat, ErrorCategory::ServerError, ErrorCategory::Unknown], true);
     }
 
@@ -309,6 +325,7 @@ class InstagramPublisher
     private function resumeWorkflowWithStoryVideo(string $instagramId, string $accessToken, ?string $content, array $workflow): array
     {
         $this->storyVideoPath = $this->stringId(data_get($workflow, 'story_video_path'));
+        $this->mediaPublishStarted = data_get($workflow, 'media_publish_started') === true;
 
         try {
             $result = $this->resumeWorkflow($instagramId, $accessToken, $content, $workflow);
@@ -360,14 +377,23 @@ class InstagramPublisher
     }
 
     /**
-     * The checkpoint of a workflow, with the hosted Story video it still has to delete.
+     * The checkpoint of a workflow, with the hosted Story video it still has to delete and whether media_publish
+     * was already sent for it (a resume must not fall back to the photo Story then).
      *
      * @param  array<string, mixed>  $workflow
      * @return array<string, mixed>
      */
     private function withStoryVideo(array $workflow): array
     {
-        return $this->storyVideoPath === null ? $workflow : [...$workflow, 'story_video_path' => $this->storyVideoPath];
+        if ($this->storyVideoPath === null) {
+            return $workflow;
+        }
+
+        return [
+            ...$workflow,
+            'story_video_path' => $this->storyVideoPath,
+            ...($this->mediaPublishStarted ? ['media_publish_started' => true] : []),
+        ];
     }
 
     private function publishCarousel(string $instagramId, string $accessToken, ?string $content, $mediaCollection, ?string $aspectRatio): array
@@ -516,6 +542,8 @@ class InstagramPublisher
 
     private function publishContainer(string $instagramId, string $accessToken, string $containerId): array
     {
+        $this->mediaPublishStarted = true;
+
         $workflow = [
             'stage' => self::WORKFLOW_FINAL_CONTAINER,
             'container_id' => $containerId,

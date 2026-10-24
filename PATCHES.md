@@ -810,6 +810,10 @@ Migration, keine neue Env. Facebook bleibt im Verhalten unverändert, bis auf da
   lehnt den Video-Container ab (Kategorie Medienformat, Serverfehler oder unbekannt) oder meldet später ERROR/EXPIRED für den noch nicht
   veröffentlichten Container. Dann wird der Checkpoint des Video-Containers entfernt und die Foto-Story wie bisher gepostet. Ratenlimit,
   Rechteproblem und Token-Fehler lösen keinen zweiten Versuch aus (sie träfen das Foto genauso).
+  Der Fallback gilt nur für Fehler VOR `media_publish` (nach dem Senden könnte das Video live sein, ein Foto würde doppelt posten; die Tatsache
+  steht als `media_publish_started` im Checkpoint, damit auch eine Wiederaufnahme nicht zurückfällt). Scheitert der Publish transient vor der
+  Container-Anlage, setzt der Publisher `story_video_failed` in den Kontext: die Wiederholung veröffentlicht die Foto-Story ohne neuen Render und
+  ohne neue Musikgenerierung (höchstens ein Render pro Publish).
 - **Aufräumen**: die abgelegte MP4 wird gelöscht, sobald der Publish vorbei ist (veröffentlicht oder endgültig gescheitert), nicht solange der Container
   noch verarbeitet wird. Dazu der Befehl `app:prune-story-videos` (stündlich im Scheduler, `routes/console.php`): löscht Dateien in
   `social-story-videos/` mit Namen `<uuid>.mp4`, die älter als 24 Stunden sind (Rest eines abgestürzten oder erschöpften Publish). Temp-Dateien
