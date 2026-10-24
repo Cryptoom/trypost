@@ -260,6 +260,34 @@ test('composition (browser): the page replays the motion table, scale, tilt and 
     }
 });
 
+test('composition (browser): the focus pull and the vignette wait for the effect delay', { skip: findBrowser() ? false : 'no browser installed' }, async () => {
+    await withPage(validSpec({ duration: 15, effect: 'focus', logoLayer: true, aiNotice: 'AI-generated image' }), { ext: 'png', width: 100, height: 40 }, async ({ page, job }) => {
+        const state = async (time) => {
+            await seek(page, time);
+
+            return page.evaluate(() => ({ filter: getComputedStyle(document.getElementById('photo')).filter, back: getComputedStyle(document.getElementById('photoBack')).filter, vignette: Number(getComputedStyle(document.getElementById('vignette')).opacity) }));
+        };
+
+        const pull = job.motion.pull;
+        assert.equal(pull.at, 1);
+
+        // still soft and dim for the whole first second, no vignette yet
+        for (const time of [0, 0.5, 0.99]) {
+            const early = await state(time);
+            assert.match(early.filter, /blur\(16px\)/, `soft at ${time}s: ${early.filter}`);
+            assert.match(early.back, /brightness\(0\.7\)/, `dim copy behind at ${time}s: ${early.back}`);
+            assert.equal(early.vignette, 0, `no vignette at ${time}s`);
+        }
+        // sharp once the pull is over, vignette fully there after its own end
+        const after = await state(pull.at + pull.duration + 0.05);
+        assert.match(after.filter, /blur\(0px\)|none/, `sharp after the pull: ${after.filter}`);
+        assert.match(after.back, /brightness\(1\)|none/, `bright copy behind after the pull: ${after.back}`);
+        const vignetteEnd = job.motion.vignette.at + job.motion.vignette.duration;
+        assert.equal((await state(vignetteEnd + 0.05)).vignette, 1);
+        assert.equal((await state(job.motion.vignette.at - 0.05)).vignette, 0);
+    });
+});
+
 test('composition (browser): the whole ending block, accent line included, sits inside the full-strength part of the lower veil', { skip: findBrowser() ? false : 'no browser installed' }, async () => {
     const endings = [
         { name: 'PlayCraft', line: 'Paphos' },

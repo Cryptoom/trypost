@@ -788,7 +788,7 @@ Einstellung in der App, kein Eingriff in die Härtung des Containers.
 ### Patch 13 · story-motion-instagram  (TPS-SM-04, 24.10.2026)
 
 Instagram-Stories mit Foto bekommen dieselbe Bewegung wie die Facebook-Stories (Patch 10 bis 12), wenn die Marke es einschaltet. Keine
-Migration, keine neue Env, keine Änderung am Render-Dienst. Facebook bleibt im Verhalten unverändert.
+Migration, keine neue Env. Facebook bleibt im Verhalten unverändert, bis auf das Timing der Effekte (nächster Punkt).
 
 - **Marker**: `PATCH:story-motion-instagram` (`grep -rn "PATCH:story-motion-instagram" app`).
 - **Gemeinsamer Baustein** `App\Services\Media\StoryVideoBuilder`: die Kette Foto laden, auf 1080x1920 bringen, Musik (best effort), Kamerafahrt
@@ -814,9 +814,14 @@ Migration, keine neue Env, keine Änderung am Render-Dienst. Facebook bleibt im 
   noch verarbeitet wird. Dazu der Befehl `app:prune-story-videos` (stündlich im Scheduler, `routes/console.php`): löscht Dateien in
   `social-story-videos/` mit Namen `<uuid>.mp4`, die älter als 24 Stunden sind (Rest eines abgestürzten oder erschöpften Publish). Temp-Dateien
   der Kette werden wie bei Facebook auf jedem Weg entfernt.
+- **Timing der Effekte** (Olli-Entscheid 24.10.2026, `docker/story-render/lib/motion.mjs`, Marker `PATCH:story-motion-timing`): Fokuszug,
+  Vignetten, Lichtleck, Funken und der Snap-Stoß beginnen `EFFECT_DELAY` = 1,0 s später (der Snap wartet in der Startpose des Stoßes, ohne Sprung),
+  und die Zeiten der Extras werden an die Clip-Dauer nach dem Versatz angepasst (`effectUnit`, vorher bei 1 gekappt, also bei 15 s alles in den ersten
+  3 Sekunden). Bei 8 s gilt das alte Timing plus 1 s. Kamera, Amplituden und Ruhe-Regeln bleiben unverändert. Das gilt für Facebook UND Instagram, weil
+  beide denselben Render-Dienst nutzen: dafür muss `trypost-story-render` neu gebaut werden (nicht nur `trypost`).
 - **Last**: Facebook- und Instagram-Story desselben Posts rendern einzeln (bewusst, kein geteilter Render).
-- **Deploy (Olli-Gate, nicht Teil des Builds)**: nur das Image `trypost` neu bauen (kein Render-Dienst-Rebuild nötig). Der Schalter ist überall aus,
+- **Deploy (Olli-Gate, nicht Teil des Builds)**: `trypost` UND `trypost-story-render` neu bauen (Letzteres wegen des neuen Timings). Der Schalter ist überall aus,
   bis eine Marke ihn einschaltet. Der Scheduler muss laufen, sonst bleibt nur das Aufräumen nach dem Publish (Reste bleiben liegen).
 - **Tests**: Pest `tests/Feature/Services/Social/InstagramStoryMotionTest.php` (Schalter an/aus, Renderfehler, Hostingfehler, Ablehnung durch
   Instagram, pending ohne Neurender, Aufräumen, Facebook-Regression, Host und Befehl), angepasst `StoryMotionSettingsTest`,
-  `StoryVideoSettingsTest`, `WorkspaceStoryMotionToolTest`.
+  `StoryVideoSettingsTest`, `WorkspaceStoryMotionToolTest`. Node `docker/story-render/test/motion.test.mjs` und `composition.test.mjs` (Versatz, nichts nach Clip-Ende, 8 s und 15 s, Browser-Prüfung des Fokuszugs).
