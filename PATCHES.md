@@ -811,9 +811,11 @@ Migration, keine neue Env. Facebook bleibt im Verhalten unverändert, bis auf da
   veröffentlichten Container. Dann wird der Checkpoint des Video-Containers entfernt und die Foto-Story wie bisher gepostet. Ratenlimit,
   Rechteproblem und Token-Fehler lösen keinen zweiten Versuch aus (sie träfen das Foto genauso).
   Der Fallback gilt nur für Fehler VOR `media_publish` (nach dem Senden könnte das Video live sein, ein Foto würde doppelt posten; die Tatsache
-  steht als `media_publish_started` im Checkpoint, damit auch eine Wiederaufnahme nicht zurückfällt). Scheitert der Publish transient vor der
-  Container-Anlage, setzt der Publisher `story_video_failed` in den Kontext: die Wiederholung veröffentlicht die Foto-Story ohne neuen Render und
-  ohne neue Musikgenerierung (höchstens ein Render pro Publish).
+  steht als `media_publish_started` im Checkpoint, damit auch eine Wiederaufnahme nicht zurückfällt). **Höchstens ein Render pro Veröffentlichung:**
+  bevor der Render beginnt, speichert der Publisher `story_video_attempted` in `error_context`. Jeder spätere Versuch ohne Workflow (transienter
+  Fehler vor der Container-Anlage, Token-Erneuerung, fehlgeschlagener Foto-Fallback, abgelehntes Video) postet die Foto-Story, ohne Download für
+  den Render, ohne Musik und ohne neues Hosting. Eine Wiederaufnahme mit Workflow rendert nie. `markAsPublished` leert den Kontext; ein bewusst
+  neuer Publish nach `posts:retry` (der Kontext behält nur Workflow und TikTok-Schlüssel) rendert wieder höchstens einmal.
 - **Aufräumen**: die abgelegte MP4 wird gelöscht, sobald der Publish vorbei ist (veröffentlicht oder endgültig gescheitert), nicht solange der Container
   noch verarbeitet wird. Dazu der Befehl `app:prune-story-videos` (stündlich im Scheduler, `routes/console.php`): löscht Dateien in
   `social-story-videos/` mit Namen `<uuid>.mp4`, die älter als 24 Stunden sind (Rest eines abgestürzten oder erschöpften Publish). Temp-Dateien

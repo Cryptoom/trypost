@@ -3,11 +3,14 @@
 declare(strict_types=1);
 
 use App\Enums\PostPlatform\ContentType;
+use App\Enums\PostPlatform\Status as PlatformStatus;
 use App\Enums\SocialAccount\Platform;
 use App\Exceptions\PlatformUnavailableException;
 use App\Exceptions\Social\ErrorCategory;
 use App\Exceptions\Social\FacebookPublishException;
 use App\Exceptions\Social\InstagramPublishException;
+use App\Exceptions\TokenExpiredException;
+use App\Jobs\PublishToSocialPlatform;
 use App\Models\Post;
 use App\Models\PostPlatform;
 use App\Models\SocialAccount;
@@ -22,7 +25,10 @@ use GuzzleHttp\Promise\PromiseInterface;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Http\Client\Factory;
 use Illuminate\Http\Client\Request;
+use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Intervention\Image\Drivers\Gd\Driver;
@@ -111,7 +117,7 @@ function sm04Fake(object $test, mixed $render, array $containers = [], array $st
         'story-render:3000/*' => function () use ($test, $render) {
             $test->sm04Calls[] = 'render';
 
-            return $render;
+            return $render instanceof Closure ? $render() : $render;
         },
         'https://graph.instagram.com/v25.0/ig_123456789/media' => function (Request $request) use ($test, $containers, &$creations) {
             $test->sm04Calls[] = 'container';
@@ -457,6 +463,27 @@ test('instagram story motion: a transient failure before a container exists dele
     expect(sm04HostedVideos())->toBe([]);
 });
 
+/**
+ * Runs one publish attempt the way PublishToSocialPlatform does: on a pending failure its exception context is merged into the
+ * stored one (the publisher has already stored the attempt marker itself). Returns the thrown exception or the result.
+ */
+function sm04Attempt(object $test, ?InstagramPublisher $publisher = null): mixed
+{
+    try {
+        return ($publisher ?? new InstagramPublisher)->publish($test->postPlatform->fresh());
+    } catch (PlatformUnavailableException $exception) {
+        $test->postPlatform->update(['error_context' => [...($test->postPlatform->fresh()->error_context ?? []), ...$exception->context]]);
+
+        return $exception;
+    }
+}
+
+/** Fails the test when the render service, the music generator or the media host is asked again. */
+function sm04ExpectNoRender(object $test, array $containers = [], array $status = []): void
+{
+    sm04Fake($test, Http::response('', 500), containers: $containers, status: $status);
+}
+
 test('instagram story motion: a transient failure before a container renders only once, the retry posts the photo story', function () {
     sm04Prepare($this);
     $music = Mockery::mock(StoryMusicGenerator::class);
@@ -464,34 +491,23 @@ test('instagram story motion: a transient failure before a container renders onl
     app()->instance(StoryMusicGenerator::class, $music);
     sm04Fake($this, sm04RenderedVideo($this), containers: [Http::response('', 503)]);
 
-    try {
-        $this->publisher->publish($this->postPlatform->fresh());
-        test()->fail('Expected the transient failure.');
-    } catch (PlatformUnavailableException $exception) {
-        // no container, so no workflow, but the marker that the video of this publish is gone
-        expect($exception->context)->toBe(['story_video_failed' => true])
-            ->and(sm04HostedVideos())->toBe([]);
+    $first = sm04Attempt($this);
 
-        $this->postPlatform->update(['error_context' => $exception->context]);
-    }
-
-    expect($this->sm04Calls)->toBe(['download', 'render', 'container']);
+    // no container, so no workflow: the attempt marker is all that is left, and the video is gone
+    expect($first)->toBeInstanceOf(PlatformUnavailableException::class)
+        ->and($first->context)->toBe([])
+        ->and($this->postPlatform->fresh()->error_context)->toBe(['story_video_attempted' => true])
+        ->and(sm04HostedVideos())->toBe([])
+        ->and($this->sm04Calls)->toBe(['download', 'render', 'container']);
 
     // the next attempts (the job retries up to 90 times) never render or generate music again
-    sm04Fake($this, Http::response('', 500), containers: [Http::response('', 503)]);
+    sm04ExpectNoRender($this, containers: [Http::response('', 503)]);
 
-    try {
-        (new InstagramPublisher)->publish($this->postPlatform->fresh());
-        test()->fail('Expected the transient failure.');
-    } catch (PlatformUnavailableException $exception) {
-        // the job merges the exception context into the stored one, the marker stays
-        $this->postPlatform->update(['error_context' => [...$this->postPlatform->fresh()->error_context, ...$exception->context]]);
-    }
+    expect(sm04Attempt($this))->toBeInstanceOf(PlatformUnavailableException::class)
+        ->and($this->sm04Calls)->toBe(['download', 'container']);
 
-    expect($this->sm04Calls)->toBe(['download', 'container']);
-
-    sm04Fake($this, Http::response('', 500));
-    $result = (new InstagramPublisher)->publish($this->postPlatform->fresh());
+    sm04ExpectNoRender($this);
+    $result = sm04Attempt($this);
 
     expect($result['id'])->toBe('story-media-1')
         ->and($this->sm04Calls)->toBe(['download', 'container', 'status', 'media_publish'])
@@ -499,17 +515,151 @@ test('instagram story motion: a transient failure before a container renders onl
         ->and(sm04HostedVideos())->toBe([]);
 });
 
-test('instagram story motion: a transient failure without a hosted video sets no marker', function () {
-    sm04Prepare($this, ['enabled' => true, 'instagram' => false]);
-    sm04Fake($this, Http::response('', 500), containers: [Http::response('', 503)]);
+test('instagram story motion: through the real job a transient failure renders once and the later attempts post the photo story', function () {
+    Bus::fake([PublishToSocialPlatform::class]);
+    Event::fake();
+    Mail::fake();
+    sm04Prepare($this);
+    $music = Mockery::mock(StoryMusicGenerator::class);
+    $music->shouldReceive('generate')->once()->andReturnNull();
+    app()->instance(StoryMusicGenerator::class, $music);
 
-    try {
-        $this->publisher->publish($this->postPlatform->fresh());
-        test()->fail('Expected the transient failure.');
-    } catch (PlatformUnavailableException $exception) {
-        expect($exception->context)->toBe([]);
-    }
+    sm04Fake($this, sm04RenderedVideo($this), containers: [Http::response('', 503)]);
+    (new PublishToSocialPlatform($this->postPlatform->fresh()))->handle();
+
+    $context = $this->postPlatform->fresh()->error_context;
+
+    expect($this->postPlatform->fresh()->status)->toBe(PlatformStatus::Retrying)
+        ->and($context['story_video_attempted'])->toBeTrue()
+        ->and($this->sm04Calls)->toBe(['download', 'render', 'container']);
+
+    sm04ExpectNoRender($this, containers: [Http::response('', 503)]);
+    (new PublishToSocialPlatform($this->postPlatform->fresh()))->handle();
+
+    expect($this->postPlatform->fresh()->error_context['story_video_attempted'])->toBeTrue()
+        ->and($this->sm04Calls)->toBe(['download', 'container']);
+
+    sm04ExpectNoRender($this);
+    (new PublishToSocialPlatform($this->postPlatform->fresh()))->handle();
+
+    expect($this->postPlatform->fresh()->status)->toBe(PlatformStatus::Published)
+        ->and($this->sm04Calls)->toBe(['download', 'container', 'status', 'media_publish'])
+        ->and(sm04LastContainer($this))->toHaveKey('image_url')->not->toHaveKey('video_url')
+        ->and(sm04HostedVideos())->toBe([]);
 });
+
+test('instagram story motion: the attempt marker is stored before the render starts', function () {
+    sm04Prepare($this);
+    $seen = null;
+    sm04Fake($this, function () use (&$seen) {
+        $seen = $this->postPlatform->fresh()->error_context;
+
+        return sm04RenderedVideo($this);
+    });
+
+    $this->publisher->publish($this->postPlatform->fresh());
+
+    expect($seen)->toBe(['story_video_attempted' => true]);
+});
+
+test('instagram story motion: a render that failed is not tried again when the photo story then fails transiently', function () {
+    sm04Prepare($this);
+    sm04Fake($this, Http::response('', 503), containers: [Http::response('', 503)]);
+
+    expect(sm04Attempt($this))->toBeInstanceOf(PlatformUnavailableException::class)
+        ->and($this->sm04Calls)->toBe(['download', 'render', 'download', 'container']);
+
+    sm04ExpectNoRender($this);
+    $result = sm04Attempt($this);
+
+    expect($result['id'])->toBe('story-media-1')
+        ->and($this->sm04Calls)->not->toContain('render')
+        ->and(sm04LastContainer($this))->toHaveKey('image_url');
+});
+
+test('instagram story motion: a refused video followed by a transient photo failure does not render again on the retry', function () {
+    sm04Prepare($this);
+    sm04Fake($this, sm04RenderedVideo($this), containers: [
+        Http::response(['error' => ['message' => 'Unsupported video', 'code' => 9004, 'error_subcode' => 2207026]], 400),
+        Http::response('', 503),
+    ]);
+
+    expect(sm04Attempt($this))->toBeInstanceOf(PlatformUnavailableException::class)
+        ->and($this->sm04Calls)->toBe(['download', 'render', 'container', 'download', 'container'])
+        ->and(sm04HostedVideos())->toBe([]);
+
+    sm04ExpectNoRender($this);
+    $result = sm04Attempt($this);
+
+    expect($result['id'])->toBe('story-media-1')
+        ->and($this->sm04Calls)->toBe(['download', 'container', 'status', 'media_publish'])
+        ->and(sm04LastContainer($this))->toHaveKey('image_url')->not->toHaveKey('video_url');
+});
+
+test('instagram story motion: a video that fails on a resume, followed by a transient photo failure, does not render again', function () {
+    sm04Prepare($this);
+    sm04Fake($this, sm04RenderedVideo($this), status: ['story-container-1' => Http::response(['status_code' => 'IN_PROGRESS'], 200)]);
+
+    expect(sm04Attempt($this))->toBeInstanceOf(PlatformUnavailableException::class);
+
+    // the resume finds the video container in ERROR, the photo container then fails transiently
+    sm04ExpectNoRender($this, containers: [Http::response('', 503)], status: ['story-container-1' => Http::response(['status_code' => 'ERROR'], 200)]);
+
+    expect(sm04Attempt($this))->toBeInstanceOf(PlatformUnavailableException::class)
+        ->and($this->sm04Calls)->toBe(['status', 'download', 'container'])
+        ->and($this->postPlatform->fresh()->error_context)->not->toHaveKey('instagram_workflow')
+        ->and($this->postPlatform->fresh()->error_context['story_video_attempted'])->toBeTrue();
+
+    sm04ExpectNoRender($this);
+    $result = sm04Attempt($this);
+
+    expect($result['id'])->toBe('story-media-1')
+        ->and($this->sm04Calls)->toBe(['download', 'container', 'status', 'media_publish'])
+        ->and(sm04LastContainer($this))->toHaveKey('image_url')->not->toHaveKey('video_url');
+});
+
+test('instagram story motion: an expired token before the first container does not render a second time', function () {
+    sm04Prepare($this);
+    sm04Fake($this, sm04RenderedVideo($this), containers: [Http::response(['error' => ['message' => 'Token expired', 'code' => 190]], 401)]);
+
+    expect(fn () => $this->publisher->publish($this->postPlatform->fresh()))->toThrow(TokenExpiredException::class);
+
+    expect($this->sm04Calls)->toBe(['download', 'render', 'container'])
+        ->and(sm04HostedVideos())->toBe([]);
+
+    // the job refreshes the token and publishes again with the stored context
+    sm04ExpectNoRender($this);
+    $result = (new InstagramPublisher)->publish($this->postPlatform->fresh());
+
+    expect($result['id'])->toBe('story-media-1')
+        ->and($this->sm04Calls)->toBe(['download', 'container', 'status', 'media_publish'])
+        ->and(sm04LastContainer($this))->toHaveKey('image_url');
+});
+
+test('instagram story motion: a lost answer to media_publish keeps the fact that it was sent', function () {
+    sm04Prepare($this);
+    sm04Fake($this, sm04RenderedVideo($this), publish: Http::failedConnection());
+
+    $exception = sm04Attempt($this);
+
+    expect($exception)->toBeInstanceOf(PlatformUnavailableException::class)
+        ->and($exception->context['instagram_workflow']['media_publish_started'])->toBeTrue()
+        ->and($exception->context['instagram_workflow']['container_id'])->toBe('story-container-1')
+        ->and(sm04HostedVideos())->toHaveCount(1);
+});
+
+test('instagram story motion: nothing is stored when the story is not rendered', function (array $settings, bool $masterSwitch) {
+    sm04Prepare($this, $settings, $masterSwitch);
+    sm04Fake($this, Http::response('', 500));
+
+    $this->publisher->publish($this->postPlatform->fresh());
+
+    expect(data_get($this->postPlatform->fresh()->error_context, 'story_video_attempted'))->toBeNull();
+})->with([
+    'instagram switch off' => [['enabled' => true, 'instagram' => false], true],
+    'workspace Story videos off' => [['enabled' => false, 'instagram' => true], true],
+    'installation switch off' => [['enabled' => true, 'instagram' => true], false],
+]);
 
 test('instagram story motion: a refusal at media_publish is not turned into a second, photo story', function () {
     sm04Prepare($this);

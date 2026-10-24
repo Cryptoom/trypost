@@ -217,11 +217,6 @@ class InstagramPublisher
             // A container that exists keeps its hosted video until the publish is over (see resumeWorkflowWithStoryVideo()).
             if (PublishCheckpoint::instagramWorkflow($e->context) === null) {
                 $this->releaseStoryVideo();
-
-                // No container, so the retry starts from scratch: it posts the photo Story and must not render again.
-                if ($hostedVideo !== null) {
-                    $e->context[PublishCheckpoint::INSTAGRAM_STORY_VIDEO_FAILED] = true;
-                }
             }
 
             throw $e;
@@ -248,7 +243,9 @@ class InstagramPublisher
      */
     private function hostedStoryMotionVideo($media, mixed $storyFit, mixed $storyCrop, ?CarbonInterface $startedAt): ?array
     {
-        if (PublishCheckpoint::instagramStoryVideoFailed($this->postPlatform->error_context)) {
+        // One render per publish: a later attempt without a workflow (a transient failure before a container, a
+        // token refresh, a failed photo fallback) posts the photo Story. A resume never gets here at all.
+        if (PublishCheckpoint::instagramStoryVideoAttempted($this->postPlatform->error_context)) {
             return null;
         }
 
@@ -258,6 +255,11 @@ class InstagramPublisher
         if (! $builder->motionActive($workspace, forInstagram: true)) {
             return null;
         }
+
+        // Stored before the render starts, so it holds whatever happens next (the job merges its own context into it).
+        $this->postPlatform->update([
+            'error_context' => [...($this->postPlatform->error_context ?? []), PublishCheckpoint::INSTAGRAM_STORY_VIDEO_ATTEMPTED => true],
+        ]);
 
         $videoPath = null;
 
