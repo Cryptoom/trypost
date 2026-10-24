@@ -7,6 +7,20 @@ export const EFFECTS = Object.freeze(['drift', 'focus', 'snap', 'sparkle']);
 export const FRAME = Object.freeze({ width: 1080, height: 1920 });
 
 /**
+ * PATCH:story-motion-timing. Seconds the clip stays calm before an effect starts: the focus pull, the vignettes, the
+ * light leak, the motes and the snap punch all begin this late, so the opening frame is the photo and the effect
+ * is not over before the viewer has taken it in. The camera of drift, focus and sparkle moves from the first frame on.
+ */
+export const EFFECT_DELAY = 1.0;
+
+// Seconds of effect timing that the 8 second clip has after the delay. The effect timings below are written for
+// that length and stretched in proportion to the real clip (see effectUnit).
+const EFFECT_SPAN = 8 - EFFECT_DELAY;
+
+// Length of the snap punch.
+const PUNCH = 0.9;
+
+/**
  * Strong values are used only when the logo layer AND the AI notice layer are both on (the brand bundle):
  * then the final frame may differ from the photo, because the layers carry logo and notice. Without both,
  * the photo may carry baked-in logos or notices, so every effect stays calm: scale at most 1.02 above the
@@ -19,8 +33,10 @@ const STRONG = Object.freeze({
     drift: [{ at: 0, whole: true, ease: 'sine.inOut', from: { scale: 1.0, rotation: 0, x: 0, y: 0 }, to: { scale: 1.08, rotation: 0, x: -28, y: -12 } }],
     focus: [{ at: 0, whole: true, ease: 'sine.inOut', from: { scale: 1.03, rotation: -0.6, x: 0, y: 0 }, to: { scale: 1.13, rotation: 0.6, x: -30, y: 0 } }],
     snap: [
-        { at: 0, length: 0.9, ease: 'expo.out', from: { scale: 1.2, rotation: 0, x: 0, y: 30 }, to: { scale: 1.06, rotation: 0, x: 0, y: 0 } },
-        { at: 0.9, rest: true, ease: 'sine.inOut', from: { scale: 1.06, rotation: 0, x: 0, y: 0 }, to: { scale: 1.04, rotation: 0, x: 20, y: 0 } },
+        // PATCH:story-motion-timing: rests on the pose the punch starts from, so the delay has no jump.
+        { at: 0, length: EFFECT_DELAY, ease: 'none', from: { scale: 1.2, rotation: 0, x: 0, y: 30 }, to: { scale: 1.2, rotation: 0, x: 0, y: 30 } },
+        { at: EFFECT_DELAY, length: PUNCH, ease: 'expo.out', from: { scale: 1.2, rotation: 0, x: 0, y: 30 }, to: { scale: 1.06, rotation: 0, x: 0, y: 0 } },
+        { at: EFFECT_DELAY + PUNCH, rest: true, ease: 'sine.inOut', from: { scale: 1.06, rotation: 0, x: 0, y: 0 }, to: { scale: 1.04, rotation: 0, x: 20, y: 0 } },
     ],
     sparkle: [{ at: 0, whole: true, ease: 'sine.inOut', from: { scale: 1.0, rotation: 0, x: 0, y: 0 }, to: { scale: 1.11, rotation: 0, x: 0, y: -20 } }],
 });
@@ -126,28 +142,36 @@ const seeded = (start) => {
 };
 
 /**
- * Everything an effect adds on top of the camera move, scaled to the clip length.
+ * How far the effect timings are stretched for this clip: 1 for the 8 second clip, in proportion to the part of the
+ * clip after the delay for every other length, so a 15 second clip spreads its effects over the whole clip
+ * instead of leaving them in the first seconds. The longest effect (a mote rising and fading) ends exactly at the
+ * end of the clip at most.
+ */
+export const effectUnit = (duration) => Math.max(0, duration - EFFECT_DELAY) / EFFECT_SPAN;
+
+/**
+ * Everything an effect adds on top of the camera move, scaled to the clip length and started EFFECT_DELAY late.
  * Times are seconds from the start of the clip and never run past `duration`.
  */
 export const effectExtras = (effect, duration) => {
-    const unit = Math.min(1, duration / 8);
+    const unit = effectUnit(duration);
     const extras = { pull: null, vignette: null, leak: null, motes: null };
 
     if (effect === 'focus') {
-        // Focus pull: opens soft and dim, snaps into focus.
-        extras.pull = { duration: 0.9 * Math.min(1, duration / 3), blur: 16, brightness: 0.7 };
-        extras.vignette = { at: 0.4 * unit, duration: 1.2 * unit, opacity: 1 };
+        // Focus pull: opens soft and dim, snaps into focus. It is a quick action, so its length does not stretch.
+        extras.pull = { at: EFFECT_DELAY, duration: PUNCH * Math.min(1, duration / 3), blur: 16, brightness: 0.7 };
+        extras.vignette = { at: EFFECT_DELAY + 0.4 * unit, duration: 1.2 * unit, opacity: 1 };
     } else if (effect === 'snap') {
         // One warm light leak passing from left to right.
-        extras.leak = { at: 0.5 * unit, duration: 2.6 * unit, travel: 1300, fade: 0.6 * unit };
+        extras.leak = { at: EFFECT_DELAY + 0.5 * unit, duration: 2.6 * unit, travel: 1300, fade: 0.6 * unit };
     } else if (effect === 'sparkle') {
-        extras.vignette = { at: 0.2 * unit, duration: 1.0 * unit, opacity: 0.8 };
+        extras.vignette = { at: EFFECT_DELAY + 0.2 * unit, duration: 1.0 * unit, opacity: 0.8 };
         const rnd = seeded(7);
         extras.motes = Array.from({ length: 22 }, () => {
             const size = 18 + Math.round(rnd() * 46);
             const left = Math.round(80 + rnd() * 920);
             const top = Math.round(700 + rnd() * 1000);
-            const start = rnd() * 3 * unit;
+            const start = EFFECT_DELAY + rnd() * 3 * unit;
             const rise = 260 + rnd() * 260;
             const peak = 0.55 + rnd() * 0.35;
 

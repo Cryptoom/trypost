@@ -4,6 +4,7 @@ export type StoryMotionMode = 'fixed' | 'rotate' | 'random';
 
 export interface StoryMotionSettings {
     enabled: boolean;
+    instagram: boolean;
     font: string;
     effects: string[];
     mode: StoryMotionMode;

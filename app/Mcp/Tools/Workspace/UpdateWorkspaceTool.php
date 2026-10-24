@@ -24,7 +24,7 @@ use Laravel\Mcp\ResponseFactory;
 use Laravel\Mcp\Server\Attributes\Description;
 use Laravel\Mcp\Server\Tool;
 
-#[Description('Update the current workspace brand settings (name, website, description, voice traits, colors, font, image style, content language) and its Story video settings (story_motion_settings: enabled, font, effects, mode, logo_layer, ai_notice, ending). All fields are optional, only the fields you pass are changed; inside story_motion_settings only the keys you pass change. The result includes the current story_motion_settings.')]
+#[Description('Update the current workspace brand settings (name, website, description, voice traits, colors, font, image style, content language) and its Story video settings (story_motion_settings: enabled, instagram, font, effects, mode, logo_layer, ai_notice, ending). All fields are optional, only the fields you pass are changed; inside story_motion_settings only the keys you pass change. The result includes the current story_motion_settings.')]
 class UpdateWorkspaceTool extends Tool
 {
     use AuthorizesMcpTool;
@@ -105,6 +105,7 @@ class UpdateWorkspaceTool extends Tool
             'content_language' => $schema->string()->enum(ContentLanguage::values())->description('Content language code (e.g. "en", "de").'),
             'story_motion_settings' => $schema->object([
                 'enabled' => $schema->boolean()->description('Turn Story videos (a moving video instead of a still photo for Facebook photo Stories) on for this workspace. Default off.'),
+                'instagram' => $schema->boolean()->description('Also publish photo Stories on Instagram as the same Story video (needs enabled). Default off, Instagram keeps the photo Story.'),
                 'font' => $schema->string()->enum(StoryMotionFont::values())->description('Font of the Story video texts.'),
                 'effects' => $schema->array()->items($schema->string()->enum(StoryMotionEffect::values()))->description('One or more image effects. With mode "fixed" the first one in the order drift, focus, snap, sparkle is used.'),
                 'mode' => $schema->string()->enum(StoryMotionMode::values())->description('How one effect is picked per Story: fixed, rotate or random.'),

@@ -329,6 +329,8 @@ return [
         'description' => '把 Facebook 图片快拍变成带镜头运动、动画文字和你的标志的短视频。',
         'enabled' => '将图片快拍发布为视频',
         'enabled_description' => 'Facebook 快拍中的图片会变成动态视频。如果出现任何问题,会像以前一样发布静态图片。',
+        'instagram' => '同时用于 Instagram 快拍',
+        'instagram_description' => 'Instagram 快拍中的照片也会变成同样的动态视频。如果出现问题，会像以前一样发布静态照片。',
         'font' => '字体',
         'font_description' => '用于视频中的所有文字。',
         'effects' => '图像效果',

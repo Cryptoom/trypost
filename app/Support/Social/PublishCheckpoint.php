@@ -21,6 +21,9 @@ final class PublishCheckpoint
 
     public const string INSTAGRAM_STATUS = 'instagram_status';
 
+    /** PATCH:story-motion-instagram: set when the Story video of this publish failed before a container existed. */
+    public const string INSTAGRAM_STORY_VIDEO_FAILED = 'story_video_failed';
+
     /**
      * @param  array<string, mixed>|null  $context
      */
@@ -71,5 +74,16 @@ final class PublishCheckpoint
         $value = data_get($context, self::INSTAGRAM_STATUS);
 
         return is_string($value) && $value !== '' ? $value : null;
+    }
+
+    /**
+     * PATCH:story-motion-instagram: whether an earlier attempt of this publish already built (and lost) the Story
+     * video, so the next attempt posts the photo Story without rendering again.
+     *
+     * @param  array<string, mixed>|null  $context
+     */
+    public static function instagramStoryVideoFailed(?array $context): bool
+    {
+        return data_get($context, self::INSTAGRAM_STORY_VIDEO_FAILED) === true;
     }
 }

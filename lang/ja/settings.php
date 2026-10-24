@@ -329,6 +329,8 @@ return [
         'description' => 'Facebookの写真ストーリーを、カメラの動き、アニメーションテキスト、ロゴ入りの短い動画にします。',
         'enabled' => '写真ストーリーを動画として公開する',
         'enabled_description' => 'Facebookストーリーの写真が動く動画になります。問題が起きた場合は、これまでどおり静止画が公開されます。',
+        'instagram' => 'Instagramストーリーズにも適用',
+        'instagram_description' => 'Instagramストーリーズの写真も同じ動画になります。問題が起きた場合は、これまでどおり静止画の写真が公開されます。',
         'font' => 'フォント',
         'font_description' => '動画内のすべてのテキストに使われます。',
         'effects' => '画像エフェクト',

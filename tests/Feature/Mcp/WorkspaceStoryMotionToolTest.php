@@ -35,6 +35,18 @@ test('mcp story motion: only the sent keys change and the result carries the cur
     expect($this->workspace->fresh()->story_motion_settings['ending'])->toBe(['enabled' => true, 'name' => 'A', 'line' => 'C']);
 });
 
+test('mcp story motion: the Instagram switch is off by default and can be switched on', function () {
+    ($this->update)(['brand_description' => 'x'])->assertOk()->assertStructuredContent(function (AssertableJson $json) {
+        $json->where('story_motion_settings.instagram', false)->etc();
+    });
+
+    ($this->update)(['story_motion_settings' => ['enabled' => true, 'instagram' => true]])->assertOk();
+
+    expect($this->workspace->fresh()->story_motion_settings['instagram'])->toBeTrue();
+
+    ($this->update)(['story_motion_settings' => ['instagram' => 'maybe']])->assertHasErrors();
+});
+
 test('mcp story motion: a call without the key leaves the stored settings alone', function () {
     ($this->update)(['story_motion_settings' => ['enabled' => true]])->assertOk();
     ($this->update)(['brand_description' => 'Only text'])->assertOk();
