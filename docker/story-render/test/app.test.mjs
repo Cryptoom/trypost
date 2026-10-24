@@ -480,7 +480,7 @@ test('service: the render worker count comes from STORY_RENDER_WORKERS, only 1 t
     for (const raw of [1, 2, 3, 4, '1', '2', '3', '4', ' 3 ']) {
         assert.equal(renderWorkersFromEnv(raw), Number(String(raw).trim()), `${JSON.stringify(raw)}`);
     }
-    for (const raw of [undefined, null, '', '   ', '0', '5', '8', '16', '-1', '-2', '2.5', '1.0', '02', '0x2', '1e0', '2 3', '2,3', 'abc', 'NaN', 'Infinity', 0, 5, -1, 2.5, NaN, Infinity, true, [], {}, ['2'], '٢']) {
+    for (const raw of [undefined, null, '', '   ', '0', '5', '8', '16', '-1', '-2', '2.5', '1.0', '02', '0x2', '1e0', '2 3', '2,3', '2\n3', '2\r\n3', 'abc', 'NaN', 'Infinity', 0, 5, -1, 2.5, NaN, Infinity, true, [], {}, ['2'], '٢']) {
         assert.equal(renderWorkersFromEnv(raw), 1, `${JSON.stringify(raw)}`);
     }
 });
