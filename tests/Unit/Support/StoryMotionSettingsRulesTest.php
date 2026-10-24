@@ -89,3 +89,25 @@ test('story motion rules: control characters between digits do not split a phone
     'a line feed is whitespace and keeps the groups apart' => ["99\n123", false],
     'a tab between long groups still counts' => ["123\t456", true],
 ]);
+
+// TPS-SM-05 (review R1 of PR 36, P3-2): VT, FF and NEL are Cc characters the renderer removes without turning them into a space.
+test('story motion rules: vertical tab, form feed and next line are removed like in the renderer, they do not split a number', function (string $text, bool $contact) {
+    expect(StoryMotionSettingsRules::looksLikeContactDetails($text))->toBe($contact);
+})->with([
+    'vertical tab between two years joins them' => ["1998\u{000B}2026", true],
+    'form feed between two years joins them' => ["1998\u{000C}2026", true],
+    'next line between two years joins them' => ["1998\u{0085}2026", true],
+    'a real space between two years still keeps them apart' => ['1998 2026', false],
+]);
+
+// TPS-SM-05 (review R1 of PR 36, P3-1): the guard is a convenience check, not a security boundary. It mirrors the renderer for Cc and Cf
+// characters only. The renderer additionally drops emoji marks and every character the chosen font cannot draw, which PHP cannot know.
+// These cases pin that known gap so nobody mistakes the guard for a complete filter; they are expected to stay "not detected".
+test('story motion rules: known limitation, characters the renderer drops for other reasons still split a number here', function (string $text) {
+    expect(StoryMotionSettingsRules::looksLikeContactDetails($text))->toBeFalse();
+})->with([
+    'a CJK character between digit groups' => ["99\u{4E2D}123\u{4E2D}456"],
+    'emoji variation selectors after every digit' => ["9\u{FE0F}9\u{FE0F}1\u{FE0F}2\u{FE0F}3\u{FE0F}4"],
+    'a combining enclosing keycap' => ["991\u{20E3}234"],
+    'a combining grapheme joiner' => ["991\u{034F}234"],
+]);
