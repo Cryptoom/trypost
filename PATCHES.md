@@ -758,21 +758,29 @@ Einstellung in der App, kein Eingriff in die Härtung des Containers.
   (leer, 0, 5, 2.5, 02, 1e0, 0x2, Listen, Objekte, Text) ergibt 1. Default 1, also unverändertes Verhalten ohne Env. Die Variable
   wird nicht an den Kindprozess weitergegeben. Die übrigen Aufruf-Flags (`--fps 30`, `--quiet`) und die gesamte Umgebung des Kindprozesses
   bleiben unverändert.
+  Gemessen wurden höchstens 3 Worker (`pids.peak` bis 374). Die Stufe 4 steht in der Allowlist, ist aber nicht gemessen: sie nur nach eigener
+  Messung zusammen mit einem passenden `pids_limit` einsetzen, sonst läuft jeder Render bis zum Timeout und fällt auf das Standbild zurück.
 - **Logo 64 px** (`docker/story-render/lib/spec.mjs`, `logoSize`): Höhe 64 px statt 48, maximale Breite 640 px statt 480 (proportional),
   die weiße Karte ist damit höchstens 680 x 84 px (vorher 520 x 68), Oberkante unverändert bei y=155, Unterkante bei y=239, der Textblock
   beginnt bei y=300. Gilt für alle Marken. Der seitliche Rand von mindestens 60 px bleibt (Karte höchstens 680 breit auf 1080).
 - **N1**: das Größenbeispiel im Fehlertext `settings.story_video.errors.logo_too_many_pixels` heißt in allen 16 Sprachen "3000 x 2000"
   (vorher "4000 x 2000", genau 8 Megapixel an der Grenze). Test über alle 16 Sprachverzeichnisse in `tests/Unit/Support/StoryMotionLogoTest.php`.
-- **N2** (`App\Support\StoryMotionSettingsRules::looksLikeContactDetails`): die Kontaktsperre entfernt wie der Renderer alle Cc- und Cf-Zeichen,
+- **N2** (`App\Support\StoryMotionSettingsRules::looksLikeContactDetails`): die Kontaktsperre entfernt für diese zwei Kategorien wie der Renderer alle Cc- und Cf-Zeichen,
   außer Tabulator, Zeilenvorschub und Wagenrücklauf (die zählen als Leerraum und trennen weiter). DEL und U+0080 bis U+009F zwischen
   Ziffern verstecken keine Telefonnummer mehr; zwei Jahre mit DEL dazwischen werden zu einer Zahl wie im Bild.
   Bekannte Folge: U+000B, U+000C und U+0085 trennen keine Ziffernläufe mehr (der Renderer entfernt sie ebenfalls).
+  Bekannte Grenze (TPS-SM-05, Review R1 von PR #36): die Sperre ist eine Komfortprüfung gegen versehentlich getippte Kontaktdaten, keine
+  Sicherheitsgrenze und kein vollständiges Abbild des Renderers. Der Renderer verwirft zusätzlich Emoji-Marken (U+FE0E, U+FE0F, U+20E3) und jedes
+  Zeichen, das die gewählte Schrift nicht zeichnen kann; das weiß PHP nicht. Ein solches Zeichen (zum Beispiel ein CJK-Zeichen) zwischen Ziffern
+  trennt den Lauf hier weiterhin. Die Fälle sind als bekannte Grenze getestet (`StoryMotionSettingsRulesTest`, "known limitation").
 - **Messung auf web02** (isoliert, Test-Image mit Label `owner=tps-sm03`, eigene Container, Hostlast 8 bis 30): Tabelle, Compose-Vorschlag und
   Befund zum Prozesslimit stehen im Bau-Bericht `BAU-BERICHT-SM03.md` (Plan-Ordner). Kernbefund: ohne Änderung des `--pids-limit 256`
   scheitern 3 Worker immer (pids.peak 256 bis 262, `render_failed` oder Timeout nach 240 s), und 2 Worker laufen mit pids.peak 242 bis 256
   hart am Limit. Mit `--cpus 4`, 3 Worker und `--pids-limit 512` dauert ein 15-s-focus-Lauf im Median 92 s statt 151 s, `memory.peak` höchstens 1,55 GiB.
-- **Deploy (Olli-Gate, nicht Teil des Builds)**: Image `trypost-story-render` neu bauen und starten (Env, `cpus` und `pids_limit` im Compose, siehe
-  Bericht), `trypost` bleibt für diesen Patch unverändert (nur Sprachdateien und die Kontaktsperre: auch `trypost` neu bauen, sonst fehlen N1 und N2).
-  Ohne die Env bleibt es bei einem Worker.
+- **Deploy (Olli-Gate, nicht Teil des Builds)**: Beide Images neu bauen und gemeinsam starten: `trypost-story-render` (Worker-Env, Logo 64 px)
+  und `trypost` (N1 in den Sprachdateien, N2 in der Kontaktsperre). Wer nur den Render-Dienst neu baut, hat N1 und N2 nicht live. Die Env
+  `STORY_RENDER_WORKERS`, `cpus` und `pids_limit` im Compose in EINEM Schritt setzen (mehr als ein Worker braucht ein höheres `pids_limit`, siehe
+  Bericht), danach `docker inspect trypost-story-render` und die Env prüfen. Ohne die Env bleibt es bei einem Worker.
+  Stand Prod am 24.10.2026 (gelesen per `docker inspect`): 4 cpus, `pids_limit` 384, 2 Worker.
 - **Tests**: Node `docker/story-render/test/app.test.mjs` (Worker-Allowlist, Aufrufargumente), `spec.test.mjs` (Logomaße), `composition.test.mjs`
   (Kartenhöhe 84 im Browser); Pest `tests/Unit/Support/StoryMotionSettingsRulesTest.php` (N2), `tests/Unit/Support/StoryMotionLogoTest.php` (N1).
