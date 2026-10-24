@@ -65,7 +65,10 @@ class StoryMotionSettingsRules
      * en and em dash; a colon only between two groups of three or more digits, so "10:00 - 19:00" passes.
      * A run that consists only of year-like groups of four digits (1900 to 2099, as in "Seit 1998 2026")
      * is not a phone number and passes. Control characters (Cc, such as DEL or U+0080) and format characters (Cf)
-     * are removed first, exactly as the render service does; only tab, line feed and carriage return stay and count as spaces.
+     * are removed first, as the render service does for those two categories; only tab, line feed and carriage return
+     * stay and count as spaces. This is a convenience check against contact details typed by mistake, not a security
+     * boundary and not a full mirror of the renderer: the renderer also drops emoji marks and every character the
+     * chosen font cannot draw, which PHP does not know, so such a character can still split a digit run here.
      */
     public static function looksLikeContactDetails(string $text): bool
     {
