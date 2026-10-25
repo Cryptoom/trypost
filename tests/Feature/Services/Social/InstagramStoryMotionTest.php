@@ -863,3 +863,130 @@ test('story video host: the prune command is scheduled hourly', function () {
 
     expect($event)->not->toBeNull()->and($event->expression)->toBe('0 * * * *');
 });
+
+// ---- test pack TPS-SM-04: guards and merges the earlier rounds left without a test --------------------
+
+test('instagram story motion: feed and reel posts never render, whatever the Instagram switch says', function (ContentType $contentType, string $mime, string $field) {
+    sm04Prepare($this);
+    $extension = $mime === 'video/mp4' ? 'mp4' : 'jpg';
+    $this->postPlatform->update(['content_type' => $contentType]);
+    $this->post->update(['media' => [[
+        'id' => 'test-media-feed',
+        'path' => "media/2026-01/feed.{$extension}",
+        'url' => "https://example.com/media/2026-01/feed.{$extension}",
+        'mime_type' => $mime,
+        'original_filename' => "feed.{$extension}",
+    ]]]);
+    sm04Fake($this, Http::response('', 500));
+
+    $this->publisher->publish($this->postPlatform->fresh());
+
+    expect($this->sm04Calls)->toBe(['container', 'status', 'media_publish'])
+        ->and(sm04LastContainer($this)[$field])->toBe("https://example.com/media/2026-01/feed.{$extension}")
+        ->and(data_get($this->postPlatform->fresh()->error_context, 'story_video_attempted'))->toBeNull()
+        ->and(sm04HostedVideos())->toBe([]);
+})->with([
+    'feed with a photo' => [ContentType::InstagramFeed, 'image/jpeg', 'image_url'],
+    'reel with a video' => [ContentType::InstagramReel, 'video/mp4', 'video_url'],
+]);
+
+test('instagram story motion: a story with a video medium goes through unchanged and is never rendered', function () {
+    sm04Prepare($this);
+    $this->post->update(['media' => [[
+        'id' => 'test-media-video',
+        'path' => 'media/2026-01/story.mp4',
+        'url' => 'https://example.com/media/2026-01/story.mp4',
+        'mime_type' => 'video/mp4',
+        'original_filename' => 'story.mp4',
+    ]]]);
+    sm04Fake($this, Http::response('', 500));
+
+    $this->publisher->publish($this->postPlatform->fresh());
+
+    expect($this->sm04Calls)->toBe(['container', 'status', 'media_publish'])
+        ->and(sm04LastContainer($this)['video_url'])->toBe('https://example.com/media/2026-01/story.mp4')
+        ->and(data_get($this->postPlatform->fresh()->error_context, 'story_video_attempted'))->toBeNull();
+});
+
+test('instagram story motion: a photo story without a hosted video is not posted a second time when Instagram refuses it', function () {
+    sm04Prepare($this, ['enabled' => true, 'instagram' => false]);
+    sm04Fake($this, Http::response('', 500), containers: [
+        Http::response(['error' => ['message' => 'Unsupported image', 'code' => 100, 'error_subcode' => 2207005]], 400),
+    ]);
+
+    expect(fn () => $this->publisher->publish($this->postPlatform->fresh()))->toThrow(InstagramPublishException::class);
+
+    expect($this->sm04Calls)->toBe(['download', 'container']);
+});
+
+test('instagram story motion: a resumed feed post whose container fails is not turned into a photo story', function () {
+    sm04Prepare($this);
+    $this->postPlatform->update([
+        'content_type' => ContentType::InstagramFeed,
+        'error_context' => ['instagram_workflow' => ['stage' => 'final_container', 'container_id' => 'story-container-1']],
+    ]);
+    $stored = $this->postPlatform->fresh()->error_context;
+    sm04Fake($this, Http::response('', 500), status: ['story-container-1' => Http::response(['status_code' => 'ERROR'], 200)]);
+
+    expect(fn () => (new InstagramPublisher)->publish($this->postPlatform->fresh()))->toThrow(InstagramPublishException::class);
+
+    expect($this->sm04Calls)->toBe(['status'])
+        ->and($this->postPlatform->fresh()->error_context)->toBe($stored);
+});
+
+test('instagram story motion: a permission or policy error on the video is shown and not retried as a photo story', function (int $subcode, ErrorCategory $category) {
+    sm04Prepare($this);
+    sm04Fake($this, sm04RenderedVideo($this), containers: [
+        Http::response(['error' => ['message' => 'Not allowed', 'code' => 100, 'error_subcode' => $subcode]], 400),
+    ]);
+
+    try {
+        $this->publisher->publish($this->postPlatform->fresh());
+        test()->fail('Expected the error to reach the caller.');
+    } catch (InstagramPublishException $e) {
+        expect($e->category)->toBe($category)
+            ->and($e->platformErrorCode)->toBe((string) $subcode);
+    }
+
+    // one container, no photo download, no second container, and the hosted video is gone
+    expect($this->sm04Calls)->toBe(['download', 'render', 'container'])
+        ->and(sm04HostedVideos())->toBe([]);
+})->with([
+    'restricted account' => [2207050, ErrorCategory::Permission],
+    'community policy' => [2207051, ErrorCategory::ContentPolicy],
+]);
+
+test('instagram story motion: the attempt marker keeps what the error context already holds, and the job counts on from it', function () {
+    Bus::fake([PublishToSocialPlatform::class]);
+    Event::fake();
+    Mail::fake();
+    sm04Prepare($this);
+    $this->postPlatform->update(['error_context' => ['retry_count' => 3, 'max_retries' => 90, 'retry_delay_seconds' => 10]]);
+
+    sm04Fake($this, sm04RenderedVideo($this), containers: [Http::response('', 503)]);
+
+    // the publisher alone, on the model the job hands it
+    $model = $this->postPlatform->fresh();
+    expect(fn () => (new InstagramPublisher)->publish($model))->toThrow(PlatformUnavailableException::class);
+
+    expect($this->postPlatform->fresh()->error_context)->toBe([
+        'retry_count' => 3,
+        'max_retries' => 90,
+        'retry_delay_seconds' => 10,
+        'story_video_attempted' => true,
+    ]);
+
+    // and through the job: the next count is 4, the marker and the limits stay
+    $this->postPlatform->update(['error_context' => ['retry_count' => 3, 'max_retries' => 90, 'retry_delay_seconds' => 10]]);
+    sm04Fake($this, sm04RenderedVideo($this), containers: [Http::response('', 503)]);
+
+    (new PublishToSocialPlatform($this->postPlatform->fresh()))->handle();
+
+    $context = $this->postPlatform->fresh()->error_context;
+
+    expect($this->postPlatform->fresh()->status)->toBe(PlatformStatus::Retrying)
+        ->and($context['retry_count'])->toBe(4)
+        ->and($context['max_retries'])->toBe(90)
+        ->and($context['retry_delay_seconds'])->toBe(10)
+        ->and($context['story_video_attempted'])->toBeTrue();
+});
